@@ -16,6 +16,7 @@ import {
 import {
   buildCommandAgentPlan,
   formatCommandAgentPlan,
+  getCommandAgentProfile,
   listCommandAgentProfiles,
   resolveHostAgentDispatcher,
   validateCommandAgentProfiles,
@@ -219,6 +220,49 @@ test("audit command defers domain specialists behind the global maturity gate", 
   assert.match(report, /CODEX_DEFERRED_SPAWN_PAYLOADS:/);
 });
 
+test("core command workflows block durable output until scoped executor receipts exist", () => {
+  const availableAgentIds = readdirSync(join(ROOT, "agents"), { recursive: true })
+    .filter((entry) => String(entry).endsWith(".md"))
+    .map((entry) => String(entry).replace(/\\/g, "/").split("/").pop().replace(/\.md$/, ""));
+
+  for (const commandId of [
+    "/supervibe-brainstorm",
+    "/supervibe-plan",
+    "/supervibe-loop",
+    "/supervibe-execute-plan",
+    "/supervibe-audit",
+  ]) {
+    const profile = getCommandAgentProfile(commandId);
+    const expectedSubjects = [profile.ownerAgentId, ...profile.requiredAgentIds];
+    const plan = buildCommandAgentPlan(commandId, {
+      availableAgentIds,
+      callableAgentIds: availableAgentIds,
+      hostAdapterId: "codex",
+      enforceHostProof: true,
+      workflowContext: {
+        active: true,
+        slug: "workflow-contract-audit",
+        handoffId: "workflow-contract-audit",
+      },
+      scopedReceiptTrust: {
+        pass: false,
+        missingSubjects: expectedSubjects,
+      },
+    });
+
+    assert.equal(plan.executionMode, "agent-dispatch-required", commandId);
+    assert.equal(plan.durableWritesAllowed, false, commandId);
+    assert.equal(plan.agentOwnedOutputAllowed, false, commandId);
+    assert.equal(plan.agentOwnedOutputRequiresReceipts, true, commandId);
+    assert.equal(plan.agentReceiptsTrusted, false, commandId);
+    assert.equal(plan.receiptGate, "pending-scoped-runtime-agent-receipts", commandId);
+    assert.equal(plan.scopedReceiptGateActive, true, commandId);
+    assert.deepEqual(plan.scopedReceiptTrust.missingSubjects, expectedSubjects, commandId);
+    assert.equal(plan.inlineDraftAllowed, false, commandId);
+    assert.match(formatCommandAgentPlan(plan), /EMULATION_ALLOWED: false/, commandId);
+  }
+});
+
 test("command catalog routes Russian plugin and agent-system audit requests", () => {
   for (const request of [
     "Проведи аудит агентской системы",
@@ -311,6 +355,25 @@ test("command catalog routes plan-review complaints to mandatory review instead 
     assert.equal(match.commandArgs, "--review", request);
     assert.notEqual(match.command, "/supervibe-audit --workflow-chain", request);
     assert.notEqual(match.command, "/supervibe-execute-plan", request);
+    assert.equal(match.doNotSearchProject, true, request);
+  }
+});
+
+test("command catalog routes broken design workflow audits before plan review and security", () => {
+  for (const request of [
+    "Проведи аудит и проверь почему дизайн флоу снова сломан. Нужен аудит и план исправлений. Не использовались prototype-builder ux-ui-designer ui-polish-reviewer accessibility-reviewer quality-gate-reviewer copywriter.",
+    "audit why design flow is broken again; Locke only ran creative-director as a subagent and skipped prototype-builder ux-ui-designer ui-polish-reviewer accessibility-reviewer quality-gate-reviewer copywriter",
+  ]) {
+    const match = resolveCommandRequest(request, {
+      pluginRoot: ROOT,
+      projectRoot: ROOT,
+    });
+
+    assert.equal(match.command, "/supervibe-audit", request);
+    assert.equal(match.intent, "supervibe_audit", request);
+    assert.notEqual(match.intent, "plan_review", request);
+    assert.notEqual(match.command, "/supervibe-plan --review", request);
+    assert.notEqual(match.command, "/supervibe-security-audit", request);
     assert.equal(match.doNotSearchProject, true, request);
   }
 });

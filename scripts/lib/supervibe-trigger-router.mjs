@@ -664,6 +664,15 @@ const RULES = [
   },
   {
     intent: "supervibe_audit",
+    confidence: 0.94,
+    nextQuestionEn: "Step 1/1: run a read-only audit of the design workflow, specialist receipts, and routing?",
+    nextQuestionRu: "Шаг 1/1: провести read-only аудит дизайн-флоу, specialist receipts и routing?",
+    test: (text) => hasAny(text, ["design flow", "design workflow", "/supervibe-design", "design command"]) &&
+      hasAny(text, ["audit", "check", "review", "why", "broken", "failed"]) &&
+      hasAny(text, ["subagent", "inline", "receipt", "runtime", "skipped", "missing", "prototype-builder", "ux-ui-designer", "ui-polish-reviewer", "accessibility-reviewer", "quality-gate-reviewer", "copywriter"]),
+  },
+  {
+    intent: "supervibe_audit",
     confidence: 0.93,
     test: (text) => hasAny(text, ["agent system", "agents", "агентская система", "агентской системы", "агенты"]) &&
       hasAny(text, ["audit", "check", "review", "score", "maturity", "out of 10", "10 из 10", "аудит", "проверь", "оцени", "зрелость"]) &&
@@ -804,7 +813,7 @@ export function routeTriggerRequest(input, options = {}) {
         mutationRisk: mutationRiskFor(commandMatch.intent),
         prerequisites: route.prerequisites,
         requiredSafety: requiredSafetyFor(commandMatch.intent),
-        nextQuestion: locale === "ru" ? route.nextQuestionRu : route.nextQuestionEn,
+        nextQuestion: localizedRouteQuestion(route, locale),
         alternatives: alternativesFromRoutes(commandMatch.intent),
         matchedPhrase: route.command,
         source: "exact-command",
@@ -840,7 +849,7 @@ export function routeTriggerRequest(input, options = {}) {
         mutationRisk: mutationRiskFor(commandShortcut.intent),
         prerequisites: route.prerequisites,
         requiredSafety: requiredSafetyFor(commandShortcut.intent),
-        nextQuestion: locale === "ru" ? route.nextQuestionRu : route.nextQuestionEn,
+        nextQuestion: localizedRouteQuestion(route, locale, commandShortcut),
         alternatives: alternativesFromRoutes(commandShortcut.intent),
         matchedPhrase: commandShortcut.matchedAlias || null,
         source: "command-catalog",
@@ -904,7 +913,7 @@ export function routeTriggerRequest(input, options = {}) {
         mutationRisk: mutationRiskFor(scored[0].intent),
         prerequisites: route.prerequisites,
         requiredSafety: requiredSafetyFor(scored[0].intent),
-        nextQuestion: locale === "ru" ? route.nextQuestionRu : route.nextQuestionEn,
+        nextQuestion: localizedRouteQuestion(route, locale, scored[0]),
         alternatives: scored.slice(1, 4).map((rule) => ({ intent: rule.intent, confidence: rule.confidence })),
         matchedPhrase: null,
         semanticEvidence: scored[0].semanticEvidence,
@@ -1023,7 +1032,7 @@ function routeResolvedKnownCommand(resolvedCommand, artifacts, locale) {
       mutationRisk: mutationRiskFor(resolvedCommand.intent),
       prerequisites: route.prerequisites,
       requiredSafety: requiredSafetyFor(resolvedCommand.intent),
-      nextQuestion: locale === "ru" ? route.nextQuestionRu : route.nextQuestionEn,
+      nextQuestion: localizedRouteQuestion(route, locale, resolvedCommand),
       alternatives: alternativesFromRoutes(resolvedCommand.intent),
       matchedPhrase: resolvedCommand.matchedAlias || resolvedCommand.requestedCommand || null,
       source: "command-catalog",
@@ -1170,6 +1179,13 @@ function localizeQuestion(entry, locale) {
     return route?.nextQuestionEn ?? entry.nextQuestionIncludes;
   }
   return entry.nextQuestionIncludes;
+}
+
+function localizedRouteQuestion(route, locale, override = {}) {
+  if (locale === "ru") {
+    return override.nextQuestionRu || route.nextQuestionRu;
+  }
+  return override.nextQuestionEn || route.nextQuestionEn;
 }
 
 function mutationRiskFor(intent) {

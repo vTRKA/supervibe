@@ -517,6 +517,68 @@ export function validateDesignAgentInvocationReceipts(rootDir = process.cwd(), o
   };
 }
 
+export function buildDesignStageContractReport(rootDir = process.cwd(), options = {}) {
+  const scope = normalizeDesignReceiptScope(options);
+  const receipts = readAllReceipts(rootDir).filter((receipt) => receiptMatchesDesignScope(receipt, scope));
+  const expected = expectedReceiptsForDurableOutputs(rootDir, scope);
+  const prewriteContracts = contractsFromPrewriteManifest(options.prewriteManifest);
+  const durableContracts = expected.map((item) => buildDurableStageContract(rootDir, item, receipts, options));
+  const contracts = dedupeStageContracts([...prewriteContracts, ...durableContracts]);
+  const issues = [];
+  const warnings = detectDesignReceiptWarnings(receipts, expected);
+
+  if (scope.active && expected.length === 0 && prewriteContracts.length === 0 && shouldBlockEmptyActiveDesignScope(rootDir, scope)) {
+    issues.push({
+      code: "active-design-stage-contract-empty",
+      file: scopeFileHint(scope),
+      message: "active /supervibe-design stage contract report found no scoped durable outputs or prewrite producers to check",
+    });
+  }
+
+  issues.push(...detectIncompatibleDesignReceipts(receipts));
+  const blockingCount = contracts.filter((contract) => contract.blocking === true).length + issues.length;
+
+  return {
+    schemaVersion: 1,
+    pass: blockingCount === 0,
+    checked: contracts.length,
+    receipts: receipts.length,
+    scope,
+    blockingCount,
+    contracts,
+    warnings,
+    issues,
+  };
+}
+
+export function formatDesignStageContractReport(report = {}) {
+  const lines = [
+    "SUPERVIBE_DESIGN_STAGE_CONTRACTS",
+    `STAGE_CONTRACTS_PASS: ${report.pass === true}`,
+    `STAGE_CONTRACTS_CHECKED: ${report.checked ?? 0}`,
+    `STAGE_CONTRACTS_BLOCKING: ${report.blockingCount ?? 0}`,
+    `STAGE_CONTRACT_SCOPE: active=${report.scope?.active === true} slug=${report.scope?.slug || "none"} handoff=${report.scope?.handoffId || "none"} workflow=${report.scope?.workflowRunId || "none"}`,
+  ];
+  for (const contract of report.contracts || []) {
+    lines.push([
+      "STAGE_CONTRACT:",
+      contract.status,
+      `${contract.subjectType}:${contract.subjectId}@${contract.stageId}`,
+      "->",
+      contract.outputArtifact,
+      `receipts=${contract.receiptCount ?? 0}`,
+      `blocking=${contract.blocking === true}`,
+    ].join(" "));
+  }
+  for (const issue of report.issues || []) {
+    lines.push(`STAGE_CONTRACT_ISSUE: ${issue.code} ${issue.file || "unknown"} - ${issue.message}`);
+  }
+  for (const warning of report.warnings || []) {
+    lines.push(`STAGE_CONTRACT_WARNING: ${warning.code} ${warning.file || "unknown"} - ${warning.message}`);
+  }
+  return lines.join("\n");
+}
+
 export function formatDesignPlanPrompt(plan = {}, { intake = null, writeGate = null } = {}) {
   const gate = writeGate || plan.writeGate || buildDesignWriteGate({ intake, plan });
   if (gate.nextQuestion?.source === "intake") {
@@ -685,8 +747,8 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, {
     hostConfidence: hostSelection.confidence,
     hostInvocationsLogged: runtimeProof.hostInvocationsLogged,
     agentInvocationsCompleted: runtimeProof.agentInvocationsCompleted,
-    agentReceiptsTrusted: specialistDispatchDeferred && realAgentCapable ? true : runtimeProof.agentReceiptsTrusted,
-    producerReceiptsTrusted: specialistDispatchDeferred && realAgentCapable ? true : runtimeProof.producerReceiptsTrusted,
+    agentReceiptsTrusted: runtimeProof.agentReceiptsTrusted,
+    producerReceiptsTrusted: runtimeProof.producerReceiptsTrusted,
     durableAgentReceiptsTrusted: runtimeProof.agentReceiptsTrusted,
     durableProducerReceiptsTrusted: runtimeProof.producerReceiptsTrusted,
     completedStageSubjects: runtimeProof.completedStageSubjects,
@@ -1355,6 +1417,71 @@ function friendlyStageName(value = "") {
   if (/stage-6/.test(value)) return "review";
   if (/stage-7/.test(value)) return "quality gate";
   return value || "current stage";
+}
+
+function contractsFromPrewriteManifest(manifest = null) {
+  return (manifest?.files || [])
+    .filter((file) => file.producerId && file.stageId && file.path)
+    .map((file) => {
+      const status = file.receiptTrusted
+        ? "completed"
+        : file.receiptPresent
+          ? "receipt-present-untrusted"
+          : file.status === "blocked"
+            ? "blocked-by-question"
+            : "pending-receipt";
+      return {
+        source: "prewrite",
+        stageId: file.stageId,
+        subjectType: file.producerType || "agent",
+        subjectId: file.producerId,
+        outputArtifact: normalizeRelPath(file.path),
+        required: true,
+        status,
+        blocking: status !== "completed",
+        receiptCount: file.receiptPresent ? 1 : 0,
+        trustedReceiptCount: file.receiptTrusted ? 1 : 0,
+        issues: file.gateReason ? [file.gateReason] : [],
+      };
+    });
+}
+
+function buildDurableStageContract(rootDir, expected, receipts = [], options = {}) {
+  const matching = receipts.filter((receipt) => receiptMatches(receipt, expected));
+  const validationProblems = matching.flatMap((receipt) => validateReceiptShape(rootDir, receipt, expected, options));
+  const trustedReceiptCount = matching.filter((receipt) =>
+    validateReceiptShape(rootDir, receipt, expected, options).length === 0
+  ).length;
+  const status = trustedReceiptCount > 0
+    ? "completed"
+    : matching.length > 0
+      ? "receipt-present-untrusted"
+      : "pending-receipt";
+  return {
+    source: "durable-output",
+    stageId: expected.stageId,
+    subjectType: expected.subjectType || "agent",
+    subjectId: expected.agentId,
+    outputArtifact: expected.outputArtifact,
+    required: true,
+    status,
+    blocking: status !== "completed",
+    receiptCount: matching.length,
+    trustedReceiptCount,
+    issues: validationProblems.map((problem) => problem.message),
+  };
+}
+
+function dedupeStageContracts(contracts = []) {
+  const byKey = new Map();
+  for (const contract of contracts) {
+    const key = `${contract.subjectType}:${contract.subjectId}@${contract.stageId}:${normalizeRelPath(contract.outputArtifact)}`;
+    const existing = byKey.get(key);
+    if (!existing || existing.source === "prewrite" && contract.source === "durable-output") {
+      byKey.set(key, contract);
+    }
+  }
+  return [...byKey.values()];
 }
 
 function expectedReceiptsForDurableOutputs(rootDir, scope = {}) {

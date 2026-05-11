@@ -8,6 +8,8 @@ import {
 import {
   buildDesignAgentPlan,
   buildDesignPrewriteManifest,
+  buildDesignStageContractReport,
+  formatDesignStageContractReport,
   formatDesignPrewriteManifest,
   formatDesignPlanPrompt,
   formatDesignPlanUserPrompt,
@@ -79,6 +81,13 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const indexPreflight = await collectIndexHealthPreflight(projectRoot, { strictGraph: true });
   const indexBlocked = indexPreflight.ready === false && (planWrites || dispatchHostAgents);
   const prewriteManifest = buildDesignPrewriteManifest(plan, { slug });
+  const stageContractReport = buildDesignStageContractReport(projectRoot, {
+    active: Boolean(slug),
+    slug,
+    handoffId: slug,
+    plan,
+    prewriteManifest,
+  });
   const nextDispatch = indexBlocked ? null : nextDispatchTarget(plan, prewriteManifest.nextProducer, prewriteManifest);
   const continuation = indexBlocked
     ? indexRepairContinuation({ plan, indexPreflight })
@@ -91,6 +100,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       indexPreflight,
       indexBlocked,
       prewriteManifest: planWrites || dispatchHostAgents ? prewriteManifest : null,
+      stageContractReport: planWrites || dispatchHostAgents || status ? stageContractReport : null,
       continuation,
     }, null, 2));
   } else {
@@ -108,6 +118,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.log(`AGENT_INVOCATIONS_COMPLETED: ${plan.executionStatus.agentInvocationsCompleted === true}`);
     console.log(`AGENT_RECEIPTS_TRUSTED: ${plan.executionStatus.agentReceiptsTrusted === true}`);
     console.log(`PRODUCER_RECEIPTS_TRUSTED: ${plan.executionStatus.producerReceiptsTrusted === true}`);
+    console.log(`DURABLE_AGENT_RECEIPTS_TRUSTED: ${plan.executionStatus.durableAgentReceiptsTrusted === true}`);
+    console.log(`DURABLE_PRODUCER_RECEIPTS_TRUSTED: ${plan.executionStatus.durableProducerReceiptsTrusted === true}`);
+    console.log(`QUESTION_PROPOSAL_DISPATCH_ALLOWED: ${plan.executionStatus.questionProposalDispatchAllowed === true}`);
     console.log(`VARIANT_SET: ${plan.variantSet?.active === true ? `active count=${plan.variantSet.requestedVariantCount} manifest=${plan.variantSet.manifestPath}` : "inactive"}`);
     console.log(`ACCEPTANCE_CRITERIA: ${(plan.acceptanceContract?.acceptanceCriteria || []).join(",") || "none"}`);
     console.log(formatIndexHealthPreflight(indexPreflight));
@@ -138,6 +151,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     }
     if (planWrites) {
       console.log(formatDesignPrewriteManifest(prewriteManifest));
+      console.log(formatDesignStageContractReport(stageContractReport));
     }
     if (dispatchHostAgents) {
       console.log("SUPERVIBE_DESIGN_CONTINUE");

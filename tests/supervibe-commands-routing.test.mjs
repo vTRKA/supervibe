@@ -41,6 +41,16 @@ test("routes plan then execute requests to planning without review-only hijack",
   assert.match(output, /\/supervibe-execute-plan <reviewed-plan-path>/);
 });
 
+test("routes broken design workflow audits before plan-review", async () => {
+  const output = await matchCommand("Проведи аудит и проверь почему дизайн флоу снова сломан. Нужен аудит и план исправлений. Не использовались prototype-builder ux-ui-designer ui-polish-reviewer accessibility-reviewer quality-gate-reviewer copywriter.");
+
+  assert.match(output, /INTENT: supervibe_audit/);
+  assert.match(output, /COMMAND: \/supervibe-audit/);
+  assert.doesNotMatch(output, /INTENT: plan_review/);
+  assert.doesNotMatch(output, /COMMAND: \/supervibe-plan --review/);
+  assert.doesNotMatch(output, /COMMAND: \/supervibe-security-audit/);
+});
+
 test("routes plain brainstorm and new feature phrases to brainstorm command", async () => {
   for (const request of [
     "брейншторм",

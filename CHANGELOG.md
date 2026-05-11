@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.26] - 2026-05-11
+
+### Changed
+
+- Hardened broken `/supervibe-design` audit routing so skipped design specialists, inline emulation, subagent-only runs, and missing receipt complaints route to `/supervibe-audit` before plan review.
+- Added scoped design stage contract reporting so active design outputs stay blocked until required specialist and producer runtime receipts are present.
+- Kept core `/supervibe-brainstorm`, `/supervibe-plan`, `/supervibe-loop`, `/supervibe-execute-plan`, and `/supervibe-audit` durable outputs blocked without scoped executor receipts.
+
+### Validation
+
+- Updated release and host manifest versions to `2.1.26`.
+- Verified trigger replay, command routing, design receipt gates, agent/design maturity, and full `npm run check` release gates.
+
 ## [2.1.25] - 2026-05-11
 
 ### Changed

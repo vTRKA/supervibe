@@ -17,6 +17,10 @@ import {
   readDesignWizardRuntimeState,
 } from "./design-wizard-runtime-state.mjs";
 import {
+  buildDesignStageContractReport,
+  validateDesignAgentInvocationReceipts,
+} from "./design-agent-orchestration.mjs";
+import {
   readWorkflowReceipts,
   validateWorkflowReceiptTrust,
   validateWorkflowReceipts,
@@ -75,6 +79,12 @@ export function readDesignWorkflowStatus(rootDir = process.cwd(), {
   const prototypeApproval = prototypeRoot ? readJson(join(prototypeRoot, ".approval.json")) : null;
   const prototypeApproved = normalizeStatus(prototypeApproval?.status) === "approved";
   const receiptValidation = validateWorkflowReceipts(rootDir);
+  const scopedDesignReceipts = slug
+    ? validateDesignAgentInvocationReceipts(rootDir, { active: true, slug, handoffId: slug })
+    : null;
+  const stageContracts = slug
+    ? buildDesignStageContractReport(rootDir, { active: true, slug, handoffId: slug })
+    : null;
   const resumeCheckpoint = buildDesignResumeCheckpoint(rootDir, { slug });
   const qualityGate = prototypeRoot
     ? evaluateDesignQualityGate(rootDir, { slug, requireReviews: prototypeApproved, receiptValidation })
@@ -152,6 +162,15 @@ export function readDesignWorkflowStatus(rootDir = process.cwd(), {
       receipts: receiptValidation.receipts,
       issues: receiptValidation.issues,
     },
+    designReceipts: scopedDesignReceipts ? {
+      pass: scopedDesignReceipts.pass === true,
+      checked: scopedDesignReceipts.checked,
+      receipts: scopedDesignReceipts.receipts,
+      issues: scopedDesignReceipts.issues,
+      warnings: scopedDesignReceipts.warnings,
+      scope: scopedDesignReceipts.scope,
+    } : null,
+    stageContracts,
     resumeCheckpoint,
     nextAction,
     nextUserActions: continuation.nextUserActions,
@@ -231,6 +250,12 @@ export function formatDesignWorkflowStatus(status = {}) {
     `STALE_STATE: ${status.stateConsistency?.stale === true}`,
     `RECEIPTS_PASS: ${status.receipts?.pass === true}`,
     `TRUSTED_RECEIPTS: ${status.receipts?.receipts ?? 0}`,
+    `SCOPED_DESIGN_RECEIPTS_PASS: ${status.designReceipts?.pass === true}`,
+    `SCOPED_DESIGN_RECEIPTS_CHECKED: ${status.designReceipts?.checked ?? 0}`,
+    `SCOPED_DESIGN_RECEIPTS_SEEN: ${status.designReceipts?.receipts ?? 0}`,
+    `STAGE_CONTRACTS_PASS: ${status.stageContracts?.pass === true}`,
+    `STAGE_CONTRACTS_CHECKED: ${status.stageContracts?.checked ?? 0}`,
+    `STAGE_CONTRACTS_BLOCKING: ${status.stageContracts?.blockingCount ?? 0}`,
     `RESUME_CHECKPOINT: ${formatResumeCheckpoint(status.resumeCheckpoint)}`,
     `QUALITY_GATE_PASS: ${status.qualityGate?.pass !== false}`,
     `QUALITY_BLOCKERS: ${status.qualityGate?.blockerCount ?? 0}`,
@@ -244,6 +269,12 @@ export function formatDesignWorkflowStatus(status = {}) {
   }
   for (const issue of status.qualityGate?.issues || []) {
     lines.push(`QUALITY_ISSUE: ${issue.severity} ${issue.file}:${issue.line || 0} ${issue.message}`);
+  }
+  for (const contract of status.stageContracts?.contracts || []) {
+    lines.push(`STAGE_CONTRACT: ${contract.status} ${contract.subjectType}:${contract.subjectId}@${contract.stageId} -> ${contract.outputArtifact} receipts=${contract.receiptCount ?? 0} blocking=${contract.blocking === true}`);
+  }
+  for (const issue of status.stageContracts?.issues || []) {
+    lines.push(`STAGE_CONTRACT_ISSUE: ${issue.code} ${issue.file || "unknown"} - ${issue.message}`);
   }
   if (status.nextUserActions?.length) {
     lines.push("NEXT_USER_ACTIONS:");

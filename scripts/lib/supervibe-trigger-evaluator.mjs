@@ -171,6 +171,17 @@ export const DEFAULT_SEMANTIC_TRIGGER_FIXTURES = Object.freeze([
     },
   },
   {
+    id: "design-flow-audit-en",
+    phrase: "audit why design workflow is broken and skipped prototype-builder ux-ui-designer ui-polish-reviewer accessibility-reviewer quality-gate-reviewer copywriter receipts",
+    expected: {
+      intent: "supervibe_audit",
+      command: "/supervibe-audit",
+      minConfidence: 0.9,
+      notIntent: ["plan_review", "agent_provisioning", "supervibe_security_audit"],
+      requiredSafety: ["read-only-audit"],
+    },
+  },
+  {
     id: "agent-system-audit-ru",
     phrase: "оцени агентскую систему интенты receipts skills rag codegraph на 10 из 10",
     expected: {
@@ -205,6 +216,17 @@ export const DEFAULT_SEMANTIC_TRIGGER_FIXTURES = Object.freeze([
 ]);
 
 export const DEFAULT_COMMAND_ROUTE_FIXTURES = Object.freeze([
+  {
+    id: "design-flow-broken-audit",
+    phrase: "audit why design flow is broken again; skipped prototype-builder ux-ui-designer ui-polish-reviewer accessibility-reviewer quality-gate-reviewer copywriter receipts",
+    expected: {
+      intent: "supervibe_audit",
+      command: "/supervibe-audit",
+      minConfidence: 0.9,
+      notIntent: ["plan_review", "agent_provisioning", "supervibe_security_audit"],
+      notCommand: ["/supervibe-plan --review", "/supervibe-security-audit"],
+    },
+  },
   {
     id: "ru-plan-review-specialist-agents",
     phrase: "запусти ревью плана спец агентами",

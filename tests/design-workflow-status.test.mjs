@@ -152,3 +152,40 @@ test("design workflow status flags config drift when prototype exists but state 
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("design workflow status exposes scoped stage contract blockers", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-status-contracts-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/_design-system/design-flow-state.json", `${JSON.stringify({
+      design_system: {
+        status: "approved",
+        approved_sections: [
+          "palette",
+          "typography",
+          "spacing-density",
+          "radius-elevation",
+          "motion",
+          "component-set",
+          "copy-language",
+          "accessibility-platform",
+        ],
+      },
+      prototype: { requested: "ALLOWED" },
+    }, null, 2)}\n`);
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/config.json", "{\"target\":\"tauri\"}\n");
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/index.html", "<!doctype html><title>Prototype</title>\n");
+
+    const status = readDesignWorkflowStatus(root, { slug: "agent-chat" });
+    const report = formatDesignWorkflowStatus(status);
+
+    assert.equal(status.designReceipts.pass, false);
+    assert.equal(status.stageContracts.pass, false);
+    assert.ok(status.stageContracts.blockingCount >= 7);
+    assert.ok(status.stageContracts.contracts.some((contract) => contract.subjectId === "prototype-builder" && contract.blocking === true));
+    assert.match(report, /SCOPED_DESIGN_RECEIPTS_PASS: false/);
+    assert.match(report, /STAGE_CONTRACTS_PASS: false/);
+    assert.match(report, /STAGE_CONTRACT: pending-receipt agent:prototype-builder@stage-5-prototype-build/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

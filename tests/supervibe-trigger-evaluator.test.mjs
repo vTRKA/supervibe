@@ -76,6 +76,24 @@ test("command route matrix keeps plan-review complaints out of audit and execute
   assert.equal(evaluation.total, DEFAULT_COMMAND_ROUTE_FIXTURES.length);
 });
 
+test("command route matrix sends broken design workflow audits to audit first", () => {
+  const evaluation = evaluateCommandRouteMatrix([
+    {
+      id: "broken-design-flow-audit",
+      phrase: "Проведи аудит и проверь почему дизайн флоу снова сломан. Нужен аудит и план исправлений. Не использовались prototype-builder ux-ui-designer ui-polish-reviewer accessibility-reviewer quality-gate-reviewer copywriter.",
+      expected: {
+        intent: "supervibe_audit",
+        command: "/supervibe-audit",
+        minConfidence: 0.9,
+        notIntent: ["plan_review", "supervibe_security_audit", "agent_provisioning"],
+        notCommand: ["/supervibe-plan --review", "/supervibe-security-audit"],
+      },
+    },
+  ]);
+
+  assert.equal(evaluation.pass, true, formatCommandRouteEvaluation(evaluation));
+});
+
 test("semantic evaluation tracks hard negatives in the confusion matrix", () => {
   const evaluation = evaluateSemanticIntentMatrix([
     {

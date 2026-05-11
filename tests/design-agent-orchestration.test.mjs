@@ -20,7 +20,9 @@ import {
   assertDesignWriteAllowed,
   buildDesignAgentPlan,
   buildDesignPrewriteManifest,
+  buildDesignStageContractReport,
   buildDesignWriteGate,
+  formatDesignStageContractReport,
   formatDesignPrewriteManifest,
   formatDesignPlanPrompt,
   validateDesignAgentInvocationReceipts,
@@ -112,8 +114,11 @@ test("design agent plan maps source types and stages to explicit agents and skil
   assert.equal(plan.executionStatus.executionMode, "real-agents");
   assert.equal(plan.executionStatus.agentsInstalled, true);
   assert.equal(plan.executionStatus.callableAgentsReady, true);
-  assert.equal(plan.executionStatus.agentReceiptsTrusted, true);
-  assert.equal(plan.executionStatus.producerReceiptsTrusted, true);
+  assert.equal(plan.executionStatus.agentReceiptsTrusted, false);
+  assert.equal(plan.executionStatus.producerReceiptsTrusted, false);
+  assert.equal(plan.executionStatus.durableAgentReceiptsTrusted, false);
+  assert.equal(plan.executionStatus.durableProducerReceiptsTrusted, false);
+  assert.equal(plan.executionStatus.questionProposalDispatchAllowed, true);
   assert.equal(plan.executionStatus.missingCallableAgents.length, 0);
   assert.equal(plan.executionStatus.missingAgents.length, 0);
   assert.ok(plan.wizard.questionQueue.some((question) => question.axis === "mode"));
@@ -1263,6 +1268,46 @@ test("active design receipt validator requires reviewer stage receipts after pro
     assert.ok(result.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "ui-polish-reviewer"));
     assert.ok(result.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "accessibility-reviewer"));
     assert.ok(result.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "quality-gate-reviewer"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("design stage contracts expose blocking scoped receipts for active prototype work", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-stage-contracts-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/index.html", "<!doctype html>\n");
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/config.json", "{\"target\":\"tauri\"}\n");
+
+    const result = buildDesignStageContractReport(root, {
+      active: true,
+      slug: "agent-chat",
+      handoffId: "agent-chat-run",
+      secret: "test-secret",
+    });
+    const output = formatDesignStageContractReport(result);
+
+    assert.equal(result.pass, false);
+    assert.equal(result.scope.active, true);
+    assert.ok(result.blockingCount >= 7);
+    for (const agentId of [
+      "ux-ui-designer",
+      "tauri-ui-designer",
+      "copywriter",
+      "prototype-builder",
+      "ui-polish-reviewer",
+      "accessibility-reviewer",
+      "quality-gate-reviewer",
+    ]) {
+      assert.ok(result.contracts.some((contract) =>
+        contract.subjectId === agentId
+        && contract.status === "pending-receipt"
+        && contract.blocking === true
+      ), agentId);
+    }
+    assert.match(output, /SUPERVIBE_DESIGN_STAGE_CONTRACTS/);
+    assert.match(output, /STAGE_CONTRACTS_PASS: false/);
+    assert.match(output, /STAGE_CONTRACT: pending-receipt agent:prototype-builder@stage-5-prototype-build/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
