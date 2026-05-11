@@ -31,6 +31,12 @@ BEFORE invoking `code-reviewer` agent OR before opening a PR for external review
 
 Also invoke this as the mandatory **plan-review loop** immediately after `supervibe:writing-plans` saves a plan. In plan-review mode, review the plan artifact itself before atomization, epic creation, or execution.
 
+## Plan Review User Gate
+
+Plan-review mode is a mandatory reviewer gate, not a controller-only reread. It must include Reviewer Coverage for the baseline reviewers `supervibe-orchestrator`, `systems-analyst`, `architect-reviewer`, and `quality-gate-reviewer`, plus any risk-triggered specialist reviewers. A plan cannot pass review with open critical or major findings, missing reviewer coverage, missing durable review artifact, or missing Next User Decision.
+
+After a pass, ask the user whether to atomize, revise, rerun specialist review, inspect readiness, or stop. Do not atomize, create an epic, execute, bump versions, commit, push, or clean up until the current explicit user answer is recorded after that question.
+
 ## Expert Operating Standard
 
 Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.

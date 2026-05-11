@@ -46,6 +46,10 @@ import { formatAssignmentExplanation } from "./lib/supervibe-assignment-explaine
 import { buildExecutionWaves, formatWaveStatus } from "./lib/supervibe-wave-controller.mjs";
 import { createHappyPathPlan, formatHappyPathPlan } from "./lib/supervibe-happy-path.mjs";
 import { formatEpicCompletionReport, validateEpicCompletion } from "./lib/supervibe-epic-completion-validator.mjs";
+import {
+  readWorkflowReceipts,
+  validateWorkflowReceiptTrust,
+} from "./lib/supervibe-workflow-receipt-runtime.mjs";
 import { PRESET_NAMES, formatPresetSummary, selectWorkerPreset } from "./lib/supervibe-worker-reviewer-presets.mjs";
 import { checkpointDiagnostics, formatCheckpointDiagnostics, readAgentCheckpoint, resumeAgentCheckpoint } from "./lib/supervibe-agent-checkpoints.mjs";
 import {
@@ -136,12 +140,16 @@ function parseArgs(argv) {
     "completion-status",
     "close-eligible",
     "allow-dry-run-evidence",
+    "require-trusted-evidence",
+    "disallow-legacy-evidence",
+    "allow-legacy-evidence",
     "allow-open-epic",
     "no-evidence-required",
     "non-production",
     "indefinite",
     "auto-ui",
     "auto-ui-dry-run",
+    "no-auto-ui",
   ]);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -518,6 +526,12 @@ async function main() {
           production: !args["non-production"],
           requireEvidence: !args["no-evidence-required"],
           allowDryRunEvidence: Boolean(args["allow-dry-run-evidence"]),
+          requireTrustedEvidence: Boolean(args["require-trusted-evidence"]),
+          trustedReceiptIds: trustedReceiptIdsForValidation(rootDir, {
+            explicitReceiptIds: splitCsv(args["trusted-receipts"]),
+          }),
+          disallowLegacyEvidence: Boolean(args["disallow-legacy-evidence"]),
+          allowLegacyEvidence: Boolean(args["allow-legacy-evidence"]),
           requireEpicClosed: false,
         });
         if (!report.pass) {
@@ -825,6 +839,12 @@ async function main() {
       production: !args["non-production"],
       requireEvidence: !args["no-evidence-required"],
       allowDryRunEvidence: Boolean(args["allow-dry-run-evidence"]),
+      requireTrustedEvidence: Boolean(args["require-trusted-evidence"]),
+      trustedReceiptIds: trustedReceiptIdsForValidation(rootDir, {
+        explicitReceiptIds: splitCsv(args["trusted-receipts"]),
+      }),
+      disallowLegacyEvidence: Boolean(args["disallow-legacy-evidence"]),
+      allowLegacyEvidence: Boolean(args["allow-legacy-evidence"]),
       requireEpicClosed: args["close-eligible"] ? false : !args["allow-open-epic"],
     });
     console.log(formatEpicCompletionReport(report));
@@ -1166,7 +1186,7 @@ function printEpicStatus({ graph, graphPath, epicId = null, source = "explicit" 
 }
 
 function printAutoUiStatus({ rootDir, args, graphPath }) {
-  if (!args["auto-ui"]) return;
+  if (!shouldEmitAutoUi(args)) return;
   const plan = createAutoUiPlan({ rootDir, args, graphPath });
   console.log("SUPERVIBE_AUTO_UI");
   if (args["auto-ui-dry-run"] || args.preview || args["dry-run"]) {
@@ -1194,6 +1214,11 @@ function printAutoUiStatus({ rootDir, args, graphPath }) {
   console.log(`GRAPH: ${graphPath || "active"}`);
 }
 
+function shouldEmitAutoUi(args = {}) {
+  if (args["no-auto-ui"]) return false;
+  return Boolean(args["auto-ui"] || args["auto-ui-dry-run"]);
+}
+
 function createAutoUiPlan({ rootDir, args, graphPath }) {
   const port = normalizeLocalPort(args["ui-port"] || args.port || 3057);
   const scriptPath = fileURLToPath(new URL("./supervibe-ui.mjs", import.meta.url));
@@ -1218,6 +1243,25 @@ function normalizeLocalPort(value) {
     throw new Error(`--ui-port must be an integer between 1 and 65535, got ${value}`);
   }
   return port;
+}
+
+function trustedReceiptIdsForValidation(rootDir, { explicitReceiptIds = [] } = {}) {
+  const explicit = new Set((explicitReceiptIds || []).map(String).filter(Boolean));
+  const trusted = [];
+  for (const receipt of readWorkflowReceipts(rootDir)) {
+    if (!receipt?.receiptId) continue;
+    if (explicit.size > 0 && !explicit.has(String(receipt.receiptId))) continue;
+    const trust = validateWorkflowReceiptTrust(rootDir, receipt);
+    if (trust.pass) trusted.push(String(receipt.receiptId));
+  }
+  return trusted;
+}
+
+function splitCsv(value = "") {
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function nextActionForEpicStatus(grouped = {}) {
@@ -1476,13 +1520,14 @@ Primary:
   supervibe-loop --status --file .supervibe/memory/loops/<run-id>/state.json
   supervibe-loop --status --epic <epic-id>
   supervibe-loop --status --file .supervibe/memory/work-items/<epic-id>/graph.json --auto-ui
-  supervibe-loop --status --file .supervibe/memory/work-items/<epic-id>/graph.json --auto-ui --auto-ui-dry-run --ui-port 3057
+  supervibe-loop --status --file .supervibe/memory/work-items/<epic-id>/graph.json --auto-ui-dry-run --ui-port 3057
   supervibe-loop --stop <run-id>
   supervibe-loop --watch --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --claim <task-id> --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --claim-ready --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --close <task-id> --reason "verified" --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --validate-completion --file .supervibe/memory/work-items/<epic-id>/graph.json
+  supervibe-loop --validate-completion --file .supervibe/memory/work-items/<epic-id>/graph.json --require-trusted-evidence --trusted-receipts <id,id>
   supervibe-loop --edit <task-id> --title "Updated title" --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --split <task-id> --titles "Subtask A,Subtask B" --file .supervibe/memory/work-items/<epic-id>/graph.json --preview
   supervibe-loop --skip <task-id> --reason "out of scope" --file .supervibe/memory/work-items/<epic-id>/graph.json --preview
@@ -1546,7 +1591,8 @@ Execution modes:
   --tracker mcp --tracker-mcp-servers issue-tracker --tracker-mcp-tools create_issue,link_dependency --approve-mcp-tracker
   --provider-matrix
   --require-user-acceptance
-  --auto-ui [--auto-ui-dry-run] [--ui-port 3057]
+  --auto-ui | --auto-ui-dry-run [--no-auto-ui] [--ui-port 3057]
+  --require-trusted-evidence [--trusted-receipts <id,id>] [--disallow-legacy-evidence|--allow-legacy-evidence]
   --accept-goals | --reject-goals --file <state.json>
   --fork-checkpoint --file <state.json>
   --commit-per-task

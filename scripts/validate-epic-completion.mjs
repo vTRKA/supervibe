@@ -8,6 +8,10 @@ import {
   formatEpicCompletionReport,
   validateEpicCompletion,
 } from "./lib/supervibe-epic-completion-validator.mjs";
+import {
+  readWorkflowReceipts,
+  validateWorkflowReceiptTrust,
+} from "./lib/supervibe-workflow-receipt-runtime.mjs";
 
 async function walkGraphs(dir) {
   const out = [];
@@ -27,6 +31,10 @@ export async function validateEpicCompletionFiles({
   requireEvidence = true,
   allowSkipped = true,
   allowDryRunEvidence = false,
+  requireTrustedEvidence = false,
+  trustedReceiptIds = [],
+  disallowLegacyEvidence = false,
+  allowLegacyEvidence = false,
   requireEpicClosed = true,
   requireFollowups = false,
 } = {}) {
@@ -38,6 +46,10 @@ export async function validateEpicCompletionFiles({
       requireEvidence,
       allowSkipped,
       allowDryRunEvidence,
+      requireTrustedEvidence,
+      trustedReceiptIds,
+      disallowLegacyEvidence,
+      allowLegacyEvidence,
       requireEpicClosed,
       requireFollowups,
     });
@@ -57,6 +69,10 @@ async function main() {
       all: { type: "boolean", default: false },
       "fixture-dir": { type: "string" },
       "allow-dry-run-evidence": { type: "boolean", default: false },
+      "require-trusted-evidence": { type: "boolean", default: false },
+      "trusted-receipts": { type: "string" },
+      "disallow-legacy-evidence": { type: "boolean", default: false },
+      "allow-legacy-evidence": { type: "boolean", default: false },
       "allow-open-epic": { type: "boolean", default: false },
       "allow-skipped": { type: "boolean", default: true },
       "no-evidence-required": { type: "boolean", default: false },
@@ -74,7 +90,12 @@ async function main() {
   node scripts/validate-epic-completion.mjs --fixture-dir tests/fixtures/completed-work-item-graphs
 
 Completion validation is stricter than graph-shape validation: required tasks must be terminal,
-dependencies must be terminal, the epic must be closed, and production completion needs non-dry-run evidence.`);
+dependencies must be terminal, the epic must be closed, and production completion needs non-dry-run evidence.
+
+Trusted mode:
+  --require-trusted-evidence requires structured evidence to cite a runtime-issued trusted workflow receipt.
+  --trusted-receipts <id,id> narrows accepted receipts to the listed trusted runtime receipts.
+  --disallow-legacy-evidence rejects migrated legacy graph evidence unless --allow-legacy-evidence is also set.`);
     return;
   }
 
@@ -97,6 +118,10 @@ dependencies must be terminal, the epic must be closed, and production completio
     return;
   }
 
+  const trustedReceiptIds = trustedReceiptIdsForValidation(root, {
+    explicitReceiptIds: splitCsv(values["trusted-receipts"]),
+  });
+
   const report = await validateEpicCompletionFiles({
     rootDir: root,
     files,
@@ -104,6 +129,10 @@ dependencies must be terminal, the epic must be closed, and production completio
     requireEvidence: !values["no-evidence-required"],
     allowSkipped: values["allow-skipped"] !== false,
     allowDryRunEvidence: values["allow-dry-run-evidence"],
+    requireTrustedEvidence: values["require-trusted-evidence"],
+    trustedReceiptIds,
+    disallowLegacyEvidence: values["disallow-legacy-evidence"],
+    allowLegacyEvidence: values["allow-legacy-evidence"],
     requireEpicClosed: !values["allow-open-epic"],
     requireFollowups: values["require-followups"],
   });
@@ -118,6 +147,25 @@ dependencies must be terminal, the epic must be closed, and production completio
     process.exit(1);
   }
   console.log(`\nAll ${report.results.length} epic completion artifact(s) passed`);
+}
+
+function trustedReceiptIdsForValidation(rootDir, { explicitReceiptIds = [] } = {}) {
+  const explicit = new Set((explicitReceiptIds || []).map(String).filter(Boolean));
+  const trusted = [];
+  for (const receipt of readWorkflowReceipts(rootDir)) {
+    if (!receipt?.receiptId) continue;
+    if (explicit.size > 0 && !explicit.has(String(receipt.receiptId))) continue;
+    const trust = validateWorkflowReceiptTrust(rootDir, receipt);
+    if (trust.pass) trusted.push(String(receipt.receiptId));
+  }
+  return trusted;
+}
+
+function splitCsv(value = "") {
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 const isMain = import.meta.url === `file://${process.argv[1]?.replace(/\\/g, "/")}`;

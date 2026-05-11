@@ -51,6 +51,10 @@ plan scope, STOP. Either remove the addition, defer/reject it with rationale, or
 obtain explicit user approval with tradeoff, verification, rollout, and rollback
 before continuing.
 
+## Plan User-Decision Gate
+
+Before executing any plan work, confirm the current plan/pre-plan handoff has an explicit user answer for this exact phase. An unanswered `NEXT_STEP_HANDOFF`, plan-scope preview, review handoff, atomization handoff, or execution handoff is a blocker. STOP and ask the handoff question instead of treating older broad consent as approval to continue.
+
 ## Continuation Contract
 
 Do not stop after the first task, phase, or green check while the reviewed plan

@@ -37,6 +37,14 @@ Do not use it for one small local edit, a read-only explanation, or a plan that
 has not passed review unless the invocation is explicitly dry-run/readiness
 only.
 
+## Plan Review And User Gate
+
+When the loop starts from a plan, pre-plan, epic, or atomized work graph, require a reviewed plan or reviewed work-item graph plus a current explicit user answer for the latest `NEXT_STEP_HANDOFF`. An unanswered handoff, plan-scope preview, review handoff, atomization preview, or execution handoff is a blocker for non-dry execution.
+
+Reviewer coverage is mandatory before treating plan-derived work as ready. Worker output, controller confidence, or reading a skill file cannot substitute for the plan-review loop, independent reviewer evidence, and Next User Decision. Do not execute, dispatch workers, mutate tasks, start worktrees, bump versions, commit, push, or clean up plan artifacts until those gates are satisfied.
+
+For production completion, prefer `/supervibe-loop --validate-completion --require-trusted-evidence` when receipts are available. Trusted evidence must cite runtime-issued workflow receipts; legacy migrated graph evidence is diagnostic until a current reviewer or validator receipt is attached. For long or worktree loops, surface `--auto-ui-dry-run` in the handoff so the user can inspect the localhost control-plane command, and honor `--no-auto-ui` as an explicit opt-out.
+
 ## Expert Operating Standard
 
 Follow `docs/references/skill-expert-operating-standard.md`: start from source

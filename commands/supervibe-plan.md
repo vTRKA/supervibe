@@ -17,6 +17,12 @@ Do not stop after individual plan phases, file-structure mapping, first task bat
 
 Review gates inside the plan are execution-time gates for later workers; they are not reasons for the planning agent to stop before completing the full plan artifact.
 
+## Hard Planning User Gate
+
+Every plan or preliminary plan surface is blocked by a current explicit user answer. The initial plan-scope preview, durable plan write, plan-review handoff, post-review atomization handoff, and execution handoff each need their own visible question and one user choice after that question is shown.
+
+A previous broad instruction such as "continue", "execute after planning", or "do the whole plan" does not satisfy a newly emitted gate. Do not save the durable plan, run plan review, atomize work items, create an epic, start execution, bump versions, commit, push, or delete the plan file from a plan/pre-plan artifact while the current gate is unanswered.
+
 ## Topic Drift / Resume Contract
 
 If the user shifts topic while a plan is incomplete or a `NEXT_STEP_HANDOFF` exists, do not silently drop the saved phase. Surface the current phase, plan/spec artifact path, next command, and blocker, then ask one `Step N/M` or `Step N/M` resume question with these choices: continue current plan, skip/delegate safe non-final decisions to the agent and continue, pause current plan and switch topic, or stop/archive the current state.

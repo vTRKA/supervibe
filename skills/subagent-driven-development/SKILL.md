@@ -18,6 +18,12 @@ last-verified: 2026-05-02
 
 WHEN executing a plan AND subagent dispatch is available AND plan has 5+ independent tasks. Preferred over `supervibe:executing-plans` (inline) when both apply.
 
+## Plan Review And User Gate
+
+Subagent-driven execution can only start from a reviewed plan or reviewed work-item graph with a current explicit user answer for the latest handoff question. `--plan-review-passed`, a plan path, or a worker assignment is not permission to execute by itself; it only establishes one prerequisite.
+
+Before dispatching workers, verify the plan-review reviewer coverage, zero open critical/major findings, an accepted atomization/work graph, and a Next User Decision that authorizes this execution phase. If any gate is missing or an unanswered `NEXT_STEP_HANDOFF` exists, stop and ask rather than spawning workers.
+
 ## Continuation Contract
 
 Continue through every ready wave until the wave queue is exhausted, a

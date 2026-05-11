@@ -82,13 +82,13 @@ test("task graph maturity CLI prints a machine-readable report", () => {
 
 function writeMinimalSurface(root) {
   const files = {
-    "scripts/supervibe-loop.mjs": "--atomize-plan --claim-ready --validate-completion --split --reparent --skip --block --delete --edit",
+    "scripts/supervibe-loop.mjs": "--atomize-plan --claim-ready --validate-completion --require-trusted-evidence --auto-ui-dry-run --no-auto-ui trustedReceiptIdsForValidation --split --reparent --skip --block --delete --edit",
     "scripts/lib/supervibe-ui-server.mjs": "no-active-graph atomizeReviewedPlan tracker actionImpact claim defer close reopen skip cancel create edit split reparent dep-add dep-remove delete",
     "scripts/lib/supervibe-durable-task-tracker-adapter.mjs": "createEpic createTask addDependency ready claim update close syncPush syncPull",
     "scripts/lib/supervibe-task-tracker-sync.mjs": "validateTrackerMapping diagnoseTrackerSyncConflicts partial-sync redactTrackerSyncDiagnostics",
     "scripts/validate-work-item-graphs.mjs": "validator",
-    "scripts/validate-epic-completion.mjs": "strict-coverage",
-    "scripts/lib/supervibe-epic-completion-validator.mjs": "validator",
+    "scripts/validate-epic-completion.mjs": "strict-coverage require-trusted-evidence validateWorkflowReceiptTrust",
+    "scripts/lib/supervibe-epic-completion-validator.mjs": "validator isStructuredProductionEvidence insufficient-evidence requireTrustedEvidence untrusted-evidence",
     "scripts/lib/supervibe-plan-to-work-items.mjs": "atomize",
     "tests/supervibe-commands-routing.test.mjs": "test",
     "tests/supervibe-plan-to-work-items.test.mjs": "test",

@@ -25,6 +25,10 @@ Resume mode must continue from the first pending or blocked task after
 re-running readiness on the remaining work. It must not restart from the top or
 silently skip failed tasks.
 
+## Plan User-Decision Gate
+
+Before readiness audit or execution, verify that the latest plan/pre-plan `NEXT_STEP_HANDOFF` has a current explicit user answer for this phase. A prior instruction to plan-and-execute is not enough after a new plan preview, review handoff, atomization handoff, or execution handoff has been shown. If the current gate is unanswered, stop and ask the visible next-step question; do not execute, atomize, mutate tasks, delete the plan file, bump versions, commit, or push.
+
 ## Invocation forms
 
 ### `/supervibe-execute-plan <plan-path>`
@@ -112,7 +116,7 @@ Default: A.
 ### 0a. Mandatory workflow gates before readiness
 
 Before any execution audit, confirm the plan has:
-- A passed plan-review artifact or explicit `planReviewPassed` state
+- A passed plan-review artifact or explicit `planReviewPassed` state with Reviewer Coverage for required reviewers and a Next User Decision
 - Atomic work items or an epic generated from the reviewed plan
 - Execution mode selected (`dry-run`, `guided`, `manual`, or `fresh-context`)
 - Stop, status, resume, and cleanup controls for long or worktree-backed runs

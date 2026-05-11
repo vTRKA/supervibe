@@ -289,7 +289,6 @@ test("loop CLI status can emit an auto UI daemon plan without spawning", async (
       "--status",
       "--file",
       graphPath,
-      "--auto-ui",
       "--auto-ui-dry-run",
       "--ui-port",
       "3999",
@@ -304,3 +303,97 @@ test("loop CLI status can emit an auto UI daemon plan without spawning", async (
     await rm(temp, { recursive: true, force: true });
   }
 });
+
+test("loop CLI no-auto-ui opt-out suppresses auto UI output", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-no-auto-ui-"));
+  try {
+    const graph = atomizePlanToWorkItems(PLAN, {
+      planPath: ".supervibe/artifacts/plans/no-auto-ui.md",
+      epicId: "epic-no-auto-ui",
+      planReviewPassed: true,
+    });
+    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: temp });
+
+    const { stdout } = await execFileAsync(process.execPath, [
+      join(ROOT, "scripts", "supervibe-loop.mjs"),
+      "--status",
+      "--file",
+      graphPath,
+      "--auto-ui",
+      "--auto-ui-dry-run",
+      "--no-auto-ui",
+      "--ui-port",
+      "3998",
+    ], { cwd: temp });
+
+    assert.match(stdout, /SUPERVIBE_EPIC_STATUS/);
+    assert.doesNotMatch(stdout, /SUPERVIBE_AUTO_UI/);
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+test("loop CLI trusted completion mode rejects untrusted graph evidence", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-trusted-completion-"));
+  try {
+    const graph = completedGraph("epic-loop-trusted-completion");
+    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: temp });
+
+    let error;
+    try {
+      await execFileAsync(process.execPath, [
+        join(ROOT, "scripts", "supervibe-loop.mjs"),
+        "--validate-completion",
+        "--file",
+        graphPath,
+        "--require-trusted-evidence",
+      ], { cwd: temp });
+    } catch (err) {
+      error = err;
+    }
+
+    assert.ok(error);
+    assert.match(error.stdout, /REQUIRE_TRUSTED_EVIDENCE: true/);
+    assert.match(error.stdout, /untrusted-evidence/);
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+function completedGraph(epicId) {
+  const graph = atomizePlanToWorkItems(PLAN, {
+    planPath: `.supervibe/artifacts/plans/${epicId}.md`,
+    epicId,
+    planReviewPassed: true,
+  });
+  const now = "2026-05-10T00:00:00.000Z";
+  const evidence = [];
+
+  graph.items = graph.items.map((item) => {
+    if (item.type === "followup") return item;
+    const next = {
+      ...item,
+      status: "complete",
+      closedAt: now,
+      closeReason: "validated by loop completion gate",
+    };
+    if (item.type !== "epic") {
+      const itemEvidence = {
+        taskId: item.itemId,
+        command: item.verificationCommands?.[0] || "manual-review",
+        status: "pass",
+        output: "verified",
+      };
+      next.verificationEvidence = [itemEvidence];
+      evidence.push(itemEvidence);
+    }
+    return next;
+  });
+  graph.tasks = graph.tasks.map((task) => ({
+    ...task,
+    status: "complete",
+    verificationEvidence: evidence.filter((item) => item.taskId === task.id),
+  }));
+  graph.evidence = evidence;
+  return graph;
+}

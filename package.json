@@ -1,6 +1,6 @@
 {
   "name": "supervibe-framework",
-  "version": "2.1.23",
+  "version": "2.1.24",
   "description": "Dev tooling for the Supervibe Claude Code plugin",
   "private": true,
   "type": "module",
@@ -121,6 +121,7 @@
     "validate:work-item-graphs:strict-source": "node scripts/validate-work-item-graphs.mjs --all --require-source-plan-snapshot",
     "validate:epic-completion": "node scripts/validate-epic-completion.mjs --all",
     "validate:epic-completion:strict": "node scripts/validate-epic-completion.mjs --all --strict-coverage",
+    "validate:epic-completion:trusted": "node scripts/validate-epic-completion.mjs --all --strict-coverage --require-trusted-evidence --disallow-legacy-evidence",
     "validate:task-graph-runtime": "node scripts/validate-task-graph-runtime.mjs",
     "validate:task-graph-traceability": "node scripts/validate-task-graph-traceability.mjs --strict",
     "validate:task-graph-status-consistency": "node scripts/validate-task-graph-status-consistency.mjs",

@@ -37,6 +37,9 @@ const REQUIRED_LOOP_TOKENS = Object.freeze([
   "--atomize-plan",
   "--claim-ready",
   "--validate-completion",
+  "--require-trusted-evidence",
+  "--auto-ui-dry-run",
+  "--no-auto-ui",
   "--split",
   "--reparent",
   "--skip",
@@ -166,9 +169,14 @@ function sourceSnapshotDimension(rootDir) {
 
 function strictCompletionEvidenceDimension(rootDir) {
   const validator = readOptional(join(rootDir, "scripts/lib/supervibe-epic-completion-validator.mjs"));
+  const cli = readOptional(join(rootDir, "scripts/validate-epic-completion.mjs"));
+  const loop = readOptional(join(rootDir, "scripts/supervibe-loop.mjs"));
   const checks = [
     ["structured evidence helper", validator.includes("isStructuredProductionEvidence")],
     ["insufficient evidence blocker", validator.includes("insufficient-evidence")],
+    ["trusted receipt evidence blocker", validator.includes("requireTrustedEvidence") && validator.includes("untrusted-evidence")],
+    ["trusted receipt CLI flag", cli.includes("require-trusted-evidence") && cli.includes("validateWorkflowReceiptTrust")],
+    ["loop trusted completion flag", loop.includes("require-trusted-evidence") && loop.includes("trustedReceiptIdsForValidation")],
     ["event reason is not collected as evidence", !validator.includes("event.evidence || event.reason || event")],
   ];
   const blockers = checks.filter(([, pass]) => !pass).map(([label]) => label);
@@ -176,9 +184,13 @@ function strictCompletionEvidenceDimension(rootDir) {
     id: "strict-completion-evidence",
     title: "Strict production evidence",
     pass: blockers.length === 0,
-    summary: blockers.length === 0 ? "completion validator rejects weak event reasons and unstructured evidence" : `${blockers.length} evidence checks missing`,
+    summary: blockers.length === 0 ? "completion validator rejects weak event reasons, unstructured evidence, and untrusted runtime receipt evidence when requested" : `${blockers.length} evidence checks missing`,
     blockers,
-    evidence: ["scripts/lib/supervibe-epic-completion-validator.mjs"],
+    evidence: [
+      "scripts/lib/supervibe-epic-completion-validator.mjs",
+      "scripts/validate-epic-completion.mjs",
+      "scripts/supervibe-loop.mjs",
+    ],
   };
 }
 

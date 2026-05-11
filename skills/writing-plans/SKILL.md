@@ -54,6 +54,12 @@ Do not stop after individual plan phases, the first task list, or a draft review
 
 Internal phase review gates are instructions for executors later; they are not chat-level stop points for the planner. Use conservative assumptions for non-blocking gaps, document them, and continue through file mapping, critical path, tasks, rollback, verification, production readiness, final 10/10 acceptance, and the mandatory review handoff.
 
+## Hard Planning User Gate
+
+Every plan or preliminary plan surface is blocked by a current explicit user answer. The plan-scope preview, durable plan save, post-plan review handoff, post-review atomization handoff, and execution handoff are separate gates. Each one must show one visible question and wait for one user choice after the question is shown.
+
+Earlier broad consent such as "continue", "execute when ready", or "finish the whole plan" does not answer a later gate. Do not save the durable plan, invoke review, atomize tasks, create epics, start execution, delete plan artifacts, bump versions, commit, or push from plan/pre-plan work while the active gate is unanswered.
+
 ## Topic Drift / Resume Contract
 
 If the user shifts topic while a plan is incomplete or a `NEXT_STEP_HANDOFF` exists, preserve the current phase instead of silently switching. Surface the saved phase, spec/plan artifact path, next command, and blocker, then ask one `Step N/M` or `Step N/M` resume question: continue current plan, skip/delegate safe non-final decisions to the agent and continue, pause current plan and switch topic, or stop/archive the current state.

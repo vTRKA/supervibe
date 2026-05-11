@@ -79,6 +79,35 @@ test("multistage user-gate validator rejects overlay and delegated approval subs
   assert.ok(result.issues.some((issue) => issue.code === "delegated-substitutes-user-gate"));
 });
 
+test("multistage user-gate validator rejects plan surfaces without current user and reviewer gates", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-plan-user-gates-"));
+  const relPath = "commands/supervibe-plan.md";
+  const absPath = join(root, ...relPath.split("/"));
+  await mkdir(dirname(absPath), { recursive: true });
+  await writeFile(absPath, [
+    "# /supervibe-plan",
+    "Plan Scope Approval Gate",
+    "Ask one `plan_delivery` question before writing.",
+    "Do not save the durable plan, atomize work items, or offer execution until this gate is answered.",
+    "Stop condition: ask-before-plan-review",
+    "NEXT_USER_ACTIONS[]: run plan review | revise | stop",
+  ].join("\n"), "utf8");
+
+  const result = validateMultistageUserGates(root);
+
+  assert.equal(result.pass, false);
+  assert.ok(result.issues.some((issue) => (
+    issue.file === relPath &&
+    issue.code === "missing-user-gate-contract" &&
+    /Current explicit user answer/.test(issue.message)
+  )));
+  assert.ok(result.issues.some((issue) => (
+    issue.file === relPath &&
+    issue.code === "missing-user-gate-contract" &&
+    /Reviewer Coverage/.test(issue.message)
+  )));
+});
+
 test("current multistage workflow surfaces preserve explicit user gates", () => {
   const result = validateMultistageUserGates(process.cwd());
 

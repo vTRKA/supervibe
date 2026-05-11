@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.24] - 2026-05-11
+
+### Added
+
+- Added trusted runtime receipt completion flags to `/supervibe-loop` and the epic completion validator, including opt-in rejection of untrusted and legacy evidence.
+- Added agent RAG/CodeGraph readiness reporting for strict index health, CodeGraph context gates, MCP resource exposure, and retrieval regression coverage.
+
+### Changed
+
+- Hardened plan, pre-plan, plan-review, atomization, execution, loop, and feature workflow gates so current user questions and reviewer coverage are required before continuing.
+- Hardened design mockup/prototype boundaries so creative exploration drafts require real specialist receipts, UI/accessibility/quality reviews, keyboard/focus/contrast evidence, lifecycle prompts, and design-system approval before final claims.
+- Made loop UI monitoring explicit with standalone `--auto-ui-dry-run` and `--no-auto-ui` opt-out behavior.
+
+### Validation
+
+- Updated release and host manifest versions to `2.1.24`.
+- Added regression coverage for trusted completion, loop auto-UI opt-out, plan user gates, design mockup receipt expectations, task-graph maturity, and agent tech readiness.
+
 ## [2.1.23] - 2026-05-11
 
 ### Added

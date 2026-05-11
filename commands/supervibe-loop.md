@@ -25,6 +25,7 @@ Primary path:
 /supervibe-loop --from-plan .supervibe/artifacts/plans/payment-integration.md --atomize --dry-run
 /supervibe-loop --file .supervibe/memory/work-items/<epic-id>/graph.json --guided
 /supervibe-loop --validate-completion --file .supervibe/memory/work-items/<epic-id>/graph.json
+/supervibe-loop --validate-completion --file .supervibe/memory/work-items/<epic-id>/graph.json --require-trusted-evidence --trusted-receipts <id,id>
 /supervibe-loop --close-eligible --file .supervibe/memory/work-items/<epic-id>/graph.json
 /supervibe-loop --from-prd .supervibe/artifacts/specs/checkout.md --dry-run
 /supervibe-loop --request "validate code and fix integration bugs"
@@ -83,7 +84,8 @@ npm run supervibe:task-graph-maturity
 /supervibe-loop --resume .supervibe/memory/loops/<run-id>/state.json
 /supervibe-loop --status --file .supervibe/memory/loops/<run-id>/state.json
 /supervibe-loop --status --file .supervibe/memory/work-items/<epic-id>/graph.json --auto-ui
-/supervibe-loop --status --file .supervibe/memory/work-items/<epic-id>/graph.json --auto-ui --auto-ui-dry-run --ui-port 3057
+/supervibe-loop --status --file .supervibe/memory/work-items/<epic-id>/graph.json --auto-ui-dry-run --ui-port 3057
+/supervibe-loop --status --file .supervibe/memory/work-items/<epic-id>/graph.json --auto-ui --no-auto-ui
 /supervibe-loop --stop <run-id>
 ```
 
@@ -118,7 +120,7 @@ Plan atomization:
 /supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --plan-review-passed
 ```
 
-Atomization converts one reviewed plan into one epic, child work items, blocker edges, soft related links, gate items, and follow-ups. Writes require `--plan-review-passed`; `--dry-run` previews the graph without writing. A reviewed plan with no parseable task/work-item structure must fail closed: the command exits non-zero and does not write `graph.json`, previews, registry entries, or tracker sync state unless an explicit invalid-graph override is used by a diagnostic tool.
+Atomization converts one reviewed plan into one epic, child work items, blocker edges, soft related links, gate items, and follow-ups. Writes require `--plan-review-passed` backed by a plan-review artifact with reviewer coverage and a Next User Decision; `--dry-run` previews the graph without writing. A reviewed plan with no parseable task/work-item structure must fail closed: the command exits non-zero and does not write `graph.json`, previews, registry entries, or tracker sync state unless an explicit invalid-graph override is used by a diagnostic tool.
 Generated work items use reusable templates for feature, bugfix, refactor, UI story, integration, migration, documentation, release-prep, production-prep, and research spike work. Items carry labels, severity, owner/component/stack fields, required gates, verification hints, comments, and optional repo/package/workspace/subproject routing metadata.
 Production-oriented plans also generate release, observability, rollback,
 security/privacy, and post-release learning work items so the loop does not
@@ -131,11 +133,13 @@ After atomization or a dry-run preview, print `NEXT_USER_ACTIONS[]` and wait for
 - **Start guided execution** - run `/supervibe-loop --guided` only after review and atomization evidence is accepted.
 - **Keep work graph and stop** - save the result without starting execution.
 
+Do not treat `--plan-review-passed` as permission to execute. It only permits atomization from a reviewed plan. Starting guided, manual, fresh-context, worktree, version bump, commit, push, cleanup, or plan deletion still requires the current visible user-choice gate to be answered after the generated work graph is shown.
+
 Repair paths:
 
 - Invalid plan repair: when atomization cannot derive a valid epic/task/subtask graph, revise the reviewed plan or rerun `--atomize-plan <plan> --preview`; do not write `graph.json` until the plan has parseable work items and `--plan-review-passed`.
 - Graph drift repair: run `/supervibe-status --ready --blocked --stale --orphan --file <graph.json>`, then repair dependency cycles, stale claims, orphaned evidence, ownership gaps, or worktree assignment drift before continuing.
-- Completion blocker repair: run `/supervibe-loop --validate-completion --file <graph.json>` or `/supervibe-loop --close-eligible --file <graph.json>` to list blockers, attach production or dry-run evidence, then rerun close validation. `--allow-dry-run-evidence` and `--no-evidence-required` are explicit diagnostic overrides, not default completion.
+- Completion blocker repair: run `/supervibe-loop --validate-completion --file <graph.json>` or `/supervibe-loop --close-eligible --file <graph.json>` to list blockers, attach production or dry-run evidence, then rerun close validation. `--require-trusted-evidence --trusted-receipts <id,id>` requires runtime-issued receipts; `--allow-dry-run-evidence` and `--no-evidence-required` are explicit diagnostic overrides, not default completion.
 - Task graph maturity repair: run `npm run supervibe:task-graph-maturity` for capability maturity, or `node scripts/supervibe-task-graph-maturity.mjs --require-active-graph` when the current project must already have an active graph. The generic agent maturity gate does not replace this task-graph-specific score.
 - Tracker sync repair: if sync reports `invalid-mapping`, run `/supervibe-loop --tracker-doctor --file <graph.json> --fix`; if it reports `partial-sync`, keep the generated mapping file, repair the external adapter failure, and rerun the same sync push. Diagnostics redact token, secret, password, authorization, and API-key fields before printing or bundling.
 
@@ -190,9 +194,11 @@ reports, GC candidates, and safe local actions without changing the canonical
 JSON graph unless the user previews and explicitly applies a local mutation.
 For long loop or worktree sessions, `--auto-ui` on `--status` starts the same
 localhost-only control plane as a visible sidecar and prints the URL, PID, logs,
-and graph path. `--auto-ui-dry-run` prints the exact `npm run supervibe:ui --`
-daemon command without spawning a process, which is the safe mode for tests,
-headless sessions, and operator review.
+and graph path. `--auto-ui-dry-run` alone prints the exact
+`npm run supervibe:ui --` daemon command without spawning a process, which is
+the safe mode for tests, headless sessions, and operator review. `--no-auto-ui`
+is an explicit opt-out and suppresses UI output even when `--auto-ui` was added
+by a preset or wrapper.
 
 Closed work graphs are reported as `ARCHIVE_CANDIDATE: true` and
 `LIFECYCLE: completed-awaiting-archive` when all required work is terminal and

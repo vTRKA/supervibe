@@ -11,6 +11,9 @@ import {
   formatEpicCompletionReport,
   validateEpicCompletion,
 } from "../scripts/lib/supervibe-epic-completion-validator.mjs";
+import {
+  issueWorkflowInvocationReceipt,
+} from "../scripts/lib/supervibe-workflow-receipt-runtime.mjs";
 
 const PLAN = `# Completion Plan
 
@@ -208,6 +211,58 @@ test("validate-epic-completion CLI reports failed and passed completion", async 
   }), /epic completion artifact\(s\) failed/);
 });
 
+test("validate-epic-completion CLI requires runtime-trusted receipt evidence in trusted mode", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-trusted-epic-completion-"));
+  const evidenceFile = join(root, "trusted-output.txt");
+  await writeFile(evidenceFile, "trusted verification\n", "utf8");
+  const { receipt } = await issueWorkflowInvocationReceipt({
+    rootDir: root,
+    command: "/supervibe-loop",
+    subjectType: "validator",
+    subjectId: "completion-validator",
+    stage: "validate-completion",
+    invocationReason: "trusted completion verification",
+    outputArtifacts: ["trusted-output.txt"],
+    startedAt: "2026-05-10T00:00:00.000Z",
+    completedAt: "2026-05-10T00:01:00.000Z",
+    handoffId: "trusted-completion",
+  });
+
+  const trusted = graphWithReceiptId(receipt.receiptId);
+  const trustedFile = join(root, "trusted.graph.json");
+  await writeFile(trustedFile, `${JSON.stringify(trusted, null, 2)}\n`, "utf8");
+
+  const passStdout = execFileSync(process.execPath, [
+    join(ROOT, "scripts/validate-epic-completion.mjs"),
+    "--file",
+    trustedFile,
+    "--require-trusted-evidence",
+    "--trusted-receipts",
+    receipt.receiptId,
+  ], {
+    cwd: root,
+    encoding: "utf8",
+  });
+  assert.match(passStdout, /REQUIRE_TRUSTED_EVIDENCE: true/);
+  assert.match(passStdout, /PASS: true/);
+
+  const untrusted = graphWithReceiptId("receipt-not-runtime-issued");
+  const untrustedFile = join(root, "untrusted.graph.json");
+  await writeFile(untrustedFile, `${JSON.stringify(untrusted, null, 2)}\n`, "utf8");
+  assert.throws(() => execFileSync(process.execPath, [
+    join(ROOT, "scripts/validate-epic-completion.mjs"),
+    "--file",
+    untrustedFile,
+    "--require-trusted-evidence",
+    "--trusted-receipts",
+    "receipt-not-runtime-issued",
+  ], {
+    cwd: root,
+    encoding: "utf8",
+    stdio: "pipe",
+  }), /epic completion artifact\(s\) failed/);
+});
+
 test("validate-epic-completion --all reports no graph coverage explicitly", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-no-completion-graphs-"));
   const stdout = execFileSync(process.execPath, [
@@ -300,5 +355,20 @@ function completedGraph() {
     verificationEvidence: evidence.filter((item) => item.taskId === task.id),
   }));
   graph.evidence = evidence;
+  return graph;
+}
+
+function graphWithReceiptId(receiptId) {
+  const graph = completedGraph();
+  const updateEvidence = (evidence) => ({ ...evidence, receiptId });
+  graph.evidence = graph.evidence.map(updateEvidence);
+  graph.items = graph.items.map((item) => ({
+    ...item,
+    verificationEvidence: (item.verificationEvidence || []).map(updateEvidence),
+  }));
+  graph.tasks = graph.tasks.map((task) => ({
+    ...task,
+    verificationEvidence: (task.verificationEvidence || []).map(updateEvidence),
+  }));
   return graph;
 }

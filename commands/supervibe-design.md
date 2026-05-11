@@ -124,6 +124,8 @@ Execution visibility is mandatory. `config.json.executionMode` must be one of `i
 
 Hard-stop rule: if `intake.needsQuestion=true`, `plan.executionStatus.executionMode!="real-agents"`, `plan.wizard.gates.viewportPolicyRecorded=false`, or `plan.wizard.gates.tokensUnlocked=false`, do not write `.supervibe/artifacts/brandbook/direction.md`, `_design-system/tokens.css`, `_design-system/manifest.json`, `_design-system/design-flow-state.json`, `_design-system/styleboard.html`, `.approvals/*.json`, prototype files, or agent receipts for those outputs. Persist only run-state or diagnostic scratch, then ask the single `plan.writeGate.nextQuestion`.
 
+Creative exploration mockups are drafts, not official prototypes. A pre-design-system package under `.supervibe/artifacts/mockups/<slug>/` may be used only as creative exploration draft evidence until old/reference scope, required specialist agents, design-system approval, and final lifecycle approval are complete. Do not call a mockup package final, production-ready, handoff-ready, or agent-owned unless `creative-director`, `ux-ui-designer`, `copywriter`, `prototype-builder`, `ui-polish-reviewer`, `accessibility-reviewer`, and `quality-gate-reviewer` have runtime-issued receipts for their durable outputs. Mockup outputs still require the same UI polish, accessibility, quality gate, keyboard/focus/focus-trap, WCAG contrast audit, reduced-motion, and approve / revise / compare another direction / stop lifecycle prompt before a 10/10 design claim. Only after explicit design-system approval and chosen-direction approval may one direction be promoted into `.supervibe/artifacts/prototypes/<slug>/` and later into handoff.
+
 Candidate sprawl check: before resuming, replacing, or promoting a candidate
 design system, run `node scripts/design-system-candidate-manager.mjs
 --archive-stale`. It reports the active candidate and any stale or rejected
@@ -156,7 +158,7 @@ node scripts/validate-agent-producer-receipts.mjs
 node scripts/validate-design-agent-receipts.mjs
 ```
 
-`workflow-receipt validate` is not sufficient for `/supervibe-design`: a `/supervibe-design` command receipt cannot substitute for a `creative-director`, `design-system-architect`, `ux-ui-designer`, `copywriter`, `prototype-builder`, `ui-polish-reviewer`, or `accessibility-reviewer` receipt for that agent's durable output. Every agent, worker, or reviewer receipt must include `hostInvocation.source` and `hostInvocation.invocationId` from a real host agent run, plus the typed output artifact `.supervibe/artifacts/_agent-outputs/<invocation-id>/agent-output.json` recorded by `agent-invocation.mjs`.
+`workflow-receipt validate` is not sufficient for `/supervibe-design`: a `/supervibe-design` command receipt cannot substitute for a `creative-director`, `design-system-architect`, `ux-ui-designer`, `copywriter`, `prototype-builder`, `ui-polish-reviewer`, `accessibility-reviewer`, or `quality-gate-reviewer` receipt for that agent's durable output. Every agent, worker, or reviewer receipt must include `hostInvocation.source` and `hostInvocation.invocationId` from a real host agent run, plus the typed output artifact `.supervibe/artifacts/_agent-outputs/<invocation-id>/agent-output.json` recorded by `agent-invocation.mjs`.
 
 ## Continuation Contract
 
@@ -702,7 +704,7 @@ Rubric:     prototype
 - `prototype-builder` + `supervibe:prototype` / `supervibe:landing-page` — Stage 5 native build
 - `supervibe:preview-server` — Stage 6 live URL
 - `mock-data-designer` + `supervibe:mock-data-contract` — data-fed mock contracts, scenarios, fixtures, backend integration notes
-- `ui-polish-reviewer` + `accessibility-reviewer` + `seo-specialist` — Stage 6 reviews
+- `ui-polish-reviewer` + `accessibility-reviewer` + `quality-gate-reviewer` + `seo-specialist` — Stage 6/7 reviews
 - `supervibe:tokens-export` — when downstream stack picked, exports tokens to its format
 - `<stack>-developer` agents (laravel / nextjs / vue / etc.) — pick up `handoff/` after Stage 8
 - `supervibe:interaction-design-patterns` — animation recipes referenced from `motion.css`

@@ -13,6 +13,7 @@ const RECOMMENDATION_IDS = Object.freeze([
   "context-mcp-v1",
   "repo-map-context-budget",
   "agent-rag-regression-harness",
+  "agent-codegraph-index-readiness",
   "checkpoint-resume-semantics",
   "memory-knowledge-graph",
   "scip-import-readiness",
@@ -28,6 +29,7 @@ export async function buildAgentTechReadinessReport({
   const repoMap = await buildRepoMap({ rootDir, maxFiles: repoMapMaxFiles, tier: "standard" });
   const repoMapSelection = selectRepoMapContext(repoMap, { tier: "standard", query: "agent technology readiness trace mcp regression graph scip" });
   const regression = evaluateAgentRegressionChecks({ packageJson: readPackageJson(rootDir) });
+  const codeGraphIndex = inspectCodeGraphAgentReadiness(rootDir);
   const checkpoint = inspectCheckpointSemantics(rootDir);
   const knowledgeGraph = await safeKnowledgeGraph({ rootDir, now });
   const scip = await inspectScipImportReadiness({ rootDir });
@@ -60,6 +62,13 @@ export async function buildAgentTechReadinessReport({
       status: regression.pass ? "implemented" : "blocked",
       evidence: [`cases=${regression.total}`, `failed=${regression.failed.length}`],
       nextAction: "extend cases as new workflow regressions are found",
+    }),
+    recommendation({
+      id: "agent-codegraph-index-readiness",
+      title: "Agent RAG and CodeGraph index readiness gate",
+      status: codeGraphIndex.pass ? "implemented" : "blocked",
+      evidence: codeGraphIndex.evidence,
+      nextAction: codeGraphIndex.nextAction,
     }),
     recommendation({
       id: "checkpoint-resume-semantics",
@@ -97,10 +106,38 @@ export async function buildAgentTechReadinessReport({
       mcp: { pass: mcp.pass, resources: mcp.resources.length, templates: mcp.resourceTemplates.length },
       repoMap: { fileCount: repoMap.fileCount, selected: repoMapSelection.selected.length, usedTokens: repoMapSelection.usedTokens },
       regression: { pass: regression.pass, total: regression.total, failed: regression.failed.length },
+      codeGraphIndex,
       checkpoint,
       knowledgeGraph: { pass: knowledgeGraph.pass, summary: knowledgeGraph.summary },
       scip,
     },
+  };
+}
+
+function inspectCodeGraphAgentReadiness(rootDir) {
+  const files = {
+    status: readOptional(join(rootDir, "scripts/supervibe-status.mjs")),
+    context: readOptional(join(rootDir, "scripts/lib/supervibe-codegraph-context.mjs")),
+    preflight: readOptional(join(rootDir, "scripts/lib/supervibe-index-preflight.mjs")),
+    capability: readOptional(join(rootDir, "scripts/lib/supervibe-capability-registry.mjs")),
+    contextMcp: readOptional(join(rootDir, "scripts/supervibe-context-mcp.mjs")),
+    packageJson: JSON.stringify(readPackageJson(rootDir)),
+  };
+  const checks = [
+    ["strict-index-health", files.status.includes("strict-index-health")],
+    ["codegraph-context-gate", files.context.includes("evaluateCodeGraphTaskTypeGate") && files.context.includes("crossResolvedEdges")],
+    ["index-preflight-gate", files.preflight.includes("evaluateIndexHealthGate") && files.preflight.includes("CODEGRAPH_INDEX_COMMAND")],
+    ["codegraph-mcp-resource", files.contextMcp.includes("supervibe://code-graph") || files.capability.includes("CODEGRAPH_INDEX_COMMAND")],
+    ["rag-regression-pipeline", files.packageJson.includes("supervibe:retrieval-pipeline") && files.packageJson.includes("supervibe:agent-retrieval-health")],
+  ];
+  const missing = checks.filter(([, pass]) => !pass).map(([label]) => label);
+  return {
+    pass: missing.length === 0,
+    evidence: checks.map(([label, pass]) => `${label}=${pass ? "ok" : "missing"}`),
+    missing,
+    nextAction: missing.length === 0
+      ? "require strict index health plus CodeGraph context evidence before agents claim 10/10 readiness"
+      : `restore ${missing.join(", ")} before agents rely on RAG/CodeGraph context`,
   };
 }
 
@@ -172,5 +209,13 @@ function readPackageJson(rootDir) {
     return JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8"));
   } catch {
     return {};
+  }
+}
+
+function readOptional(path) {
+  try {
+    return readFileSync(path, "utf8");
+  } catch {
+    return "";
   }
 }

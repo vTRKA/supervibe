@@ -94,6 +94,8 @@ Every producer result must also expose `NEXT_USER_ACTIONS[]` before progressing:
 
 Dispatcher. Reads project + plugin state via a deterministic detector and proposes the right next command. Never modifies anything itself — always defers to the phase-specific command after user confirmation.
 
+Plan/pre-plan continuation is fail-closed. A current explicit user answer is required after each visible handoff question; older broad consent does not answer a newly emitted `NEXT_STEP_HANDOFF`. Plan execution routes must also preserve the reviewer gate: plan review must pass with reviewer coverage and a Next User Decision before atomization, epic creation, autonomous loop execution, version bump, commit, push, or cleanup.
+
 ## How it works
 
 The detector lives at `scripts/lib/supervibe-state-detector.mjs` and runs **7 checks in priority order** (first-triggered wins). Each check is independent code, NOT an AI heuristic — failures are surfaced explicitly, false-positives are testable.

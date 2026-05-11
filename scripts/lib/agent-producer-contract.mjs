@@ -437,9 +437,10 @@ export function expectedProducerReceiptsForDurableOutputs(rootDir = process.cwd(
     stageId: "stage-2-design-system",
   });
 
-  for (const prototype of listPrototypeDirs(rootDir).filter((name) => !prototypeSlug || name === prototypeSlug)) {
-    const base = `.supervibe/artifacts/prototypes/${prototype}`;
-    const prototypeIndexExists = existsSync(join(rootDir, ".supervibe", "artifacts", "prototypes", prototype, "index.html"));
+  for (const designArtifact of listDesignArtifactDirs(rootDir).filter((item) => !prototypeSlug || item.slug === prototypeSlug)) {
+    const { rootName, slug } = designArtifact;
+    const base = `.supervibe/artifacts/${rootName}/${slug}`;
+    const prototypeIndexExists = existsSync(join(rootDir, ".supervibe", "artifacts", rootName, slug, "index.html"));
     const requiredReviewStage = requireDesignReviewStages && prototypeIndexExists;
     add({ command: "/supervibe-design", outputArtifact: `${base}/spec.md`, subjectType: "agent", subjectId: "ux-ui-designer", stageId: "stage-3-screen-spec" });
     add({ command: "/supervibe-design", outputArtifact: `${base}/decisions/media-capability-detection.md`, subjectType: "skill", subjectId: "supervibe:design-intelligence", stageId: "stage-4-media-capability-detection" });
@@ -449,7 +450,7 @@ export function expectedProducerReceiptsForDurableOutputs(rootDir = process.cwd(
     add({ command: "/supervibe-design", outputArtifact: `${base}/index.html`, subjectType: "agent", subjectId: "prototype-builder", stageId: "stage-5-prototype-build" });
     add({ command: "/supervibe-design", outputArtifact: `${base}/variant-manifest.json`, subjectType: "agent", subjectId: "creative-director", stageId: "stage-1-brand-direction" });
     add({ command: "/supervibe-design", outputArtifact: `${base}/diversity-report.json`, subjectType: "reviewer", subjectId: "ui-polish-reviewer", stageId: "stage-6-polish-review" });
-    for (const variant of listVariantArtifacts(rootDir, prototype)) {
+    for (const variant of listVariantArtifacts(rootDir, designArtifact)) {
       add({ command: "/supervibe-design", outputArtifact: variant.artifactPath, subjectType: "agent", subjectId: "prototype-builder", stageId: "stage-5-prototype-build" });
       if (variant.reviewArtifacts?.polish) {
         add({ command: "/supervibe-design", outputArtifact: variant.reviewArtifacts.polish, subjectType: "reviewer", subjectId: "ui-polish-reviewer", stageId: "stage-6-polish-review" });
@@ -546,8 +547,13 @@ function receiptMatchesProducerExpectation(receipt = {}, expectation = {}) {
   return outputs.some((output) => sameArtifact(output, expectation.outputArtifact));
 }
 
-function listPrototypeDirs(rootDir) {
-  const root = join(rootDir, ".supervibe", "artifacts", "prototypes");
+function listDesignArtifactDirs(rootDir) {
+  return ["prototypes", "mockups"].flatMap((rootName) => listDesignDirs(rootDir, rootName)
+    .map((slug) => ({ rootName, slug })));
+}
+
+function listDesignDirs(rootDir, rootName) {
+  const root = join(rootDir, ".supervibe", "artifacts", rootName);
   if (!existsSync(root)) return [];
   return readdirSync(root, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
@@ -556,8 +562,10 @@ function listPrototypeDirs(rootDir) {
     .sort();
 }
 
-function listVariantArtifacts(rootDir, prototype) {
-  const relPath = `.supervibe/artifacts/prototypes/${prototype}/variant-manifest.json`;
+function listVariantArtifacts(rootDir, designArtifact) {
+  const rootName = typeof designArtifact === "string" ? "prototypes" : designArtifact.rootName;
+  const slug = typeof designArtifact === "string" ? designArtifact : designArtifact.slug;
+  const relPath = `.supervibe/artifacts/${rootName}/${slug}/variant-manifest.json`;
   const manifestPath = join(rootDir, ...relPath.split("/"));
   if (!existsSync(manifestPath)) return [];
   try {
