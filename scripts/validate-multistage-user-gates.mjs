@@ -12,7 +12,7 @@ const EXPLICIT_SURFACE_RULES = Object.freeze([
       /Documentation Approval Gate/i,
       /Do not write, save, or claim a spec until/i,
       /Post-documentation summary/i,
-      /browser-first visual packet/i,
+      /text-first summary/i,
     ],
   },
   {
@@ -23,7 +23,7 @@ const EXPLICIT_SURFACE_RULES = Object.freeze([
       /Documentation Approval Gate/i,
       /Do not write the spec until/i,
       /Post-documentation summary/i,
-      /browser-first visual packet/i,
+      /text-first summary/i,
     ],
   },
   {

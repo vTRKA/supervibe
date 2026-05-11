@@ -436,10 +436,10 @@ const ROUTES = {
   },
   visual_explanation: {
     phase: "planning",
-    command: "/supervibe-preview --visual-explanation",
+    command: "/supervibe-plan --visual-summary",
     skill: "supervibe:writing-plans",
-    nextQuestionRu: "Шаг 1/1: показать browser-first визуальное объяснение с текстовым fallback перед планированием?",
-    nextQuestionEn: "Step 1/1: show a browser-first visual explanation with text fallback before planning?",
+    nextQuestionRu: "Шаг 1/1: показать текстовую схему/таблицу с понятным summary перед планированием?",
+    nextQuestionEn: "Step 1/1: show a text-first scheme/table summary before planning?",
     prerequisites: ["user-request"],
   },
   task_readiness_intake: {
@@ -1190,7 +1190,7 @@ function requiredSafetyFor(intent) {
   if (intent === "source_truth_research") return [...base, "source-hierarchy", "freshness-check", "conflict-resolution-log"];
   if (intent === "workflow_chain_audit") return [...base, "read-only-audit", "source-hierarchy", "workflow-chain-coverage", "scope-bloat-check", "pitfall-review", "end-to-end-goal-check"];
   if (intent === "documentation_summary_gate") return [...base, "documentation-approval-before-write", "summary-before-durable-artifact", "post-documentation-summary"];
-  if (intent === "visual_explanation") return [...base, "browser-first-visual-preview", "text-fallback", "no-unverified-implementation-claims"];
+  if (intent === "visual_explanation") return [...base, "text-first-visual-summary", "optional-browser-preview-for-ui-only", "no-unverified-implementation-claims"];
   if (intent === "task_readiness_intake") return [...base, "requirements-gate", "raw-task-block", "acceptance-criteria-required"];
   if (intent === "plugin_update_repair") return [...base, "managed-checkout-drift-restore", "mirror-clean-assertion"];
   if (intent === "network_ops") return [...base, "read-only-diagnostics", "scoped-approval-before-network-mutation"];

@@ -8,12 +8,11 @@ decoration.
 
 Use a visual when the artifact contains one of these shapes:
 
-- Workflow or decision path: browser-first visual packet with readable cards,
-  lanes, or steps.
-- Actor/system interaction: browser-first visual packet with swimlanes or
-  timeline rows.
-- Entity lifecycle or status field: browser-first state board with labels.
-- Architecture boundary or ownership: browser-first boundary map with explicit
+- Workflow or decision path: text-first stage map with readable cards, lanes,
+  or steps.
+- Actor/system interaction: text-first timeline table or swimlane-style summary.
+- Entity lifecycle or status field: text-first state board with labels.
+- Architecture boundary or ownership: text-first boundary map with explicit
   owner, trust, and data labels.
 - Prioritization, comparison, or evidence matrix: Markdown table when a table is
   clearer than a rendered preview.
@@ -26,8 +25,8 @@ dependencies, states, trust boundaries, or release gates.
 
 Every generated visual explanation must include:
 
-- `Visual mode`: browser-first preview, table-only approved, or fallback export.
-- `Preview`: a local HTML path or URL when browser-first mode is used.
+- `Visual mode`: text-first summary, table-only, optional browser preview, or fallback export.
+- `Preview`: a local HTML path or URL only when browser preview mode is used.
 - `Text fallback`: the same states, edges, decisions, and stop conditions in
   plain language.
 - `Audience summary`: one beginner-readable explanation and one implementer note
@@ -40,13 +39,12 @@ Every generated visual explanation must include:
 
 ## Standard Patterns
 
-### Browser-First Process
+### Text-First Process
 
-Create a small HTML/CSS packet under
-`.supervibe/artifacts/visual-explanations/<slug>/index.html` and serve it with
-`/supervibe-preview <dir> --daemon` when the user benefits from seeing the flow.
-The first screen should show the actual decision or workflow, not a decorative
-landing page.
+Use a compact text summary first. Prefer a Markdown table, stage map, or
+improvised ASCII scheme that fits directly in the chat. Create a small HTML/CSS
+packet under `.supervibe/artifacts/visual-explanations/<slug>/index.html` only
+when the user benefits from seeing actual UI/prototype/browser evidence.
 
 Required packet sections:
 
@@ -74,8 +72,8 @@ Use a Markdown table when the user needs comparison more than a diagram:
 
 ### Mermaid Fallback Or Export
 
-Mermaid is acceptable when browser preview is unavailable or the user explicitly
-asks for raw diagram text. Treat it as fallback/export, not the primary
+Mermaid is acceptable when the user explicitly asks for raw diagram text or a
+renderer-friendly export is needed. Treat it as fallback/export, not the primary
 explanation.
 
 ```mermaid
@@ -85,7 +83,7 @@ flowchart TD
   Summary[Pre-documentation summary] --> Gate{Documentation approval}
   Gate -->|create| Spec[Durable spec]
   Gate -->|revise| Revise[Revise summary]
-  Gate -->|preview| Visual[Browser-first visual packet]
+  Gate -->|preview| Visual[Text-first visual summary]
   Gate -->|research| Evidence[More evidence]
   Gate -->|stop| Stop[No durable documentation]
   Spec --> Post[Post-documentation summary and next actions]
@@ -98,8 +96,9 @@ when approved, then summarize the saved artifact and next choices.
 
 Before claiming a visual artifact is ready:
 
-- Verify the browser-first packet has a preview URL/path or an explicit
-  table-only approval reason.
+- Verify the text-first summary includes a stage map, table, or ASCII scheme.
+- If a browser preview packet is used for UI/prototype evidence, verify it has a
+  preview URL/path.
 - Check that the text fallback names every critical node, edge, decision, and
   stop condition.
 - Check that raw Mermaid fallback, when present, includes `accTitle` and

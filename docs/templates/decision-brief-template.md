@@ -23,7 +23,7 @@ Use this after brainstorm or plan review when a user needs to decide whether to 
 
 ## Visual Explanation
 
-Visual mode: browser-first decision packet with table fallback and raw Mermaid only as export/fallback.
+Visual mode: text-first decision packet with table or stage-map fallback and raw Mermaid only as export/fallback.
 
 | Decision card | User meaning | Evidence | Next action |
 | --- | --- | --- | --- |

@@ -43,14 +43,15 @@ describe("supervibe trigger router", () => {
     assert.equal(route.requiredSafety.includes("documentation-approval-before-write"), true);
   });
 
-  it("routes visual explanations to browser-first preview", () => {
-    const route = routeTriggerRequest("explain this system visually with a browser-first preview before implementation", {
+  it("routes visual explanations to a text-first summary", () => {
+    const route = routeTriggerRequest("explain this system visually with a text-first summary before implementation", {
       artifacts: { request: true },
     });
 
     assert.equal(route.intent, "visual_explanation");
-    assert.equal(route.command, "/supervibe-preview --visual-explanation");
-    assert.equal(route.requiredSafety.includes("browser-first-visual-preview"), true);
+    assert.equal(route.command, "/supervibe-plan --visual-summary");
+    assert.equal(route.requiredSafety.includes("text-first-visual-summary"), true);
+    assert.equal(route.requiredSafety.includes("optional-browser-preview-for-ui-only"), true);
   });
 
   it("routes plan then execute requests to planning without review-only hijack", () => {

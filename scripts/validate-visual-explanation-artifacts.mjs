@@ -22,14 +22,19 @@ function hasTableOnlyMode(text) {
   return /\btable-only(?:\s+approved)?\b/i.test(text) && /\|.+\|/.test(text);
 }
 
+function hasTextFirstSummaryMode(text) {
+  return /\b(text-first|text first|summary-first|human-readable summary|stage map|ASCII\s+(?:map|diagram)|improvised\s+(?:scheme|diagram)|compact\s+(?:table|stage))\b/i.test(text)
+    && (/\|.+\|/.test(text) || /(?:->|=>|\bthen\b|\bstep\s+\d+)/i.test(text));
+}
+
 export function validateVisualExplanationArtifact(source) {
   const text = String(source || "");
   const issues = [];
   if (!/(<title>[^<]+<\/title>|^#\s+\S|<h1[^>]*>[^<]+<\/h1>)/im.test(text)) {
     issues.push("format: missing title or h1");
   }
-  if (!hasBrowserFirstMode(text) && !hasTableOnlyMode(text)) {
-    issues.push("visual mode: expected browser-first visual packet or table-only approved mode");
+  if (!hasTextFirstSummaryMode(text) && !hasBrowserFirstMode(text) && !hasTableOnlyMode(text)) {
+    issues.push("visual mode: expected text-first summary, browser preview, or table-only approved mode");
   }
   for (const term of ["Text fallback", "Audience summary", "Stop condition"]) {
     if (!new RegExp(term, "i").test(text)) issues.push(`content: missing ${term}`);

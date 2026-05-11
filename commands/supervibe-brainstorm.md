@@ -48,7 +48,7 @@ Treat the most recent user message as the topic.
    - Product type, MVP path, MVP readiness stage, launch model, and production owner
    - Scope Safety Gate: include/defer/reject/spike decisions, why-not rationale, and tradeoffs
    - Evidence and retrieval plan: memory, Code RAG, CodeGraph need, citations, stale checks
-   - Visual explanation plan: browser-first visual packet with preview/table/text fallback; Mermaid is allowed only as an accessible fallback with `accTitle` and `accDescr`
+   - Visual explanation plan: text-first summary with a compact stage map, table, or improvised ASCII scheme. Browser previews are optional only for real UI/prototype/browser evidence; Mermaid is allowed only as an accessible fallback with `accTitle` and `accDescr`.
    - Stakeholder map
    - Competitive scan (when applicable, via `supervibe:mcp-discovery` for Firecrawl)
    - 2-3 alternative approaches with kill criteria
@@ -61,7 +61,7 @@ Treat the most recent user message as the topic.
 4a. **Documentation Approval Gate.** Ask one explicit `documentation_approval` question and wait for the user choice. Do not write, save, or claim a spec until the user chooses **Create brainstorm documentation**. Valid choices:
    - **Create brainstorm documentation** - write the durable brainstorm spec.
    - **Revise before documentation** - change goals, assumptions, scope, risks, or acceptance criteria first.
-   - **Show visual preview first** - produce the browser-first visual packet before writing the spec.
+   - **Show visual summary first** - produce the text-first stage map, compact table, or improvised scheme before writing the spec.
    - **Compare or research deeper** - gather more evidence before documentation.
    - **Keep summary and stop** - no durable brainstorm documentation is created.
 
@@ -118,7 +118,7 @@ Validator: validate-spec-artifacts PASS
 Production readiness: covered
 Scope safety: present, with deferred/rejected additions explained
 Evidence plan: memory/RAG/CodeGraph commands and citations present
-Visual explanation: browser-first preview/table/text packet present; Mermaid fallback includes accessible title and description when used
+Visual explanation: text-first summary/table/stage map present; browser preview is optional only for UI/prototype/browser evidence; Mermaid fallback includes accessible title and description when used
 10/10 scorecard: present
 
 Next:      /supervibe-plan --from-brainstorm .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-brainstorm.md

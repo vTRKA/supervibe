@@ -89,7 +89,7 @@ Auto-detect the most recent spec in `.supervibe/artifacts/specs/` and use it. If
    - Critical path
    - Scope Safety Gate (approved/deferred/rejected scope, tradeoffs, and stop condition for unapproved additions)
    - Development Contract Map covering behavior, architecture, data/schema, API/event, UI state, security/privacy, performance, observability, rollout/rollback, and docs/support
-   - Retrieval, CodeGraph, and browser-first visual evidence contract
+   - Retrieval, CodeGraph, and text-first visual summary contract. Browser evidence is required only when the plan touches actual browser/UI/prototype behavior.
    - Delivery strategy from MVP to production
    - Production readiness contract (tests, security/privacy, performance, observability, rollback, release)
    - Phased tasks (≤5 minutes each, with verification commands)
@@ -156,7 +156,7 @@ Production readiness: test/security/perf/observability/rollback/release covered
 Development contracts: behavior/architecture/data/API/UI/security/perf/observability/rollout/docs mapped
 Scope safety: approved scope mapped; deferred/rejected extras documented
 Retrieval/graph: required memory, RAG, CodeGraph, citations, fallback and graph-quality checks mapped
-Visual evidence: browser-first preview/table/text packet; Mermaid fallback includes accessible title and description when used
+Visual evidence: text-first summary/table/stage map; browser preview only for actual UI/prototype/browser evidence; Mermaid fallback includes accessible title and description when used
 Post-plan summary: concise human summary and next review actions shown after plan creation
 Final gate:  10/10 acceptance + no open blockers
 Score:       <N>/10  Rubric: plan

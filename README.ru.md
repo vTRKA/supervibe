@@ -6,7 +6,7 @@ Supervibe превращает Claude Code, Codex, Gemini, Cursor и OpenCode в
 
 Работает локально. Docker не нужен. Windows, macOS и Linux.
 
-**v2.1** - текущий плагин `v2.1.1` - MIT - 1544 тестов
+**v2.1** - текущий плагин `v2.1.20` - MIT - 1710 тестов
 
 > **Compliance notice:** Supervibe предназначен только для помощи в разработке. Используя его, вы отвечаете за соблюдение Terms of Service (ToS) и Acceptable Use Policy (AUP) всех сервисов, включая Anthropic. Неразрешенная автоматизация, злоупотребление OAuth-токенами или нарушение правил сторонних сервисов остаются ответственностью пользователя.
 
@@ -92,7 +92,7 @@ irm https://raw.githubusercontent.com/vTRKA/supervibe/main/install.ps1 | iex
 После перезапуска вы должны увидеть примерно такое:
 
 ```text
-[supervibe] welcome  plugin v2.1.1 initialized for this project
+[supervibe] welcome  plugin v2.1.20 initialized for this project
 [supervibe] code RAG  N files / M chunks (fresh)
 [supervibe] code graph  N symbols / M edges (X% resolved)
 ```
@@ -136,7 +136,7 @@ Dry-run должен показать:
 | Новая идея | `/supervibe-brainstorm "idea"` затем `/supervibe-plan --from-brainstorm <spec-path>` | Превратит идею в spec и plan |
 | UI, landing page или экран продукта | `/supervibe-design <brief>` | Сделает направление, prototype, preview, feedback loop и handoff |
 | Выполнить готовый plan | `/supervibe-execute-plan <plan-path>` | Выполнит шаги с verification gates |
-| Длинная задача с видимым состоянием | `/supervibe-loop --guided` | Запустит видимый и отменяемый loop |
+| Длинная задача с видимым состоянием | `/supervibe-loop --guided --file <graph.json>` | Запустит видимый и отменяемый loop |
 | Security review | `/supervibe-security-audit` | Сначала даст read-only findings |
 | Посмотреть задачи в браузере | `/supervibe-ui` | Откроет локальную control plane |
 | Проверить здоровье | `/supervibe-status` или `/supervibe --status` | Покажет memory, RAG, graph, policy и workflow state |
@@ -149,6 +149,8 @@ Dry-run должен показать:
 brainstorm -> reviewed plan -> atomized epic -> safe execution
 ```
 
+Text-first summary - режим по умолчанию для схем workflow: компактные таблицы, stage maps или ASCII-style объяснения прямо в summary. Browser previews нужны только для реальных UI/prototype/browser проверок.
+
 Пример для копирования:
 
 ```text
@@ -156,7 +158,7 @@ brainstorm -> reviewed plan -> atomized epic -> safe execution
 /supervibe-plan --from-brainstorm .supervibe/artifacts/specs/example.md
 /supervibe-plan --review .supervibe/artifacts/plans/example.md
 /supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --plan-review-passed
-/supervibe-loop --guided
+/supervibe-loop --guided --file .supervibe/memory/work-items/example-epic/graph.json
 /supervibe-loop --epic example-epic --worktree
 /supervibe-loop --status --epic example-epic
 /supervibe-loop --resume .supervibe/memory/loops/example-run/state.json

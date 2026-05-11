@@ -327,9 +327,11 @@ of pretending to run autonomously.
 - Include Retrieval Quality and Graph Quality Gates in fresh-context handoffs
   so workers see source citations, rerank/fallback status, semantic anchors,
   graph warnings, symbol coverage, and edge-resolution caveats before editing.
-- Include a visual status summary in long-run reports: `/supervibe-loop graph
-  --format mermaid` output or `/supervibe-ui` URL plus a text fallback listing
-  ready, blocked, review, done, open gates, release blockers, and rollback owner.
+- Include a visual status summary in long-run reports as a text-first stage map,
+  compact table, or improvised ASCII scheme listing ready, blocked, review,
+  done, open gates, release blockers, and rollback owner. Mermaid output and
+  `/supervibe-ui` links are optional fallbacks, not required for ordinary
+  status summaries.
 - Treat task score below 9.0 as incomplete.
 - Continue by default until user goals are complete. Stop only for policy,
   explicit budget, missing access, production approval, cancellation, state

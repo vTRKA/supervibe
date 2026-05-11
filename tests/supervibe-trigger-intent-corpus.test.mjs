@@ -32,7 +32,7 @@ describe("supervibe trigger intent corpus", () => {
       "обнови README под это",
       "show summary before creating documentation",
       "покажи саммари перед созданием документации",
-      "explain this system visually with a browser-first preview before implementation",
+      "explain this system visually with a text-first summary before implementation",
     ]) {
       assert.equal(phrases.has(phrase), true, phrase);
     }

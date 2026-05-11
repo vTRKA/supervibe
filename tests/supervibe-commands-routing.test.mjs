@@ -61,10 +61,10 @@ test("routes documentation summary gate before creating docs", async () => {
   assert.match(output, /COMMAND: \/supervibe-brainstorm --summary-gate/);
 });
 
-test("routes visual explanation requests to browser-first preview", async () => {
-  const output = await matchCommand("explain this system visually with a browser-first preview before implementation");
+test("routes visual explanation requests to text-first summary", async () => {
+  const output = await matchCommand("explain this system visually with a text-first summary before implementation");
   assert.match(output, /INTENT: visual_explanation/);
-  assert.match(output, /COMMAND: \/supervibe-preview --visual-explanation/);
+  assert.match(output, /COMMAND: \/supervibe-plan --visual-summary/);
 });
 
 test("routes Russian task graph resume requests to loop status", async () => {

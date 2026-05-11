@@ -808,7 +808,7 @@
     "request": "explain this system visually with a diagram before implementation",
     "expected": {
       "intent": "visual_explanation",
-      "command": "/supervibe-preview --visual-explanation",
+      "command": "/supervibe-plan --visual-summary",
       "requiresLifecycleState": true
     },
     "quality": {
@@ -818,7 +818,7 @@
         ],
         "sourceChunkIds": [
           "docs/references/agent-system-coverage-matrix.md#visual-chat-explanation-policy",
-          "docs/references/visual-explanation-standard.md#browser-first-process"
+          "docs/references/visual-explanation-standard.md#text-first-process"
         ],
         "graphSymbols": [
           "routeTriggerRequest",
@@ -831,7 +831,7 @@
         ],
         "sourceChunkIds": [
           "docs/references/agent-system-coverage-matrix.md#visual-chat-explanation-policy",
-          "docs/references/visual-explanation-standard.md#browser-first-process"
+          "docs/references/visual-explanation-standard.md#text-first-process"
         ],
         "graphSymbols": [
           "routeTriggerRequest",
@@ -848,7 +848,7 @@
         ],
         "evidence": [
           {
-            "id": "browser-first-visual-preview",
+            "id": "text-first-visual-summary",
             "stale": false
           }
         ]

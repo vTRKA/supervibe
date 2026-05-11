@@ -51,7 +51,7 @@ This is a filled canonical plan example. Keep the structure, but replace the dom
 - Resolution caveat: report source coverage, symbol coverage, edge resolution, and any warnings before claiming 10/10 readiness.
 
 ### Visual explanation contract
-- Visual mode: browser-first visual packet with local preview path `.supervibe/artifacts/visual-explanations/billing-export-mvp-plan/index.html`.
+- Visual mode: text-first visual summary with a compact stage map, table, or improvised ASCII scheme. Browser preview is optional only for actual UI/prototype/browser evidence.
 - Audience: engineer and operator.
 - Accessibility: include a text fallback for the same information; if Mermaid fallback/export is emitted, include `accTitle` and `accDescr`.
 
@@ -74,7 +74,7 @@ flowchart LR
   Verify --> Release[Version commit push]
 ```
 
-Text fallback: approved billing requirements drive evidence collection, evidence drives tests, tests drive backend and UI implementation, and release waits for security, performance, observability, rollback, and documentation checks. The browser-first preview is the primary visual; Mermaid is fallback/export only.
+Text fallback: approved billing requirements drive evidence collection, evidence drives tests, tests drive backend and UI implementation, and release waits for security, performance, observability, rollback, and documentation checks. The text-first summary is the primary visual; Mermaid is fallback/export only.
 
 ---
 

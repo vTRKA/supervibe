@@ -108,9 +108,11 @@ function hasPlaceholder(markdown) {
 function hasVisualEvidence(body) {
   const text = String(body || '');
   const fallback = /\b(text\s+fallback|fallback)\b/i.test(text);
+  const textFirst = /\b(text-first|text first|summary-first|human-readable summary|stage map|ASCII\s+(?:map|diagram)|improvised\s+(?:scheme|diagram)|compact\s+(?:table|stage))\b/i.test(text)
+    && (/\|.+\|/.test(text) || /(?:->|=>|\bthen\b|\bstep\s+\d+)/i.test(text));
   const browserFirst = /\b(browser-first|preview|visual\s+packet|table-only)\b/i.test(text) && fallback;
   const mermaidFallback = /\bMermaid\b/i.test(text) && /accTitle/i.test(text) && /accDescr/i.test(text) && fallback;
-  return browserFirst || mermaidFallback;
+  return textFirst || browserFirst || mermaidFallback;
 }
 
 export function validatePlanArtifact(markdown) {
@@ -146,7 +148,7 @@ export function validatePlanArtifact(markdown) {
     if (!new RegExp(term, 'i').test(retrievalVisual)) issues.push(`retrieval/codegraph/visual evidence: missing ${term}`);
   }
   if (!hasVisualEvidence(retrievalVisual)) {
-    issues.push('retrieval/codegraph/visual evidence: missing browser-first visual packet or accessible Mermaid fallback');
+    issues.push('retrieval/codegraph/visual evidence: missing text-first visual summary, browser preview, or accessible Mermaid fallback');
   }
 
   const contractMap = sectionBody(markdown, 'Development Contract Map');

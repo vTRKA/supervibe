@@ -48,6 +48,7 @@ import { formatIndexConfigStatus, loadIndexConfig } from './lib/supervibe-index-
 import { resolveSupervibePluginRoot, resolveSupervibeProjectRoot } from './lib/supervibe-plugin-root.mjs';
 import { CODEGRAPH_INDEX_COMMAND, MEMORY_WATCH_COMMAND, SOURCE_RAG_INDEX_COMMAND } from './lib/supervibe-command-catalog.mjs';
 import { diagnoseGraphExtractor } from './lib/code-graph.mjs';
+import { validateEpicCompletion } from './lib/supervibe-epic-completion-validator.mjs';
 
 const args = parseArgs(process.argv.slice(2));
 const SCRIPT_PLUGIN_ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -115,6 +116,17 @@ async function printActiveWorkGraphSummary() {
   const terminalCount = (grouped.done?.length || 0) + (grouped.skipped?.length || 0) + (grouped.cancelled?.length || 0);
   const total = index.length;
   const driftCount = stale.length + orphans.length;
+  let completionPass = false;
+  try {
+    completionPass = validateEpicCompletion(graph).pass === true;
+  } catch {
+    completionPass = false;
+  }
+  const nextAction = nextReady !== 'none'
+    ? `claim ${nextReady} or inspect blockers`
+    : completionPass
+      ? 'finish/archive completed epic'
+      : 'validate completion or unblock remaining work';
 
   console.log(color('SUPERVIBE_ACTIVE_WORK_GRAPH', driftCount > 0 ? 'yellow' : 'green'));
   console.log(color(`  EPIC: ${epicId}`, 'dim'));
@@ -128,7 +140,7 @@ async function printActiveWorkGraphSummary() {
   console.log(color(`  STALE_CLAIMS: ${stale.length}`, stale.length > 0 ? 'yellow' : 'dim'));
   console.log(color(`  ORPHANS: ${orphans.length}`, orphans.length > 0 ? 'yellow' : 'dim'));
   console.log(color(`  NEXT_READY: ${nextReady}`, nextReady === 'none' ? 'dim' : 'green'));
-  console.log(color(`  NEXT_ACTION: ${nextReady === 'none' ? 'validate completion or unblock remaining work' : `claim ${nextReady} or inspect blockers`}`, driftCount > 0 ? 'yellow' : 'dim'));
+  console.log(color(`  NEXT_ACTION: ${nextAction}`, driftCount > 0 ? 'yellow' : completionPass ? 'green' : 'dim'));
 
   if (args.ready) {
     for (const item of grouped.ready) console.log(color(`  READY_ITEM: ${item.itemId || item.id} ${item.title || ''}`.trimEnd(), 'dim'));

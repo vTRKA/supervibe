@@ -67,7 +67,7 @@ Every implementation plan must add `## Retrieval, CodeGraph, And Visual Evidence
 - project-memory and Code RAG commands the executor must run before edits;
 - CodeGraph mode and Case A/B/C expectation for structural tasks;
 - expected source citations, graph warnings, and fallback handling;
-- one compact browser-first visual packet for critical path, state flow, architecture, or release gate, with preview URL or table-only approval, text fallback, and no color-only status. Mermaid is allowed only as fallback/export and must include `accTitle` and `accDescr`.
+- one compact text-first summary for critical path, state flow, architecture, or release gate, using a stage map, compact table, or improvised ASCII scheme, with text fallback and no color-only status. Browser preview URLs are optional only for actual UI/prototype/browser evidence. Mermaid is allowed only as fallback/export and must include `accTitle` and `accDescr`.
 
 ## Decision tree
 
@@ -109,7 +109,7 @@ Before the numbered steps, run the **Plan Scope Approval Gate**: print a compact
 
 ## Output contract
 
-Returns: plan file with header (Goal/Architecture/Tech Stack), File Structure, Critical Path, Scope Safety Gate, Delivery Strategy, Production Readiness, numbered Tasks with bite-sized steps, browser-first visual evidence, Final 10/10 Acceptance Gate, Self-Review, post-plan summary, mandatory Review Handoff, post-review Atomic/Epic Handoff, and a machine-readable `NEXT_STEP_HANDOFF`.
+Returns: plan file with header (Goal/Architecture/Tech Stack), File Structure, Critical Path, Scope Safety Gate, Delivery Strategy, Production Readiness, numbered Tasks with bite-sized steps, text-first visual summary evidence, Final 10/10 Acceptance Gate, Self-Review, post-plan summary, mandatory Review Handoff, post-review Atomic/Epic Handoff, and a machine-readable `NEXT_STEP_HANDOFF`.
 
 Required handoff block after saving the plan:
 

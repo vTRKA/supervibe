@@ -100,7 +100,7 @@ Is the user request clear and small (<3 acceptance criteria, single file area)?
 Every brainstorm artifact must include:
 
 - **Evidence and retrieval plan**: project-memory entries checked, Code RAG queries needed for planning, whether CodeGraph evidence is mandatory, and external primary sources used for current best practices.
-- **Visual explanation plan**: browser-first visual packet, local preview path or table-only approval, plain-language text fallback, and no color-only status. Mermaid is allowed only as a fallback/export and must include `accTitle`, `accDescr`, and the same text fallback per `docs/references/visual-explanation-standard.md`.
+- **Visual explanation plan**: text-first summary with a compact stage map, table, or improvised ASCII scheme, plus plain-language text fallback and no color-only status. Browser preview paths are optional only for actual UI/prototype/browser evidence. Mermaid is allowed only as a fallback/export and must include `accTitle`, `accDescr`, and the same text fallback per `docs/references/visual-explanation-standard.md`.
 - **RAG/CodeGraph quality handoff**: if the next step changes code, name the exact `search-code --context`, `--callers`, `--impact`, or `supervibe-context-pack` command the planner should run.
 
 ## Output contract

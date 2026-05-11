@@ -14,7 +14,7 @@ Brief: User-facing command to manage preview servers for HTML/CSS/JS mockups gen
 | `/supervibe-preview` | No args — list all currently running preview servers (port, directory, PID, uptime). |
 | `/supervibe-preview <dir> --daemon` | Start a silent background preview server for `<dir>` on the next available port. |
 | `/supervibe-preview --target http://127.0.0.1:3000 --daemon` | Start a managed Supervibe proxy over a local framework dev server; HTML gets the Feedback overlay while framework HMR stays tunneled to the target. |
-| `/supervibe-preview --visual-explanation` | Start or route to the browser-first visual explanation packet for the active brainstorm or plan; raw Mermaid is fallback/export only. |
+| `/supervibe-preview --visual-explanation` | Serve an already generated visual explanation preview packet when the user explicitly asks for a browser preview; ordinary workflow schemes stay text-first in the summary. |
 | `/supervibe-preview <dir> --foreground` | Start a foreground preview server for debugging. |
 | `/supervibe-preview <dir> --port N --daemon` | Start a silent background preview server for `<dir>` on a specific port `N`. |
 | `/supervibe-preview --kill <port>` | Kill the preview server bound to `<port>`. |

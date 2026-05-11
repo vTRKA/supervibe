@@ -9,7 +9,7 @@ Runs locally. No Docker. Windows, macOS, and Linux.
 
 Supervibe commands are agent-gated by default: every `/supervibe-*` workflow has required specialist agents, active durable work is blocked until scoped runtime receipts exist, and inline/controller-only output stays diagnostic. Design and prototype flows additionally require their producer and reviewer agents before completion can be claimed.
 
-**v2.1** - current plugin `v2.1.19` - MIT - 1697 tests
+**v2.1** - current plugin `v2.1.20` - MIT - 1710 tests
 
 > **Compliance notice:** This tool is designed exclusively for development assistance. By using it, you agree to comply with the Terms of Service (ToS) and Acceptable Use Policy (AUP) of all involved services, including Anthropic. Unauthorized automated usage, OAuth token abuse, or violation of third-party policies is the sole responsibility of the end user.
 
@@ -97,7 +97,7 @@ The installer:
 After restart, you should see something like:
 
 ```text
-[supervibe] welcome  plugin v2.1.19 initialized for this project
+[supervibe] welcome  plugin v2.1.20 initialized for this project
 [supervibe] code RAG  N files / M chunks (fresh)
 [supervibe] code graph  N symbols / M edges (X% resolved)
 ```
@@ -154,7 +154,7 @@ Approve only after the dry-run looks right. Supervibe managed blocks are updated
 | New feature idea | `/supervibe-brainstorm "idea"` then `/supervibe-plan --from-brainstorm <spec-path>` | Turns a vague idea into a spec and plan |
 | UI, landing page, or product screen | `/supervibe-design <brief>` | Creates brand direction, prototype, preview, feedback loop, and handoff |
 | Execute an approved plan | `/supervibe-execute-plan <plan-path>` | Runs plan steps with verification gates |
-| Long task with visible state | `/supervibe-loop --guided` | Runs a visible, cancellable loop |
+| Long task with visible state | `/supervibe-loop --guided --file <graph.json>` | Runs a visible, cancellable loop from an atomized work graph |
 | Security review | `/supervibe-security-audit` | Produces read-only findings first |
 | See tasks in a browser | `/supervibe-ui` | Opens a local control plane |
 | Check health | `/supervibe-status` or `/supervibe --status` | Shows memory, RAG, graph, policy, and workflow state |
@@ -166,6 +166,8 @@ The normal path is:
 ```text
 brainstorm -> reviewed plan -> atomized epic -> safe execution
 ```
+
+Text-first summaries are the default for workflow schemes: Supervibe should explain stages with compact tables, stage maps, or improvised ASCII diagrams. Browser previews are reserved for actual UI/prototype/browser verification work, not ordinary planning summaries.
 
 Validator label:
 

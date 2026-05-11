@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.20] - 2026-05-11
+
+### Added
+
+- Added task graph runtime, traceability, status consistency, and documentation-flow validators to keep plan-to-epic/task/subtask execution tied to completion evidence.
+- Added regression coverage for text-first visual summaries so brainstorm, plan, loop, and artifact validators no longer require browser previews for explanatory schemes.
+
+### Changed
+
+- Routed visual explanation requests through `/supervibe-plan --visual-summary` with text-first schemes/tables and optional browser preview only for actual UI or prototype evidence.
+- Updated task graph maturity, status output, command docs, skill contracts, and README task-flow examples around graph-first loop execution and finish/archive guidance for completed epics.
+
+### Validation
+
+- Rebuilt Code RAG and CodeGraph readiness after the new validators and routing changes.
+- Verified task graph maturity, agent maturity, workflow receipts, trigger replay, and release-facing version surfaces for `2.1.20`.
+
 ## [2.1.19] - 2026-05-11
 
 ### Added

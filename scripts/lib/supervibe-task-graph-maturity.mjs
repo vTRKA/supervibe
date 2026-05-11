@@ -286,6 +286,9 @@ function validatorDimension(rootDir) {
   const files = [
     "scripts/validate-work-item-graphs.mjs",
     "scripts/validate-epic-completion.mjs",
+    "scripts/validate-task-graph-runtime.mjs",
+    "scripts/validate-task-graph-traceability.mjs",
+    "scripts/validate-task-graph-status-consistency.mjs",
     "scripts/lib/supervibe-epic-completion-validator.mjs",
     "scripts/lib/supervibe-plan-to-work-items.mjs",
   ];
@@ -314,6 +317,9 @@ function testsDimension(rootDir) {
     "tests/supervibe-work-item-actions.test.mjs",
     "tests/supervibe-ui-server.test.mjs",
     "tests/supervibe-epic-completion-validator.test.mjs",
+    "tests/task-graph-runtime-validator.test.mjs",
+    "tests/task-graph-traceability-validator.test.mjs",
+    "tests/task-graph-status-consistency.test.mjs",
   ];
   const missing = tests.filter((file) => !existsSync(join(rootDir, file)));
   return {

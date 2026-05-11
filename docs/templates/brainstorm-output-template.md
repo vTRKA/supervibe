@@ -105,8 +105,8 @@ Finance cannot complete monthly reconciliation without engineering-owned SQL exp
 ## Visual explanation plan
 
 ### Visual mode
-- Browser-first visual packet with local preview path `.supervibe/artifacts/visual-explanations/billing-export-mvp/index.html`.
-- Table-only fallback is acceptable if preview server is unavailable.
+- Text-first summary with a compact stage map, table, or improvised ASCII scheme.
+- Browser preview is optional only if actual UI/prototype/browser evidence is needed.
 - Mermaid is fallback/export only.
 
 ### Audience levels
@@ -121,7 +121,7 @@ Finance cannot complete monthly reconciliation without engineering-owned SQL exp
 - `accDescr`: The diagram shows the include/defer/reject decision path for the export MVP.
 - Do not rely on color alone: labels and text identify every branch.
 
-### Browser-first packet outline
+### Text-first summary outline
 
 | Card | Meaning | Evidence | Stop condition |
 |------|---------|----------|----------------|
