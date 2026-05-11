@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.25] - 2026-05-11
+
+### Changed
+
+- Hardened `/supervibe-design` execution so inline and hybrid durable execution modes are rejected instead of offered as degraded continuation paths.
+- Added Tauri UI designer coverage to design command orchestration and required UX, copy, platform, polish, accessibility, and quality receipts for active prototype readiness.
+- Added active trusted completion maturity gating so task graph runtime maturity cannot claim 10/10 while active completion evidence is migrated legacy evidence.
+
+### Validation
+
+- Updated release and host manifest versions to `2.1.25`.
+- Release security and install integrity gates remain required through `npm run check`; strict release evidence is available through `npm run check:release-strict`.
+
 ## [2.1.24] - 2026-05-11
 
 ### Added

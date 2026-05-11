@@ -4,7 +4,12 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import { findCommandShortcut } from "./supervibe-command-catalog.mjs";
 import { routeTriggerRequest } from "./supervibe-trigger-router.mjs";
 import { validateTaskGraphTraceability } from "../validate-task-graph-traceability.mjs";
+import { validateEpicCompletion } from "./supervibe-epic-completion-validator.mjs";
 import { validateWorkItemRegistryIntegrity } from "./supervibe-work-item-registry.mjs";
+import {
+  readWorkflowReceipts,
+  validateWorkflowReceiptTrust,
+} from "./supervibe-workflow-receipt-runtime.mjs";
 
 const ROUTING_CASES = Object.freeze([
   ["создай задачи и эпик из плана", "task_graph_create_from_plan"],
@@ -126,6 +131,7 @@ export function buildTaskGraphMaturityReport(rootDir = process.cwd(), options = 
     ...(requireActiveGraph ? [
       registryIntegrityDimension(rootDir),
       activeTraceabilityDimension(rootDir),
+      activeTrustedCompletionDimension(rootDir),
     ] : []),
   ];
   const requiredDimensions = dimensions.filter((dimension) => dimension.required !== false);
@@ -427,6 +433,65 @@ function activeTraceabilityDimension(rootDir) {
     blockers: report.issues,
     evidence: [relative(rootDir, graphFiles[0]).split(sep).join("/")],
   };
+}
+
+function activeTrustedCompletionDimension(rootDir) {
+  const graphFiles = walkFiles(join(rootDir, ".supervibe", "memory", "work-items"))
+    .filter((file) => file.endsWith("graph.json") || file.endsWith(".work-item-graph.json"));
+  if (graphFiles.length !== 1) {
+    return {
+      id: "active-trusted-completion",
+      title: "Active graph trusted completion",
+      pass: false,
+      summary: `${graphFiles.length} active graph candidate(s) found`,
+      blockers: ["exactly one active graph is required for trusted completion"],
+      evidence: graphFiles.slice(0, 5).map((file) => relative(rootDir, file).split(sep).join("/")),
+    };
+  }
+  let graph = null;
+  try {
+    graph = JSON.parse(readFileSync(graphFiles[0], "utf8"));
+  } catch (error) {
+    return {
+      id: "active-trusted-completion",
+      title: "Active graph trusted completion",
+      pass: false,
+      summary: "active graph cannot be read",
+      blockers: [error.message],
+      evidence: [relative(rootDir, graphFiles[0]).split(sep).join("/")],
+    };
+  }
+  const trustedReceiptIds = trustedReceiptIdsForMaturity(rootDir);
+  const report = validateEpicCompletion(graph, {
+    production: true,
+    requireEvidence: true,
+    allowSkipped: true,
+    allowDryRunEvidence: false,
+    requireTrustedEvidence: true,
+    trustedReceiptIds,
+    disallowLegacyEvidence: true,
+    requireEpicClosed: true,
+  });
+  return {
+    id: "active-trusted-completion",
+    title: "Active graph trusted completion",
+    pass: report.pass,
+    summary: report.pass
+      ? `strict trusted completion passed with ${trustedReceiptIds.length} trusted receipt id(s)`
+      : `${report.issues.length} trusted completion issue(s) found`,
+    blockers: (report.issues || []).slice(0, 10).map((issue) => `${issue.code}: ${issue.itemId || "graph"}: ${issue.message}`),
+    evidence: [relative(rootDir, graphFiles[0]).split(sep).join("/")],
+  };
+}
+
+function trustedReceiptIdsForMaturity(rootDir) {
+  const trusted = [];
+  for (const receipt of readWorkflowReceipts(rootDir)) {
+    if (!receipt?.receiptId) continue;
+    const trust = validateWorkflowReceiptTrust(rootDir, receipt);
+    if (trust.pass) trusted.push(String(receipt.receiptId));
+  }
+  return trusted;
 }
 
 function readGraphSourceMarkdown({ rootDir, graphPath, graph }) {

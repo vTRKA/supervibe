@@ -183,6 +183,13 @@ export function buildDesignAgentPlan({
     agentId: "ux-ui-designer",
     reason: "screen architecture, states, and component inventory require an explicit UX/UI design pass",
   }));
+  if (requiresTauriUiDesigner({ target, text })) {
+    stages.push(stage({
+      id: "stage-3-tauri-ui-review",
+      agentId: "tauri-ui-designer",
+      reason: "Tauri or desktop app surfaces require a platform-specific UI pass before prototype artifacts can be claimed",
+    }));
+  }
   if (capabilityRequirements.prototypeCapabilityPlan) {
     stages.push(stage({
       id: "stage-4-prototype-capability-plan",
@@ -228,6 +235,7 @@ export function buildDesignAgentPlan({
     reason: "aggregate receipts, polish, accessibility, browser verification, and confidence caps before approval",
   }));
 
+  const executionModeRequest = normalizeDesignExecutionModeRequest(requestedExecutionMode || inferExecutionModeFromBrief(text));
   const plan = {
     schemaVersion: 1,
     command: "/supervibe-design",
@@ -235,7 +243,8 @@ export function buildDesignAgentPlan({
     target,
     flowType,
     designSystemStatus,
-    requestedExecutionMode: normalizeDesignExecutionMode(requestedExecutionMode || inferExecutionModeFromBrief(text)),
+    requestedExecutionMode: executionModeRequest.mode,
+    requestedExecutionModeRejected: executionModeRequest.rejectedMode,
     mode: wizard.mode,
     requiresReceipts: true,
     receiptDirectory: ".supervibe/artifacts/_workflow-invocations/supervibe-design/<handoff-id>/",
@@ -260,6 +269,7 @@ export function buildDesignAgentPlan({
   plan.executionStatus = buildDesignExecutionStatus(rootDir, plan, {
     pluginRoot,
     requestedExecutionMode: plan.requestedExecutionMode,
+    requestedExecutionModeRejected: plan.requestedExecutionModeRejected,
     locale: wizard.locale,
     hostAdapterId,
     env,
@@ -518,7 +528,9 @@ export function formatDesignPlanPrompt(plan = {}, { intake = null, writeGate = n
   }
   const status = plan.executionStatus || {};
   if (status.executionMode && status.executionMode !== "real-agents" && status.degradedModeQuestion) {
-    const executionGate = status.executionMode === "agent-required-blocked"
+    const executionGate = status.requestedExecutionModeRejected
+      ? `EXECUTION_GATE: ${status.requestedExecutionModeRejected} mode is rejected; durable design work requires real host-agent receipts`
+      : status.executionMode === "agent-required-blocked"
       ? "EXECUTION_GATE: specialist agents are unavailable; manual emulation is not allowed"
       : `EXECUTION_GATE: ${status.executionMode} mode selected; specialist output claims require real-agents receipts`;
     return [
@@ -563,7 +575,9 @@ export function formatDesignPlanUserPrompt(plan = {}, { intake = null, writeGate
   const status = plan.executionStatus || {};
   if (status.executionMode && status.executionMode !== "real-agents" && status.degradedModeQuestion) {
     return [
-      status.executionMode === "agent-required-blocked"
+      status.requestedExecutionModeRejected
+        ? `${status.requestedExecutionModeRejected} mode was rejected; durable design work requires real host-agent receipts.`
+        : status.executionMode === "agent-required-blocked"
         ? "Required specialists are unavailable, so durable design work stays paused."
         : "Required specialist work has not been recorded yet, so durable design work stays paused.",
       status.provisioningPlan?.readyToApply ? `Setup command: ${status.provisioningPlan.applyCommand}` : null,
@@ -591,6 +605,7 @@ export function formatDesignPlanUserPrompt(plan = {}, { intake = null, writeGate
 function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, {
   pluginRoot = null,
   requestedExecutionMode = null,
+  requestedExecutionModeRejected = null,
   locale = "en",
   hostAdapterId = null,
   env = process.env,
@@ -626,13 +641,15 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, {
     })
     : null;
   const explicitMode = normalizeDesignExecutionMode(requestedExecutionMode);
-  const requestedMode = explicitMode || (requiredAgentIds.length === 0 ? "inline" : "real-agents");
+  const rejectedMode = normalizeForbiddenDesignExecutionMode(requestedExecutionModeRejected);
+  const requestedMode = explicitMode || "real-agents";
   const specialistDispatchDeferred = designWizardStillOpen(plan);
   const durableMissingRuntimeProofs = runtimeProof.missingRuntimeProofs || [];
   const activeMissingRuntimeProofs = specialistDispatchDeferred ? [] : durableMissingRuntimeProofs;
   const questionProposalProducers = buildQuestionProposalProducerStatuses(plan, runtimeProof);
   const executionMode = deriveDesignExecutionMode({
     requestedMode,
+    rejectedMode,
     requiredAgentIds,
     missingAgents,
     missingCallableAgents,
@@ -641,7 +658,7 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, {
     specialistDispatchDeferred,
   });
   const realAgentCapable = requiredAgentIds.length > 0 && missingAgents.length === 0 && missingCallableAgents.length === 0 && !hostProofBlocked;
-  const agentReceiptsAllowed = realAgentCapable && ["real-agents", "hybrid", "agent-dispatch-required"].includes(executionMode);
+  const agentReceiptsAllowed = realAgentCapable && ["real-agents", "agent-dispatch-required"].includes(executionMode);
   const nonRealMode = executionMode !== "real-agents" && executionMode !== "agent-dispatch-required";
   const unavailableAgents = unique([...missingAgents, ...missingCallableAgents]);
   const receiptGate = specialistDispatchDeferred
@@ -653,7 +670,8 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, {
   return {
     executionMode,
     requestedExecutionMode: explicitMode || null,
-    executionModes: ["inline", "real-agents", "hybrid", "agent-dispatch-required"],
+    requestedExecutionModeRejected: rejectedMode || null,
+    executionModes: ["real-agents", "agent-dispatch-required", "agent-required-blocked"],
     requiredAgentIds,
     requiredSkillIds,
     missingAgents,
@@ -679,7 +697,7 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, {
     missingRuntimeProofs: activeMissingRuntimeProofs,
     durableMissingRuntimeProofs,
     agentReceiptsAllowed,
-    inlineDraftAllowed: executionMode === "inline" || executionMode === "hybrid",
+    inlineDraftAllowed: false,
     manualEmulationAllowed: false,
     qualityImpact: missingAgents.length
       ? `Specialist stages cannot run or be claimed without real project agents: ${missingAgents.join(", ")}`
@@ -687,10 +705,8 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, {
         ? `Specialist definitions exist, but these agents are not callable in the selected host registry: ${missingCallableAgents.join(", ")}`
       : hostProofBlocked
         ? `Host ${hostDispatch.hostAdapterId} requires runtime invocation proof before real-agents mode can run.`
-      : executionMode === "inline"
-        ? "Inline mode may produce diagnostics and drafts only; it cannot satisfy specialist-agent output claims."
-      : executionMode === "hybrid"
-        ? "Hybrid mode may run deterministic skills inline, but every agent-owned durable artifact still requires a real host invocation receipt."
+      : rejectedMode
+        ? `${rejectedMode} execution mode was rejected. Durable design work requires real host-agent invocations and runtime-issued receipts; manual, inline, hybrid, or generic subagent emulation cannot continue this flow.`
         : executionMode === "agent-dispatch-required"
           ? `Agents are installed, but durable outputs are blocked until trusted runtime receipts exist for: ${formatMissingRuntimeProofs(activeMissingRuntimeProofs)}.`
           : specialistDispatchDeferred
@@ -707,6 +723,7 @@ function buildDesignExecutionStatus(rootDir = process.cwd(), plan = {}, {
 
 function deriveDesignExecutionMode({
   requestedMode = "real-agents",
+  rejectedMode = null,
   requiredAgentIds = [],
   missingAgents = [],
   missingCallableAgents = [],
@@ -714,9 +731,8 @@ function deriveDesignExecutionMode({
   runtimeProof = {},
   specialistDispatchDeferred = false,
 } = {}) {
-  if (requestedMode === "inline") return "inline";
-  if (requestedMode === "hybrid") return "hybrid";
-  if (requiredAgentIds.length === 0) return "inline";
+  if (rejectedMode) return "agent-required-blocked";
+  if (requiredAgentIds.length === 0) return "agent-required-blocked";
   if (missingAgents.length > 0) return "agent-required-blocked";
   if (missingCallableAgents.length > 0) return "agent-required-blocked";
   if (hostProofBlocked) return "agent-required-blocked";
@@ -841,6 +857,9 @@ function designReceiptRequirementsForPlan(plan = {}) {
       })
       : null;
     add({ command: "/supervibe-design", outputArtifact: `.supervibe/artifacts/prototypes/${slug}/spec.md`, subjectType: "agent", subjectId: "ux-ui-designer", stageId: "stage-3-screen-spec" });
+    if (requiresTauriUiDesigner({ target: plan.target, text: plan.acceptanceContract?.brief || "" })) {
+      add({ command: "/supervibe-design", outputArtifact: `.supervibe/artifacts/prototypes/${slug}/decisions/tauri-ui-review.md`, subjectType: "agent", subjectId: "tauri-ui-designer", stageId: "stage-3-tauri-ui-review" });
+    }
     if (plan.capabilityRequirements?.mediaCapabilityDetection) {
       add({ command: "/supervibe-design", outputArtifact: `.supervibe/artifacts/prototypes/${slug}/decisions/media-capability-detection.md`, subjectType: "skill", subjectId: "supervibe:design-intelligence", stageId: "stage-4-media-capability-detection" });
     }
@@ -923,6 +942,11 @@ function classifyPrototypeCapabilityRequirements(text = "") {
       ? ["native-static", "enhanced-native", "bundled-dependency", "framework-sandbox", "handoff-only"]
       : [],
   };
+}
+
+function requiresTauriUiDesigner({ target = "", text = "" } = {}) {
+  const value = `${target} ${text}`.toLowerCase();
+  return /\btauri\b|\bdesktop(?:-app)?\b|electron|native desktop|десктоп/i.test(value);
 }
 
 function receiptMatchesRequirement(receipt = {}, requirement = {}) {
@@ -1105,16 +1129,6 @@ function buildDegradedModeQuestion(missingAgents, provisioningPlan = null, { exe
         tradeoff: ru ? "Выбрать, если host уже имеет native agent registry или connector вне filesystem provisioning." : "Use this when the host already has a native agent registry or connector outside filesystem provisioning.",
       },
       {
-        id: "hybrid",
-        label: ru ? "Hybrid: skills inline, агенты реально" : "Hybrid: skills inline, agents real",
-        tradeoff: ru ? "Skills/diagnostics можно вести inline, но agent-owned outputs требуют настоящих host receipts." : "Skills and diagnostics may run inline, but agent-owned outputs still require real host receipts.",
-      },
-      {
-        id: "inline",
-        label: ru ? "Inline draft без agent claims" : "Inline draft without agent claims",
-        tradeoff: ru ? "Можно сохранить черновик/диагностику, но нельзя говорить, что creative-director или другие agents работали." : "Can save drafts or diagnostics, but cannot claim creative-director or other agents ran.",
-      },
-      {
         id: "stop",
         label: ru ? "Остановиться" : "Stop here",
         tradeoff: ru ? "Сохранить состояние и не продолжать скрыто." : "Saves current state and makes no hidden progress.",
@@ -1178,8 +1192,6 @@ function buildAgentDispatchQuestion(runtimeProof = {}, { locale = "en" } = {}) {
 
 function inferExecutionModeFromBrief(text = "") {
   const value = String(text || "").toLowerCase();
-  if (/\bhybrid\b|гибрид/i.test(value)) return "hybrid";
-  if (/\binline\b|без\s+агент|черновик/i.test(value)) return "inline";
   if (/\breal[- ]agents?\b|реальн[а-яё]+\s+агент/i.test(value)) return "real-agents";
   return null;
 }
@@ -1188,6 +1200,20 @@ function normalizeDesignExecutionMode(value) {
   const normalized = String(value || "").trim().toLowerCase().replace(/_/g, "-");
   if (!normalized) return null;
   if (["real", "real-agent", "real-agents", "agents"].includes(normalized)) return "real-agents";
+  return null;
+}
+
+function normalizeDesignExecutionModeRequest(value) {
+  const mode = normalizeDesignExecutionMode(value);
+  return {
+    mode,
+    rejectedMode: mode ? null : normalizeForbiddenDesignExecutionMode(value),
+  };
+}
+
+function normalizeForbiddenDesignExecutionMode(value) {
+  const normalized = String(value || "").trim().toLowerCase().replace(/_/g, "-");
+  if (!normalized) return null;
   if (["inline", "manual", "draft"].includes(normalized)) return "inline";
   if (normalized === "hybrid") return "hybrid";
   return null;

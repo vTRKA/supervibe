@@ -119,7 +119,7 @@ export function validateDynamicQuestionSystems(options = {}) {
     assumption: "Если пропустить, остановимся.",
     choices: [
       { id: "real-agents", label: "Реальные агенты", tradeoff: "Нужны receipts." },
-      { id: "inline", label: "Черновик", tradeoff: "Без agent claims." },
+      { id: "skills-only", label: "Только проверки", tradeoff: "Без durable agent claims." },
       { id: "stop", label: "Остановиться", tradeoff: "Без скрытого продолжения." },
     ],
   });

@@ -67,6 +67,27 @@ test("task graph runtime maturity blocks neutral traceability", () => {
   assert.ok(report.dimensions.some((dimension) => dimension.id === "active-traceability" && !dimension.pass));
 });
 
+test("task graph runtime maturity blocks active legacy completion evidence", () => {
+  const root = mkdtempSync(join(tmpdir(), "supervibe-task-graph-maturity-legacy-evidence-"));
+  writeMinimalSurface(root);
+  writeRuntimeGraph(root, {
+    source: "## Acceptance Criteria\n- Runtime requirement.\n",
+    epicStatus: "complete",
+    evidence: [{
+      status: "pass",
+      command: "node --test tests/runtime.test.mjs",
+      receiptId: "legacy-graph-evidence-migration-1",
+    }],
+  });
+
+  const report = buildTaskGraphMaturityReport(root, { requireActiveGraph: true });
+  const dimension = report.dimensions.find((item) => item.id === "active-trusted-completion");
+
+  assert.equal(report.pass, false);
+  assert.equal(dimension.pass, false);
+  assert.ok(dimension.blockers.some((blocker) => blocker.includes("legacy-evidence")));
+});
+
 test("task graph maturity CLI prints a machine-readable report", () => {
   const stdout = execFileSync(process.execPath, [
     join(ROOT, "scripts/supervibe-task-graph-maturity.mjs"),
@@ -105,7 +126,11 @@ function writeMinimalSurface(root) {
   }
 }
 
-function writeRuntimeGraph(root, { source }) {
+function writeRuntimeGraph(root, {
+  source,
+  epicStatus = "open",
+  evidence = [{ status: "pass", command: "node --test tests/runtime.test.mjs" }],
+} = {}) {
   const graphDir = join(root, ".supervibe", "memory", "work-items", "epic-runtime");
   mkdirSync(graphDir, { recursive: true });
   writeFileSync(join(graphDir, "source-plan.md"), source, "utf8");
@@ -113,13 +138,13 @@ function writeRuntimeGraph(root, { source }) {
     graph_id: "epic-runtime",
     source: { snapshotPath: "source-plan.md" },
     items: [
-      { itemId: "epic-runtime", type: "epic", status: "open", title: "Runtime" },
+      { itemId: "epic-runtime", type: "epic", status: epicStatus, title: "Runtime" },
       {
         itemId: "task-runtime",
         type: "task",
         status: "complete",
         title: "Runtime requirement",
-        evidence: [{ status: "pass", command: "node --test tests/runtime.test.mjs" }],
+        evidence,
       },
     ],
   }, null, 2)}\n`, "utf8");

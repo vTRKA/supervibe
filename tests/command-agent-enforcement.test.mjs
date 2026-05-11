@@ -60,6 +60,7 @@ test("normal design flow must require design specialists", () => {
   ]));
   const missing = issues.filter((issue) => issue.code === "missing-design-flow-agent").map((issue) => issue.message);
   assert.ok(missing.some((item) => item.includes("creative-director")));
+  assert.ok(missing.some((item) => item.includes("tauri-ui-designer")));
   assert.ok(missing.some((item) => item.includes("prototype-builder")));
   assert.ok(missing.some((item) => item.includes("ui-polish-reviewer")));
   assert.ok(missing.some((item) => item.includes("accessibility-reviewer")));

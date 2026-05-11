@@ -213,8 +213,11 @@ export function validatePlanArtifact(markdown) {
   }
 
   const handoff = sectionBody(markdown, 'Execution Handoff');
-  if (!/(Subagent-Driven|Inline).*(batch|batches)/is.test(handoff)) {
-    issues.push('execution handoff: missing subagent or inline batches');
+  if (!/(real[- ]agent|host agents|runtime-issued|receipt-backed|workflow receipt).*(batch|handoff|receipt)/is.test(handoff)) {
+    issues.push('execution handoff: missing real-agent receipt-backed handoff');
+  }
+  if (/(Subagent-Driven|Inline).*(batch|batches)/is.test(handoff) && !/(rejected|prohibited|forbidden|not allowed)/i.test(handoff)) {
+    issues.push('execution handoff: subagent or inline batches must be explicitly rejected, not proposed');
   }
 
   if (hasPlaceholder(markdown)) {

@@ -123,8 +123,10 @@ Type consistency: no type boundary changed.
 
 ## Execution Handoff
 
-Inline batches:
-- Batch 1: Task 1.
+Real-agent receipt-backed handoff:
+- Runtime-issued workflow receipts are required for producer, reviewer, and validator work.
+- Subagent-Driven batches are prohibited for this flow.
+- Inline batches are prohibited for this flow.
 `;
 
   assert.deepEqual(validatePlanArtifact(markdown), []);

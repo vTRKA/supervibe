@@ -61,6 +61,7 @@ const DESIGN_AGENT_IDS = [
   "creative-director",
   "design-system-architect",
   "ux-ui-designer",
+  "tauri-ui-designer",
   "copywriter",
   "prototype-builder",
   "ui-polish-reviewer",
@@ -123,6 +124,7 @@ test("design agent plan maps source types and stages to explicit agents and skil
   assert.ok(plan.stages.some((stage) => stage.skillId === "supervibe:brandbook"));
   assert.ok(plan.stages.some((stage) => stage.agentId === "design-system-architect"));
   assert.ok(plan.stages.some((stage) => stage.agentId === "ux-ui-designer"));
+  assert.ok(plan.stages.some((stage) => stage.agentId === "tauri-ui-designer"));
   assert.ok(plan.stages.some((stage) => stage.agentId === "prototype-builder"));
   assert.ok(plan.stages.some((stage) => stage.skillId === "supervibe:mcp-discovery" && stage.reason.includes("website")));
   assert.ok(plan.stages.some((stage) => stage.skillId === "supervibe:design-intelligence" && stage.reason.includes("pdf")));
@@ -741,7 +743,7 @@ test("design agent plan respects persisted reference scope before choosing next 
   }
 });
 
-test("design execution modes are explicit and non-real modes cannot claim specialist output", async () => {
+test("design execution modes reject inline and hybrid durable execution", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-execution-modes-"));
   try {
     await installCodexDesignAgents(root);
@@ -754,10 +756,17 @@ test("design execution modes are explicit and non-real modes cannot claim specia
       mode: "design-system-only",
     });
 
-    assert.equal(inlinePlan.executionStatus.executionMode, "inline");
+    assert.equal(inlinePlan.executionStatus.executionMode, "agent-required-blocked");
+    assert.equal(inlinePlan.executionStatus.requestedExecutionModeRejected, "inline");
     assert.equal(inlinePlan.executionStatus.agentReceiptsAllowed, false);
+    assert.equal(inlinePlan.executionStatus.inlineDraftAllowed, false);
     assert.equal(inlinePlan.writeGate.durableWritesAllowed, false);
-    assert.ok(inlinePlan.writeGate.blockedReasons.some((reason) => reason.code === "non-real-agent-execution-mode"));
+    assert.ok(inlinePlan.writeGate.blockedReasons.some((reason) => reason.code === "agent-required-blocked"));
+    assert.deepEqual(inlinePlan.executionStatus.degradedModeQuestion.choices.map((choice) => choice.id), [
+      "install-missing-agents",
+      "connect-host-agents",
+      "stop",
+    ]);
 
     const hybridPlan = buildDesignAgentPlan({
       brief: "Hybrid design run with agents for final outputs.",
@@ -768,10 +777,23 @@ test("design execution modes are explicit and non-real modes cannot claim specia
       mode: "design-system-only",
     });
 
-    assert.equal(hybridPlan.executionStatus.executionMode, "hybrid");
-    assert.equal(hybridPlan.executionStatus.agentReceiptsAllowed, true);
+    assert.equal(hybridPlan.executionStatus.executionMode, "agent-required-blocked");
+    assert.equal(hybridPlan.executionStatus.requestedExecutionModeRejected, "hybrid");
+    assert.equal(hybridPlan.executionStatus.agentReceiptsAllowed, false);
+    assert.equal(hybridPlan.executionStatus.inlineDraftAllowed, false);
     assert.equal(hybridPlan.writeGate.durableWritesAllowed, false);
-    assert.match(formatDesignPlanPrompt(hybridPlan), /hybrid/i);
+    assert.match(formatDesignPlanPrompt(hybridPlan), /hybrid mode is rejected/i);
+
+    const briefOnlyPlan = buildDesignAgentPlan({
+      brief: "Hybrid inline draft wording must not switch execution mode.",
+      target: "web",
+      rootDir: root,
+      pluginRoot: ROOT,
+      mode: "design-system-only",
+    });
+    assert.notEqual(briefOnlyPlan.executionStatus.executionMode, "inline");
+    assert.notEqual(briefOnlyPlan.executionStatus.executionMode, "hybrid");
+    assert.equal(briefOnlyPlan.executionStatus.requestedExecutionModeRejected, null);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -1224,6 +1246,7 @@ test("active design receipt validator requires reviewer stage receipts after pro
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-active-reviewers-"));
   try {
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/index.html", "<!doctype html>\n");
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/config.json", "{\"target\":\"tauri\"}\n");
 
     const result = validateDesignAgentInvocationReceipts(root, {
       active: true,
@@ -1233,6 +1256,9 @@ test("active design receipt validator requires reviewer stage receipts after pro
     });
 
     assert.equal(result.pass, false);
+    assert.ok(result.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "ux-ui-designer"));
+    assert.ok(result.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "tauri-ui-designer"));
+    assert.ok(result.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "copywriter"));
     assert.ok(result.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "prototype-builder"));
     assert.ok(result.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "ui-polish-reviewer"));
     assert.ok(result.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "accessibility-reviewer"));
@@ -1255,6 +1281,8 @@ test("active design receipt validator requires agent and reviewer receipts for m
     });
 
     assert.equal(result.pass, false);
+    assert.ok(result.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "ux-ui-designer"));
+    assert.ok(result.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "copywriter"));
     assert.ok(result.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "prototype-builder"));
     assert.ok(result.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "ui-polish-reviewer"));
     assert.ok(result.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "accessibility-reviewer"));

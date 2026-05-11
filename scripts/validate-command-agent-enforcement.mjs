@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -10,6 +10,7 @@ import {
 import {
   copyCommandAgentContract,
   listCommandAgentProfiles,
+  resolveHostAgentDispatcher,
   validateCommandAgentProfiles,
 } from "./lib/command-agent-orchestration-contract.mjs";
 
@@ -17,6 +18,7 @@ const REQUIRED_DESIGN_AGENTS = Object.freeze([
   "creative-director",
   "design-system-architect",
   "ux-ui-designer",
+  "tauri-ui-designer",
   "copywriter",
   "prototype-builder",
   "accessibility-reviewer",
@@ -50,6 +52,10 @@ export function validateCommandAgentEnforcement(rootDir = process.cwd(), options
 
   for (const profile of profiles) {
     issues.push(...validateProfileShape(profile, contract));
+  }
+
+  if (options.sourcePolicyChecks !== false) {
+    issues.push(...validateProviderBypassSourcePolicy(rootDir));
   }
 
   const syntheticChecks = [];
@@ -123,6 +129,35 @@ export function validateProfileShape(profile = {}, contract = copyCommandAgentCo
         issues.push(issue(commandId, "missing-prototype-preview-agent", `${commandId}: prototype preview flow must require ${agentId}`));
       }
     }
+  }
+  return issues;
+}
+
+export function validateProviderBypassSourcePolicy(rootDir = process.cwd()) {
+  const issues = [];
+  const designPath = join(rootDir, "scripts", "lib", "design-agent-orchestration.mjs");
+  if (existsSync(designPath)) {
+    const designSource = readFileSync(designPath, "utf8");
+    if (/id:\s*"hybrid"/.test(designSource) || /id:\s*"inline"/.test(designSource)) {
+      issues.push(issue("/supervibe-design", "unsafe-design-degraded-mode-choice", "design degraded execution questions must not offer inline or hybrid continuation choices"));
+    }
+    if (
+      /requestedMode\s*===\s*"hybrid"\)\s*return\s+"hybrid"/.test(designSource)
+      || /requestedMode\s*===\s*"inline"\)\s*return\s+"inline"/.test(designSource)
+      || /requiredAgentIds\.length\s*===\s*0\)\s*return\s+"inline"/.test(designSource)
+    ) {
+      issues.push(issue("/supervibe-design", "unsafe-design-execution-mode-return", "design execution mode derivation must not return inline or hybrid"));
+    }
+    if (/executionModes:\s*\[[^\]]*"inline"/s.test(designSource) || /executionModes:\s*\[[^\]]*"hybrid"/s.test(designSource)) {
+      issues.push(issue("/supervibe-design", "unsafe-design-execution-mode-list", "design execution mode list must expose only real-agent and blocked states"));
+    }
+  }
+  const codex = resolveHostAgentDispatcher("codex");
+  if (!/Do not substitute a generic worker or explorer subagent/i.test(codex?.instructions || "")) {
+    issues.push(issue("codex", "codex-generic-subagent-policy-missing", "Codex dispatcher instructions must forbid generic worker or explorer substitution for named Supervibe specialists"));
+  }
+  if (!/controller-authored inline edits/i.test(codex?.instructions || "")) {
+    issues.push(issue("codex", "codex-inline-controller-policy-missing", "Codex dispatcher instructions must forbid controller-authored inline edits from satisfying specialist receipts"));
   }
   return issues;
 }

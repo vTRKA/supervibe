@@ -121,6 +121,7 @@ test("command matches expose the real-agent orchestration contract", () => {
   assert.equal(match.agentContract.ownerAgentId, "supervibe-orchestrator");
   assert.equal(match.agentProfile.defaultExecutionMode, "real-agents");
   assert.ok(match.agentProfile.requiredAgentIds.includes("creative-director"));
+  assert.ok(match.agentProfile.requiredAgentIds.includes("tauri-ui-designer"));
   assert.ok(match.agentProfile.requiredAgentIds.includes("prototype-builder"));
   assert.deepEqual(match.agentProfile.immediateAgentIds, ["supervibe-orchestrator"]);
   assert.equal(match.agentProfile.stageGate, "design-wizard");
@@ -842,6 +843,7 @@ test("command-agent-plan CLI prints runtime host plan", () => {
       "creative-director",
       "design-system-architect",
       "ux-ui-designer",
+      "tauri-ui-designer",
       "copywriter",
       "prototype-builder",
       "accessibility-reviewer",

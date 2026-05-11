@@ -127,6 +127,7 @@ test("approval promotion moves design-system and prototype state from candidate 
       },
     }, null, 2)}\n`);
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/spec.md", "# Spec\n");
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/content/copy.md", "# Copy\n");
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/index.html", "<!doctype html><title>Prototype</title>\n");
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/_reviews/polish.md", "# Polish\n\nVerdict: PASS\n\nBlockers: none\nHigh issues: none\n");
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/_reviews/a11y.md", "# A11y\n\nVerdict: PASS\n\nBlockers: none\nHigh issues: none\n");
@@ -161,6 +162,13 @@ test("approval promotion moves design-system and prototype state from candidate 
       stage: "stage-3-screen-spec",
       outputArtifacts: [".supervibe/artifacts/prototypes/agent-chat/spec.md"],
       invocationReason: "ux ui designer produced prototype screen spec",
+    });
+    await issueDesignReceipt(root, {
+      subjectType: "agent",
+      subjectId: "copywriter",
+      stage: "stage-4-copy",
+      outputArtifacts: [".supervibe/artifacts/prototypes/agent-chat/content/copy.md"],
+      invocationReason: "copywriter finalized prototype microcopy",
     });
     await issueDesignReceipt(root, {
       subjectType: "agent",

@@ -442,11 +442,16 @@ export function expectedProducerReceiptsForDurableOutputs(rootDir = process.cwd(
     const base = `.supervibe/artifacts/${rootName}/${slug}`;
     const prototypeIndexExists = existsSync(join(rootDir, ".supervibe", "artifacts", rootName, slug, "index.html"));
     const requiredReviewStage = requireDesignReviewStages && prototypeIndexExists;
-    add({ command: "/supervibe-design", outputArtifact: `${base}/spec.md`, subjectType: "agent", subjectId: "ux-ui-designer", stageId: "stage-3-screen-spec" });
+    const requiredFoundationStage = requireDesignReviewStages && prototypeIndexExists;
+    const requiredTauriStage = requiredFoundationStage && designArtifactRequiresTauriUi(rootDir, rootName, slug);
+    add({ command: "/supervibe-design", outputArtifact: `${base}/spec.md`, subjectType: "agent", subjectId: "ux-ui-designer", stageId: "stage-3-screen-spec", required: requiredFoundationStage });
+    if (requiredTauriStage) {
+      add({ command: "/supervibe-design", outputArtifact: `${base}/decisions/tauri-ui-review.md`, subjectType: "agent", subjectId: "tauri-ui-designer", stageId: "stage-3-tauri-ui-review", required: true });
+    }
     add({ command: "/supervibe-design", outputArtifact: `${base}/decisions/media-capability-detection.md`, subjectType: "skill", subjectId: "supervibe:design-intelligence", stageId: "stage-4-media-capability-detection" });
     add({ command: "/supervibe-design", outputArtifact: `${base}/decisions/prototype-capability-plan.md`, subjectType: "agent", subjectId: "prototype-builder", stageId: "stage-4-prototype-capability-plan" });
     add({ command: "/supervibe-design", outputArtifact: `${base}/decisions/interaction-design-patterns.md`, subjectType: "skill", subjectId: "supervibe:interaction-design-patterns", stageId: "stage-4-interaction-patterns" });
-    add({ command: "/supervibe-design", outputArtifact: `${base}/content/copy.md`, subjectType: "agent", subjectId: "copywriter", stageId: "stage-4-copy" });
+    add({ command: "/supervibe-design", outputArtifact: `${base}/content/copy.md`, subjectType: "agent", subjectId: "copywriter", stageId: "stage-4-copy", required: requiredFoundationStage });
     add({ command: "/supervibe-design", outputArtifact: `${base}/index.html`, subjectType: "agent", subjectId: "prototype-builder", stageId: "stage-5-prototype-build" });
     add({ command: "/supervibe-design", outputArtifact: `${base}/variant-manifest.json`, subjectType: "agent", subjectId: "creative-director", stageId: "stage-1-brand-direction" });
     add({ command: "/supervibe-design", outputArtifact: `${base}/diversity-report.json`, subjectType: "reviewer", subjectId: "ui-polish-reviewer", stageId: "stage-6-polish-review" });
@@ -560,6 +565,26 @@ function listDesignDirs(rootDir, rootName) {
     .map((entry) => entry.name)
     .filter((name) => !name.startsWith("_"))
     .sort();
+}
+
+function designArtifactRequiresTauriUi(rootDir, rootName, slug) {
+  const configPath = join(rootDir, ".supervibe", "artifacts", rootName, slug, "config.json");
+  if (!existsSync(configPath)) return false;
+  try {
+    const config = JSON.parse(readFileSync(configPath, "utf8"));
+    const value = [
+      config.target,
+      config.platform,
+      config.app,
+      config.appShell,
+      config.shell,
+      config.mode,
+      slug,
+    ].filter(Boolean).join(" ").toLowerCase();
+    return /\btauri\b|\bdesktop(?:-app)?\b|electron|native desktop/i.test(value);
+  } catch {
+    return false;
+  }
 }
 
 function listVariantArtifacts(rootDir, designArtifact) {

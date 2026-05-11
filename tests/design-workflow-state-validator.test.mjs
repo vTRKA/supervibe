@@ -92,6 +92,8 @@ test("design workflow state validator fails when config says no prototype but in
       mode: "design-system-only",
       prototypeExists: false,
     }, null, 2)}\n`);
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/spec.md", "# Spec\n");
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/content/copy.md", "# Copy\n");
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/index.html", "<!doctype html><title>Prototype</title>\n");
 
     const result = validateDesignWorkflowState(root);
@@ -159,6 +161,8 @@ test("approved prototype state sync repairs config, flow state, and manifest dri
       prototypeExists: false,
       prototypeUnlocked: false,
     }, null, 2)}\n`);
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/spec.md", "# Spec\n");
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/content/copy.md", "# Copy\n");
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/index.html", "<!doctype html><title>Prototype</title>\n");
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/.approval.json", `${JSON.stringify({
       status: "approved",
@@ -180,6 +184,20 @@ test("approved prototype state sync repairs config, flow state, and manifest dri
         ".supervibe/artifacts/prototypes/_design-system/design-flow-state.json",
       ],
       invocationReason: "brandbook producer materialized approved design-system state",
+    });
+    await issueDesignReceipt(root, {
+      subjectType: "agent",
+      subjectId: "ux-ui-designer",
+      stage: "stage-3-screen-spec",
+      outputArtifacts: [".supervibe/artifacts/prototypes/agent-chat/spec.md"],
+      invocationReason: "ux ui designer produced approved prototype screen spec",
+    });
+    await issueDesignReceipt(root, {
+      subjectType: "agent",
+      subjectId: "copywriter",
+      stage: "stage-4-copy",
+      outputArtifacts: [".supervibe/artifacts/prototypes/agent-chat/content/copy.md"],
+      invocationReason: "copywriter finalized approved prototype microcopy",
     });
     await issueDesignReceipt(root, {
       subjectType: "agent",

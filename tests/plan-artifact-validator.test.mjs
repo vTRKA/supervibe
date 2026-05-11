@@ -160,8 +160,9 @@ git add src/billing/export-service.ts tests/billing/export-service.test.ts && gi
 
 ## Execution Handoff
 
-**Subagent-Driven batches:** Batch 1: T1.
-**Inline batches:** T1 if subagents unavailable.
+**Real-agent receipt-backed handoff:** Batch 1: T1 runs only after runtime-issued workflow receipts are available for the owning specialist.
+**Subagent-Driven batches:** prohibited batches for this plan.
+**Inline batches:** prohibited batches for durable implementation.
 `;
 
 test('validatePlanArtifact accepts a complete plan', () => {
