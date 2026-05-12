@@ -44,6 +44,30 @@
         "requiredAgentCapability": "quality-gate-reviewer",
         "confidenceRubricId": "autonomous-loop",
         "policyRiskLevel": "low"
+      },
+      "taskScore": {
+        "schemaVersion": 1,
+        "kind": "task",
+        "score": null,
+        "status": "pending",
+        "source": "not-scored",
+        "updatedAt": null
+      },
+      "reviewerScore": {
+        "schemaVersion": 1,
+        "kind": "reviewer",
+        "score": null,
+        "status": "pending",
+        "source": "not-scored",
+        "updatedAt": null
+      },
+      "evidenceScore": {
+        "schemaVersion": 1,
+        "kind": "evidence",
+        "score": null,
+        "status": "pending",
+        "source": "not-scored",
+        "updatedAt": null
       }
     },
     {
@@ -87,6 +111,30 @@
         "stopConditions": [
           "verification_failed"
         ]
+      },
+      "taskScore": {
+        "schemaVersion": 1,
+        "kind": "task",
+        "score": null,
+        "status": "pending",
+        "source": "not-scored",
+        "updatedAt": null
+      },
+      "reviewerScore": {
+        "schemaVersion": 1,
+        "kind": "reviewer",
+        "score": null,
+        "status": "pending",
+        "source": "not-scored",
+        "updatedAt": null
+      },
+      "evidenceScore": {
+        "schemaVersion": 1,
+        "kind": "evidence",
+        "score": null,
+        "status": "pending",
+        "source": "not-scored",
+        "updatedAt": null
       }
     }
   ],
@@ -150,7 +198,32 @@
         "planPath": "tests/fixtures/artifacts/work-item-graphs/agent-readiness.work-item-graph.json",
         "itemId": "epic-agent-readiness-t1",
         "epicId": "epic-agent-readiness"
+      },
+      "taskScore": {
+        "schemaVersion": 1,
+        "kind": "task",
+        "score": null,
+        "status": "pending",
+        "source": "not-scored",
+        "updatedAt": null
+      },
+      "reviewerScore": {
+        "schemaVersion": 1,
+        "kind": "reviewer",
+        "score": null,
+        "status": "pending",
+        "source": "not-scored",
+        "updatedAt": null
+      },
+      "evidenceScore": {
+        "schemaVersion": 1,
+        "kind": "evidence",
+        "score": null,
+        "status": "pending",
+        "source": "not-scored",
+        "updatedAt": null
       }
     }
-  ]
+  ],
+  "updatedAt": "2026-05-12T08:34:56.967Z"
 }

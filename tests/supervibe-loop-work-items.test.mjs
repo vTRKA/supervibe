@@ -234,6 +234,70 @@ test("loop tracker-prime prints atomize and runtime gate guidance when graph is 
   }
 });
 
+test("loop CLI status prints selected epic task list with statuses and blockers", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-status-tasks-"));
+  try {
+    const graph = atomizePlanToWorkItems(`Critical path: T1 -> T2\n\n${PLAN}`, {
+      planPath: ".supervibe/artifacts/plans/status-tasks.md",
+      epicId: "epic-status-tasks",
+      planReviewPassed: true,
+    });
+    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: temp });
+
+    const { stdout } = await execFileAsync(process.execPath, [
+      join(ROOT, "scripts", "supervibe-loop.mjs"),
+      "--status",
+      "--file",
+      graphPath,
+    ], { cwd: temp });
+
+    assert.match(stdout, /TASKS: 2/);
+    assert.match(stdout, /TASK: epic-status-tasks-t1 STATUS: ready .* NEXT: claim/);
+    assert.match(stdout, /TASK: epic-status-tasks-t2 STATUS: blocked .* BLOCKED_BY: epic-status-tasks-t1/);
+    assert.match(stdout, /NEXT_ACTION: claim epic-status-tasks-t1 or run \/supervibe-loop --claim-ready/);
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+test("loop CLI status recommends archive for completed epic", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-status-archive-"));
+  try {
+    const graph = atomizePlanToWorkItems(PLAN, {
+      planPath: ".supervibe/artifacts/plans/status-archive.md",
+      epicId: "epic-status-archive",
+      planReviewPassed: true,
+    });
+    const evidence = { taskId: "all", command: "node --test", status: "pass", output: "verified" };
+    const completed = {
+      ...graph,
+      items: graph.items.map((item) => ({
+        ...item,
+        status: "complete",
+        verificationEvidence: [{ ...evidence, taskId: item.itemId }],
+      })),
+      tasks: graph.tasks.map((task) => ({
+        ...task,
+        status: "complete",
+        verificationEvidence: [{ ...evidence, taskId: task.id }],
+      })),
+      evidence: graph.tasks.map((task) => ({ ...evidence, taskId: task.id })),
+    };
+    const { graphPath } = await writeWorkItemGraph(completed, { rootDir: temp });
+
+    const { stdout } = await execFileAsync(process.execPath, [
+      join(ROOT, "scripts", "supervibe-loop.mjs"),
+      "--status",
+      "--file",
+      graphPath,
+    ], { cwd: temp });
+
+    assert.match(stdout, /NEXT_ACTION: finish\/archive completed epic/);
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
 test("loop CLI status does not report terminal review gates as pending review work", async () => {
   const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-terminal-status-"));
   try {
@@ -268,7 +332,7 @@ test("loop CLI status does not report terminal review gates as pending review wo
     ], { cwd: ROOT });
 
     assert.match(stdout, /REVIEW: 0/);
-    assert.match(stdout, /NEXT_ACTION: run \/supervibe-loop --validate-completion/);
+    assert.match(stdout, /NEXT_ACTION: finish\/archive completed epic/);
   } finally {
     await rm(temp, { recursive: true, force: true });
   }

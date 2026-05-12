@@ -169,6 +169,57 @@ node --test tests/supervibe-plan-to-work-items.test.mjs
 \`\`\`
 `;
 
+const PLAN_WITH_ATOMIC_INVENTORY = `# Atomic Inventory Implementation Plan
+
+Critical path: T1 -> T2
+
+## Atomic Task Inventory
+
+| ID | Work item |
+|----|-----------|
+| A001 | Add active workflow state schema. |
+| A002 | Persist active workflow state. |
+| A003 | Add continuation routing. |
+| A004 | Add status preview. |
+
+## Scope Safety Gate
+
+- Approved scope baseline: atomic inventory coverage.
+
+## Production Readiness
+
+- Test: unit tests pass.
+
+## Final 10/10 Acceptance Gate
+
+- 10/10 acceptance: every A-row is visible as a child work item.
+- Verification: commands pass.
+
+## Task T1: Workflow state
+**Files:**
+- Create: \`scripts/lib/state.mjs\`
+**Scope IDs:** A001, A002
+**Estimated time:** 15min, confidence: high
+**Rollback:** git revert <sha>
+**Acceptance Criteria:**
+- State rows are implemented.
+\`\`\`bash
+node --test tests/state.test.mjs
+\`\`\`
+
+## Task T2: Routing and status
+**Files:**
+- Modify: \`scripts/router.mjs\`
+**Scope IDs:** A003, A004
+**Estimated time:** 15min, confidence: high
+**Rollback:** git revert <sha>
+**Acceptance Criteria:**
+- Routing rows are implemented.
+\`\`\`bash
+node --test tests/router.test.mjs
+\`\`\`
+`;
+
 test("plan parser extracts tasks, critical path, parallel groups, and review gates", () => {
   assert.ok(WORK_ITEM_TYPES.includes("epic"));
   assert.ok(WORK_ITEM_REQUIRED_FIELDS.includes("verificationCommands"));
@@ -229,6 +280,50 @@ test("atomization expands checkbox steps into subtask work items", () => {
   assert.equal(stepOne.executionHints.parentTaskRef, "T01");
   assert.ok(stepOne.verificationCommands.includes("node --test tests/supervibe-plan-to-work-items.test.mjs"));
   assert.ok(secondParent.blocks.includes(secondStep.itemId));
+});
+
+test("atomization expands Atomic Task Inventory rows into visible child work items", () => {
+  const graph = atomizePlanToWorkItems(PLAN_WITH_ATOMIC_INVENTORY, {
+    planPath: ".supervibe/artifacts/plans/atomic.md",
+    epicId: "epic-atomic",
+    planReviewPassed: true,
+  });
+
+  assert.equal(graph.validation.valid, true);
+  assert.deepEqual(graph.metadata.atomicInventoryIds, ["A001", "A002", "A003", "A004"]);
+  assert.equal(graph.items.some((item) => item.itemId === "epic-atomic-t1"), false);
+
+  const atomicItems = graph.items.filter((item) => item.executionHints?.sourceAtomicId);
+  assert.equal(atomicItems.length, 4);
+  assert.ok(atomicItems.some((item) => item.itemId === "epic-atomic-a001"));
+  assert.ok(atomicItems.some((item) => item.itemId === "epic-atomic-a004"));
+
+  const a001 = graph.items.find((item) => item.itemId === "epic-atomic-a001");
+  const a002 = graph.items.find((item) => item.itemId === "epic-atomic-a002");
+  const a003 = graph.items.find((item) => item.itemId === "epic-atomic-a003");
+  assert.equal(a001.executionHints.parentTaskRef, "T1");
+  assert.equal(a003.executionHints.parentTaskRef, "T2");
+  assert.ok(a001.blocks.includes(a002.itemId));
+  assert.ok(a002.blocks.includes(a003.itemId));
+  assert.deepEqual(a001.writeScope, [{ action: "create", path: "scripts/lib/state.mjs" }]);
+
+  const preview = createWorkItemPreview(graph, graph.validation);
+  assert.match(preview, /epic-atomic-a004: \[task\] A004: Add status preview\./);
+  assert.match(preview, /ITEMS_DETAIL_TRUNCATED: 0/);
+});
+
+test("validation rejects missing Atomic Task Inventory coverage", () => {
+  const graph = atomizePlanToWorkItems(PLAN_WITH_ATOMIC_INVENTORY, {
+    planPath: ".supervibe/artifacts/plans/atomic.md",
+    epicId: "epic-atomic",
+    planReviewPassed: true,
+  });
+  graph.items = graph.items.filter((item) => item.itemId !== "epic-atomic-a003");
+  graph.tasks = workItemsToLoopTasks(graph.items);
+
+  const validation = validateWorkItemGraph(graph);
+  assert.equal(validation.valid, false);
+  assert.ok(validation.issues.some((issue) => issue.code === "missing-atomic-inventory-item" && issue.atomicId === "A003"));
 });
 
 test("work item graph converts into runner-compatible loop tasks", () => {
@@ -380,9 +475,10 @@ test("loop CLI atomizes a reviewed plan into graph artifacts", async () => {
       "--atomize-plan",
       planPath,
       "--plan-review-passed",
+      "--allow-unverified-plan-review",
       "--out",
       join(temp, "out"),
-    ], { cwd: temp });
+    ], { cwd: temp, env: { ...process.env, SUPERVIBE_ALLOW_UNVERIFIED_PLAN_REVIEW: "1" } });
 
     assert.match(stdout, /SUPERVIBE_WORK_ITEMS/);
     assert.match(stdout, /VALID: true/);
@@ -391,6 +487,33 @@ test("loop CLI atomizes a reviewed plan into graph artifacts", async () => {
     const mapping = JSON.parse(await readFile(join(temp, ".supervibe", "memory", "loops", "task-tracker-map.json"), "utf8"));
     assert.equal(saved.kind, "supervibe-work-item-graph");
     assert.equal(Object.keys(mapping.items).length, saved.items.length);
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+test("loop CLI rejects plan-review-passed alone without validated review artifact", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-review-gate-"));
+  try {
+    const planPath = join(temp, "plan.md");
+    const scriptPath = join(process.cwd(), "scripts", "supervibe-loop.mjs");
+    await writeFile(planPath, PLAN);
+
+    await assert.rejects(
+      () => execFileAsync(process.execPath, [
+        scriptPath,
+        "--atomize-plan",
+        planPath,
+        "--plan-review-passed",
+        "--out",
+        join(temp, "out"),
+      ], { cwd: temp }),
+      (error) => {
+        assert.notEqual(error.code, 0);
+        assert.match(`${error.stderr}\n${error.stdout}`, /validated plan review artifact|no plan review artifacts found/i);
+        return true;
+      },
+    );
   } finally {
     await rm(temp, { recursive: true, force: true });
   }
@@ -410,9 +533,10 @@ test("loop CLI rejects invalid reviewed plan without writing graph artifacts", a
         "--atomize-plan",
         planPath,
         "--plan-review-passed",
+        "--allow-unverified-plan-review",
         "--out",
         outDir,
-      ], { cwd: temp }),
+      ], { cwd: temp, env: { ...process.env, SUPERVIBE_ALLOW_UNVERIFIED_PLAN_REVIEW: "1" } }),
       (error) => {
         assert.notEqual(error.code, 0);
         assert.match(`${error.stderr}\n${error.stdout}`, /invalid work-item graph/i);

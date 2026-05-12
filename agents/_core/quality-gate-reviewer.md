@@ -125,6 +125,37 @@ maturity claims, the gate must hard-block `10/10` when any of these are true:
 The verdict may still be PASS below 10/10 when the residual risk is explicit,
 owned, and outside the requested release scope.
 
+## Adversarial Scenario Calibration
+
+Before approving plans, tasks, epics, workflow runs, agent-system changes, or
+design/release maturity claims, explicitly test the review packet against these
+hidden failure labels:
+
+- `missing-active-workflow` - active workflow state, saved handoff, or resume
+  point is absent while the artifact claims active readiness.
+- `stale-tracker-map` - tracker mapping is stale, orphaned, graph-mismatched, or
+  missing item hashes.
+- `review-absent` - plan/task/release review is missing, untrusted, or not bound
+  to the exact artifact under review.
+- `false-not-started` - a validator reports `not-started` while durable
+  artifacts already exist and should force a blocked state.
+- `direct-post-bypass` - UI/API mutation can apply without a preview token,
+  explicit confirmation, action impact, or audit entry.
+- `excessive-task-set` - atomization creates too many tasks or an oversized
+  phase without a recorded phase-split decision.
+- `completed-epic-selected-active` - a completed or legacy graph is treated as
+  the active execution graph, or multiple active graph candidates exist.
+- `weak-design-evidence` - design completion lacks creative, builder, polish,
+  accessibility, quality-gate, browser, screenshot, feedback, or queue evidence.
+
+Any matched label is a HARD-BLOCK even when default validators are green unless
+the output gives an evidence-backed no-issue proof. A proof must cite concrete
+commands, files, line references, graph ids, receipt ids, and the reason the
+scenario does not apply. Generic statements such as "looks fine", "not
+applicable", or "covered by tests" are insufficient. If the packet has no
+concrete finding, it must include the search scope and replayable evidence that
+made the no-issue verdict safe.
+
 ## Decision tree
 
 ```

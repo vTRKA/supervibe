@@ -29,6 +29,8 @@ import { writeContextMigrationPlan } from "./supervibe-context-migrator.mjs";
 const BASELINE_PATH = [".supervibe", "memory", "adapt", "baseline.json"];
 const STATE_PATH = [".supervibe", "memory", "adapt", "state.json"];
 const DEFAULT_INDEX_REPAIR_COMMAND = SOURCE_RAG_INDEX_COMMAND;
+const ADAPT_STATE_REL_PATH = ".supervibe/memory/adapt/state.json";
+const ADAPT_APP_VERIFY_COMMAND = "node <resolved-supervibe-plugin-root>/scripts/supervibe-genesis.mjs --verify-apps";
 const DOKPLOY_FULL_STACK_MIGRATION_COMMAND = "docker compose -f docker-compose.dokploy.yml run --rm backend php artisan migrate --force";
 const DOCKER_LARAVEL_MIGRATION_COMMAND = "docker compose run --rm backend php artisan migrate --force";
 const NEXT_HEALTHCHECK_TEST = `["CMD-SHELL", "node -e \\"fetch('http://127.0.0.1:' + (process.env.PORT || 3000)).then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\\""]`;
@@ -535,7 +537,11 @@ export function formatAdaptPlan(plan, { diffSummary = false } = {}) {
     `MEMORY_INDEX: ${plan.memoryIndex?.status || "unknown"}`,
     `MEMORY_INDEX_REFRESHED: ${plan.memoryIndex?.refreshed ? "true" : "false"}`,
     `APPROVAL_REQUIRED: ${plan.approvalRequired}`,
+    `ADAPT_STATE: ${plan.driftState?.path || (adaptDriftReported(plan) ? ADAPT_STATE_REL_PATH : "not-written")}`,
+    `ADAPT_STATE_LIFECYCLE: ${plan.driftState?.lifecycle || (adaptDriftReported(plan) ? "drift_reported" : "not-needed")}`,
   ];
+  appendDirtyStateLines(lines, plan.driftState?.dirtyState);
+  appendVerificationHookLines(lines, plan.driftState?.verification);
   if (diffSummary) lines.push("", formatAdaptDiffSummary(plan));
   for (const warning of plan.frontendTarget?.driftWarnings || []) {
     lines.push(`FRONTEND_DRIFT: ${warning.code} - ${warning.message}`);
@@ -632,11 +638,15 @@ export function formatAdaptApply(result, { diffSummary = false } = {}) {
     `AGENT_RECEIPTS_VERIFIED: ${result.lifecycleState?.verification?.agentReceiptsVerified === true}`,
     `APP_VERIFIED: ${result.lifecycleState?.verification?.appVerified === true}`,
     `APP_VERIFICATION_STATUS: ${result.lifecycleState?.verification?.appVerificationStatus || "not-run-by-adapt"}`,
+    `APP_VERIFICATION_COMMAND: ${result.lifecycleState?.verification?.appVerificationCommand || "none"}`,
     `DEPLOY_VERIFIED: ${result.lifecycleState?.verification?.deployVerified === true}`,
     `DEPLOY_VERIFICATION_STATUS: ${result.lifecycleState?.verification?.deployVerificationStatus || "not-run-by-adapt"}`,
+    `DEPLOY_VERIFICATION_COMMAND: ${result.lifecycleState?.verification?.deployVerificationCommand || "none"}`,
     `TRANSACTION_ARTIFACT: ${result.workflowTransaction?.path || "not-written"}`,
     `WORKFLOW_RECEIPT: ${result.workflowTransaction?.receiptPath || "not-issued"}`,
   ];
+  appendDirtyStateLines(lines, result.lifecycleState?.validators ? result.lifecycleState?.recovery?.dirtyState || result.lifecycleState?.evidence?.dirtyState : null);
+  appendVerificationHookLines(lines, result.lifecycleState?.verification);
   if (diffSummary) lines.push("", formatAdaptDiffSummary({ items: result.applied }));
   for (const item of result.applied) lines.push(`APPLIED_FILE: ${item.projectRel}`);
   for (const item of result.skipped) lines.push(`SKIPPED_FILE: ${item.projectRel}`);
@@ -679,7 +689,11 @@ export function formatDokployDeployApply(result) {
     `ARTIFACT_VERIFIED: ${result.lifecycleState?.verification?.artifactVerified === true}`,
     `AGENT_RECEIPTS_VERIFIED: ${result.lifecycleState?.verification?.agentReceiptsVerified === true}`,
     `APP_VERIFIED: ${result.lifecycleState?.verification?.appVerified === true}`,
+    `APP_VERIFICATION_STATUS: ${result.lifecycleState?.verification?.appVerificationStatus || "not-run-by-adapt"}`,
+    `APP_VERIFICATION_COMMAND: ${result.lifecycleState?.verification?.appVerificationCommand || "none"}`,
     `DEPLOY_VERIFIED: ${result.lifecycleState?.verification?.deployVerified === true}`,
+    `DEPLOY_VERIFICATION_STATUS: ${result.lifecycleState?.verification?.deployVerificationStatus || "not-run-by-adapt"}`,
+    `DEPLOY_VERIFICATION_COMMAND: ${result.lifecycleState?.verification?.deployVerificationCommand || "none"}`,
     `DEPLOY_ARTIFACTS_VERIFIED: ${result.lifecycleState?.verification?.deployArtifactsVerified === true}`,
     `COMPOSE_CONFIG_VERIFIED: ${result.lifecycleState?.verification?.composeConfigVerified === true}`,
     `DEPLOY_RUNTIME_VERIFIED: ${result.lifecycleState?.verification?.deployRuntimeVerified === true}`,
@@ -691,6 +705,8 @@ export function formatDokployDeployApply(result) {
     `TRANSACTION_ARTIFACT: ${result.workflowTransaction?.path || "not-written"}`,
     `WORKFLOW_RECEIPT: ${result.workflowTransaction?.receiptPath || "not-issued"}`,
   ];
+  appendDirtyStateLines(lines, result.lifecycleState?.recovery?.dirtyState || result.lifecycleState?.evidence?.dirtyState);
+  appendVerificationHookLines(lines, result.lifecycleState?.verification);
   if (result.composeConfigVerification?.command) lines.push(`COMPOSE_CONFIG_COMMAND: ${result.composeConfigVerification.command}`);
   if (result.lifecycleState?.genesisReconciliation?.path) lines.push(`GENESIS_STATE_RECONCILED: ${result.lifecycleState.genesisReconciliation.path}`);
   for (const item of result.created || []) lines.push(`CREATED_FILE: ${item.projectRel}`);
@@ -752,6 +768,7 @@ export function summarizeAdaptPlan(plan) {
     baselineRefreshRequired: plan.baselineRefreshRequired === true,
     approvalRequired: plan.approvalRequired === true,
     memoryIndex: plan.memoryIndex,
+    driftState: plan.driftState || null,
     changedItems: changed.map((item) => ({
       path: item.projectRel,
       action: item.action,
@@ -956,6 +973,27 @@ function formatAdaptDiffSummary(plan) {
     lines.push(`DIFF: ${item.projectRel} +${diff.additions || 0} -${diff.deletions || 0} (${item.classification})`);
   }
   return lines.join("\n");
+}
+
+function appendVerificationHookLines(lines, verification = null) {
+  if (!verification) return;
+  const app = verification.appVerification || null;
+  const deploy = verification.deployVerification || null;
+  if (app?.nextCommand) lines.push(`NEXT_APP_VERIFICATION: ${app.nextCommand}`);
+  if (deploy?.nextCommand) lines.push(`NEXT_DEPLOY_VERIFICATION: ${deploy.nextCommand}`);
+}
+
+function appendDirtyStateLines(lines, dirtyState = null) {
+  if (!dirtyState) return;
+  const counts = dirtyState.counts || {};
+  lines.push(`DIRTY_STATE: ${dirtyState.status || "unknown"}`);
+  lines.push(`DIRTY_TOTAL: ${counts.total ?? 0}`);
+  lines.push(`DIRTY_EXPECTED_RECEIPTS: ${counts.expectedReceipts ?? 0}`);
+  lines.push(`DIRTY_EXPECTED_MEMORY: ${counts.expectedMemory ?? 0}`);
+  lines.push(`DIRTY_STALE_GARBAGE: ${counts.staleGarbage ?? 0}`);
+  lines.push(`DIRTY_APPROVED_ARTIFACTS: ${counts.approvedArtifacts ?? 0}`);
+  lines.push(`DIRTY_UNEXPECTED_MUTATIONS: ${counts.unexpectedMutations ?? 0}`);
+  lines.push(`DIRTY_SAFE: ${dirtyState.safe === true}`);
 }
 
 function buildAdaptFastPath({ counts = {}, items = [], memoryWrites = false } = {}) {
@@ -1484,6 +1522,101 @@ async function writeBaseline(plan, applied) {
   return normalizeRel(relative(plan.projectRoot, path));
 }
 
+export async function writeAdaptDriftState(plan, { items = null } = {}) {
+  if (!adaptDriftReported(plan)) return null;
+  const path = join(plan.projectRoot, ...STATE_PATH);
+  const now = new Date().toISOString();
+  const changedItems = (items || plan.items || [])
+    .filter((item) => item.action === "add" || item.action === "update" || item.action === "project-only")
+    .map((item) => ({
+      path: item.projectRel,
+      action: item.action,
+      classification: item.classification,
+      upstream: item.upstreamRel || null,
+    }));
+  const appVerification = buildAdaptAppVerificationHook(plan.projectRoot, { plan });
+  const deployVerification = buildAdaptDeployVerificationHook(plan.projectRoot, { plan });
+  const dirtyState = classifyAdaptDirtyState(plan.projectRoot);
+  const state = {
+    schemaVersion: 2,
+    command: "/supervibe-adapt",
+    lifecycle: "drift_reported",
+    currentStage: "drift_reported",
+    host: plan.host,
+    frontendTarget: plan.frontendTarget || null,
+    changeDetection: plan.changeDetection || null,
+    currentVersion: plan.currentVersion || null,
+    previousVersion: plan.lastSeenVersion || null,
+    approvedArtifacts: [],
+    updatedArtifacts: [],
+    skippedArtifacts: [],
+    blockedArtifacts: [],
+    drift: {
+      reported: true,
+      approvalRequired: plan.approvalRequired === true,
+      metadataUpdateRequired: plan.metadataUpdateRequired === true,
+      baselineRefreshRequired: plan.baselineRefreshRequired === true,
+      counts: plan.counts,
+      changedItems,
+    },
+    verification: {
+      artifactVerified: false,
+      adaptBaselineComplete: false,
+      agentReceiptsRequired: true,
+      agentReceiptsVerified: false,
+      agentRuntimeVerified: false,
+      appVerified: appVerification.verified === true,
+      appVerificationStatus: appVerification.status,
+      appVerificationCommand: appVerification.nextCommand,
+      appVerification,
+      deployVerified: deployVerification.verified === true,
+      deployVerificationStatus: deployVerification.status,
+      deployVerificationCommand: deployVerification.nextCommand,
+      deployVerification,
+      completionClaimAllowed: false,
+      completionClaim: "Adapt drift was reported only; apply and verification gates must run before claiming completion.",
+    },
+    recovery: {
+      dirtyState,
+      nextApply: plan.approvalRequired
+        ? `node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --apply --include "${changedItems.filter((item) => item.action !== "project-only").map((item) => item.path).join(",")}"`
+        : plan.metadataUpdateRequired
+          ? "node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --apply"
+          : null,
+      nextAppVerification: appVerification.nextCommand,
+      nextDeployVerification: deployVerification.nextCommand,
+    },
+    evidence: {
+      fastPath: plan.fastPath || null,
+      agentPlanCommand: plan.agentPlanCommand || buildAdaptAgentPlanCommand({ counts: plan.counts, memoryWrites: plan.memoryWrites }),
+      memoryIndex: plan.memoryIndex,
+      dirtyState,
+    },
+    validators: {
+      artifactVerified: false,
+      agentReceiptsVerified: false,
+      agentRuntimeVerified: false,
+      appVerified: appVerification.verified === true,
+      deployVerified: deployVerification.verified === true,
+      dirtyUnexpectedMutations: dirtyState.counts.unexpectedMutations,
+      blockedCount: 0,
+    },
+    history: [
+      { state: "drift_reported", at: now, counts: plan.counts },
+    ],
+    updatedAt: now,
+  };
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+  return {
+    path: normalizeRel(relative(plan.projectRoot, path)),
+    lifecycle: state.lifecycle,
+    verification: state.verification,
+    validators: state.validators,
+    dirtyState,
+  };
+}
+
 async function writeAdaptLifecycleState(plan, result, { include = [], applyAll = false } = {}) {
   const path = join(plan.projectRoot, ...STATE_PATH);
   const now = new Date().toISOString();
@@ -1499,8 +1632,18 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
   const baselineOnlyFastPath = plan.fastPath?.baselineOnly === true;
   const agentReceiptsRequired = !baselineOnlyFastPath;
   const adaptBaselineComplete = artifactVerified && (result.metadataUpdated === true || result.baselineRefreshed === true || updatedArtifacts.length === 0);
-  const appVerified = false;
-  const deployVerified = false;
+  const appVerification = buildAdaptAppVerificationHook(plan.projectRoot, { plan, result });
+  const deployVerification = buildAdaptDeployVerificationHook(plan.projectRoot, { plan, result });
+  const appVerified = appVerification.verified === true;
+  const deployVerified = deployVerification.verified === true;
+  const dirtyState = classifyAdaptDirtyState(plan.projectRoot, {
+    expectedPaths: [
+      ...updatedArtifacts,
+      ...skippedArtifacts,
+      ...(result.mutatedPaths || []),
+      ADAPT_STATE_REL_PATH,
+    ],
+  });
   const lifecycle = blockedArtifacts.length > 0
     ? "failed_recoverable"
     : adaptBaselineComplete && baselineOnlyFastPath
@@ -1529,9 +1672,13 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
       agentReceiptsVerified,
       agentRuntimeVerified: agentReceiptsVerified,
       appVerified,
-      appVerificationStatus: "not-run-by-adapt",
+      appVerificationStatus: appVerification.status,
+      appVerificationCommand: appVerification.nextCommand,
+      appVerification,
       deployVerified,
-      deployVerificationStatus: "not-run-by-adapt",
+      deployVerificationStatus: deployVerification.status,
+      deployVerificationCommand: deployVerification.nextCommand,
+      deployVerification,
       completionClaimAllowed: artifactVerified && (agentReceiptsVerified || !agentReceiptsRequired),
       completionClaim: agentReceiptsVerified
         ? "artifact adaptation verified with runtime agent receipt evidence"
@@ -1539,7 +1686,7 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
           ? "baseline-only adapt verified by deterministic adapt validators and quality gate; real-agent dispatch was not required"
         : "artifact adaptation verified only; real agent completion is not claimed without agent invocation receipts",
     },
-    recovery: buildAdaptRecoveryState(plan, result, { approvedArtifacts, updatedArtifacts, skippedArtifacts, blockedArtifacts }),
+    recovery: buildAdaptRecoveryState(plan, result, { approvedArtifacts, updatedArtifacts, skippedArtifacts, blockedArtifacts, dirtyState, appVerification, deployVerification }),
     evidence: {
       fastPath: plan.fastPath || null,
       agentPlanCommand: plan.agentPlanCommand || buildAdaptAgentPlanCommand({ counts: plan.counts, memoryWrites: plan.memoryWrites }),
@@ -1549,6 +1696,7 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
       indexGate: result.indexGate,
       agentRuntime,
       fileManifest: result.fileManifest || null,
+      dirtyState,
     },
     validators: {
       artifactAdaptClean: result.postApply?.clean === true,
@@ -1559,6 +1707,7 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
       agentRuntimeVerified: agentReceiptsVerified,
       appVerified,
       deployVerified,
+      dirtyUnexpectedMutations: dirtyState.counts.unexpectedMutations,
       codeIndexReady: result.indexGate?.ready === true,
       blockedCount: blockedArtifacts.length,
     },
@@ -1577,6 +1726,7 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
           agentRuntimeVerified: agentReceiptsVerified,
           appVerified,
           deployVerified,
+          dirtyUnexpectedMutations: dirtyState.counts.unexpectedMutations,
           codeIndexReady: result.indexGate?.ready === true,
           blockedCount: blockedArtifacts.length,
         },
@@ -1593,6 +1743,8 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
     frontendTarget: state.frontendTarget,
     verification: state.verification,
     validators: state.validators,
+    recovery: state.recovery,
+    evidence: state.evidence,
   };
 }
 
@@ -1611,8 +1763,18 @@ async function writeDeployLifecycleState(plan, result) {
   const composeConfigVerification = result.composeConfigVerification || null;
   const composeConfigVerified = composeConfigVerification?.pass === true;
   const deployArtifactsVerified = artifactVerified;
-  const deployRuntimeVerified = false;
-  const deployVerified = false;
+  const appVerification = buildAdaptAppVerificationHook(plan.projectRoot, { plan, result });
+  const deployVerification = buildAdaptDeployVerificationHook(plan.projectRoot, { plan, result });
+  const deployRuntimeVerified = deployVerification.status === "verified";
+  const deployVerified = deployVerification.verified === true;
+  const dirtyState = classifyAdaptDirtyState(plan.projectRoot, {
+    expectedPaths: [
+      ...createdArtifacts,
+      ...updatedArtifacts,
+      ...(result.mutatedPaths || []),
+      ADAPT_STATE_REL_PATH,
+    ],
+  });
   const lifecycle = composeConfigVerified
     ? "compose_config_verified"
     : artifactVerified
@@ -1637,8 +1799,14 @@ async function writeDeployLifecycleState(plan, result) {
       deployRuntimeVerified,
       agentReceiptsVerified,
       agentRuntimeVerified: agentReceiptsVerified,
-      appVerified: false,
+      appVerified: appVerification.verified === true,
+      appVerificationStatus: appVerification.status,
+      appVerificationCommand: appVerification.nextCommand,
+      appVerification,
       deployVerified,
+      deployVerificationStatus: deployVerification.status,
+      deployVerificationCommand: deployVerification.nextCommand,
+      deployVerification,
       completionClaimAllowed: false,
       completionClaim: composeConfigVerified
         ? "Deploy artifacts and compose syntax are verified; runtime deployment is not verified until image build, container boot, HTTP health, and external health checks pass."
@@ -1656,6 +1824,9 @@ async function writeDeployLifecycleState(plan, result) {
       failedFile: null,
       rollbackCommand: "Restore generated deploy files from VCS or remove the listed applied files, then rerun supervibe-adapt --scope deploy --target dokploy --dry-run.",
       manualRestoreNotes: "Dokploy environment variables can be provided by Dokploy UI values or an explicit .env file; generated Dokploy compose files do not require env_file to exist.",
+      dirtyState,
+      nextAppVerification: appVerification.nextCommand,
+      nextDeployVerification: deployVerification.nextCommand,
     },
     evidence: {
       migrationCommand: plan.migrationCommand,
@@ -1665,6 +1836,7 @@ async function writeDeployLifecycleState(plan, result) {
       dockerVerification: result.dockerVerification || plan.dockerVerification || null,
       composeConfigVerification,
       agentRuntime,
+      dirtyState,
     },
     validators: {
       artifactVerified,
@@ -1673,8 +1845,9 @@ async function writeDeployLifecycleState(plan, result) {
       deployRuntimeVerified,
       agentReceiptsVerified,
       agentRuntimeVerified: agentReceiptsVerified,
-      appVerified: false,
+      appVerified: appVerification.verified === true,
       deployVerified,
+      dirtyUnexpectedMutations: dirtyState.counts.unexpectedMutations,
       blockedCount: 0,
     },
     history: [
@@ -1694,6 +1867,8 @@ async function writeDeployLifecycleState(plan, result) {
     updatedArtifacts: state.updatedArtifacts,
     verification: state.verification,
     validators: state.validators,
+    recovery: state.recovery,
+    evidence: state.evidence,
     genesisReconciliation,
   };
 }
@@ -1814,11 +1989,277 @@ function inspectAgentRuntimeEvidence(projectRoot) {
   };
 }
 
+function adaptDriftReported(plan = {}) {
+  const counts = plan.counts || {};
+  return plan.approvalRequired === true
+    || plan.metadataUpdateRequired === true
+    || plan.baselineRefreshRequired === true
+    || Number(counts.add || 0) > 0
+    || Number(counts.update || 0) > 0
+    || Number(counts.projectOnly || 0) > 0
+    || Number(counts.conflicts || 0) > 0
+    || (plan.frontendTarget?.driftWarnings || []).length > 0;
+}
+
+function buildAdaptAppVerificationHook(projectRoot, { plan = null } = {}) {
+  const genesisState = readGenesisDeployState(projectRoot);
+  const genesisVerification = genesisState?.verification || {};
+  const generateAppsStep = genesisState?.generateAppsStep || {};
+  const generated = genesisVerification.appGenerated === true
+    || generateAppsStep.appGenerated === true
+    || Array.isArray(generateAppsStep.results) && generateAppsStep.results.length > 0
+    || Array.isArray(generateAppsStep.commands) && generateAppsStep.commands.length > 0;
+  const projectAppEvidence = collectFrontendPackageEvidence({ rootDir: projectRoot }).length > 0;
+  const appChoice = genesisState?.frontendTarget?.id
+    || genesisState?.appChoice?.id
+    || generateAppsStep.appChoice?.id
+    || plan?.frontendTarget?.id
+    || null;
+  if (genesisVerification.appVerified === true || generateAppsStep.appVerified === true) {
+    return {
+      hookId: "post-adapt-app-verification",
+      required: true,
+      verified: true,
+      status: "verified",
+      nextCommand: null,
+      source: "genesis-state",
+      appChoice,
+      note: "Genesis app verification evidence is already marked verified.",
+    };
+  }
+  if (generated || projectAppEvidence || appChoice) {
+    return {
+      hookId: "post-adapt-app-verification",
+      required: true,
+      verified: false,
+      status: "not-run-app-verification",
+      nextCommand: ADAPT_APP_VERIFY_COMMAND,
+      source: generated ? "genesis-generated-app" : projectAppEvidence ? "project-package-evidence" : "frontend-target",
+      appChoice,
+      note: "Adapt does not claim app verification until declared app lint/build checks run.",
+    };
+  }
+  return {
+    hookId: "post-adapt-app-verification",
+    required: false,
+    verified: false,
+    status: "not-applicable",
+    nextCommand: null,
+    source: "no-app-evidence",
+    appChoice,
+    note: "No generated app or frontend package evidence was found for Adapt to verify.",
+  };
+}
+
+function buildAdaptDeployVerificationHook(projectRoot, { plan = null, result = null } = {}) {
+  const genesisState = readGenesisDeployState(projectRoot);
+  const policy = genesisState?.deployAddOnPolicy || null;
+  const requestedTargets = Array.isArray(policy?.targets) ? policy.targets : [];
+  const target = result?.target || plan?.target || requestedTargets[0] || "dokploy";
+  const scope = result?.scope || plan?.scope || "artifacts";
+  const existingDeployVerified = genesisState?.verification?.deployVerified === true;
+  if (existingDeployVerified) {
+    return {
+      hookId: "post-adapt-deploy-verification",
+      required: true,
+      verified: true,
+      status: "verified",
+      nextCommand: null,
+      target,
+      source: "genesis-state",
+      note: "Genesis deploy verification evidence is already marked verified.",
+    };
+  }
+  if (scope === "deploy" || result?.kind === "adapt-deploy-apply") {
+    const composeFile = composeFileForDeployResult(plan || {}, {
+      created: result?.created || [],
+      updated: result?.updated || [],
+      skipped: result?.skipped || [],
+    });
+    const composeCommand = `docker compose -f ${composeFile} config`;
+    const runtimeCommand = `docker compose -f ${composeFile} up -d && run the service HTTP health checks for target ${target}`;
+    const composeVerified = result?.composeConfigVerification?.pass === true;
+    return {
+      hookId: "post-adapt-deploy-verification",
+      required: true,
+      verified: false,
+      status: composeVerified ? "not-run-deploy-runtime-verification" : "not-run-compose-verification",
+      nextCommand: composeVerified ? runtimeCommand : composeCommand,
+      composeCommand,
+      runtimeCommand,
+      target,
+      source: "adapt-deploy-scope",
+      note: "Adapt does not claim deployVerified until compose and runtime health checks pass.",
+    };
+  }
+  if (policy?.requested === true || requestedTargets.length > 0 || policy?.status === "requires-adapt-deploy-scope") {
+    return {
+      hookId: "post-adapt-deploy-verification",
+      required: true,
+      verified: false,
+      status: "not-run-deploy-adapt",
+      nextCommand: `node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --scope deploy --target ${target} --dry-run`,
+      target,
+      source: "genesis-deploy-policy",
+      note: "Deploy add-on planning is pending; deployVerified remains false until deploy scope and health checks run.",
+    };
+  }
+  return {
+    hookId: "post-adapt-deploy-verification",
+    required: false,
+    verified: false,
+    status: "not-applicable",
+    nextCommand: null,
+    target: null,
+    source: "no-deploy-policy",
+    note: "No deploy add-on request or deploy artifacts were found for Adapt to verify.",
+  };
+}
+
+function classifyAdaptDirtyState(projectRoot = process.cwd(), { expectedPaths = [] } = {}) {
+  if (!existsSync(join(projectRoot, ".git"))) {
+    return classifyAdaptDirtyEntries([], {
+      expectedPaths,
+      mode: "snapshot",
+      status: "no-git-snapshot",
+      command: null,
+    });
+  }
+  const result = spawnSync("git", ["status", "--porcelain=v1", "-uall"], {
+    cwd: projectRoot,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    timeout: 5000,
+    windowsHide: true,
+  });
+  if (result.status !== 0) {
+    return {
+      kind: "adapt-dirty-state",
+      mode: "git",
+      status: "git-status-failed",
+      command: "git status --porcelain=v1 -uall",
+      clean: false,
+      safe: false,
+      counts: emptyDirtyCounts(),
+      categories: emptyDirtyCategories(),
+      issue: tailLines(result.stderr || result.stdout || "unknown git status error", 3),
+      nextAction: "Run git status manually before claiming Adapt recovery state.",
+    };
+  }
+  const entries = String(result.stdout || "")
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((line) => ({
+      raw: line,
+      status: line.slice(0, 2).trim() || "??",
+      path: normalizeGitStatusPath(line.slice(3)),
+    }));
+  return classifyAdaptDirtyEntries(entries, {
+    expectedPaths,
+    mode: "git",
+    status: "git-status-classified",
+    command: "git status --porcelain=v1 -uall",
+  });
+}
+
+export function classifyAdaptDirtyEntries(entries = [], {
+  expectedPaths = [],
+  mode = "manual",
+  status = "classified",
+  command = null,
+} = {}) {
+  const expected = expectedPaths.map(normalizeRel).filter(Boolean);
+  const categories = emptyDirtyCategories();
+  for (const entry of entries || []) {
+    const value = typeof entry === "string" ? { path: entry, status: "" } : entry;
+    const path = normalizeRel(value.path || "");
+    const item = { path, status: value.status || "", raw: value.raw || path };
+    const category = classifyAdaptDirtyPath(path, expected);
+    categories[category].push(item);
+  }
+  const counts = {
+    total: Object.values(categories).reduce((sum, list) => sum + list.length, 0),
+    expectedReceipts: categories.expectedReceipts.length,
+    expectedMemory: categories.expectedMemory.length,
+    staleGarbage: categories.staleGarbage.length,
+    approvedArtifacts: categories.approvedArtifacts.length,
+    unexpectedMutations: categories.unexpectedMutations.length,
+  };
+  return {
+    kind: "adapt-dirty-state",
+    mode,
+    status,
+    command,
+    clean: counts.total === 0,
+    safe: counts.unexpectedMutations === 0,
+    counts,
+    categories,
+    nextAction: counts.unexpectedMutations > 0
+      ? "Review unexpected mutations before claiming Adapt completion."
+      : counts.staleGarbage > 0
+        ? "Run Supervibe cleanup or receipt prune before release."
+        : counts.total > 0
+          ? "Dirty state contains expected Adapt receipts, memory, or approved artifacts."
+          : "No dirty paths reported.",
+  };
+}
+
+function classifyAdaptDirtyPath(path, expectedPaths = []) {
+  if (expectedPaths.some((expected) => path === expected || path.startsWith(`${expected.replace(/\/$/, "")}/`))) {
+    return path.startsWith(".supervibe/") ? "expectedMemory" : "approvedArtifacts";
+  }
+  if (/^\.supervibe\/artifacts\/_workflow-[^/]+\//.test(path)
+    || /^\.supervibe\/artifacts\/_workflow-invocations\//.test(path)
+    || path === ".supervibe/memory/workflow-invocation-ledger.jsonl") {
+    return "expectedReceipts";
+  }
+  if (/^\.supervibe\/memory\/workflow-receipts-stale\//.test(path)
+    || /^\.supervibe\/artifacts\/_workflow-stale\//.test(path)
+    || /^\.supervibe\/artifacts\/_stale\//.test(path)) {
+    return "staleGarbage";
+  }
+  if (/^\.supervibe\/memory\//.test(path)
+    || /^\.supervibe\/artifacts\/_agent-outputs\//.test(path)) {
+    return "expectedMemory";
+  }
+  return "unexpectedMutations";
+}
+
+function normalizeGitStatusPath(value = "") {
+  const normalized = normalizeRel(String(value || "").trim().replace(/^"|"$/g, ""));
+  const renameIndex = normalized.lastIndexOf(" -> ");
+  return renameIndex >= 0 ? normalized.slice(renameIndex + 4) : normalized;
+}
+
+function emptyDirtyCounts() {
+  return {
+    total: 0,
+    expectedReceipts: 0,
+    expectedMemory: 0,
+    staleGarbage: 0,
+    approvedArtifacts: 0,
+    unexpectedMutations: 0,
+  };
+}
+
+function emptyDirtyCategories() {
+  return {
+    expectedReceipts: [],
+    expectedMemory: [],
+    staleGarbage: [],
+    approvedArtifacts: [],
+    unexpectedMutations: [],
+  };
+}
+
 function buildAdaptRecoveryState(plan, result, {
   approvedArtifacts = [],
   updatedArtifacts = [],
   skippedArtifacts = [],
   blockedArtifacts = [],
+  dirtyState = null,
+  appVerification = null,
+  deployVerification = null,
 } = {}) {
   const beforeArtifacts = (plan.items || [])
     .filter((item) => approvedArtifacts.includes(item.projectRel) || updatedArtifacts.includes(item.projectRel) || skippedArtifacts.includes(item.projectRel))
@@ -1840,6 +2281,9 @@ function buildAdaptRecoveryState(plan, result, {
       ? "Restore the listed files from VCS or backups, then rerun supervibe-adapt --dry-run --summary-json --changed-only."
       : "No files were applied; rerun dry-run after resolving the blocked artifact.",
     manualRestoreNotes: "State stores relative paths and hashes only. It does not include absolute local filesystem paths.",
+    dirtyState,
+    nextAppVerification: appVerification?.nextCommand || null,
+    nextDeployVerification: deployVerification?.nextCommand || null,
   };
 }
 

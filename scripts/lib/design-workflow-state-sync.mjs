@@ -30,7 +30,7 @@ export async function syncDesignWorkflowStateAfterStage(rootDir = process.cwd(),
   const prototypeApproved = normalizeStatus(readJson(join(prototypeRoot, ".approval.json"))?.status) === "approved";
   const prototypeStage = isPrototypeWorkflowStage(stageId);
   const qualityGate = existsSync(prototypeRoot)
-    ? evaluateDesignQualityGate(rootDir, { slug, requireReviews: prototypeApproved })
+    ? evaluateDesignQualityGate(rootDir, { slug, requireReviews: prototypeApproved, handoffId: slug })
     : null;
 
   const stageRecord = {
@@ -139,8 +139,17 @@ export async function syncApprovedPrototypeState(rootDir = process.cwd(), {
   const config = readJson(configPath) || {};
   const resolvedTarget = resolveTarget(target, config, manifest);
   const handoffExists = existsSync(join(prototypeRoot, "handoff")) || existsSync(join(prototypeRoot, "designer-package.json"));
-  const qualityGate = evaluateDesignQualityGate(rootDir, { slug, requireReviews: true });
+  const qualityGate = evaluateDesignQualityGate(rootDir, { slug, requireReviews: true, handoffId: slug });
   const handoffBlocked = qualityGate?.approvalAllowed === false;
+  if (handoffBlocked) {
+    if (qualityGate?.issues?.length) {
+      for (const issue of qualityGate.issues) {
+        issues.push(`${issue.file || "quality-gate"}:${issue.line || 0}: ${issue.severity || "issue"} ${issue.message || issue.code}`);
+      }
+    } else {
+      issues.push("quality gate blocks approved prototype handoff");
+    }
+  }
 
   config.schemaVersion = config.schemaVersion || 1;
   config.target = resolvedTarget;

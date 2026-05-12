@@ -96,6 +96,7 @@ test("design workflow state validator fails when config says no prototype but in
       prototypeExists: false,
     }, null, 2)}\n`);
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/spec.md", "# Spec\n");
+    await writeUtf8(root, ".supervibe/artifacts/brandbook/direction.md", "# Direction\n");
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/content/copy.md", "# Copy\n");
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/index.html", "<!doctype html><title>Prototype</title>\n");
 
@@ -185,6 +186,7 @@ test("approved prototype state sync repairs config, flow state, and manifest dri
       prototypeUnlocked: false,
     }, null, 2)}\n`);
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/spec.md", "# Spec\n");
+    await writeUtf8(root, ".supervibe/artifacts/brandbook/direction.md", "# Direction\n");
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/content/copy.md", "# Copy\n");
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/index.html", "<!doctype html><title>Prototype</title>\n");
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/.approval.json", `${JSON.stringify({
@@ -198,6 +200,13 @@ test("approved prototype state sync repairs config, flow state, and manifest dri
       generatedAt: "2026-05-06T00:00:00.000Z",
     }, null, 2)}\n`);
     await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/designer-package.json", "{}\n");
+    await issueDesignReceipt(root, {
+      subjectType: "agent",
+      subjectId: "creative-director",
+      stage: "stage-1-brand-direction",
+      outputArtifacts: [".supervibe/artifacts/brandbook/direction.md"],
+      invocationReason: "creative director produced approved brand direction",
+    });
     await issueDesignReceipt(root, {
       subjectType: "skill",
       subjectId: "supervibe:brandbook",
@@ -257,7 +266,7 @@ test("approved prototype state sync repairs config, flow state, and manifest dri
       updatedAt: "2026-05-06T00:00:00.000Z",
     });
 
-    assert.equal(sync.pass, true);
+    assert.equal(sync.pass, true, JSON.stringify(sync, null, 2));
     const config = await readJson(root, ".supervibe/artifacts/prototypes/agent-chat/config.json");
     assert.equal(config.target, "web");
     assert.equal(config.designSystemStatus, "approved");

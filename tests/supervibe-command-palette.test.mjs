@@ -41,7 +41,7 @@ test("command palette explains blocked actions and requires confirmation for mut
   assert.equal(blocked.executable, false);
   assert.match(blocked.reason, /no ready task/);
   assert.equal(create.executable, false);
-  assert.match(create.reason, /confirmation required/);
+  assert.match(create.reason, /preview required/);
   assert.equal(stop.executable, false);
   assert.match(stop.reason, /--yes/);
 });

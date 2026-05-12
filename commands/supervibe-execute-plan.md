@@ -116,13 +116,13 @@ Default: A.
 ### 0a. Mandatory workflow gates before readiness
 
 Before any execution audit, confirm the plan has:
-- A passed plan-review artifact or explicit `planReviewPassed` state with Reviewer Coverage for required reviewers and a Next User Decision
+- A validated plan-review artifact with `evidenceGatePass:true`, Reviewer Coverage for required reviewers, trusted reviewer receipts bound to the current artifact, and a Next User Decision. A bare `planReviewPassed` state or boolean flag is not sufficient.
 - Atomic work items or an epic generated from the reviewed plan
 - Execution mode selected (`dry-run`, `guided`, `manual`, or `fresh-context`)
 - Stop, status, resume, and cleanup controls for long or worktree-backed runs
 - Worktree session selected or created when `--worktree`, `--worktree-existing`, or `--resume-session` is used
 
-If review has not passed, route to `/supervibe-plan --review <plan-path>` and stop. If atomic work items or an epic do not exist, route to `/supervibe-loop --atomize-plan <plan-path> --plan-review-passed` after review passes.
+If review has not passed, route to `/supervibe-plan --review <plan-path>` and stop. If review has not passed with a trusted artifact, route to `/supervibe-plan --review <plan-path>` and stop. If atomic work items or an epic do not exist, route to `/supervibe-loop --atomize-plan <plan-path> --plan-review-passed` only after the review artifact validator and receipt trust gate pass.
 
 For long autonomous execution, prefer `/supervibe-loop --epic <epic-id> --worktree` so the run has an active session registry, heartbeat, and cleanup-safe worktree path. Add `--max-duration` only when the user wants an explicit time budget; otherwise the loop continues until goals are complete or a real stop gate blocks progress.
 For atomized epics, use `/supervibe-loop --status --epic <epic-id>`, `/supervibe-loop --resume .supervibe/memory/loops/<run-id>/state.json`, and `/supervibe-loop --stop <run-id>` for visibility and cancellation before any further execution.

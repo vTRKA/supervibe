@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.28] - 2026-05-12
+
+### Changed
+
+- Hardened Supervibe loop execution around active workflow state, strict release readiness, task budgets, agent-only durable work, epic agent contracts, reviewer gates, and deterministic command continuation.
+- Tightened design and workflow validation so duplicate screenshot-pair evidence, incomplete active workflows, stale receipt telemetry, and unsynchronized release docs fail closed.
+- Updated release-facing host manifests and documentation to the 2.1.28 package version.
+
+### Validation
+
+- Added regression coverage for active workflow state, strict release gates, epic/task validation, task budget policy, command routing, reviewer calibration, design active completion, and release security synchronization.
+
 ## [2.1.27] - 2026-05-11
 
 ### Changed

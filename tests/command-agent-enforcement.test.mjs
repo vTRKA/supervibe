@@ -96,6 +96,16 @@ test("CLI reports plugin-wide command agent enforcement", () => {
   assert.match(output, /SYNTHETIC_ACTIVE_CHECKED:/);
 });
 
+test("enforcement validates Codex host invocation evidence contract", () => {
+  const result = validateCommandAgentEnforcement(ROOT);
+  const codes = (result.issues || []).map((issue) => issue.code);
+  assert.ok(!codes.includes("missing-host-invocation-source-receipt-field"));
+  assert.ok(!codes.includes("missing-host-invocation-id-receipt-field"));
+  assert.ok(!codes.includes("codex-native-tool-mismatch"));
+  assert.ok(!codes.includes("codex-invocation-proof-mismatch"));
+  assert.ok(!codes.includes("codex-evidence-path-missing"));
+});
+
 test("command agent plan reports Codex logical fallback as non-strict proof", () => {
   const root = mkdtempSync(join(tmpdir(), "supervibe-command-logical-fallback-"));
   try {
@@ -111,6 +121,27 @@ test("command agent plan reports Codex logical fallback as non-strict proof", ()
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test("command agent strict readiness accepts Codex logical roles after trusted scoped receipts", () => {
+  const report = {
+    pass: true,
+    plan: {
+      executionMode: "real-agents",
+      durableWritesAllowed: true,
+      agentOwnedOutputRequiresReceipts: false,
+      agentDispatchRequired: false,
+      missingAgents: [],
+      missingCallableAgents: [],
+      logicalFallbackRequiredAgents: ["repo-researcher"],
+      scopedReceiptTrust: { pass: true, missingSubjects: [] },
+      agentInvocationsCompleted: true,
+      agentReceiptsTrusted: true,
+      receiptGate: "trusted-scoped-runtime-agent-receipts",
+    },
+  };
+
+  assert.equal(commandAgentPlanStrictReady(report), true);
 });
 
 test("command agent plan discovers nested Codex host-callable agent files", () => {

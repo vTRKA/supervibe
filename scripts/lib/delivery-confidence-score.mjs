@@ -149,7 +149,7 @@ export function inferDeliveryHardCaps(evidence = {}) {
   if (evidence.criticalSecurityPrivacyGap === true) {
     add(HARD_CAPS.criticalSecurityPrivacyGap, "critical security or privacy gap is unresolved", "critical-security-privacy-gap");
   }
-  if (evidence.evidenceGatePass === false) {
+  if (Object.prototype.hasOwnProperty.call(evidence, "evidenceGatePass") && evidence.evidenceGatePass !== true) {
     add(HARD_CAPS.evidenceGateFailed, "required evidence gate failed", "evidence-gate-failed");
   }
   const producerMode = String(evidence.producerMode || evidence.agentProducerMode || "").trim().toLowerCase();

@@ -43,5 +43,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     pluginRoot: options["plugin-root"] || options.pluginRoot,
   });
   console.log(options.json ? JSON.stringify(report, null, 2) : formatDesignWorkflowReport(report));
-  process.exit(report.pass ? 0 : 1);
+  const diagnosticNotStarted = options.active !== true && report.status === "not-started";
+  process.exit(report.pass || diagnosticNotStarted ? 0 : 1);
 }

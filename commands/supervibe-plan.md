@@ -13,7 +13,7 @@ Direct trigger for the `supervibe:writing-plans` skill. Use after `/supervibe-br
 
 ## Continuation Contract
 
-Do not stop after individual plan phases, file-structure mapping, first task batch, or the first review-gate draft. A `/supervibe-plan` invocation should show a compact plan-scope preview, wait for an explicit approve/revise/exclude-or-defer/stop choice, then write the full plan before the review handoff, unless the user explicitly stops/pauses, the spec is missing or unapproved, or a single blocking ambiguity prevents a production-safe plan.
+Do not stop after individual plan phases, file-structure mapping, first task group, or the first review-gate draft. A `/supervibe-plan` invocation should show a compact plan-scope preview, wait for an explicit approve/revise/exclude-or-defer/stop choice, then write the full plan before the review handoff, unless the user explicitly stops/pauses, the spec is missing or unapproved, or a single blocking ambiguity prevents a production-safe plan.
 
 Review gates inside the plan are execution-time gates for later workers; they are not reasons for the planning agent to stop before completing the full plan artifact.
 
@@ -48,14 +48,17 @@ Examples:
 
 Canonical mandatory review loop after a durable plan is written. This review must pass before `/supervibe-loop --atomize-plan <plan-path> --plan-review-passed` can write work items, epic state, or execution handoff artifacts.
 
-The review loop must produce a durable plan-review artifact, not only inline notes. The artifact follows `docs/templates/plan-review-template.md` and must pass `node scripts/validate-plan-review-artifacts.mjs --file <review-artifact>`. It records:
+The review loop must produce a durable plan-review artifact, not only diagnostic notes. The artifact follows `docs/templates/plan-review-template.md` and must pass `node scripts/validate-plan-review-artifacts.mjs --file <review-artifact>`. It records:
 - Review Summary with verdict, score, and stop reason
 - Reviewer Coverage with the baseline reviewers `supervibe-orchestrator`, `systems-analyst`, `architect-reviewer`, and `quality-gate-reviewer`
 - Risk Trigger Matrix for database, cache, queue, security, API, infrastructure, and frontend risk
 - Plan Review Scorecard against `confidence-rubrics/plan-review.yaml`
 - Findings, Convergence Ledger, Residual Risks, Next User Decision, and Evidence
 
-The loop can stop with pass only when there are zero open critical findings, zero open major findings, a stop reason, and one explicit next user decision. If database, cache, queue, API, security, infrastructure, or frontend risks are present, the corresponding specialist reviewer set must be selected and represented in the coverage section. MVP anti-bloat, scope safety, architecture fit, topology, security/privacy, observability, release, rollback, provider policy, and verification coverage are blocking dimensions.
+Every reviewer output and the consolidated plan-review artifact require scoped runtime-issued receipts from real host-agent invocations. Each receipt must include `hostInvocation.source`, `hostInvocation.invocationId`, the exact plan path, and the current handoff id. Command receipts, skill receipts, controller-authored summaries, or old global receipts cannot satisfy the reviewer coverage gate.
+Until those required reviewer receipts exist for the current handoff, `/supervibe-loop --atomize-plan ... --plan-review-passed` and any execution path remain blocked.
+
+The loop can stop with pass only when there are zero open critical findings, zero open major findings, a stop reason, one explicit next user decision, and trusted real-agent reviewer receipts for the current run. If database, cache, queue, API, security, infrastructure, or frontend risks are present, the corresponding specialist reviewer set must be selected and represented in the coverage section. MVP anti-bloat, scope safety, architecture fit, topology, security/privacy, observability, release, rollback, provider policy, and verification coverage are blocking dimensions.
 
 ### `/supervibe-plan` (no args)
 
@@ -100,7 +103,7 @@ Auto-detect the most recent spec in `.supervibe/artifacts/specs/` and use it. If
    - Production readiness contract (tests, security/privacy, performance, observability, rollback, release)
    - Phased tasks (≤5 minutes each, with verification commands)
    - Per-phase confidence gates
-   - Parallelization batches (which tasks can run concurrently)
+   - Receipt-backed real-agent waves (which tasks can run concurrently only with disjoint write scopes and scoped receipts)
    - Risk register + rollback plan per phase
    - Final 10/10 acceptance gate with no open blockers
    - Self-review checklist
@@ -111,8 +114,8 @@ Auto-detect the most recent spec in `.supervibe/artifacts/specs/` and use it. If
 
 7. **Score against `plan.yaml` rubric before review, then `plan-review.yaml` inside review mode.** Gate remains 9/10 or higher, and any open critical or major plan-review finding blocks the pass state.
    Delivery confidence is also capped below 9 when required evidence gates fail,
-   producer provenance is inline/emulated instead of real receipt-backed agent
-   output, or receipt evidence is missing/untrusted. These caps are blockers,
+   producer or reviewer provenance lacks a real host-agent invocation id,
+   scoped runtime receipt, or trusted output artifact. These caps are blockers,
    not stylistic warnings.
 
 8. **Post-plan summary before review.** After the durable plan is saved and validated, give a short human-readable summary: artifact path, phases, critical path, included scope, deferred/rejected scope, highest risks, validation result, score, and the next review choices.
@@ -160,7 +163,7 @@ Atomized items are templated by work type and preserve labels, severity, owner/c
 Spec:        <path>
 Plan:        .supervibe/artifacts/plans/YYYY-MM-DD-<slug>.md
 Phases:      <count>
-Tasks:       <count>  (parallelizable batches: <count>)
+Tasks:       <count>  (receipt-backed real-agent waves: <count>)
 Critical path: <N> tasks
 Production readiness: test/security/perf/observability/rollback/release covered
 Development contracts: behavior/architecture/data/API/UI/security/perf/observability/rollout/docs mapped
@@ -191,7 +194,7 @@ Source mode: `--from-brainstorm` when the plan came from a brainstorm spec
 - `supervibe:writing-plans` skill — the methodology
 - `supervibe:project-memory` — pre-flight similarity check
 - `/supervibe-brainstorm` — what produces the spec
-- `supervibe:executing-plans` / `supervibe:subagent-driven-development` — execution skills
+- `supervibe:executing-plans` — execution skill after review and atomization
 - `docs/templates/plan-template.md` — plan format
 
 ## Agent Orchestration Contract
@@ -201,6 +204,8 @@ This command must load its executable profile from `scripts/lib/command-agent-or
 Before durable work or completion claims, run `node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /supervibe-plan` and follow the printed `SUPERVIBE_COMMAND_AGENT_PLAN`. The plan must show host dispatch support, proof source, `AGENT_SELECTION_MODE`, required agents, `REQUIRED_AGENT_SOURCES`, `CALLABLE_AGENT_SOURCES`, `CALLABLE_AGENTS_READY`, `SCOPED_RECEIPT_GATE`, `MISSING_CALLABLE_AGENTS`, and durable-write permission before any agent-owned artifact is produced. Role sources must distinguish definition availability from host-callable availability: `REQUIRED_AGENT_SOURCES` may include `plugin-only`, but `CALLABLE_AGENT_SOURCES`, `CALLABLE_AGENTS_READY`, and `MISSING_CALLABLE_AGENTS` decide whether the selected host can actually invoke the role. Plugin-only definitions are not enough for a real-agent completion claim.
 
 Invoke the real host agents named by the plan and issue runtime receipts with `hostInvocation.source` and `hostInvocation.invocationId`. For active workflows, build the plan with `--active --slug <slug> --handoff-id <handoff-id>`; `SCOPED_RECEIPT_GATE` must be trusted for the current run before durable agent-owned outputs are allowed. Old global receipts are diagnostic only and do not unlock a new command/handoff. In Codex, invoke with `spawn_agent` using the `CODEX_SPAWN_PAYLOAD_RULES` and `CODEX_SPAWN_PAYLOADS` printed by `command-agent-plan.mjs`: forked payloads must set `fork_context=true`, must omit `agent_type`, `model`, and `reasoning_effort`, and must encode the Supervibe logical role in `message` instead of Codex `agent_type`. Record each returned Codex agent id with `node <resolved-supervibe-plugin-root>/scripts/agent-invocation.mjs log ...` before receipts are issued. `inline` is diagnostic/dry-run only. Do not emulate specialist agents, and do not let command or skill receipts substitute for agent, worker, or reviewer output.
+
+Plan review is reviewer-owned durable work. `/supervibe-plan --review <plan-path>` must block atomization and execution until the required reviewer agents have real host invocation ids and scoped runtime receipts bound to the plan path, handoff id, review artifact, and each reviewer output.
 ## Workflow Invocation Receipts
 
 Any claim that this command invoked another Supervibe command, skill, agent, reviewer, worker, validator, or external tool must be backed by a runtime-issued workflow receipt created with `node <resolved-supervibe-plugin-root>/scripts/workflow-receipt.mjs issue ...`. Hand-written receipts are untrusted. Agent, worker, and reviewer receipts must include `hostInvocation.source` and `hostInvocation.invocationId` from a real host dispatch; command or skill receipts must not substitute for specialist output. Scoped current-run receipts are required for active command/handoff claims; old global receipts are diagnostic only and cannot authorize a new agent-owned output. Durable artifacts produced by this command must stay linked through `.supervibe/memory/workflow-invocation-ledger.jsonl` and `artifact-links.json`; run `npm run validate:workflow-receipts` and `npm run validate:agent-producer-receipts` before claiming the command, delegated stage, or produced artifact is complete.

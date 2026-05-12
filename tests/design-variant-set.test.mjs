@@ -118,6 +118,20 @@ function variantHtml(variant, index) {
   return `${shells[index]}\n`;
 }
 
+async function writeScreenshotPairs(root, slug, variantIds) {
+  const pairs = [];
+  for (let leftIndex = 0; leftIndex < variantIds.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < variantIds.length; rightIndex += 1) {
+      pairs.push({
+        left: variantIds[leftIndex],
+        right: variantIds[rightIndex],
+        similarity: 0.42,
+      });
+    }
+  }
+  await writeUtf8(root, `.supervibe/artifacts/prototypes/${slug}/screenshot-similarity.json`, `${JSON.stringify({ pairs }, null, 2)}\n`);
+}
+
 test("acceptance contract captures explicit multi-variant designer-agent constraints", () => {
   const contract = buildDesignAcceptanceContract({
     brief: incidentBrief(),
@@ -207,6 +221,7 @@ test("variant validator passes five separate fullscreen variants with overlay an
     for (const [index, variant] of manifest.variants.entries()) {
       await writeUtf8(root, variant.artifactPath, variantHtml(variant, index));
     }
+    await writeScreenshotPairs(root, "agent-chat", manifest.variants.map((variant) => variant.id));
 
     const result = validateDesignVariantSet(root, {
       slug: "agent-chat",
@@ -218,6 +233,61 @@ test("variant validator passes five separate fullscreen variants with overlay an
     assert.deepEqual(result.issues, []);
     assert.equal(result.evidenceStatus.computedLayout, "checked");
     assert.equal(result.evidenceStatus.computedLayoutUniqueShells, 5);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("variant validator rejects missing screenshot similarity pairs for requested variants", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-variant-missing-screenshot-pairs-"));
+  try {
+    const manifest = validVariantManifest();
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/variant-manifest.json", `${JSON.stringify(manifest, null, 2)}\n`);
+    for (const [index, variant] of manifest.variants.entries()) {
+      await writeUtf8(root, variant.artifactPath, variantHtml(variant, index));
+    }
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/screenshot-similarity.json", `${JSON.stringify({
+      pairs: [{ left: "variant-1", right: "variant-2", similarity: 0.42 }],
+    }, null, 2)}\n`);
+
+    const result = validateDesignVariantSet(root, {
+      slug: "agent-chat",
+      acceptanceContract: buildDesignAcceptanceContract({ brief: incidentBrief(), slug: "agent-chat" }),
+    });
+
+    assert.equal(result.pass, false);
+    assert.ok(result.issues.some((issue) =>
+      issue.code === "missing-screenshot-similarity-evidence"
+      && /1\/10/.test(issue.message)
+    ));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("variant validator rejects duplicate screenshot similarity rows as missing pair coverage", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-variant-duplicate-screenshot-pairs-"));
+  try {
+    const manifest = validVariantManifest();
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/variant-manifest.json", `${JSON.stringify(manifest, null, 2)}\n`);
+    for (const [index, variant] of manifest.variants.entries()) {
+      await writeUtf8(root, variant.artifactPath, variantHtml(variant, index));
+    }
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/screenshot-similarity.json", `${JSON.stringify({
+      pairs: Array.from({ length: 10 }, () => ({ left: "variant-1", right: "variant-2", similarity: 0.42 })),
+    }, null, 2)}\n`);
+
+    const result = validateDesignVariantSet(root, {
+      slug: "agent-chat",
+      acceptanceContract: buildDesignAcceptanceContract({ brief: incidentBrief(), slug: "agent-chat" }),
+    });
+
+    assert.equal(result.pass, false);
+    assert.ok(result.issues.some((issue) => issue.code === "duplicate-screenshot-variant-pair"));
+    assert.ok(result.issues.some((issue) =>
+      issue.code === "missing-screenshot-similarity-evidence"
+      && /1\/10/.test(issue.message)
+    ));
   } finally {
     await rm(root, { recursive: true, force: true });
   }

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
+import { mkdtemp, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { tmpdir } from "node:os";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
@@ -9,12 +11,19 @@ const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const execFileAsync = promisify(execFile);
 
 async function matchCommand(request) {
-  const { stdout } = await execFileAsync(process.execPath, [
-    join(ROOT, "scripts", "supervibe-commands.mjs"),
-    "--match",
-    request,
-  ], { cwd: ROOT });
-  return stdout;
+  const projectRoot = await mkdtemp(join(tmpdir(), "supervibe-command-route-"));
+  try {
+    const { stdout } = await execFileAsync(process.execPath, [
+      join(ROOT, "scripts", "supervibe-commands.mjs"),
+      "--project",
+      projectRoot,
+      "--match",
+      request,
+    ], { cwd: ROOT });
+    return stdout;
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
 }
 
 test("routes plain planning workflow phrases to plan command", async () => {

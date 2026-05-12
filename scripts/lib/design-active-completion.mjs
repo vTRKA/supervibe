@@ -38,6 +38,7 @@ const REQUIRED_BROWSER_PROOFS = Object.freeze([
   ["nonblankRender", "nonblank render proof"],
   ["noHorizontalOverflow", "no horizontal overflow proof"],
   ["feedbackButtonVisible", "visible feedback button proof"],
+  ["feedbackQueueWrite", "feedback queue write proof"],
   ["drawerOpenClose", "drawer/modal open-close proof"],
   ["focusTrap", "drawer/modal focus-trap proof"],
   ["keyboardNavigation", "keyboard navigation proof"],
@@ -197,12 +198,18 @@ export function validateDesignActiveCompletion(rootDir = process.cwd(), options 
     const screenshot = options.screenshotSimilarityResult || validateScreenshotSimilarityEvidence(rootDir, {
       prototypeSlug: context.slug || "",
     });
-    checks.push(check("screenshot-similarity:active", screenshot.pass === true && screenshot.status === "passed" && Number(screenshot.checkedPairs || 0) > 0, screenshot));
+    const coveredPairs = screenshotCoveredPairCount(screenshot);
+    checks.push(check("screenshot-similarity:active", screenshot.pass === true && screenshot.status === "passed" && coveredPairs > 0, screenshot));
     if (screenshot.pass !== true) {
       for (const item of screenshot.issues || []) issues.push(issue(`screenshot-${item.code || "invalid"}`, item.file || screenshot.evidencePath || "screenshot-similarity.json", item.message || "screenshot similarity validation failed"));
     }
-    if (screenshot.status !== "passed" || Number(screenshot.checkedPairs || 0) === 0) {
-      issues.push(issue("missing-screenshot-similarity-evidence", screenshot.evidencePath || "screenshot-similarity.json", "active multi-variant completion requires screenshot similarity evidence with at least one checked pair"));
+    const expectedPairs = expectedScreenshotPairCount(context.requestedVariantCount || variantSet.requestedVariantCount || 0);
+    if (screenshot.status !== "passed" || coveredPairs < expectedPairs) {
+      issues.push(issue(
+        "missing-screenshot-similarity-evidence",
+        screenshot.evidencePath || "screenshot-similarity.json",
+        `active multi-variant completion requires screenshot similarity evidence for all requested variant pairs (${coveredPairs}/${expectedPairs})`,
+      ));
     }
     for (const warning of screenshot.warnings || []) warnings.push(warning);
   }
@@ -228,6 +235,8 @@ export function validateDesignActiveCompletion(rootDir = process.cwd(), options 
   const qualityGate = options.qualityGateResult || evaluateDesignQualityGate(rootDir, {
     slug: context.slug || "",
     requireReviews: true,
+    handoffId: context.handoffId || "",
+    workflowRunId: context.workflowRunId || "",
     receiptValidation,
     browserVerification: browserEvidence,
   });
@@ -405,7 +414,7 @@ function resolveWorkflow(options = {}, workflows = []) {
       return true;
     }) || null;
   }
-  return normalized.find((item) => normalizeCommand(item.command) === DESIGN_COMMAND) || normalized[0] || null;
+  return normalized.find((item) => normalizeCommand(item.command) === DESIGN_COMMAND) || null;
 }
 
 function normalizeCompletionContext(options = {}, workflow = null) {
@@ -674,6 +683,17 @@ function resolveEvidenceFile(rootDir, evidencePath, value = "") {
 function requestedVariantCountFromOption(value) {
   const count = Number(value);
   return Number.isFinite(count) && count >= 1 ? Math.trunc(count) : 0;
+}
+
+function expectedScreenshotPairCount(variantCount) {
+  const count = Number(variantCount);
+  if (!Number.isFinite(count) || count <= 1) return 0;
+  return Math.trunc(count * (count - 1) / 2);
+}
+
+function screenshotCoveredPairCount(screenshot = {}) {
+  const count = Number(screenshot.coveredPairs ?? screenshot.uniquePairs ?? screenshot.checkedPairs ?? 0);
+  return Number.isFinite(count) ? count : 0;
 }
 
 function boolish(value) {

@@ -81,6 +81,7 @@ Off-path parallel candidates: T4 || T5
 - Anti-bloat: PDF export, analytics, and async queue are rejected or deferred until evidence justifies them.
 - Delivery discipline: discovery -> spec -> plan -> review -> implementation -> verification -> release.
 - Phase plan: foundation, behavior, hardening, release.
+- Task budget policy: max tasks per phase=12; max child items per atomization run=80; phase-split required before graph write when either limit is exceeded.
 - Production target: export is supportable, observable, documented, and reversible.
 
 ## Production Readiness

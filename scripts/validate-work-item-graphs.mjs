@@ -6,6 +6,7 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
 
 import { validateWorkItemGraph } from "./lib/supervibe-plan-to-work-items.mjs";
+import { validateEpicAgentContract } from "./lib/supervibe-epic-agent-contract.mjs";
 
 async function walkGraphs(dir) {
   const out = [];
@@ -23,6 +24,14 @@ export async function validateWorkItemGraphFiles({ rootDir = process.cwd(), file
   for (const file of files) {
     const graph = JSON.parse(await readFile(file, "utf8"));
     let validation = validateWorkItemGraph(graph);
+    const epicAgentContract = validateEpicAgentContract({ rootDir, graph, graphPath: file });
+    if (!epicAgentContract.pass) {
+      validation = {
+        ...validation,
+        valid: false,
+        issues: [...validation.issues, ...epicAgentContract.issues],
+      };
+    }
     if (requireSourcePlanSnapshot) {
       const sourceIssues = await validateSourcePlanSnapshot({ graph, graphPath: file });
       if (sourceIssues.length > 0) {

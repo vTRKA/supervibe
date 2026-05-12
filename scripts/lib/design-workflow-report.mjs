@@ -19,6 +19,7 @@ export function buildDesignWorkflowReport(rootDir = process.cwd(), options = {})
   const variantSet = findCheckResult(activeCompletion, "design-variant-set:active") || {};
   const screenshot = findCheckResult(activeCompletion, "screenshot-similarity:active") || {};
   const browser = findCheckResult(activeCompletion, "browser-evidence:active") || {};
+  const strictChecks = buildStrictDesignCheckSummary(activeCompletion);
   const requiredAgents = commandPlan.requiredAgentIds || [];
   const invokedAgents = receiptValidation.receiptsBySubject
     ? Object.keys(receiptValidation.receiptsBySubject)
@@ -57,6 +58,14 @@ export function buildDesignWorkflowReport(rootDir = process.cwd(), options = {})
   const pass = activeWorkflowReadiness === "ready"
     && activeWorkflows.pass === true
     && workflowState.pass === true;
+  const releaseGate = buildDesignReleaseGate({
+    pass,
+    activeWorkflowReadiness,
+    activeCompletion,
+    activeWorkflows,
+    workflowState,
+    issues,
+  });
 
   return {
     schemaVersion: 1,
@@ -67,6 +76,8 @@ export function buildDesignWorkflowReport(rootDir = process.cwd(), options = {})
     status: pass ? "passed" : activeWorkflowReadiness,
     declaredMaturity,
     activeWorkflowReadiness,
+    releaseGate,
+    strictChecks,
     requiredAgents,
     invokedAgents,
     missingReceipts,
@@ -75,6 +86,7 @@ export function buildDesignWorkflowReport(rootDir = process.cwd(), options = {})
       activeCompletion: activeCompletion.checks?.length || 0,
       activeWorkflows: activeWorkflows.checked || 0,
       workflowState: workflowState.checked || 0,
+      releaseGate: releaseGate.checked,
     },
     reports: {
       activeCompletion,
@@ -94,6 +106,8 @@ export function formatDesignWorkflowReport(report = {}) {
     `STATUS: ${report.status || "unknown"}`,
     `DECLARED_MATURITY: ${report.declaredMaturity || "unknown"}`,
     `ACTIVE_WORKFLOW_READINESS: ${report.activeWorkflowReadiness || "unknown"}`,
+    `RELEASE_GATE: ${report.releaseGate?.pass === true ? "pass" : report.releaseGate?.status || "blocked"}`,
+    `STRICT_CHECKS: ${formatStrictChecks(report.strictChecks)}`,
     `COMMAND: ${report.command || "none"}`,
     `SLUG: ${report.slug || "none"}`,
     `HANDOFF_ID: ${report.handoffId || "none"}`,
@@ -112,6 +126,101 @@ export function formatDesignWorkflowReport(report = {}) {
   }
   lines.push(`NEXT_REPAIR_ACTION: ${report.nextRepairAction || "none"}`);
   return lines.join("\n");
+}
+
+function buildStrictDesignCheckSummary(activeCompletion = {}) {
+  const checks = new Map((activeCompletion.checks || []).map((item) => [item.id, item]));
+  return {
+    receiptCoveragePass: checkPass(checks, "design-agent-receipts:active"),
+    variantSetPass: checkPass(checks, "design-variant-set:active"),
+    browserEvidencePass: checkPass(checks, "browser-evidence:active"),
+    screenshotSimilarityPass: checkPass(checks, "screenshot-similarity:active"),
+    qualityGatePass: checkPass(checks, "design-quality-gate:active"),
+    feedbackEvidencePass: feedbackEvidencePass(checks),
+  };
+}
+
+function checkPass(checks, id) {
+  if (!checks.has(id)) return "not-checked";
+  return checks.get(id).pass === true;
+}
+
+function feedbackEvidencePass(checks) {
+  const browser = checks.get("browser-evidence:active");
+  if (!browser) return "not-checked";
+  if (browser.pass !== true) return false;
+  const result = browser.result || {};
+  const issues = result.issues || [];
+  return !issues.some((item) => /feedback/i.test(`${item.code || ""} ${item.message || ""}`));
+}
+
+function formatStrictChecks(value = {}) {
+  const parts = [];
+  for (const key of [
+    "receiptCoveragePass",
+    "variantSetPass",
+    "browserEvidencePass",
+    "screenshotSimilarityPass",
+    "feedbackEvidencePass",
+    "qualityGatePass",
+  ]) {
+    parts.push(`${key}=${value[key] ?? "not-checked"}`);
+  }
+  return parts.join(", ");
+}
+
+function buildDesignReleaseGate({
+  pass = false,
+  activeWorkflowReadiness = "unknown",
+  activeCompletion = {},
+  activeWorkflows = {},
+  workflowState = {},
+  issues = [],
+} = {}) {
+  const requiredChecks = [
+    "command-agent-plan:active",
+    "design-agent-receipts:active",
+    "design-variant-set:active",
+    "design-quality-gate:active",
+  ];
+  const completionChecks = new Map((activeCompletion.checks || []).map((item) => [item.id, item]));
+  const blockedChecks = requiredChecks
+    .filter((id) => completionChecks.has(id))
+    .filter((id) => completionChecks.get(id).pass !== true);
+  if (completionChecks.has("browser-evidence:active") && completionChecks.get("browser-evidence:active").pass !== true) {
+    blockedChecks.push("browser-evidence:active");
+  }
+  if (completionChecks.has("screenshot-similarity:active") && completionChecks.get("screenshot-similarity:active").pass !== true) {
+    blockedChecks.push("screenshot-similarity:active");
+  }
+  if (!pass && activeWorkflowReadiness === "not-started") {
+    return {
+      pass: false,
+      status: "not-started",
+      checked: completionChecks.size,
+      blockedChecks,
+      blockers: issues.length,
+      message: "active design workflow has not started; release gate cannot pass",
+    };
+  }
+  if (!pass) {
+    return {
+      pass: false,
+      status: "blocked",
+      checked: completionChecks.size,
+      blockedChecks,
+      blockers: issues.length,
+      message: "strict design release gate requires active completion, active workflow state, and design workflow state to pass together",
+    };
+  }
+  return {
+    pass: true,
+    status: "pass",
+    checked: completionChecks.size + Number(activeWorkflows.checked || 0) + Number(workflowState.checked || 0),
+    blockedChecks: [],
+    blockers: 0,
+    message: "strict design release gate passed",
+  };
 }
 
 function findCheckResult(activeCompletion = {}, id = "") {

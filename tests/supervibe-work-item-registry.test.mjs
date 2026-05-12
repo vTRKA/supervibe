@@ -267,7 +267,8 @@ test("reviewed plan atomizes into active graph and loop runs graph-first", async
       "--atomize-plan",
       planRel,
       "--plan-review-passed",
-    ], { cwd: root });
+      "--allow-unverified-plan-review",
+    ], { cwd: root, env: { ...process.env, SUPERVIBE_ALLOW_UNVERIFIED_PLAN_REVIEW: "1" } });
     assert.match(atomized.stdout, /SUPERVIBE_WORK_ITEMS/);
     assert.match(atomized.stdout, /GRAPH: .*registry-flow-plan/);
 

@@ -31,6 +31,8 @@
 
 ## Plan Review Scorecard
 
+Rubric: `plan-review.yaml`
+
 | Dimension | Score | Evidence |
 | --- | --- | --- |
 | spec-coverage | pass | plan maps every approved requirement to tasks |
@@ -56,6 +58,15 @@
 - Critical: 0 Open, 1 Resolved. Resolved finding: plan originally lacked stop criteria for review-loop convergence.
 - Major: 0 Open, 2 Resolved. Resolved findings: cache and queue topology were not separated from MVP scope; next user decision options were incomplete.
 - Minor: 1 Open, 3 Resolved. Open finding is accepted as documentation polish and does not block atomization.
+
+## Blocker Findings
+
+- Critical: 0 Open, 1 Resolved. No critical blockers remain.
+- Major: 0 Open, 2 Resolved. No major blockers remain.
+
+## Non-Blocker Findings
+
+- Minor: 1 Open, 3 Resolved. Minor documentation polish is accepted as non-blocking and remains tracked for later cleanup.
 
 ## Convergence Ledger
 
@@ -91,3 +102,4 @@
 - workflow receipt: runtime receipt exists for the plan review package.
 - verification command: `node scripts/validate-plan-review-artifacts.mjs --fixture-dir tests/fixtures/artifacts/plan-reviews`.
 - plan-review-passed: proof flag is required before atomization.
+- evidenceGatePass: true.

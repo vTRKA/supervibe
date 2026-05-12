@@ -127,7 +127,7 @@ async function printActiveWorkGraphSummary() {
   const archiveCandidate = !archivedAt && (completionPass || isOperationallyClosedWorkGraph(graph));
   const lifecycle = archivedAt ? 'archived' : archiveCandidate ? 'completed-awaiting-archive' : 'active';
   const nextAction = nextReady !== 'none'
-    ? `claim ${nextReady} or inspect blockers`
+    ? `claim ${nextReady} or run /supervibe-loop --claim-ready`
     : archiveCandidate
       ? 'finish/archive completed epic'
       : 'validate completion or unblock remaining work';

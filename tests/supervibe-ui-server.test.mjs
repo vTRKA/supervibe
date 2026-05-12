@@ -118,15 +118,50 @@ test("UI server renders local control plane and keeps actions preview-first", as
       body: JSON.stringify({ file: graphRel, itemId: "design-kanban-cards", type: "close", apply: false }),
     })).json();
     assert.equal(preview.dryRun, true);
+    assert.match(preview.previewToken, /^[0-9a-f-]+$/i);
     assert.equal(JSON.parse(await readFile(graphPath, "utf8")).items[1].status, "open");
 
-    const applied = await (await fetch(`${baseUrl}/api/action`, {
+    const bypass = await (await fetch(`${baseUrl}/api/action`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ file: graphRel, itemId: "design-kanban-cards", type: "close", apply: true, confirm: "apply-local" }),
     })).json();
-    assert.equal(applied.dryRun, false);
+    assert.match(bypass.error, /valid previewToken/);
+
+    const mismatch = await (await fetch(`${baseUrl}/api/action`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ file: graphRel, itemId: "design-kanban-cards", type: "edit", title: "Different mutation", apply: true, confirm: "apply-local", previewToken: preview.previewToken }),
+    })).json();
+    assert.match(mismatch.error, /scope mismatch/);
+
+    const applied = await (await fetch(`${baseUrl}/api/action`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ file: graphRel, itemId: "design-kanban-cards", type: "close", apply: true, confirm: "apply-local", previewToken: preview.previewToken }),
+    })).json();
+    assert.match(applied.error, /unknown previewToken/);
+
+    const previewAgain = await (await fetch(`${baseUrl}/api/action`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ file: graphRel, itemId: "design-kanban-cards", type: "close", apply: false }),
+    })).json();
+    assert.equal(previewAgain.dryRun, true);
+
+    const appliedAfterMatchingPreview = await (await fetch(`${baseUrl}/api/action`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ file: graphRel, itemId: "design-kanban-cards", type: "close", apply: true, confirm: "apply-local", previewToken: previewAgain.previewToken }),
+    })).json();
+    assert.equal(appliedAfterMatchingPreview.dryRun, false);
+    assert.equal(appliedAfterMatchingPreview.previewTokenAccepted, true);
     assert.equal(JSON.parse(await readFile(graphPath, "utf8")).items[1].status, "closed");
+    const audit = (await readFile(join(root, ".supervibe", "memory", "ui-action-audit.jsonl"), "utf8"))
+      .trim()
+      .split(/\r?\n/)
+      .map((line) => JSON.parse(line));
+    assert.deepEqual(audit.map((entry) => entry.status), ["rejected", "previewed", "rejected", "rejected", "rejected", "previewed", "applied"]);
   } finally {
     await close(server);
     await rm(root, { recursive: true, force: true });

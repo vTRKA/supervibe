@@ -20,14 +20,61 @@ const AFFIRMATIVE_PHRASES = [
   "go",
   "proceed",
   "continue",
+  "go on",
+  "keep going",
   "next",
   "да",
   "ок",
   "переходим",
+  "продолжи",
   "продолжай",
+  "продолжай работу",
+  "давай дальше",
+  "ок продолжай",
   "дальше",
   "го",
 ];
+
+const WORKFLOW_CONTINUATION_PHRASES = Object.freeze([
+  "continue",
+  "go on",
+  "keep going",
+  "next",
+  "continue work",
+  "resume loop",
+  "continue task graph",
+  "продолжи",
+  "продолжай",
+  "продолжи работу",
+  "продолжай работу",
+  "давай дальше",
+  "ок продолжай",
+  "дальше",
+  "следующий этап",
+]);
+
+const CONTINUATION_PREFIXES = Object.freeze([
+  "continue",
+  "go on",
+  "keep going",
+  "next",
+  "resume",
+  "продолжи",
+  "продолжай",
+  "давай дальше",
+  "ок продолжай",
+  "дальше",
+]);
+
+const CONTINUATION_FALLBACK_EXCLUSIONS = Object.freeze([
+  "design",
+  "prototype",
+  "mockup",
+  "figma",
+  "дизайн",
+  "прототип",
+  "макет",
+]);
 
 const VAGUE_FEATURE_PHRASES = [
   "build feature",
@@ -228,6 +275,21 @@ export function formatWorkflowRoute(route) {
     }
   }
   return lines.join("\n");
+}
+
+export function isWorkflowContinuationRequest(value) {
+  const text = normalize(value);
+  if (!text || isExplicitStopOrPause(text)) return false;
+  return containsAny(text, WORKFLOW_CONTINUATION_PHRASES)
+    || CONTINUATION_PREFIXES.some((phrase) => text.startsWith(normalize(phrase)));
+}
+
+export function isBareWorkflowContinuationRequest(value) {
+  const text = normalize(value);
+  if (!isWorkflowContinuationRequest(text)) return false;
+  if (containsAny(text, CONTINUATION_FALLBACK_EXCLUSIONS)) return false;
+  if (WORKFLOW_CONTINUATION_PHRASES.some((phrase) => text === normalize(phrase))) return true;
+  return CONTINUATION_PREFIXES.some((phrase) => text.startsWith(normalize(phrase)));
 }
 
 function routeFromRecentHandoff(request, recentAssistantOutput, locale) {

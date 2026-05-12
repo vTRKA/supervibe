@@ -176,15 +176,18 @@ export function createTrackerMapping({ graph = {}, adapterId = "native-json", ex
   mapping.updatedAt = new Date().toISOString();
   for (const item of trackerItemsForGraph(graph)) {
     const existing = mapping.items[item.itemId];
-    mapping.items[item.itemId] = existing || {
+    const base = {
+      ...(existing || {}),
       nativeId: item.itemId,
-      externalId: null,
+      externalId: existing?.externalId || null,
       itemHash: hashWorkItem(item),
       type: item.type,
       title: item.title,
       sourcePlanPath: graph.source?.path || graph.planPath || null,
-      status: "unmapped",
+      nativeStatus: item.status || "open",
+      status: existing?.externalId ? (existing.status || "mapped") : "unmapped",
     };
+    mapping.items[item.itemId] = base;
   }
   return mapping;
 }
@@ -447,6 +450,7 @@ function hashWorkItem(item) {
     itemId: item.itemId,
     title: item.title,
     type: item.type,
+    status: item.status || "open",
     acceptanceCriteria: item.acceptanceCriteria || [],
     verificationCommands: item.verificationCommands || [],
     writeScope: item.writeScope || [],

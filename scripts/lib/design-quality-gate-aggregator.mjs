@@ -91,6 +91,15 @@ export function evaluateDesignQualityGate(rootDir = process.cwd(), {
       workflowRunId,
     })
     : null);
+  if (reviewsRequired && !receiptValidation && !String(handoffId || workflowRunId || "").trim()) {
+    issues.push({
+      code: "design-provenance-unscoped",
+      severity: "blocker",
+      file: ".supervibe/artifacts/_workflow-invocations/supervibe-design",
+      line: 0,
+      message: "quality gate requires active scoped receipt validation with handoffId or workflowRunId before approval",
+    });
+  }
   if (reviewsRequired && resolvedReceiptValidation?.pass !== true) {
     for (const item of resolvedReceiptValidation?.issues || []) {
       issues.push({

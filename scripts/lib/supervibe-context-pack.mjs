@@ -14,6 +14,7 @@ const DEFAULT_CONTEXT_PACK_TOKEN_SLO = Object.freeze({
   warningRatio: 0.7,
   hardRatio: 1.0,
 });
+const TERMINAL_WORK_ITEM_STATUSES = new Set(["done", "closed", "complete", "completed", "verified", "skipped", "cancelled", "canceled"]);
 
 export async function buildContextPack({
   rootDir = process.cwd(),
@@ -193,13 +194,25 @@ export function selectActiveItem(index = [], itemId = null) {
   if (itemId) {
     const exact = index.find((item) => item.itemId === itemId || item.id === itemId);
     if (!exact) throw new Error(`work item not found: ${itemId}`);
+    if (isTerminalWorkItem(exact)) throw new Error(`context pack cannot select terminal work item: ${itemId}`);
     return exact;
   }
-  return index.find((item) => item.type !== "epic" && item.effectiveStatus === "claimed")
-    || index.find((item) => item.type !== "epic" && item.effectiveStatus === "ready")
-    || index.find((item) => item.type !== "epic" && !["done", "closed", "complete"].includes(item.effectiveStatus))
-    || index.find((item) => item.type !== "epic")
+  const activeCandidates = index.filter((item) => item.type !== "epic" && !isTerminalWorkItem(item));
+  return activeCandidates.find((item) => item.effectiveStatus === "claimed")
+    || activeCandidates.find((item) => item.effectiveStatus === "ready")
+    || activeCandidates.find((item) => !["blocked", "gate", "stale", "delegated"].includes(item.effectiveStatus))
+    || activeCandidates[0]
     || null;
+}
+
+export function isTerminalWorkItem(item = {}) {
+  const statuses = [
+    item.effectiveStatus,
+    item.status,
+    item.task?.status,
+    item.lifecycle,
+  ].map((status) => String(status || "").toLowerCase());
+  return statuses.some((status) => TERMINAL_WORK_ITEM_STATUSES.has(status));
 }
 
 async function findRelevantMemory({

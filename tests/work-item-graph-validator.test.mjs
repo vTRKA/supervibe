@@ -34,7 +34,7 @@ npm test
 test("validateWorkItemGraphFiles accepts persisted graph", async () => {
   const dir = await mkdtemp(join(tmpdir(), "work-item-graph-validator-"));
   const file = join(dir, "graph.json");
-  const graph = atomizePlanToWorkItems(PLAN, { planPath: "plan.md", epicId: "epic-example", planReviewPassed: true });
+  const graph = atomizePlanToWorkItems(PLAN, { planPath: "plan.md", epicId: "epic-example", planReviewPassed: true, dryRun: true });
   await writeFile(file, `${JSON.stringify(graph, null, 2)}\n`);
 
   const report = await validateWorkItemGraphFiles({ files: [file] });
@@ -44,7 +44,7 @@ test("validateWorkItemGraphFiles accepts persisted graph", async () => {
 test("validate-work-item-graphs CLI fails invalid graph", async () => {
   const dir = await mkdtemp(join(tmpdir(), "work-item-graph-invalid-"));
   const file = join(dir, "graph.json");
-  const graph = atomizePlanToWorkItems(PLAN, { planPath: "plan.md", epicId: "epic-example", planReviewPassed: true });
+  const graph = atomizePlanToWorkItems(PLAN, { planPath: "plan.md", epicId: "epic-example", planReviewPassed: true, dryRun: true });
   graph.items.find((item) => item.itemId.endsWith("-t1")).verificationCommands = [];
   await writeFile(file, `${JSON.stringify(graph, null, 2)}\n`);
 
@@ -58,7 +58,7 @@ test("validate-work-item-graphs CLI fails invalid graph", async () => {
 test("validate-work-item-graphs CLI passes persisted graph", async () => {
   const dir = await mkdtemp(join(tmpdir(), "work-item-graph-cli-"));
   const file = join(dir, "graph.json");
-  const graph = atomizePlanToWorkItems(PLAN, { planPath: "plan.md", epicId: "epic-example", planReviewPassed: true });
+  const graph = atomizePlanToWorkItems(PLAN, { planPath: "plan.md", epicId: "epic-example", planReviewPassed: true, dryRun: true });
   await writeFile(file, `${JSON.stringify(graph, null, 2)}\n`);
 
   const stdout = execFileSync(process.execPath, ["scripts/validate-work-item-graphs.mjs", "--file", file], {
@@ -68,10 +68,29 @@ test("validate-work-item-graphs CLI passes persisted graph", async () => {
   assert.match(stdout, /All 1 work-item graph artifact\(s\) passed/);
 });
 
+test("validate-work-item-graphs accepts claimed active task with no ready front", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "work-item-graph-claimed-front-"));
+  const file = join(dir, "graph.json");
+  const graph = atomizePlanToWorkItems(PLAN, { planPath: "plan.md", epicId: "epic-example", planReviewPassed: true, dryRun: true });
+  const task1 = graph.items.find((item) => item.itemId.endsWith("-t1"));
+  const task2 = graph.items.find((item) => item.itemId.endsWith("-t2"));
+  task1.status = "claimed";
+  task2.status = "open";
+  graph.tasks = graph.tasks.map((task) => {
+    if (task.id === task1.itemId) return { ...task, status: "claimed" };
+    if (task.id === task2.itemId) return { ...task, status: "open" };
+    return task;
+  });
+  await writeFile(file, `${JSON.stringify(graph, null, 2)}\n`);
+
+  const report = await validateWorkItemGraphFiles({ files: [file] });
+  assert.equal(report.pass, true);
+});
+
 test("validate-work-item-graphs CLI strict source snapshot flag fails legacy graph", async () => {
   const dir = await mkdtemp(join(tmpdir(), "work-item-graph-strict-source-"));
   const file = join(dir, "graph.json");
-  const graph = atomizePlanToWorkItems(PLAN, { planPath: "plan.md", epicId: "epic-example", planReviewPassed: true });
+  const graph = atomizePlanToWorkItems(PLAN, { planPath: "plan.md", epicId: "epic-example", planReviewPassed: true, dryRun: true });
   graph.metadata.sourcePlanSnapshot = null;
   graph.source.sha256 = null;
   graph.source.snapshotPath = null;

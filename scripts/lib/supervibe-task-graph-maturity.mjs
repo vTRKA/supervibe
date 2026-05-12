@@ -94,6 +94,7 @@ const REQUIRED_SYNC_DIAGNOSTIC_TOKENS = Object.freeze([
 
 export function buildTaskGraphMaturityReport(rootDir = process.cwd(), options = {}) {
   const requireActiveGraph = Boolean(options.requireActiveGraph);
+  const maturityScope = requireActiveGraph ? "active-workflow-readiness" : "global-capability";
   const dimensions = [
     routingDimension(rootDir),
     commandShortcutDimension(),
@@ -143,6 +144,9 @@ export function buildTaskGraphMaturityReport(rootDir = process.cwd(), options = 
   return {
     kind: "supervibe-task-graph-maturity",
     rootDir,
+    maturityScope,
+    activeProofRequired: requireActiveGraph,
+    globalCapabilityOnly: !requireActiveGraph,
     score,
     pass,
     status: pass ? "10-of-10-ready" : "needs-work",
@@ -229,6 +233,9 @@ export function formatTaskGraphMaturityReport(report) {
     `SCORE: ${report.score}/10`,
     `STATUS: ${report.status}`,
     `PASS: ${report.pass}`,
+    `MATURITY_SCOPE: ${report.maturityScope || "unknown"}`,
+    `ACTIVE_PROOF_REQUIRED: ${report.activeProofRequired === true}`,
+    `GLOBAL_CAPABILITY_ONLY: ${report.globalCapabilityOnly === true}`,
     "DIMENSIONS:",
   ];
   for (const dimension of report.dimensions) {

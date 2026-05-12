@@ -24,6 +24,7 @@ import {
   summarizeAdaptPlan,
   summarizeAdaptResolve,
   verifyAdaptAgentRuntime,
+  writeAdaptDriftState,
 } from "./lib/supervibe-adapt.mjs";
 import {
   applyAgentProvisioningPlan,
@@ -180,10 +181,15 @@ try {
     });
     if (result.blocked.length > 0) process.exitCode = 2;
   } else {
-    const visiblePlan = filterAdaptPlanItems(plan, {
+    let visiblePlan = filterAdaptPlanItems(plan, {
       changedOnly: Boolean(args["changed-only"]),
       quietIdentical: Boolean(args["quiet-identical"]),
     });
+    const driftState = await writeAdaptDriftState(plan, { items: visiblePlan.items });
+    visiblePlan = {
+      ...visiblePlan,
+      driftState,
+    };
     printAdaptValue(visiblePlan, {
       summary: summarizeAdaptPlan,
       formatter: (value) => formatAdaptPlan(value, { diffSummary: Boolean(args["diff-summary"] || args["evidence-summary"]) }),
@@ -248,10 +254,11 @@ function buildAdaptTransactionSummary(result = {}) {
 }
 
 function nextActionForAdaptResult(result = {}) {
+  const verification = result.lifecycleState?.verification || {};
   if (result.kind === "adapt-deploy-apply") {
-    return result.lifecycleState?.verification?.deployVerified === true
+    return verification.deployVerified === true
       ? null
-      : "Run deployment runtime health checks before claiming deploy verified.";
+      : verification.deployVerificationCommand || "Run deployment runtime health checks before claiming deploy verified.";
   }
   if (result.kind === "adapt-agent-runtime-verification") {
     return result.agentRuntime?.verified === true
@@ -260,6 +267,12 @@ function nextActionForAdaptResult(result = {}) {
   }
   if (result.postApply?.clean === false) {
     return "Rerun supervibe-adapt --dry-run and apply remaining approved artifacts.";
+  }
+  if (verification.appVerification?.required === true && verification.appVerification?.verified !== true) {
+    return verification.appVerification.nextCommand || "Run post-adapt app verification.";
+  }
+  if (verification.deployVerification?.required === true && verification.deployVerification?.verified !== true) {
+    return verification.deployVerification.nextCommand || "Run post-adapt deploy verification.";
   }
   return null;
 }
@@ -319,6 +332,10 @@ function readAdaptStateSnapshot(rootDir) {
       lifecycle: parsed.lifecycle || null,
       currentStage: parsed.currentStage || null,
       verification: parsed.verification || null,
+      recovery: parsed.recovery || null,
+      dirtyState: parsed.recovery?.dirtyState || parsed.evidence?.dirtyState || null,
+      appVerification: parsed.verification?.appVerification || null,
+      deployVerification: parsed.verification?.deployVerification || null,
       updatedAt: parsed.updatedAt || null,
     };
   } catch (error) {
@@ -340,8 +357,14 @@ function nextSafeRecoveryCommand({ dirtyReceipts = [], state = {}, lastTrustedAd
   if (!state.present || !lastTrustedAdapt) {
     return "node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --dry-run";
   }
-  if (state.verification?.agentRuntimeVerified !== true) {
+  if (state.verification?.agentReceiptsRequired !== false && state.verification?.agentRuntimeVerified !== true) {
     return "node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --verify-agents";
+  }
+  if (state.appVerification?.required === true && state.appVerification?.verified !== true && state.appVerification?.nextCommand) {
+    return state.appVerification.nextCommand;
+  }
+  if (state.deployVerification?.required === true && state.deployVerification?.verified !== true && state.deployVerification?.nextCommand) {
+    return state.deployVerification.nextCommand;
   }
   return "node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --dry-run";
 }
@@ -362,8 +385,26 @@ function formatAdaptRecoveryStatus(result = {}) {
     `ADAPT_STATE: ${result.adaptState?.present ? result.adaptState.path : "missing"}`,
     `ADAPT_LIFECYCLE: ${result.adaptState?.lifecycle || "none"}`,
     `ADAPT_CURRENT_STAGE: ${result.adaptState?.currentStage || "none"}`,
+    `APP_VERIFICATION_STATUS: ${result.adaptState?.verification?.appVerificationStatus || "unknown"}`,
+    `APP_VERIFICATION_COMMAND: ${result.adaptState?.verification?.appVerificationCommand || "none"}`,
+    `DEPLOY_VERIFICATION_STATUS: ${result.adaptState?.verification?.deployVerificationStatus || "unknown"}`,
+    `DEPLOY_VERIFICATION_COMMAND: ${result.adaptState?.verification?.deployVerificationCommand || "none"}`,
     `NEXT_SAFE_COMMAND: ${result.nextSafeCommand}`,
   ];
+  const dirty = result.adaptState?.dirtyState;
+  if (dirty) {
+    lines.push(`DIRTY_STATE: ${dirty.status || "unknown"}`);
+    lines.push(`DIRTY_EXPECTED_RECEIPTS: ${dirty.counts?.expectedReceipts ?? 0}`);
+    lines.push(`DIRTY_EXPECTED_MEMORY: ${dirty.counts?.expectedMemory ?? 0}`);
+    lines.push(`DIRTY_STALE_GARBAGE: ${dirty.counts?.staleGarbage ?? 0}`);
+    lines.push(`DIRTY_UNEXPECTED_MUTATIONS: ${dirty.counts?.unexpectedMutations ?? 0}`);
+  }
+  if (result.adaptState?.appVerification?.nextCommand) {
+    lines.push(`NEXT_APP_VERIFICATION: ${result.adaptState.appVerification.nextCommand}`);
+  }
+  if (result.adaptState?.deployVerification?.nextCommand) {
+    lines.push(`NEXT_DEPLOY_VERIFICATION: ${result.adaptState.deployVerification.nextCommand}`);
+  }
   for (const item of result.dirtyReceipts || []) {
     lines.push(`DIRTY_RECEIPT: ${item.path}`);
     for (const issue of item.issues || []) lines.push(`DIRTY_REASON: ${issue}`);

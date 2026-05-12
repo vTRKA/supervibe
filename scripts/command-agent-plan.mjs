@@ -1,12 +1,16 @@
 #!/usr/bin/env node
-import { existsSync, readdirSync, statSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
   buildCommandAgentPlan,
   formatCommandAgentPlan,
 } from "./lib/command-agent-orchestration-contract.mjs";
+import {
+  agentOnlyStrictBlockReason,
+  agentOnlyStrictReady,
+} from "./lib/supervibe-agent-only-policy.mjs";
 import {
   validateAgentProducerReceipts,
   validateScopedAgentProducerReceipts,
@@ -52,6 +56,12 @@ function parseArgs(argv) {
     else if (key === "handoff" || key === "handoff-id") options.handoffId = value;
     else if (key === "workflow-run-id") options.workflowRunId = value;
     else if (key === "slug") options.slug = value;
+    else if (key === "intent") options.intent = value;
+    else if (key === "stack" || key === "stack-tags") options.stackTags = value;
+    else if (key === "risk-domain" || key === "risk-domains" || key === "domain") options.riskDomains = value;
+    else if (key === "artifact-type" || key === "artifact") options.artifactType = value;
+    else if (key === "stage" || key === "phase") options.stage = value;
+    else if (key === "decision-artifact" || key === "orchestrator-decision-artifact") options.decisionArtifact = value;
     else if (key === "adds" || key === "updates" || key === "project-only" || key === "conflicts") options[key] = Number(value);
     else if (key === "memory-writes") options[key] = parseBoolean(value);
     else options[key] = value;
@@ -66,6 +76,7 @@ function usage() {
     "  node scripts/command-agent-plan.mjs --command /supervibe-design --host claude",
     "  node scripts/command-agent-plan.mjs --command /supervibe-design --host codex --active --slug agent-chat --handoff-id run-123",
     "  node scripts/command-agent-plan.mjs --command /supervibe-plan --host codex --json",
+    "  node scripts/command-agent-plan.mjs --command /supervibe-plan --host codex --intent plan --stack nextjs,postgres --risk-domain finance --artifact-type plan --stage review --decision-artifact .supervibe/artifacts/_workflow-invocations/agent-selection.json",
     "  node scripts/command-agent-plan.mjs --command /supervibe-adapt --adds 0 --updates 1 --project-only 0 --conflicts 0 --memory-writes false",
     "  node scripts/command-agent-plan.mjs --command /supervibe-adapt --low-risk",
     "  node scripts/command-agent-plan.mjs --command /supervibe-genesis --bootstrap-pre-agent --installed-only",
@@ -74,7 +85,7 @@ function usage() {
     "  Default execution mode is real-agents.",
     "  Text output includes AGENT_SELECTION_MODE, REQUIRED_AGENT_SOURCES, CALLABLE_AGENT_SOURCES, CALLABLE_AGENTS_READY, SCOPED_RECEIPT_GATE, and MISSING_CALLABLE_AGENTS.",
     "  Unsupported or unverifiable host dispatch enters agent-required-blocked.",
-    "  Workflow counts can select dynamic required roles, including low-risk fast paths.",
+    "  Workflow counts and selector context can select dynamic required roles, including low-risk fast paths, stack specialists, risk reviewers, and regulated-domain gates.",
     "  Inline mode is diagnostic/dry-run only and never satisfies specialist output.",
     "  /supervibe-genesis may use --bootstrap-pre-agent to install only base scaffold/state before project agents exist.",
     "  /supervibe-genesis --dry-run/--apply/--generate-apps are bootstrap-pre-agent phases; --verify-agents is the separate runtime smoke gate.",
@@ -113,10 +124,21 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         projectOnly: options["project-only"],
         conflicts: options.conflicts,
         memoryWrites: options["memory-writes"] === undefined ? false : options["memory-writes"],
+        intent: options.intent || null,
+        stackTags: options.stackTags || null,
+        riskDomains: options.riskDomains || null,
+        artifactType: options.artifactType || null,
+        stage: options.stage || null,
       },
       installedOnly: options.installedOnly,
       env: process.env,
     });
+    if (options.decisionArtifact) {
+      const artifactPath = resolve(options.decisionArtifact);
+      mkdirSync(dirname(artifactPath), { recursive: true });
+      writeFileSync(artifactPath, `${JSON.stringify(report.plan.orchestratorDecisionArtifact, null, 2)}\n`, "utf8");
+      if (!options.json) console.log(`DECISION_ARTIFACT_WRITTEN: ${artifactPath}`);
+    }
     if (options.json) {
       console.log(JSON.stringify(report, null, 2));
     } else {
@@ -140,31 +162,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 }
 
 export function commandAgentPlanStrictReady(report = {}) {
-  const plan = report.plan || {};
-  return report.pass === true
-    && plan.executionMode !== "agent-required-blocked"
-    && plan.durableWritesAllowed === true
-    && plan.agentOwnedOutputRequiresReceipts !== true
-    && plan.agentDispatchRequired !== true
-    && (plan.missingAgents || []).length === 0
-    && (plan.missingCallableAgents || []).length === 0
-    && (plan.logicalFallbackRequiredAgents || []).length === 0
-    && (plan.scopedReceiptTrust?.missingSubjects || []).length === 0
-    && !/^pending-/i.test(String(plan.receiptGate || ""));
+  return agentOnlyStrictReady(report);
 }
 
 function commandAgentPlanStrictBlockReason(report = {}) {
-  const plan = report.plan || {};
-  if (report.pass !== true) return "command-agent-plan failed";
-  if (plan.executionMode === "agent-required-blocked") return "required agents are blocked";
-  if ((plan.missingAgents || []).length) return `missing agents: ${plan.missingAgents.join(", ")}`;
-  if ((plan.missingCallableAgents || []).length) return `missing callable agents: ${plan.missingCallableAgents.join(", ")}`;
-  if ((plan.scopedReceiptTrust?.missingSubjects || []).length) return `missing scoped receipts: ${plan.scopedReceiptTrust.missingSubjects.join(", ")}`;
-  if ((plan.logicalFallbackRequiredAgents || []).length) return `logical fallback agents are not strict host-callable proof: ${plan.logicalFallbackRequiredAgents.join(", ")}`;
-  if (plan.durableWritesAllowed !== true) return "durable writes are blocked";
-  if (plan.agentOwnedOutputRequiresReceipts === true || plan.agentDispatchRequired === true) return "runtime agent receipts are still pending";
-  if (/^pending-/i.test(String(plan.receiptGate || ""))) return `receipt gate is pending: ${plan.receiptGate}`;
-  return "strict gate is not ready";
+  return agentOnlyStrictBlockReason(report);
 }
 
 export function buildRuntimeCommandAgentPlan({

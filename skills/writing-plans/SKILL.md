@@ -111,6 +111,7 @@ Before the numbered steps, run the **Plan Scope Approval Gate**: print a compact
 11b. **No-silent-stop contract** - include a `NEXT_STEP_HANDOFF` block pointing at `/supervibe-plan --review`. If the block cannot be produced, the plan is not complete.
 11c. **Mandatory next user actions** - after showing the plan result, print `NEXT_USER_ACTIONS[]` in command-output mode and wait for one choice: run plan review, revise plan first, audit plan deeper, exclude/defer items, or keep plan draft and stop. In normal conversational summaries, translate the same choices into a short human-readable next-step sentence instead of exposing the raw marker.
 12. **Handoff** to the mandatory review loop. Do not hand off directly to execution. Print `Step 1/1: run the plan review loop?`.
+12a. **Plan review receipt gate** - the plan-review artifact is a durable reviewer-owned output. It must be produced by the named real host reviewer agents and each reviewer output must have a runtime-issued scoped workflow receipt with `hostInvocation.source` and `hostInvocation.invocationId`. Inline review notes, controller summaries, command receipts, skill receipts, or subagent batch summaries are diagnostic only and cannot unlock atomization or execution.
 13. **After review passes**, hand off to atomic work item and epic creation before execution. Print `Step 1/1: split the plan into atomic work items and an epic?`.
 
 ## Output contract
@@ -166,7 +167,7 @@ END_NEXT_STEP_HANDOFF
 
 - `supervibe:brainstorming` — produces input spec
 - `supervibe:executing-plans` — consumes this output
-- `supervibe:subagent-driven-development` — alternative consumer for parallel tasks
+- `supervibe:executing-plans` — consumes reviewed, atomized, receipt-backed work items
 
 ## Critical path identification (required)
 
@@ -182,22 +183,22 @@ Critical path: T1 → T3 → T5 → T8 → T-FINAL (5 tasks, est. 6h sequential)
 Parallelizable: T2 || T4 (off-path); T6 || T7 (after T5)
 ```
 
-## Parallelization opportunities (required)
+## Real-agent handoff opportunities (required)
 
-Identify which tasks can run as parallel subagents:
-- Independent file modifications (e.g., 10 agent files = 10 parallel subagents)
-- Independent test suites (no shared sandbox)
-- Independent doc updates (no merge conflicts)
+Identify which tasks can run as independent real host-agent work:
+- Independent file modifications with disjoint write scopes
+- Independent test suites with isolated verification commands
+- Independent doc updates with no merge conflicts
 
-In the Execution Handoff section at the end, list parallel batches:
+In the Execution Handoff section at the end, list receipt-backed real-agent waves:
 ```
-Subagent-Driven batches:
-- Batch 1 (foundation, sequential): T1, T2, T3
-- Batch 2 (parallel, 5 subagents): T4, T5, T6, T7, T8
-- Batch 3 (sequential): T9, T-FINAL
+Real host-agent invocation waves:
+- Wave 1 (foundation, sequential): T1, T2, T3
+- Wave 2 (parallel, 5 named host-agent invocations): T4, T5, T6, T7, T8
+- Wave 3 (sequential): T9, T-FINAL
 ```
 
-This drastically reduces wall-clock execution time.
+This can reduce wall-clock execution time only when each worker/reviewer output can be bound to a real host invocation id and scoped runtime receipt. If the host cannot provide those receipts, keep the wave as a sequential diagnostic plan and do not claim durable delegated output. Do not represent subagent batches or inline controller output as durable producer/reviewer evidence.
 
 ## Rollback plan per task (required)
 
@@ -280,7 +281,7 @@ Required at end:
 - Delivery Strategy and Production Readiness sections
 - Final 10/10 Acceptance Gate with no-open-blockers rule
 - Self-Review (spec coverage / placeholders / type consistency)
-- Execution Handoff (Subagent-Driven batches OR Inline batches)
+- Execution Handoff (real-agent receipt-backed waves only; inline/controller notes are diagnostic)
 
 ## Anti-patterns
 
@@ -301,7 +302,7 @@ Required at end:
 1. Read brainstorm output (`.supervibe/artifacts/specs/...-brainstorm.md`) if exists
 2. List ALL tasks in dependency order
 3. Mark critical path
-4. Identify parallelization batches for handoff
+4. Identify receipt-backed real-agent waves for handoff
 5. Per task: failing test, impl, verify, rollback, commit
 6. Self-review: coverage / placeholders / type consistency
 7. Save to `.supervibe/artifacts/plans/`
@@ -310,7 +311,7 @@ Required at end:
 
 1. Same as feature plan PLUS:
 2. Insert review gates between phases
-3. Each phase has its own subagent batches
+3. Each phase has its own receipt-backed real-agent waves
 4. Final task is always release-prep (CHANGELOG / version / final tests)
 
 ### Workflow: Refactor plan (high regression risk)
@@ -329,7 +330,7 @@ Required at end:
 - Delivery Strategy covers MVP value, anti-bloat scope control, phases, launch, and production target
 - Production Readiness covers test, security/privacy, performance, observability, rollback, and release
 - Final 10/10 Acceptance Gate requires verification evidence and no open blockers
-- Parallelization batches in Handoff section
+- Receipt-backed real-agent waves in Handoff section
 - Rollback plan per task
 - Self-Review section completed before saving
 - Machine validator: `validate-plan-artifacts.mjs --file <plan>` exits 0
@@ -338,7 +339,6 @@ Required at end:
 
 - `supervibe:brainstorming` — predecessor; provides recommended option as input
 - `supervibe:executing-plans` — consumer; this skill writes what that skill executes
-- `supervibe:subagent-driven-development` — when handoff says Subagent-Driven
 - `supervibe:explore-alternatives` — for risk-register options
 - `supervibe:confidence-scoring` — gate before saving plan (≥9 required)
 - `supervibe:requirements-intake` — alternative entry point for complexity 3-6 plans

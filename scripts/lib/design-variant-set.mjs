@@ -303,6 +303,15 @@ export function validateDesignVariantSet(rootDir = process.cwd(), {
     : null;
   if (screenshotSimilarity) {
     issues.push(...screenshotSimilarity.issues);
+    const expectedPairs = expectedScreenshotPairCount(expectedCount);
+    const coveredPairs = screenshotCoveredPairCount(screenshotSimilarity);
+    if (screenshotSimilarity.status !== "passed" || coveredPairs < expectedPairs) {
+      issues.push(issue(
+        "missing-screenshot-similarity-evidence",
+        screenshotSimilarity.evidencePath,
+        `multi-variant validation requires screenshot similarity evidence for all requested variant pairs (${coveredPairs}/${expectedPairs})`,
+      ));
+    }
     warnings.push(...screenshotSimilarity.warnings);
   }
 
@@ -396,6 +405,17 @@ function requestedVariantCountFromText(text = "") {
 function requestedVariantCountFromOption(value) {
   const count = Number(value);
   return Number.isFinite(count) && count >= 1 ? Math.trunc(count) : null;
+}
+
+function expectedScreenshotPairCount(variantCount) {
+  const count = Number(variantCount);
+  if (!Number.isFinite(count) || count <= 1) return 0;
+  return Math.trunc(count * (count - 1) / 2);
+}
+
+function screenshotCoveredPairCount(screenshot = {}) {
+  const count = Number(screenshot.coveredPairs ?? screenshot.uniquePairs ?? screenshot.checkedPairs ?? 0);
+  return Number.isFinite(count) ? count : 0;
 }
 
 function extractReferenceSources(text = "", referenceSources = []) {

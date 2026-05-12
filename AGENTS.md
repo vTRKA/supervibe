@@ -25,9 +25,14 @@ npm run validate:agent-section-order
 npm run validate:agent-tool-use-matrix
 npm run validate:skill-operational-contracts
 npm run validate:skill-content-quality
+npm run measure:tokens:strict
 node --test tests/<name>.test.mjs
 node scripts/build-code-index.mjs --root . --force --health --no-embeddings
 ```
+
+Detailed workflow-hardening, token-budget, and prompt-slicing guidance lives in
+`docs/supervibe-workflow-hardening.md`; keep this root file focused on runtime
+rules and command entry points.
 
 ## Working Rules
 
@@ -37,6 +42,8 @@ node scripts/build-code-index.mjs --root . --force --health --no-embeddings
 - For ambiguous audit phrases about agents, skills, design datasets, RAG/CodeGraph, memory, or "10/10" maturity, route to `/supervibe-audit` before plan review unless the user explicitly references an existing plan artifact.
 - For every claimed Supervibe command, skill, agent, reviewer, worker, validator, or external-tool invocation, create a runtime-issued workflow receipt with `node scripts/workflow-receipt.mjs issue ...`; hand-written receipts are untrusted and `npm run validate:workflow-receipts` must pass before claiming delegated work is complete.
 - Inline/manual drafts are diagnostic only. If a workflow names a producer agent, worker, reviewer, validator, executable skill producer, or external tool, use the real host/tool path whenever available and bind the result with runtime receipts. Do not emulate specialist producers in the controller and do not let command or skill receipts substitute for agent/worker/reviewer receipts.
+- For Codex active durable workflow steps, invoke named Supervibe specialists through `spawn_agent`, record the returned Codex agent id, and issue receipts with `hostInvocation.source=codex-spawn-agent` plus that invocation id. Generic worker/explorer substitutions and controller-authored inline outputs never satisfy specialist proof.
+- Keep Codex behavior consistent by treating `AGENTS.md` as concise policy, keeping reusable specialist prompts under `.codex/agents/`, and validating runtime enforcement via `node scripts/command-agent-plan.mjs --strict` and `npm run validate:command-agent-enforcement` instead of ad hoc local conventions.
 - For skill-owned durable design-system outputs, use executable producers such as `node scripts/brandbook-producer.mjs run ...`; use `workflow-receipt.mjs reissue`, `workflow-receipt.mjs prune-stale --apply`, `workflow-receipt.mjs rebuild-ledger`, and `workflow-receipt.mjs recovery-status` for repair/recovery instead of editing receipt JSON or the ledger by hand.
 - For `/supervibe-design`, never show a user option id that `node scripts/design-wizard-answer.mjs` cannot accept. If a trusted specialist proposal exists but the wizard queue is still fallback, stop and repair/import the proposal before asking or recording the answer.
 - `/supervibe-design` has one canonical next action. Runtime state, `design-agent-plan`, prewrite manifests, and status output must agree on the next question/action; if they disagree, repair state instead of continuing.

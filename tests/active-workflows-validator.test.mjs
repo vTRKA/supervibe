@@ -52,20 +52,28 @@ test("active workflow validator blocks missing scoped receipts from persisted ac
 });
 
 test("active workflow validator CLI exits non-zero for blocked active workflow", () => {
-  const result = spawnSync(process.execPath, [
-    join(ROOT, "scripts", "validate-active-workflows.mjs"),
-    "--command",
-    "/supervibe-plan",
-    "--host",
-    "codex",
-    "--handoff-id",
-    "active-plan-run",
-    "--plugin-root",
-    ROOT,
-  ], {
-    cwd: ROOT,
-    encoding: "utf8",
-  });
+  const root = mkdtempSync(join(tmpdir(), "supervibe-active-cli-blocked-"));
+  let result;
+  try {
+    result = spawnSync(process.execPath, [
+      join(ROOT, "scripts", "validate-active-workflows.mjs"),
+      "--root",
+      root,
+      "--command",
+      "/supervibe-plan",
+      "--host",
+      "codex",
+      "--handoff-id",
+      "active-plan-run",
+      "--plugin-root",
+      ROOT,
+    ], {
+      cwd: ROOT,
+      encoding: "utf8",
+    });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 
   assert.equal(result.status, 1);
   assert.match(result.stdout, /SUPERVIBE_ACTIVE_WORKFLOWS/);

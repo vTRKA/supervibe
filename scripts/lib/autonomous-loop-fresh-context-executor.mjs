@@ -18,7 +18,10 @@ export const ATTEMPT_STATUSES = Object.freeze([
   "completed",
   "blocked",
   "cancelled",
+  "stalled",
 ]);
+
+export const DEFAULT_NO_PROGRESS_TIMEOUT_MS = 15 * 60 * 1000;
 
 const DEFAULT_OUTPUT_CONTRACT = {
   completionSignal: "SUPERVIBE_TASK_COMPLETE: true",
@@ -96,6 +99,7 @@ export async function runFreshContextAttempt({
   permissionAudit = null,
   contextBudgetOptions = null,
   enforceContextBudget = false,
+  noProgressTimeoutMs = DEFAULT_NO_PROGRESS_TIMEOUT_MS,
 } = {}) {
   const executionMode = normalizeExecutionMode(mode);
   const packet = buildFreshContextPacket({
@@ -184,8 +188,25 @@ export async function runFreshContextAttempt({
 
   let runResult;
   try {
-    runResult = await adapter.run(packet, { prompt, allowSpawn, attemptId, mode: executionMode });
+    runResult = await withNoProgressTimeout(adapter.run(packet, { prompt, allowSpawn, attemptId, mode: executionMode }), {
+      adapter,
+      attemptId,
+      phase: "adapter.run",
+      timeoutMs: noProgressTimeoutMs,
+    });
   } catch (err) {
+    if (err?.code === "no_progress_timeout") {
+      const outputPath = await writeAttemptOutput({ attemptDir, attemptId, content: err.message });
+      return noProgressAttempt({
+        task,
+        attemptId,
+        executionMode,
+        outputPath,
+        observedEvidence: err.message,
+        contract,
+        noProgress: err.details,
+      });
+    }
     const outputPath = await writeAttemptOutput({ attemptDir, attemptId, content: err.stack || err.message });
     return failedAttempt({
       task,
@@ -217,9 +238,31 @@ export async function runFreshContextAttempt({
   });
   if (ledgerPath) await appendSideEffect(ledgerPath, sideEffect);
 
-  const output = typeof adapter.collectOutput === "function"
-    ? await adapter.collectOutput(runResult)
-    : runResult.output || "";
+  let output;
+  try {
+    output = typeof adapter.collectOutput === "function"
+      ? await withNoProgressTimeout(adapter.collectOutput(runResult), {
+        adapter,
+        attemptId,
+        phase: "adapter.collectOutput",
+        timeoutMs: noProgressTimeoutMs,
+      })
+      : runResult.output || "";
+  } catch (err) {
+    if (err?.code === "no_progress_timeout") {
+      const outputPath = await writeAttemptOutput({ attemptDir, attemptId, content: err.message });
+      return noProgressAttempt({
+        task,
+        attemptId,
+        executionMode,
+        outputPath,
+        observedEvidence: err.message,
+        contract,
+        noProgress: err.details,
+      });
+    }
+    throw err;
+  }
   const outputPath = await writeAttemptOutput({ attemptDir, attemptId, content: output });
   const completion = typeof adapter.extractCompletionSignal === "function"
     ? adapter.extractCompletionSignal(output)
@@ -311,6 +354,7 @@ export function createAttemptRecord({
   failurePacket = null,
   sideEffect = null,
   contextBudget = null,
+  noProgress = null,
 } = {}) {
   if (!ATTEMPT_STATUSES.includes(status)) throw new Error(`Unknown attempt status: ${status}`);
   return {
@@ -325,6 +369,7 @@ export function createAttemptRecord({
     failurePacket,
     sideEffectId: sideEffect?.actionId || null,
     contextBudget,
+    noProgress,
   };
 }
 
@@ -347,6 +392,7 @@ function failedAttempt({
   contract,
   requeueReason = null,
   contextBudget = null,
+  noProgress = null,
 } = {}) {
   const failurePacket = createFailurePacket({
     taskId: task.id,
@@ -382,6 +428,15 @@ function failedAttempt({
     score,
     failurePacket,
     contextBudget,
+    noProgress,
+  });
+}
+
+function noProgressAttempt(options = {}) {
+  return failedAttempt({
+    ...options,
+    status: "stalled",
+    requeueReason: "no_progress_timeout",
   });
 }
 
@@ -397,6 +452,54 @@ function blockedAttempt({ task, attemptId, executionMode, reason, contract, cont
     requeueReason: "policy_block",
     contextBudget,
   });
+}
+
+async function withNoProgressTimeout(promise, {
+  adapter,
+  attemptId,
+  phase,
+  timeoutMs = DEFAULT_NO_PROGRESS_TIMEOUT_MS,
+} = {}) {
+  const normalizedTimeoutMs = normalizeTimeoutMs(timeoutMs);
+  if (!normalizedTimeoutMs) return promise;
+  let timeoutId;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timeoutId = setTimeout(() => {
+          const stopResult = stopAdapter(adapter);
+          const error = new Error(`No progress from ${phase} for ${normalizedTimeoutMs}ms; stopped stalled worker/reviewer attempt ${attemptId}.`);
+          error.code = "no_progress_timeout";
+          error.details = {
+            attemptId,
+            phase,
+            timeoutMs: normalizedTimeoutMs,
+            stopResult,
+            nextAction: "close stalled agent attempt and continue via batch fallback or requeue with changed conditions",
+          };
+          reject(error);
+        }, normalizedTimeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
+function normalizeTimeoutMs(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) return 0;
+  return Math.max(1, Math.floor(number));
+}
+
+function stopAdapter(adapter) {
+  if (!adapter || typeof adapter.stop !== "function") return { stopped: false, reason: "adapter-stop-unavailable" };
+  try {
+    return adapter.stop("no_progress_timeout");
+  } catch (err) {
+    return { stopped: false, reason: err.message };
+  }
 }
 
 function sanitizeContextPack(contextPack) {

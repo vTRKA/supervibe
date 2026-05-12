@@ -1137,6 +1137,7 @@ function deriveDesignReceiptExecutionMode({ receipts = [], expected = [], issues
   const skillReceipts = designReceipts.filter((receipt) => receipt.skillId || receipt.subjectType === "skill");
   const missingAgentIssues = issues.filter((issue) => issue.code === "missing-design-agent-receipt");
   if (missingAgentIssues.length > 0) return "agent-required-blocked";
+  if (issues.length > 0) return "agent-required-blocked";
   if (agentReceipts.length > 0) return "real-agents";
   if (skillReceipts.length > 0) return "skills-only";
   return "agent-required-blocked";

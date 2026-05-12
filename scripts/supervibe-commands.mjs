@@ -8,8 +8,16 @@ import {
   formatCommandMatch,
   resolveCommandRequest,
 } from "./lib/supervibe-command-catalog.mjs";
+import {
+  buildActiveWorkflowResumeInfo,
+  readCurrentActiveWorkflowState,
+} from "./lib/supervibe-active-workflow-state.mjs";
 import { resolveSupervibePluginRoot, resolveSupervibeProjectRoot } from "./lib/supervibe-plugin-root.mjs";
 import { routeTriggerRequest } from "./lib/supervibe-trigger-router.mjs";
+import {
+  isBareWorkflowContinuationRequest,
+  isWorkflowContinuationRequest,
+} from "./lib/supervibe-workflow-router.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 const SCRIPT_PLUGIN_ROOT = fileURLToPath(new URL("../", import.meta.url));
@@ -20,8 +28,15 @@ try {
   if (args.help) {
     console.log(formatHelp());
   } else if (args.match) {
-    const match = resolveCommandRequest(args.match, { pluginRoot, projectRoot })
-      || semanticTriggerFallback(args.match, { pluginRoot, projectRoot });
+    const catalogMatch = resolveCommandRequest(args.match, { pluginRoot, projectRoot });
+    const semanticMatch = catalogMatch ? null : semanticTriggerFallback(args.match, { pluginRoot, projectRoot });
+    const continuationMatch = activeWorkflowContinuationMatch(args.match, {
+      projectRoot,
+      closeCandidateMatches: [catalogMatch, semanticMatch].filter(Boolean),
+    });
+    const match = continuationMatch
+      || catalogMatch
+      || semanticMatch;
     if (args.json) console.log(JSON.stringify({ match }, null, 2));
     else console.log(formatCommandMatch(match));
     if (!match) process.exitCode = 2;
@@ -55,6 +70,84 @@ function semanticTriggerFallback(request, { pluginRoot, projectRoot } = {}) {
     agentProfile: route.agentProfile || null,
     followUpCommands: route.followUpCommands || [],
   };
+}
+
+function activeWorkflowContinuationMatch(request, { projectRoot, closeCandidateMatches = [] } = {}) {
+  if (!isWorkflowContinuationRequest(request)) return null;
+  const current = readCurrentActiveWorkflowState(projectRoot);
+  const resume = buildActiveWorkflowResumeInfo(current.state);
+  const closeCandidates = closeCandidateMatches.map((candidate) => ({
+    id: candidate.id,
+    intent: candidate.intent,
+    confidence: candidate.confidence,
+    reason: candidate.reason,
+  }));
+
+  if (resume.canResume && resume.nextCommand) {
+    return continuationCommandMatch({
+      id: "active-workflow-continuation",
+      intent: intentForContinuationCommand(resume.nextCommand),
+      command: resume.nextCommand,
+      confidence: 0.99,
+      reason: `Active workflow continuation selected from ${resume.stage}; nextAction=${resume.nextAction}.`,
+      nextAction: `Resume active workflow: ${resume.nextAction}.`,
+      diagnostics: {
+        selectedBecause: "bare-continuation-active-workflow",
+        closeCandidates,
+      },
+    });
+  }
+
+  if (current.exists && current.issues.length > 0) {
+    return continuationCommandMatch({
+      id: "active-workflow-state-repair",
+      intent: "active_workflow_state_repair",
+      command: "/supervibe-loop --status",
+      confidence: 0.93,
+      reason: `Continuation phrase found but active workflow state is invalid: ${current.issues.map((issue) => issue.code).join(", ")}.`,
+      nextAction: "Show active loop status and repair the active workflow state before mutation.",
+      diagnostics: {
+        selectedBecause: "continuation-state-invalid",
+        closeCandidates,
+      },
+    });
+  }
+
+  if (!isBareWorkflowContinuationRequest(request)) return null;
+  return continuationCommandMatch({
+    id: "workflow-continuation-fallback",
+    intent: "task_graph_resume",
+    command: "/supervibe-loop --status",
+    confidence: 0.88,
+    reason: "Continuation phrase found without active workflow state; routing to status instead of guessing a producer command.",
+    nextAction: "Show active workflow/task graph status and the next safe action.",
+    diagnostics: {
+      selectedBecause: "bare-continuation-no-active-state",
+      closeCandidates,
+    },
+  });
+}
+
+function continuationCommandMatch(fields) {
+  return {
+    title: "Resume active Supervibe workflow",
+    doNotSearchProject: true,
+    directRoute: false,
+    mutationRisk: "delegates-to-command",
+    ...fields,
+  };
+}
+
+function intentForContinuationCommand(command = "") {
+  const value = String(command || "");
+  if (value.includes("--review")) return "plan_review";
+  if (value.includes("--atomize")) return "atomize_plan";
+  if (value.includes("/supervibe-ui")) return "workflow_ui";
+  if (value.includes("--claim-ready")) return "task_graph_claim_ready";
+  if (value.includes("--status")) return "task_graph_resume";
+  if (value.includes("--guided") || value.includes("--epic")) return "single_session_epic_run";
+  if (value.includes("/supervibe-plan")) return "continue_plan";
+  return "active_workflow_continue";
 }
 
 function parseArgs(argv) {

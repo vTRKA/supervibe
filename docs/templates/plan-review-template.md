@@ -29,6 +29,8 @@
 
 ## Plan Review Scorecard
 
+Rubric: `plan-review.yaml`
+
 | Dimension | Score | Evidence |
 | --- | --- | --- |
 | spec-coverage | pass | requirements map to S1-S6 and REQ-BILL-EXPORT-001 through REQ-BILL-EXPORT-004 |
@@ -53,6 +55,15 @@
 
 - Critical: Open count 0, resolved count 0, remaining action none.
 - Major: Open count 4, resolved count 0, remaining action attach permission helper citation, route registration evidence, CodeGraph impact output, and rollback disablement proof.
+- Minor: Open count 1, resolved count 0, remaining action add support owner expiry date to the release notes.
+
+## Blocker Findings
+
+- Critical: Open count 0, resolved count 0, remaining action none.
+- Major: Open count 4, resolved count 0, remaining action attach permission helper citation, route registration evidence, CodeGraph impact output, and rollback disablement proof.
+
+## Non-Blocker Findings
+
 - Minor: Open count 1, resolved count 0, remaining action add support owner expiry date to the release notes.
 
 ## Convergence Ledger
@@ -90,3 +101,4 @@
 - workflow receipt: runtime receipt path or receipt id issued by `node scripts/workflow-receipt.mjs`.
 - verification command: `node scripts/validate-plan-review-artifacts.mjs --file .supervibe/artifacts/plans/2026-05-11-billing-export-mvp.md`.
 - plan-review-passed: proof flag may be issued only after all needs-revision rows become pass.
+- evidenceGatePass: true only when command output, artifact paths, source citations, and runtime receipts are present and trusted.

@@ -31,7 +31,14 @@ import {
 import { createPolicyGate, summarizeGates } from "./autonomous-loop-async-gates.mjs";
 import { generateContracts, scoreAutonomyReadiness, summarizeContracts } from "./autonomous-loop-contracts.mjs";
 import { createVerificationMatrix, validateEvidenceCoverage } from "./autonomous-loop-verification-matrix.mjs";
-import { runFreshContextAttempt } from "./autonomous-loop-fresh-context-executor.mjs";
+import {
+  applyVerificationPolicyToMatrix,
+  filterVerificationCommandsForEpicPhase,
+} from "./autonomous-loop-verification-policy.mjs";
+import {
+  DEFAULT_NO_PROGRESS_TIMEOUT_MS,
+  runFreshContextAttempt,
+} from "./autonomous-loop-fresh-context-executor.mjs";
 import { createToolAdapter, normalizeExecutionMode } from "./autonomous-loop-tool-adapters.mjs";
 import { createWorkflowFlowModel } from "./supervibe-workflow-flow-model.mjs";
 import { evaluateArtifactGcSchedule, scanSupervibeArtifactGc } from "./supervibe-artifact-gc.mjs";
@@ -90,6 +97,7 @@ export async function runAutonomousLoop(options = {}) {
     scenarios: verificationMatrix.length,
     levels: [...new Set(verificationMatrix.map((entry) => entry.level))],
   };
+  preflight.no_progress_timeout_ms = Number(options.noProgressTimeoutMs || DEFAULT_NO_PROGRESS_TIMEOUT_MS);
   preflight.autonomy_readiness = scoreAutonomyReadiness({ tasks, contracts, preflight, gates: [] });
   await writePreflightArtifact(loopDir, preflight);
 
@@ -100,6 +108,7 @@ export async function runAutonomousLoop(options = {}) {
   const handoffs = [];
   const dispatches = [];
   const attempts = [];
+  const deferredHeavyVerification = [];
   const mcpPlans = [];
   const events = [createAuditEvent("run_started", { runId, dryRun: Boolean(options.dryRun), runtime })];
   let claims = [];
@@ -358,7 +367,36 @@ export async function runAutonomousLoop(options = {}) {
       continue;
     }
 
-    const renderedCommands = (task.verificationCommands || []).map((command) => renderCommand(command, platformInfo));
+    const verificationPolicy = filterVerificationCommandsForEpicPhase(task.verificationCommands || [], {
+      epicComplete: isGraphClosed(tasks),
+      allowHeavy: Boolean(options.allowHeavyVerification || options.allowHeavyChecks || options.finalVerification),
+    });
+    if (verificationPolicy.hasDeferred) {
+      const deferred = verificationPolicy.deferredCommands.map((entry) => ({
+        taskId: task.id,
+        ...entry,
+      }));
+      task.deferredVerificationCommands = [
+        ...(task.deferredVerificationCommands || []),
+        ...deferred,
+      ];
+      deferredHeavyVerification.push(...deferred);
+      events.push(createAuditEvent("heavy_verification_deferred", {
+        taskId: task.id,
+        commands: deferred.map((entry) => entry.command),
+        reason: "epic_not_complete",
+      }));
+    }
+    const taskVerificationMatrix = applyVerificationPolicyToMatrix(
+      verificationMatrix.filter((entry) => entry.taskId === task.id),
+      verificationPolicy,
+    );
+    const executionTask = {
+      ...task,
+      verificationCommands: verificationPolicy.runnableCommands,
+      deferredVerificationCommands: task.deferredVerificationCommands || [],
+    };
+    const renderedCommands = verificationPolicy.runnableCommands.map((command) => renderCommand(command, platformInfo));
     if (renderedCommands.some((item) => !item.ok)) {
       task.status = "command_adapter_required";
       stopReason = "command_adapter_required";
@@ -375,7 +413,7 @@ export async function runAutonomousLoop(options = {}) {
       continue;
     }
 
-    const mcpPlan = planMcpUse(task, options.mcpToolsAllowed || preflight.mcp_tools_allowed || []);
+    const mcpPlan = planMcpUse(executionTask, options.mcpToolsAllowed || preflight.mcp_tools_allowed || []);
     mcpPlans.push({ taskId: task.id, ...mcpPlan });
     const workflowFlow = createWorkflowFlowModel({
       run: {
@@ -387,7 +425,7 @@ export async function runAutonomousLoop(options = {}) {
         active_task: task.id,
       },
     });
-    const contextPack = buildContextPlan(task, {
+    const contextPack = buildContextPlan(executionTask, {
       memoryEntries: options.dryRun ? [{ id: "dry-run-memory", summary: "dry-run context" }] : [],
       codeRagChunks: options.dryRun ? [{ file: "dry-run", summary: "dry-run code search" }] : [],
       codeGraphEvidence: options.dryRun ? [{ summary: "dry-run graph evidence" }] : [],
@@ -414,14 +452,14 @@ export async function runAutonomousLoop(options = {}) {
     if (executionMode !== "dry-run") {
       const adapter = options.adapter || createToolAdapter(options.adapterId || "generic-shell-stub", options.adapterConfig || {});
       const freshAttempt = await runFreshContextAttempt({
-        task,
+        task: executionTask,
         adapter,
         mode: executionMode,
         attemptId,
         attemptDir: join(loopDir, "attempts"),
         ledgerPath: join(loopDir, "side-effects.jsonl"),
         contract: contracts.find((contract) => contract.taskId === task.id),
-        verificationMatrix: verificationMatrix.filter((entry) => entry.taskId === task.id),
+        verificationMatrix: taskVerificationMatrix,
         contextPack,
         progressNotes: task.resumeNotes,
         policyBoundaries: {
@@ -439,6 +477,7 @@ export async function runAutonomousLoop(options = {}) {
         allowSpawn: Boolean(options.allowSpawn),
         approvalLeaseId: preflight.approval_lease.scope,
         permissionAudit,
+        noProgressTimeoutMs: options.noProgressTimeoutMs ?? preflight.no_progress_timeout_ms,
       });
       attempts.push(freshAttempt);
       scores.push(freshAttempt.score || { taskId: task.id, finalScore: 0, status: freshAttempt.status });
@@ -505,7 +544,7 @@ export async function runAutonomousLoop(options = {}) {
       }
 
       task.status = "complete";
-      task.verificationMatrix = verificationMatrix.filter((entry) => entry.taskId === task.id);
+      task.verificationMatrix = taskVerificationMatrix;
       claims = releaseClaim(claims, activeClaim.claimId, "completed");
       task.resumeNotes = createResumeNotes({
         task,
@@ -592,7 +631,7 @@ export async function runAutonomousLoop(options = {}) {
     }
 
     task.status = "complete";
-    task.verificationMatrix = verificationMatrix.filter((entry) => entry.taskId === task.id);
+    task.verificationMatrix = taskVerificationMatrix;
     const score = evaluateTask(task, {
       verificationRan: true,
       verificationEvidence,
@@ -692,6 +731,14 @@ export async function runAutonomousLoop(options = {}) {
   state.preflight = preflight;
   state.contracts = contracts;
   state.verification_matrix = verificationMatrix;
+  state.deferred_heavy_verification = deferredHeavyVerification;
+  state.verification_policy = {
+    heavyVerificationDeferred: deferredHeavyVerification.length,
+    allowHeavyVerification: Boolean(options.allowHeavyVerification || options.allowHeavyChecks || options.finalVerification),
+    nextAction: deferredHeavyVerification.length > 0
+      ? "run deferred heavy verification only after epic completion"
+      : "none",
+  };
   state.task_graph = {
     graph_id: taskGraph.graph_id,
     source: taskGraph.source,
@@ -1172,6 +1219,7 @@ Environment: ${preflight.environment_target}
 - Scores: ${state.scores.length}
 - Complete/blocked/pending: ${state.ready_summary?.complete || 0}/${state.ready_summary?.blocked || 0}/${state.ready_summary?.open || 0}
 - Requeues: ${state.requeue_summary?.total || 0}
+- Deferred heavy verification: ${state.deferred_heavy_verification?.length || 0}
 - Policy risk: ${state.policy_risk}
 - Approval lease: ${preflight.approval_lease.scope}
 - Policy profile: ${preflight.policy_profile?.name || "none"} (${preflight.policy_profile?.role || "no role"})

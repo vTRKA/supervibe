@@ -143,6 +143,7 @@ async function writeValidPrototype(root, { launcher = true, screenshot = true, c
       nonblankRender: true,
       noHorizontalOverflow: true,
       feedbackButtonVisible: true,
+      feedbackQueueWrite: true,
       drawerOpenClose: true,
       focusTrap: true,
       keyboardNavigation: true,
@@ -164,6 +165,35 @@ test("global-safe mode passes as not-started when no active workflow exists", as
     const result = validateDesignActiveCompletion(root, {});
     assert.equal(result.pass, true);
     assert.equal(result.status, "not-started");
+    assert.equal(result.designCompletion, "not-started");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("global-safe mode ignores non-design active workflow when design was not requested", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-active-completion-loop-active-"));
+  try {
+    await writeUtf8(root, ".supervibe/memory/active-workflow.json", `${JSON.stringify({
+      schemaVersion: 1,
+      command: "/supervibe-loop",
+      host: "codex",
+      stage: "verification",
+      handoffId: "loop-release",
+      question: null,
+      choices: [],
+      acceptedAnswer: { choiceId: "continue" },
+      artifacts: [{ id: "graph", path: ".supervibe/memory/work-items/epic/graph.json" }],
+      receipts: [{ id: "workflow-loop", path: ".supervibe/artifacts/_workflow-invocations/supervibe-loop/loop-release/receipt.json" }],
+      nextCommand: "/supervibe-loop",
+      nextAction: "validate loop release",
+    }, null, 2)}\n`);
+
+    const result = validateDesignActiveCompletion(root, {});
+
+    assert.equal(result.pass, true);
+    assert.equal(result.status, "not-started");
+    assert.equal(result.command, null);
     assert.equal(result.designCompletion, "not-started");
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -376,6 +406,7 @@ test("browser evidence requires keyboard, focus trap, and contrast proofs", asyn
     assert.match(messages, /keyboard navigation proof is required/);
     assert.match(messages, /drawer\/modal focus-trap proof is required/);
     assert.match(messages, /contrast audit proof is required/);
+    assert.match(messages, /feedback queue write proof is required/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -395,6 +426,7 @@ test("browser evidence rejects placeholder string proofs", async () => {
       nonblankRender: "skipped",
       noHorizontalOverflow: "skipped",
       feedbackButtonVisible: "skipped",
+      feedbackQueueWrite: "skipped",
       drawerOpenClose: "skipped",
       focusTrap: "skipped",
       keyboardNavigation: "skipped",
@@ -405,7 +437,7 @@ test("browser evidence rejects placeholder string proofs", async () => {
     }, null, 2)}\n`);
     const result = validateBrowserEvidence(root, completionOptions());
     assert.equal(result.pass, false);
-    assert.equal(result.issues.length, 17);
+    assert.equal(result.issues.length, 18);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -425,6 +457,7 @@ test("browser evidence rejects screenshot paths that do not exist", async () => 
       nonblankRender: true,
       noHorizontalOverflow: true,
       feedbackButtonVisible: true,
+      feedbackQueueWrite: true,
       drawerOpenClose: true,
       focusTrap: true,
       keyboardNavigation: true,
@@ -437,6 +470,48 @@ test("browser evidence rejects screenshot paths that do not exist", async () => 
     assert.equal(result.pass, false);
     assert.ok(result.issues.some((issue) => /desktop screenshot proof/.test(issue.message)));
     assert.ok(result.issues.some((issue) => /mobile screenshot proof/.test(issue.message)));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("active multi-variant run requires screenshot evidence for every requested pair", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-active-completion-screenshot-pairs-"));
+  try {
+    const result = validateDesignActiveCompletion(root, completionOptions({
+      requestedVariantCount: 3,
+      qualityGateResult: { pass: true, issues: [] },
+      variantSetResult: { pass: true, status: "passed", requestedVariantCount: 3, checkedVariants: 3, issues: [], warnings: [] },
+      launcherResult: { pass: true, issues: [] },
+      screenshotSimilarityResult: { pass: true, status: "passed", checkedPairs: 2, issues: [], warnings: [] },
+      browserEvidenceResult: { pass: true, issues: [] },
+    }));
+    assert.equal(result.pass, false);
+    assert.ok(result.issues.some((issue) =>
+      issue.code === "missing-screenshot-similarity-evidence"
+      && /2\/3/.test(issue.message)
+    ));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("active multi-variant run counts covered screenshot pairs, not raw duplicate rows", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-active-completion-screenshot-duplicates-"));
+  try {
+    const result = validateDesignActiveCompletion(root, completionOptions({
+      requestedVariantCount: 3,
+      qualityGateResult: { pass: true, issues: [] },
+      variantSetResult: { pass: true, status: "passed", requestedVariantCount: 3, checkedVariants: 3, issues: [], warnings: [] },
+      launcherResult: { pass: true, issues: [] },
+      screenshotSimilarityResult: { pass: true, status: "passed", checkedPairs: 3, coveredPairs: 1, rawPairs: 3, issues: [], warnings: [] },
+      browserEvidenceResult: { pass: true, issues: [] },
+    }));
+    assert.equal(result.pass, false);
+    assert.ok(result.issues.some((issue) =>
+      issue.code === "missing-screenshot-similarity-evidence"
+      && /1\/3/.test(issue.message)
+    ));
   } finally {
     await rm(root, { recursive: true, force: true });
   }

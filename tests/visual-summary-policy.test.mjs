@@ -70,10 +70,12 @@ T1 -> T2. Parallel: none.
 ## Scope Safety Gate
 
 Approved: sample validator. Deferred: none. Rejected: browser requirement. Tradeoff: text-first summaries are enough for schemes.
+Scope expansion rule: any new sample behavior requires explicit approved scope before implementation.
 
 ## Delivery Strategy
 
 MVP phase delivers production value with anti-bloat boundary.
+Task budget policy: max tasks per phase=12; max child items per atomization run=80; phase-split required before graph write when either limit is exceeded.
 
 ## Production Readiness
 
@@ -120,6 +122,7 @@ Spec coverage matrix:
 
 Placeholder scan: none.
 Type consistency: no type boundary changed.
+Scope consistency: the task remains inside the user-approved scope.
 
 ## Execution Handoff
 

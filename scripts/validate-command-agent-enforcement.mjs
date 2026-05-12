@@ -13,6 +13,7 @@ import {
   resolveHostAgentDispatcher,
   validateCommandAgentProfiles,
 } from "./lib/command-agent-orchestration-contract.mjs";
+import { evaluateAgentOnlyPolicy } from "./lib/supervibe-agent-only-policy.mjs";
 
 const REQUIRED_DESIGN_AGENTS = Object.freeze([
   "creative-director",
@@ -39,6 +40,13 @@ export function validateCommandAgentEnforcement(rootDir = process.cwd(), options
   const contract = copyCommandAgentContract();
   const issues = [];
   const commandIds = profiles.map((profile) => profile.commandId).filter(Boolean);
+  const requiredReceiptFields = new Set(contract.requiredReceiptFields || []);
+  if (!requiredReceiptFields.has("hostInvocation.source")) {
+    issues.push(issue("command-contract", "missing-host-invocation-source-receipt-field", "command-agent contract must require hostInvocation.source receipt evidence"));
+  }
+  if (!requiredReceiptFields.has("hostInvocation.invocationId")) {
+    issues.push(issue("command-contract", "missing-host-invocation-id-receipt-field", "command-agent contract must require hostInvocation.invocationId receipt evidence"));
+  }
 
   if (!options.profiles) {
     const profileResult = validateCommandAgentProfiles({
@@ -69,14 +77,20 @@ export function validateCommandAgentEnforcement(rootDir = process.cwd(), options
         workflowContext: syntheticWorkflowContext(profile.commandId),
       });
       const strictReady = commandAgentPlanStrictReady(report);
+      const agentOnlyPolicy = evaluateAgentOnlyPolicy(report);
       syntheticChecks.push({
         command: profile.commandId,
         strictReady,
+        agentOnlyPolicyPass: agentOnlyPolicy.pass,
         receiptGate: report.plan?.receiptGate || null,
         durableWritesAllowed: report.plan?.durableWritesAllowed === true,
+        blockedReason: agentOnlyPolicy.blockedReason,
       });
       if (strictReady) {
         issues.push(issue(profile.commandId, "synthetic-active-agent-gate-not-blocked", `${profile.commandId}: synthetic active handoff became strict-ready without scoped runtime receipts`));
+      }
+      if (agentOnlyPolicy.pass) {
+        issues.push(issue(profile.commandId, "synthetic-active-agent-only-policy-not-blocked", `${profile.commandId}: agent-only policy allowed synthetic active durable work without scoped runtime receipts`));
       }
       if ((report.plan?.requiredAgentIds || []).length === 0) {
         issues.push(issue(profile.commandId, "synthetic-active-required-agents-empty", `${profile.commandId}: synthetic active command plan has no required agents`));
@@ -153,6 +167,15 @@ export function validateProviderBypassSourcePolicy(rootDir = process.cwd()) {
     }
   }
   const codex = resolveHostAgentDispatcher("codex");
+  if (codex?.nativeTool !== "spawn_agent") {
+    issues.push(issue("codex", "codex-native-tool-mismatch", "Codex dispatcher must use spawn_agent as the host invocation tool"));
+  }
+  if (codex?.invocationProof !== "codex-spawn-agent") {
+    issues.push(issue("codex", "codex-invocation-proof-mismatch", "Codex dispatcher must require codex-spawn-agent invocation proof"));
+  }
+  if (!/agent-invocations\.jsonl$/i.test(String(codex?.evidencePath || ""))) {
+    issues.push(issue("codex", "codex-evidence-path-missing", "Codex dispatcher must record invocation evidence in .supervibe/memory/agent-invocations.jsonl"));
+  }
   if (!/Do not substitute a generic worker or explorer subagent/i.test(codex?.instructions || "")) {
     issues.push(issue("codex", "codex-generic-subagent-policy-missing", "Codex dispatcher instructions must forbid generic worker or explorer substitution for named Supervibe specialists"));
   }
@@ -171,7 +194,7 @@ export function formatCommandAgentEnforcementReport(result = {}) {
     `ISSUES: ${(result.issues || []).length}`,
   ];
   for (const check of result.syntheticChecks || []) {
-    lines.push(`SYNTHETIC_ACTIVE: ${check.command} strictReady=${check.strictReady === true} durableWritesAllowed=${check.durableWritesAllowed === true} receiptGate=${check.receiptGate || "unknown"}`);
+    lines.push(`SYNTHETIC_ACTIVE: ${check.command} strictReady=${check.strictReady === true} agentOnlyPolicyPass=${check.agentOnlyPolicyPass === true} durableWritesAllowed=${check.durableWritesAllowed === true} receiptGate=${check.receiptGate || "unknown"} blockedReason=${check.blockedReason || "none"}`);
   }
   for (const item of result.issues || []) {
     lines.push(`ISSUE: ${item.code} ${item.commandId} - ${item.message}`);

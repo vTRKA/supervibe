@@ -23,13 +23,16 @@ import {
   evaluateArtifactGcSchedule,
   formatArtifactGcSchedule,
   formatSupervibeArtifactGcReport,
+  formatSupervibeGcStrictReport,
   scanSupervibeArtifactGc,
+  validateSupervibeGcStrict,
   writeArtifactGcScheduleRun,
 } from "./lib/supervibe-artifact-gc.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 
 try {
+  let strictFailed = false;
   if (args.help) {
     console.log([
       "SUPERVIBE_GC_HELP",
@@ -39,6 +42,7 @@ try {
       "  npm run supervibe:gc -- --artifacts --dry-run",
       "  npm run supervibe:gc -- --artifacts --dry-run --compact-agent-output-days 14",
       "  npm run supervibe:gc -- --artifacts --dry-run --archive-retention-days 90 --max-archive-bytes 104857600",
+      "  npm run supervibe:gc -- --artifacts --strict --dry-run",
       "  npm run supervibe:gc -- --code-db-maintenance --vacuum",
       "  npm run supervibe:gc -- --memory --scheduled --auto --apply",
       "  npm run supervibe:gc -- --all --apply",
@@ -119,6 +123,18 @@ try {
     });
     if (args.apply && args.scheduled) await writeArtifactGcScheduleRun({ rootDir });
     blocks.push(formatSupervibeArtifactGcReport(scan, archiveResult));
+    if (args.strict) {
+      const strict = await validateSupervibeGcStrict({
+        rootDir,
+        scan,
+        retentionDays: args["retention-days"] || 14,
+        compactAgentOutputDays: args["compact-agent-output-days"] || args["retention-days"] || 14,
+        archiveRetentionDays: args["archive-retention-days"] || 90,
+        maxArchiveBytes: args["max-archive-bytes"] || 0,
+      });
+      if (strict.pass !== true) strictFailed = true;
+      blocks.push(formatSupervibeGcStrictReport(strict));
+    }
   }
   if (runCodeDbMaintenance) {
     const store = new CodeStore(rootDir, { useEmbeddings: false });
@@ -136,6 +152,7 @@ try {
     }
   }
   console.log(blocks.join("\n\n"));
+  if (strictFailed) process.exitCode = 1;
 } catch (err) {
   console.error(`SUPERVIBE_GC_ERROR: ${err.message}`);
   process.exitCode = 1;

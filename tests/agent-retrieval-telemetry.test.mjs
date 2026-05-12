@@ -165,6 +165,39 @@ test("agent retrieval telemetry does not penalize sources marked optional by ret
   assert.equal(report.agents[0].ragRate, 1);
 });
 
+test("agent retrieval telemetry treats explicit not-needed source policy as provided", () => {
+  const invocations = Array.from({ length: 6 }, (_, index) => ({
+    ts: `2026-05-02T00:00:${String(index).padStart(2, "0")}.000Z`,
+    agent_id: "stack-developer",
+    task_summary: "metadata-only version bump receipt",
+    confidence_score: 9,
+    retrieval_enforcement: { schemaVersion: 1, evidenceLedger: "written", evidencePass: true },
+    retrieval_policy: {
+      schemaVersion: 1,
+      provided: true,
+      policy: { memory: "not-needed", rag: "not-needed", codegraph: "not-needed" },
+    },
+    subtool_usage: { memory: 0, rag: 0, codegraph: 0 },
+    evidence_gate: { pass: true, score: 10 },
+  }));
+
+  const report = buildAgentRetrievalTelemetryReport({
+    invocations,
+    evidenceEntries: invocations.map((entry) => ({
+      taskId: entry.task_summary,
+      agentId: entry.agent_id,
+      gate: { pass: true, score: 10 },
+    })),
+    thresholds: { minSample: 5 },
+  });
+
+  assert.equal(report.pass, true);
+  assert.equal(report.maturityScore, 10);
+  assert.equal(report.agents[0].memoryRate, 1);
+  assert.equal(report.agents[0].ragRate, 1);
+  assert.equal(report.agents[0].codegraphRate, 1);
+});
+
 test("agent retrieval telemetry accepts receipt-backed distributed evidence portfolios", () => {
   const invocations = Array.from({ length: 10 }, (_, index) => ({
     ts: `2026-05-02T00:00:${String(index).padStart(2, "0")}.000Z`,

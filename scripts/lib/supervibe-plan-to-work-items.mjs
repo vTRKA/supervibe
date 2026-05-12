@@ -6,6 +6,12 @@ import { LOOP_SCHEMA_VERSION } from "./autonomous-loop-constants.mjs";
 import { materializeEpicAndTasks } from "./supervibe-task-tracker-sync.mjs";
 import { updateActiveWorkItemGraph } from "./supervibe-work-item-registry.mjs";
 import { applyTemplateToWorkItem, inferWorkItemTemplate } from "./supervibe-work-item-template-catalog.mjs";
+import { createEpicAgentContract } from "./supervibe-epic-agent-contract.mjs";
+import {
+  assertTaskBudgetAllowsGraphWrite,
+  evaluateTaskBudgetPolicy,
+  parseTaskBudgetPolicyFromText,
+} from "./supervibe-task-budget-policy.mjs";
 
 export const WORK_ITEM_TYPES = Object.freeze(["epic", "task", "subtask", "bug", "chore", "review", "gate", "followup"]);
 
@@ -23,6 +29,9 @@ export const WORK_ITEM_REQUIRED_FIELDS = Object.freeze([
   "verificationCommands",
   "writeScope",
   "scopeSafetyChecklist",
+  "taskScore",
+  "reviewerScore",
+  "evidenceScore",
   "estimatedSize",
   "parallelGroup",
   "executionHints",
@@ -44,6 +53,10 @@ export function atomizePlanToWorkItems(markdown, options = {}) {
   const gateItems = createGateItems(parsed, epicId, childItems, options);
   const followupItems = createFollowupItems(parsed, epicId, childItems, options);
   applyCriticalPathBlocks(childItems, parsed.criticalPath);
+  const taskBudgetPolicy = options.taskBudgetPolicy
+    ? { ...parsed.globalMetadata.taskBudgetPolicy, ...options.taskBudgetPolicy }
+    : parsed.globalMetadata.taskBudgetPolicy;
+  const taskBudgetDecision = options.taskBudgetDecision || {};
 
   const epic = createWorkItem({
     epicId,
@@ -71,6 +84,11 @@ export function atomizePlanToWorkItems(markdown, options = {}) {
   });
 
   const items = [epic, ...childItems, ...gateItems, ...followupItems];
+  const taskBudgetReport = evaluateTaskBudgetPolicy({
+    items,
+    policy: taskBudgetPolicy,
+    decision: taskBudgetDecision,
+  });
   const graph = createWorkItemGraph({
     epicId,
     planPath,
@@ -80,7 +98,22 @@ export function atomizePlanToWorkItems(markdown, options = {}) {
       planReviewPassed: Boolean(options.planReviewPassed),
       dryRun: Boolean(options.dryRun),
       createdFrom: "plan",
+      epicAgentContract: createEpicAgentContract({
+        required: Boolean(options.planReviewPassed && !options.dryRun),
+        agentIds: options.epicAgentIds,
+      }),
+      taskBudgetPolicy: {
+        policy: taskBudgetReport.policy,
+        decision: taskBudgetReport.decision,
+        report: taskBudgetReport,
+      },
       sourcePlanSnapshot,
+      atomicInventory: parsed.atomicInventory.map((item) => ({
+        id: item.id,
+        title: item.title,
+        line: item.line,
+      })),
+      atomicInventoryIds: parsed.atomicInventory.map((item) => item.id),
     },
   });
   const validation = validateWorkItemGraph(graph);
@@ -222,6 +255,7 @@ export function parsePlanForWorkItems(markdown, planPath = ".supervibe/artifacts
     reviewGates,
     criticalPath: parseCriticalPath(markdown),
     parallelGroups: parseParallelGroups(markdown),
+    atomicInventory: parseAtomicTaskInventory(markdown),
     planVerificationCommands: collectPlanVerificationCommands(markdown, planPath),
   };
 }
@@ -273,6 +307,31 @@ export function validateWorkItemGraph(graph = {}) {
   if (implementationItems.length === 0) {
     issues.push(issue("missing-child-task", graph.epicId ?? null, "Reviewed plans must contain at least one parseable implementation task."));
   }
+  const atomicInventoryIds = Array.isArray(graph.metadata?.atomicInventoryIds)
+    ? graph.metadata.atomicInventoryIds
+    : Array.isArray(graph.metadata?.atomicInventory)
+      ? graph.metadata.atomicInventory.map((item) => item.id).filter(Boolean)
+      : [];
+  if (atomicInventoryIds.length > 0) {
+    const covered = new Map();
+    for (const item of implementationItems) {
+      const atomicId = item.executionHints?.sourceAtomicId
+        || (item.executionHints?.scopeIds || []).find((scopeId) => /^A\d{3,}$/i.test(scopeId));
+      if (!atomicId) continue;
+      const key = String(atomicId).toUpperCase();
+      covered.set(key, [...(covered.get(key) || []), item.itemId]);
+    }
+    for (const atomicId of atomicInventoryIds) {
+      const key = String(atomicId).toUpperCase();
+      const itemIds = covered.get(key) || [];
+      if (itemIds.length === 0) {
+        issues.push(issue("missing-atomic-inventory-item", graph.epicId ?? null, `Atomic inventory item ${key} is not represented as a child work item.`, { atomicId: key }));
+      }
+      if (itemIds.length > 1) {
+        issues.push(issue("duplicate-atomic-inventory-item", graph.epicId ?? null, `Atomic inventory item ${key} is represented by multiple work items: ${itemIds.join(", ")}.`, { atomicId: key, itemIds }));
+      }
+    }
+  }
 
   for (const item of items) {
     for (const blocked of item.blocks ?? []) {
@@ -287,6 +346,23 @@ export function validateWorkItemGraph(graph = {}) {
     if (!["epic", "gate", "followup"].includes(item.type) && (!Array.isArray(item.verificationCommands) || item.verificationCommands.length === 0)) {
       issues.push(issue("missing-verification", item.itemId, `${item.itemId} needs verification commands.`));
     }
+    for (const field of ["taskScore", "reviewerScore", "evidenceScore"]) {
+      if (!(field in item)) continue;
+      const score = validateScoreField(item[field], field, item.itemId);
+      issues.push(...score);
+    }
+  }
+  const budgetReport = graph.metadata?.taskBudgetPolicy?.report;
+  if (budgetReport?.exceeded && budgetReport.pass === false) {
+    issues.push(issue(
+      "task-budget-exceeded",
+      graph.epicId ?? null,
+      budgetReport.prompt || "Task budget exceeded; phase split decision is required before graph write.",
+      {
+        violations: budgetReport.violations || [],
+        totals: budgetReport.totals || {},
+      },
+    ));
   }
 
   const taskGraphValidation = validateTaskGraph({ graph_id: graph.graph_id, tasks: graph.tasks ?? [] });
@@ -345,6 +421,9 @@ export function workItemsToLoopTasks(items = []) {
       verificationHints: item.verificationHints || [],
       contractChecklist: item.contractChecklist || [],
       scopeSafetyChecklist: item.scopeSafetyChecklist || [],
+      taskScore: item.taskScore || null,
+      reviewerScore: item.reviewerScore || null,
+      evidenceScore: item.evidenceScore || null,
       productionReadinessChecklist: item.productionReadinessChecklist || [],
       tenOfTenChecklist: item.tenOfTenChecklist || [],
       estimatedSize: item.estimatedSize,
@@ -360,6 +439,10 @@ export function workItemsToLoopTasks(items = []) {
 }
 
 export async function writeWorkItemGraph(graph, options = {}) {
+  const budgetGate = assertTaskBudgetAllowsGraphWrite(graph, options);
+  if (!budgetGate.pass) {
+    throw new Error(budgetGate.message);
+  }
   const validation = graph.validation ?? validateWorkItemGraph(graph);
   if (!validation.valid && !options.allowInvalidGraph) {
     const issueSummary = validation.issues
@@ -424,7 +507,8 @@ export function createWorkItemPreview(graph, validation = validateWorkItemGraph(
   const items = graph.items ?? [];
   const tasks = items.filter((item) => item.type !== "epic");
   const ready = (graph.tasks ?? []).filter((task) => task.dependencies.length === 0);
-  const previewItems = tasks.slice(0, 20).map(formatPreviewItem);
+  const previewLimit = Number(graph.metadata?.previewItemLimit ?? 0);
+  const previewItems = (previewLimit > 0 ? tasks.slice(0, previewLimit) : tasks).map(formatPreviewItem);
   return [
     "SUPERVIBE_WORK_ITEMS_PREVIEW",
     `EPIC: ${graph.epicId} ${graph.title}`,
@@ -433,6 +517,12 @@ export function createWorkItemPreview(graph, validation = validateWorkItemGraph(
     `READY: ${ready.map((task) => task.id).join(",") || "none"}`,
     `VALID: ${validation.valid}`,
     validation.issues.length > 0 ? `ISSUES: ${validation.issues.map((item) => item.code).join(",")}` : "ISSUES: none",
+    graph.metadata?.taskBudgetPolicy?.report
+      ? `TASK_BUDGET: ${graph.metadata.taskBudgetPolicy.report.pass ? "pass" : "exceeded"} childItems=${graph.metadata.taskBudgetPolicy.report.totals.childItems} maxChildItems=${graph.metadata.taskBudgetPolicy.report.policy.maxChildItemsPerAtomizationRun} largestPhase=${graph.metadata.taskBudgetPolicy.report.totals.largestPhase.count}/${graph.metadata.taskBudgetPolicy.report.policy.maxTasksPerPhase}`
+      : "TASK_BUDGET: not-recorded",
+    graph.metadata?.taskBudgetPolicy?.report?.prompt
+      ? `TASK_BUDGET_PROMPT: ${safeInline(graph.metadata.taskBudgetPolicy.report.prompt, 220)}`
+      : "TASK_BUDGET_PROMPT: none",
     "SCOPE_EDIT_HINT: Before approval, answer with item ids to exclude, defer, split, or reprioritize.",
     "ITEMS_DETAIL:",
     ...(previewItems.length > 0 ? previewItems : ["- none"]),
@@ -456,6 +546,9 @@ function formatPreviewItem(item) {
 }
 
 function createChildItems(parsed, epicId, options = {}) {
+  if (parsed.atomicInventory.length > 0) {
+    return createAtomicInventoryItems(parsed, epicId, options);
+  }
   const groups = parsed.parallelGroups;
   const items = [];
   for (const [index, task] of parsed.tasks.entries()) {
@@ -531,6 +624,129 @@ function createChildItems(parsed, epicId, options = {}) {
   return items;
 }
 
+function createAtomicInventoryItems(parsed, epicId, options = {}) {
+  const ownerByAtomicId = new Map();
+  for (const task of parsed.tasks) {
+    for (const scopeId of task.scopeIds) {
+      if (/^A\d{3,}$/i.test(scopeId)) ownerByAtomicId.set(scopeId.toUpperCase(), task);
+    }
+  }
+
+  const items = parsed.atomicInventory.map((entry) => {
+    const ownerTask = ownerByAtomicId.get(entry.id);
+    const verificationCommands = ownerTask?.verificationCommands?.length
+      ? ownerTask.verificationCommands
+      : parsed.planVerificationCommands;
+    const item = createWorkItem({
+      epicId,
+      itemId: `${epicId}-${entry.id.toLowerCase()}`,
+      title: `${entry.id}: ${entry.title}`,
+      type: inferAtomicWorkItemType(entry.title),
+      priority: ownerTask && parsed.criticalPath.includes(ownerTask.ref) ? "critical" : "medium",
+      parentId: epicId,
+      blocks: [],
+      related: [],
+      discoveredFrom: {
+        type: "atomic-inventory",
+        path: parsed.planPath,
+        line: entry.line,
+        atomicId: entry.id,
+        taskRef: ownerTask?.ref ?? null,
+      },
+      acceptanceCriteria: [
+        `${entry.id} is implemented exactly as described in the reviewed Atomic Task Inventory.`,
+        "Work item has verification evidence, rollback notes, and runtime receipt evidence before completion.",
+      ],
+      verificationCommands: [...new Set(verificationCommands)],
+      writeScope: ownerTask?.writeScope ?? [],
+      requiredGates: uniqueStrings([
+        ...parsed.reviewGates.map((gate) => gate.id),
+        "atomic-inventory-coverage",
+      ]),
+      verificationHints: uniqueStrings([
+        `atomic:${entry.id}`,
+        ownerTask?.ref ? `parent-task:${ownerTask.ref}` : "parent-task:unmapped",
+        ...(ownerTask?.stopConditions || []).map((item) => `stop:${item}`),
+        ...(ownerTask?.contractRows || []).map((item) => `contract:${item}`),
+      ]),
+      contractChecklist: uniqueStrings([
+        ...(ownerTask?.contractRows || []),
+        ...parsed.globalMetadata.contractRows.map((row) => row.id),
+      ]),
+      scopeSafetyChecklist: parsed.globalMetadata.scopeSafetyChecklist,
+      productionReadinessChecklist: parsed.globalMetadata.productionReadinessChecklist,
+      tenOfTenChecklist: parsed.globalMetadata.tenOfTenChecklist,
+      estimatedSize: "atomic",
+      parallelGroup: ownerTask ? parsed.parallelGroups.get(ownerTask.ref) ?? null : null,
+      owner: inferCapability(entry.title),
+      repo: options.repo || null,
+      package: options.package || null,
+      workspace: options.workspace || null,
+      subproject: options.subproject || null,
+      executionHints: {
+        sourceTaskRef: entry.id,
+        sourceAtomicId: entry.id,
+        parentTaskRef: ownerTask?.ref ?? null,
+        parentTaskTitle: ownerTask?.title ?? null,
+        rollback: ownerTask?.rollback ?? null,
+        scopeIds: [entry.id],
+        parentScopeIds: ownerTask?.scopeIds ?? [],
+        requirementIds: ownerTask?.requirementIds ?? [],
+        contractRows: ownerTask?.contractRows ?? [],
+        stopConditions: ownerTask?.stopConditions?.length
+          ? ownerTask.stopConditions
+          : ["policy_stop", "budget_stop", "verification_failed"],
+        receiptHints: uniqueStrings([
+          ...parsed.globalMetadata.receiptHints,
+          "runtime scoped agent receipt required for atomic work item completion",
+        ]),
+        receiptRequirement: "runtime scoped agent receipt required",
+        evidenceExpectation: "verification command output plus scoped agent receipt",
+        requiredAgentCapability: inferCapability(entry.title),
+        confidenceRubricId: "autonomous-loop",
+        policyRiskLevel: inferPolicyRisk(`${entry.title} ${(ownerTask?.writeScope || []).map((item) => item.path).join(" ")}`),
+        repo: options.repo || null,
+        package: options.package || null,
+        workspace: options.workspace || null,
+        subproject: options.subproject || null,
+      },
+    });
+    const template = inferWorkItemTemplate({ ...item, planText: parsed.title });
+    return applyTemplateToWorkItem(item, template, options);
+  });
+
+  applyAtomicOwnerTaskBlocks(items, parsed.tasks);
+  return items;
+}
+
+function applyAtomicOwnerTaskBlocks(items, tasks) {
+  const byParentTask = new Map();
+  for (const item of items) {
+    const parentTaskRef = item.executionHints?.parentTaskRef || "unmapped";
+    byParentTask.set(parentTaskRef, [...(byParentTask.get(parentTaskRef) || []), item]);
+  }
+
+  for (const group of byParentTask.values()) {
+    for (let index = 0; index < group.length - 1; index += 1) {
+      const current = group[index];
+      const next = group[index + 1];
+      if (!current.blocks.includes(next.itemId)) current.blocks.push(next.itemId);
+      next.blockedBy = uniqueStrings([...(next.blockedBy || []), current.itemId]);
+    }
+  }
+
+  let previousTail = null;
+  for (const task of tasks) {
+    const group = byParentTask.get(task.ref) || [];
+    if (group.length === 0) continue;
+    if (previousTail && !previousTail.blocks.includes(group[0].itemId)) {
+      previousTail.blocks.push(group[0].itemId);
+      group[0].blockedBy = uniqueStrings([...(group[0].blockedBy || []), previousTail.itemId]);
+    }
+    previousTail = group.at(-1);
+  }
+}
+
 function createStepSubtaskItems({ parsed, epicId, task, parentItem, options = {} }) {
   return (task.steps || []).map((step) => {
     const stepRef = `${task.ref}.S${step.number}`;
@@ -590,8 +806,11 @@ function createStepSubtaskItems({ parsed, epicId, task, parentItem, options = {}
 
 function createGateItems(parsed, epicId, childItems) {
   return parsed.reviewGates.map((gate, index) => {
+    const previousCandidates = gate.afterTaskRef
+      ? childItems.filter((item) => item.executionHints.sourceTaskRef === gate.afterTaskRef || item.executionHints.parentTaskRef === gate.afterTaskRef)
+      : [];
     const previous = gate.afterTaskRef
-      ? childItems.find((item) => item.executionHints.sourceTaskRef === gate.afterTaskRef)
+      ? previousCandidates.at(-1)
       : childItems[index] ?? childItems.at(-1);
     const itemId = `${epicId}-gate-${index + 1}`;
     if (previous && !previous.blocks.includes(itemId)) previous.blocks.push(itemId);
@@ -621,9 +840,14 @@ function createGateItems(parsed, epicId, childItems) {
 }
 
 function createFollowupItems(parsed, epicId, childItems) {
-  const byRef = new Map(parsed.tasks.map((task, index) => [task.ref, childItems[index]]));
+  const byRef = new Map(parsed.tasks.map((task, index) => [
+    task.ref,
+    childItems.find((item) => item.executionHints.parentTaskRef === task.ref || item.executionHints.sourceTaskRef === task.ref)
+      ?? childItems[index],
+  ]));
   return parsed.tasks.flatMap((task) => task.followups.map((followup, index) => {
     const parent = byRef.get(task.ref);
+    if (!parent) return [];
     return createWorkItem({
       epicId,
       itemId: `${parent.itemId}-followup-${index + 1}`,
@@ -645,7 +869,7 @@ function createFollowupItems(parsed, epicId, childItems) {
         policyRiskLevel: "low",
       },
     });
-  }));
+  })).flat();
 }
 
 function createWorkItem(item) {
@@ -673,10 +897,47 @@ function createWorkItem(item) {
     scopeSafetyChecklist: uniqueStrings(item.scopeSafetyChecklist ?? []),
     productionReadinessChecklist: uniqueStrings(item.productionReadinessChecklist ?? []),
     tenOfTenChecklist: uniqueStrings(item.tenOfTenChecklist ?? []),
+    taskScore: normalizeScoreField(item.taskScore, "task"),
+    reviewerScore: normalizeScoreField(item.reviewerScore, "reviewer"),
+    evidenceScore: normalizeScoreField(item.evidenceScore, "evidence"),
     estimatedSize: item.estimatedSize ?? "medium",
     parallelGroup: item.parallelGroup ?? null,
     executionHints: item.executionHints ?? {},
   };
+}
+
+function normalizeScoreField(value, kind) {
+  const input = value && typeof value === "object" ? value : {};
+  const score = Number.isFinite(Number(input.score)) ? Number(input.score) : null;
+  return {
+    schemaVersion: 1,
+    kind,
+    score: score === null ? null : Math.max(0, Math.min(10, score)),
+    status: input.status || "pending",
+    source: input.source || "not-scored",
+    updatedAt: input.updatedAt || null,
+  };
+}
+
+function validateScoreField(value, field, itemId) {
+  const issues = [];
+  if (!value || typeof value !== "object") {
+    issues.push(issue("bad-score-field", itemId, `${itemId} has invalid ${field}.`));
+    return issues;
+  }
+  if (value.schemaVersion !== 1) {
+    issues.push(issue("bad-score-schema", itemId, `${itemId} ${field} schemaVersion must be 1.`));
+  }
+  if (!["task", "reviewer", "evidence"].includes(String(value.kind || ""))) {
+    issues.push(issue("bad-score-kind", itemId, `${itemId} ${field} kind is invalid.`));
+  }
+  if (!(value.score === null || (Number.isFinite(Number(value.score)) && Number(value.score) >= 0 && Number(value.score) <= 10))) {
+    issues.push(issue("bad-score-value", itemId, `${itemId} ${field} score must be null or 0..10.`));
+  }
+  if (!value.status) {
+    issues.push(issue("missing-score-status", itemId, `${itemId} ${field} status is required.`));
+  }
+  return issues;
 }
 
 function applyCriticalPathBlocks(items, criticalPath) {
@@ -715,13 +976,39 @@ function parseParallelGroups(markdown) {
 }
 
 function parsePlanGlobalMetadata(markdown) {
+  const deliveryStrategy = sectionBody(markdown, "Delivery Strategy");
   return {
     contractRows: parseContractRows(sectionBody(markdown, "Development Contract Map")),
     scopeSafetyChecklist: checklistFromSection(sectionBody(markdown, "Scope Safety Gate")),
     productionReadinessChecklist: checklistFromSection(sectionBody(markdown, "Production Readiness")),
     tenOfTenChecklist: checklistFromSection(sectionBody(markdown, "Final 10/10 Acceptance Gate")),
     receiptHints: collectReceiptHints(markdown),
+    deliveryStrategy,
+    taskBudgetPolicy: parseTaskBudgetPolicyFromText(deliveryStrategy),
   };
+}
+
+function parseAtomicTaskInventory(markdown) {
+  const lines = String(markdown ?? "").split(/\r?\n/);
+  const items = [];
+  let inSection = false;
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (/^##\s+Atomic Task Inventory\s*$/i.test(line.trim())) {
+      inSection = true;
+      continue;
+    }
+    if (inSection && /^##\s+/.test(line.trim())) break;
+    if (!inSection) continue;
+    const match = /^\|\s*(A\d{3,})\s*\|\s*([^|]+?)\s*\|/.exec(line);
+    if (!match) continue;
+    items.push({
+      id: match[1].trim().toUpperCase(),
+      title: match[2].trim(),
+      line: index + 1,
+    });
+  }
+  return items;
 }
 
 function parseContractRows(body) {
@@ -855,10 +1142,17 @@ function priorityForTask(task, criticalPath, index) {
 
 function inferWorkItemType(title) {
   const text = String(title).toLowerCase();
-  if (text.includes("review") || text.includes("audit")) return "review";
-  if (text.includes("bug") || text.includes("fix")) return "bug";
-  if (text.includes("doc") || text.includes("changelog") || text.includes("readme")) return "chore";
-  if (text.includes("gate")) return "gate";
+  if (/\b(review|audit)\b/.test(text)) return "review";
+  if (/\b(bug|fix)\b/.test(text)) return "bug";
+  if (/\b(doc|docs|changelog|readme)\b/.test(text)) return "chore";
+  if (/\bgate\b/.test(text)) return "gate";
+  return "task";
+}
+
+function inferAtomicWorkItemType(title) {
+  const text = String(title).toLowerCase();
+  if (/\b(bug|fix)\b/.test(text)) return "bug";
+  if (/\b(doc|docs|changelog|readme)\b/.test(text)) return "chore";
   return "task";
 }
 

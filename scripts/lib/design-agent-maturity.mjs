@@ -55,8 +55,15 @@ export const DESIGN_AGENT_MATURITY_DIMENSIONS = Object.freeze([
 ]);
 
 export function buildDesignAgentMaturityReport(rootDir = process.cwd(), options = {}) {
+  const activeProofRequired = options.active === true || Boolean(options.slug || options.handoffId || options.workflowRunId);
   const checks = collectDesignAgentMaturityChecks(rootDir, options);
-  return scoreDesignAgentMaturity({ checks });
+  const report = scoreDesignAgentMaturity({ checks });
+  return {
+    ...report,
+    maturityScope: activeProofRequired ? "active-workflow-readiness" : "global-capability",
+    activeProofRequired,
+    globalCapabilityOnly: !activeProofRequired,
+  };
 }
 
 function collectDesignAgentMaturityChecks(rootDir = process.cwd(), options = {}) {
@@ -277,6 +284,9 @@ export function formatDesignAgentMaturityReport(report = {}) {
     `PASS: ${report.pass === true}`,
     `SCORE: ${report.score || 0}/${report.maxScore || 10}`,
     `STATUS: ${report.status || "unknown"}`,
+    `MATURITY_SCOPE: ${report.maturityScope || "unknown"}`,
+    `ACTIVE_PROOF_REQUIRED: ${report.activeProofRequired === true}`,
+    `GLOBAL_CAPABILITY_ONLY: ${report.globalCapabilityOnly === true}`,
     `ACTIVE_WORKFLOW: ${report.activeWorkflow ? report.activeWorkflow.status : "not-checked"}`,
     "DIMENSIONS:",
   ];

@@ -108,6 +108,35 @@ test("fresh-context attempt creates failure packet when signal or evidence is mi
   assert.ok(attempt.score.finalScore <= 6);
 });
 
+test("fresh-context attempt stops stalled adapter on no-progress timeout", async () => {
+  const attemptDir = await mkdtemp(join(tmpdir(), "supervibe-attempt-stalled-"));
+  let stopped = false;
+  const adapter = {
+    id: "stalling-adapter",
+    async run() {
+      return new Promise(() => {});
+    },
+    stop(reason) {
+      stopped = reason === "no_progress_timeout";
+      return { stopped: true, reason };
+    },
+  };
+
+  const attempt = await runFreshContextAttempt({
+    task,
+    adapter,
+    attemptId: "T7.1-attempt-stalled",
+    attemptDir,
+    noProgressTimeoutMs: 10,
+  });
+
+  assert.equal(stopped, true);
+  assert.equal(attempt.status, "stalled");
+  assert.equal(attempt.failurePacket.requeueReason, "no_progress_timeout");
+  assert.equal(attempt.noProgress.phase, "adapter.run");
+  assert.match(await readFile(attempt.outputPath, "utf8"), /No progress from adapter\.run/);
+});
+
 test("manual mode writes prompt and blocks instead of spawning an adapter", async () => {
   const attemptDir = await mkdtemp(join(tmpdir(), "supervibe-attempt-manual-"));
   const attempt = await runFreshContextAttempt({

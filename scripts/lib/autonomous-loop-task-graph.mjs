@@ -100,9 +100,10 @@ export function validateTaskGraph(input = {}) {
     issues.push(issue("cycle", cycle[0], `Dependency cycle detected: ${cycle.join(" -> ")}.`, { cycle }));
   }
 
+  const activeTasks = graph.tasks.filter((task) => ["claimed", "in_progress"].includes(task.status));
   const openTasks = graph.tasks.filter((task) => ["open", "ready"].includes(task.status));
   const readyTasks = openTasks.filter((task) => task.dependencies.every((dependencyId) => isDependencySatisfiedStatus(byId.get(dependencyId)?.status)));
-  if (openTasks.length > 0 && readyTasks.length === 0 && issues.length === 0) {
+  if (activeTasks.length === 0 && openTasks.length > 0 && readyTasks.length === 0 && issues.length === 0) {
     issues.push(issue("impossible-ready-front", null, "Open tasks exist but no ready front can be computed."));
   }
 

@@ -266,6 +266,32 @@ test("runner sizes default loop budget for plan tasks", async () => {
   assert.ok(result.state.scheduler.snapshots.length >= 1);
 });
 
+test("runner defers heavy verification while epic work remains open", async () => {
+  const rootDir = await mkdtemp(join(tmpdir(), "supervibe-loop-heavy-checks-"));
+  const planPath = join(rootDir, "graph.json");
+  await writeFile(planPath, JSON.stringify({
+    tasks: [{
+      id: "heavy-check-task",
+      goal: "Patch continuation routing",
+      acceptanceCriteria: ["Routing patch passes targeted checks"],
+      verificationCommands: [
+        "npm run check",
+        "node --test tests/intent-continuation-routing.test.mjs",
+      ],
+    }],
+  }, null, 2), "utf8");
+
+  const result = await runAutonomousLoop({ rootDir, plan: planPath, dryRun: true });
+
+  assert.equal(result.status, "COMPLETE");
+  assert.equal(result.state.deferred_heavy_verification.length, 1);
+  assert.equal(result.state.deferred_heavy_verification[0].command, "npm run check");
+  assert.equal(result.state.verification_policy.heavyVerificationDeferred, 1);
+  assert.deepEqual(result.state.attempts[0].verificationEvidence, [
+    "node --test tests/intent-continuation-routing.test.mjs",
+  ]);
+});
+
 test("runner requeues a failed fresh-context attempt once and then awaits user acceptance", async () => {
   const rootDir = await mkdtemp(join(tmpdir(), "supervibe-loop-requeue-"));
   const planPath = join(rootDir, "graph.json");

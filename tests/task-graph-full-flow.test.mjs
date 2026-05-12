@@ -28,9 +28,10 @@ test("task graph full flow: invalid plan is rejected before durable graph write"
         "--atomize-plan",
         planPath,
         "--plan-review-passed",
+        "--allow-unverified-plan-review",
         "--epic",
         "epic-invalid",
-      ], { cwd: root }),
+      ], { cwd: root, env: { ...process.env, SUPERVIBE_ALLOW_UNVERIFIED_PLAN_REVIEW: "1" } }),
       /invalid work-item graph|work-item graph invalid|no task headings found/i,
     );
 
@@ -52,9 +53,10 @@ test("task graph full flow: reviewed plan atomizes, loop syncs graph, UI applies
       "--atomize-plan",
       planPath,
       "--plan-review-passed",
+      "--allow-unverified-plan-review",
       "--epic",
       "epic-full-flow",
-    ], { cwd: root });
+    ], { cwd: root, env: { ...process.env, SUPERVIBE_ALLOW_UNVERIFIED_PLAN_REVIEW: "1" } });
     assert.match(atomized.stdout, /SUPERVIBE_WORK_ITEMS/);
     assert.match(atomized.stdout, /VALID: true/);
     const graphPath = atomized.stdout.match(/^GRAPH: (.+)$/m)?.[1]?.trim();
@@ -131,6 +133,7 @@ test("task graph full flow: reviewed plan atomizes, loop syncs graph, UI applies
           title: "Validate production completion through UI",
           apply: true,
           confirm: "apply-local",
+          previewToken: preview.previewToken,
         }),
       })).json();
       assert.equal(applied.changed, true);

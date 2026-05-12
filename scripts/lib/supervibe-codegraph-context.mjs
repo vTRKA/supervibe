@@ -196,6 +196,12 @@ export function evaluateCodeGraphTaskTypeGate({
   const edgeResolution = Number(quality.edgeResolutionRate ?? graphHealth?.crossResolvedEdges?.rate ?? 0);
   const hasGraphEvidence = Number(stats.graphNodes || 0) > 0 || Number(stats.impactNodes || 0) > 0;
   const hasSourceEvidence = Number(stats.ragChunks || 0) > 0 || Number(stats.entrySymbols || 0) > 0;
+  const usefulness = evaluateCodeGraphUsefulness({
+    taskType: normalized,
+    quality,
+    graphHealth,
+    stats: { ...stats, hasGraphEvidence, hasSourceEvidence },
+  });
 
   if (["refactor", "rename", "move", "delete", "extract", "public-api"].includes(normalized)) {
     if (!quality.pass) failures.push("base graph context quality failed");
@@ -208,12 +214,14 @@ export function evaluateCodeGraphTaskTypeGate({
   } else if (normalized === "docs") {
     if (!hasSourceEvidence && !hasGraphEvidence) warnings.push("docs task has no code evidence; acceptable only for text-only docs");
   }
+  for (const warning of usefulness.warnings) if (!warnings.includes(warning)) warnings.push(warning);
 
   return {
     taskType: normalized,
     pass: failures.length === 0,
     failures,
     warnings,
+    usefulness,
     requirements: requirementsForTaskType(normalized),
     metrics: {
       symbolCoverage,
@@ -223,6 +231,45 @@ export function evaluateCodeGraphTaskTypeGate({
       ragChunks: Number(stats.ragChunks || 0),
       entrySymbols: Number(stats.entrySymbols || 0),
     },
+  };
+}
+
+export function evaluateCodeGraphUsefulness({
+  taskType = "feature",
+  quality = {},
+  graphHealth = {},
+  stats = {},
+} = {}) {
+  const normalized = normalizeTaskType(taskType);
+  const hasSourceEvidence = Boolean(stats.hasSourceEvidence) || Number(stats.ragChunks || 0) > 0 || Number(stats.entrySymbols || 0) > 0;
+  const hasGraphEvidence = Boolean(stats.hasGraphEvidence) || Number(stats.graphNodes || 0) > 0 || Number(stats.impactNodes || 0) > 0;
+  const symbolCoverage = Number(quality.symbolCoverage ?? graphHealth?.sourceFileSymbolCoverage?.coverage ?? 0);
+  const edgeResolution = Number(quality.edgeResolutionRate ?? graphHealth?.crossResolvedEdges?.rate ?? 0);
+  const warnings = [];
+  let score = 0;
+  if (hasSourceEvidence) score += 0.35;
+  if (hasGraphEvidence) score += 0.35;
+  if (symbolCoverage >= 0.2) score += 0.15;
+  if ((graphHealth?.crossResolvedEdges?.total || 0) < 20 || edgeResolution >= 0.05) score += 0.15;
+  if (!hasSourceEvidence) warnings.push("CodeGraph context has no source RAG or symbol evidence for agent handoff");
+  if (!hasGraphEvidence && ["refactor", "rename", "move", "delete", "extract", "public-api"].includes(normalized)) {
+    warnings.push("structural agent handoff lacks graph neighborhood or impact evidence");
+  } else if (!hasGraphEvidence && ["feature", "debug"].includes(normalized)) {
+    warnings.push("agent handoff has source evidence but no graph neighborhood; keep implementation localized");
+  }
+  const pass = score >= (["refactor", "rename", "move", "delete", "extract", "public-api"].includes(normalized) ? 0.85 : 0.5)
+    && hasSourceEvidence;
+  return {
+    pass,
+    score: Number(score.toFixed(2)),
+    hasSourceEvidence,
+    hasGraphEvidence,
+    symbolCoverage,
+    edgeResolution,
+    warnings,
+    nextAction: pass
+      ? "use CodeGraph context in agent packet"
+      : "refresh index or narrow query before agent handoff",
   };
 }
 
@@ -309,6 +356,7 @@ function formatTaskTypeGate(gate = {}) {
   return formatList([
     `taskType=${gate.taskType || "unknown"}`,
     `pass=${Boolean(gate.pass)}`,
+    `usefulness=${gate.usefulness?.score ?? "unknown"} pass=${gate.usefulness?.pass ?? "unknown"}`,
     `requirements=${(gate.requirements || []).join("; ") || "none"}`,
     `failures=${gate.failures?.join("; ") || "none"}`,
     `warnings=${gate.warnings?.join("; ") || "none"}`,

@@ -28,7 +28,7 @@ function usage() {
   return [
     "SUPERVIBE_DESIGN_AGENT_MATURITY_HELP",
     "USAGE:",
-    "  node scripts/supervibe-design-maturity.mjs [--root .] [--json]",
+    "  node scripts/supervibe-design-maturity.mjs [--root .] [--json] [--active] [--slug <slug>] [--handoff-id <id>]",
     "",
     "Checks design-agent maturity across design-system ownership, local design intelligence, workflow gates, creative/trend coverage, component-library bridges, design memory writeback, and release regression coverage.",
   ].join("\n");

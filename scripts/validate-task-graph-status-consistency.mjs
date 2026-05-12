@@ -19,7 +19,7 @@ export function summarizeTaskGraphStatus(graph = {}, { graphPath = "" } = {}) {
   const nextReady = grouped.ready[0]?.itemId || grouped.ready[0]?.id || null;
   const completion = validateEpicCompletion(graph);
   const nextAction = nextReady
-    ? `claim ${nextReady} or inspect blockers`
+    ? `claim ${nextReady} or run /supervibe-loop --claim-ready`
     : completion.pass
       ? "finish/archive completed epic"
       : "validate completion or unblock remaining work";

@@ -50,13 +50,36 @@ export function validateScreenshotSimilarityEvidence(rootDir = process.cwd(), {
   const pairs = Array.isArray(parsed.pairs) ? parsed.pairs : [];
   const issues = [];
   const expectedVariantIds = variantIdsForPrototype(rootDir, prototypeSlug);
+  const expectedVariantSet = new Set(expectedVariantIds);
+  const observedPairKeys = new Set();
+  const duplicatePairKeys = new Set();
   for (const pair of pairs) {
+    const left = String(pair.left || "").trim();
+    const right = String(pair.right || "").trim();
+    let pairValid = true;
     for (const side of ["left", "right"]) {
       const id = String(pair[side] || "").trim();
       if (!id) {
         issues.push(issue("missing-screenshot-variant-id", evidencePath, `pair is missing ${side} variant id`));
-      } else if (expectedVariantIds.size && !expectedVariantIds.has(id)) {
+        pairValid = false;
+      } else if (expectedVariantSet.size && !expectedVariantSet.has(id)) {
         issues.push(issue("screenshot-variant-not-in-manifest", evidencePath, `${side} variant ${id} is not present in variant-manifest.json`));
+        pairValid = false;
+      }
+    }
+    if (left && right && left === right) {
+      issues.push(issue("self-screenshot-variant-pair", evidencePath, `${left} cannot be compared to itself`));
+      pairValid = false;
+    }
+    if (pairValid && left && right) {
+      const key = pairKey(left, right);
+      if (observedPairKeys.has(key)) {
+        if (!duplicatePairKeys.has(key)) {
+          issues.push(issue("duplicate-screenshot-variant-pair", evidencePath, `${formatPairKey(key)} appears more than once`));
+        }
+        duplicatePairKeys.add(key);
+      } else {
+        observedPairKeys.add(key);
       }
     }
     const similarity = Number(pair.similarity ?? pair.score);
@@ -68,13 +91,27 @@ export function validateScreenshotSimilarityEvidence(rootDir = process.cwd(), {
       issues.push(issue("screenshot-variants-too-similar", evidencePath, `${pair.left || "left"} vs ${pair.right || "right"} similarity ${similarity} exceeds ${maxSimilarity}`));
     }
   }
+  const requiredPairKeys = expectedPairKeys(expectedVariantIds);
+  const missingPairKeys = requiredPairKeys.filter((key) => !observedPairKeys.has(key));
+  if (missingPairKeys.length > 0) {
+    issues.push(issue(
+      "missing-screenshot-variant-pairs",
+      evidencePath,
+      `missing screenshot similarity pairs: ${missingPairKeys.map(formatPairKey).slice(0, 10).join(", ")}${missingPairKeys.length > 10 ? ", ..." : ""}`,
+    ));
+  }
 
   return {
     pass: issues.length === 0,
     status: issues.length ? "failed" : "passed",
     evidencePath,
     maxSimilarity,
-    checkedPairs: pairs.length,
+    checkedPairs: observedPairKeys.size,
+    coveredPairs: observedPairKeys.size,
+    rawPairs: pairs.length,
+    expectedPairs: requiredPairKeys.length,
+    missingPairs: missingPairKeys.map(formatPairKey),
+    duplicatePairs: [...duplicatePairKeys].map(formatPairKey),
     issues,
     warnings: [],
   };
@@ -89,15 +126,34 @@ function normalizeRelPath(path = "") {
 }
 
 function variantIdsForPrototype(rootDir, prototypeSlug = "") {
-  if (!prototypeSlug) return new Set();
+  if (!prototypeSlug) return [];
   const manifestPath = join(rootDir, ".supervibe", "artifacts", "prototypes", prototypeSlug, "variant-manifest.json");
-  if (!existsSync(manifestPath)) return new Set();
+  if (!existsSync(manifestPath)) return [];
   try {
     const parsed = JSON.parse(readFileSync(manifestPath, "utf8"));
-    return new Set((Array.isArray(parsed.variants) ? parsed.variants : [])
+    return (Array.isArray(parsed.variants) ? parsed.variants : [])
       .map((variant) => String(variant.id || "").trim())
-      .filter(Boolean));
+      .filter(Boolean);
   } catch {
-    return new Set();
+    return [];
   }
+}
+
+function expectedPairKeys(variantIds = []) {
+  const ids = variantIds.filter(Boolean);
+  const keys = [];
+  for (let leftIndex = 0; leftIndex < ids.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < ids.length; rightIndex += 1) {
+      keys.push(pairKey(ids[leftIndex], ids[rightIndex]));
+    }
+  }
+  return keys;
+}
+
+function pairKey(left = "", right = "") {
+  return [String(left), String(right)].sort().join("::");
+}
+
+function formatPairKey(key = "") {
+  return String(key).split("::").join(" vs ");
 }

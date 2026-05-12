@@ -382,6 +382,53 @@ test("reissued recovery receipts do not count as producer proof", async () => {
   }
 });
 
+test("superseded recovery receipts do not fail when a fresh producer receipt exists", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-recovery-superseded-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/_design-system/tokens.css", ":root { --color-primary: #123456; }\n");
+    const issued = await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-design",
+      subjectType: "skill",
+      subjectId: "supervibe:brandbook",
+      skillId: "supervibe:brandbook",
+      stage: "stage-2-design-system",
+      invocationReason: "brandbook skill produced candidate tokens",
+      inputEvidence: [".supervibe/artifacts/prototypes/_design-system/tokens.css"],
+      outputArtifacts: [".supervibe/artifacts/prototypes/_design-system/tokens.css"],
+      startedAt: "2026-05-04T00:00:00.000Z",
+      completedAt: "2026-05-04T00:01:00.000Z",
+      handoffId: "design-agent-chat",
+    });
+    await reissueWorkflowInvocationReceipt({
+      rootDir: root,
+      receiptPath: issued.receiptPath,
+      reason: "repair hash drift",
+    });
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-design",
+      subjectType: "skill",
+      subjectId: "supervibe:brandbook",
+      skillId: "supervibe:brandbook",
+      stage: "stage-2-design-system",
+      invocationReason: "fresh brandbook skill proof",
+      inputEvidence: [".supervibe/artifacts/prototypes/_design-system/tokens.css"],
+      outputArtifacts: [".supervibe/artifacts/prototypes/_design-system/tokens.css"],
+      startedAt: "2026-05-04T00:02:00.000Z",
+      completedAt: "2026-05-04T00:03:00.000Z",
+      handoffId: "design-agent-chat-fresh",
+    });
+
+    const result = validateAgentProducerReceipts(root);
+
+    assert.equal(result.pass, true);
+    assert.equal(result.issues.some((issue) => issue.code === "recovery-receipt-not-producer-proof"), false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("agent producer validator strict mode requires host receipts and telemetry", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-agent-producers-strict-"));
   try {

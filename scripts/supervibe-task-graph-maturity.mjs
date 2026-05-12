@@ -30,7 +30,7 @@ function usage() {
     "USAGE:",
     "  node scripts/supervibe-task-graph-maturity.mjs [--root .] [--json] [--require-active-graph]",
     "",
-    "Checks task graph integration maturity across routing, loop actions, UI controls, tracker sync, validators, tests, fixtures, and optional current graph coverage.",
+    "Checks task graph integration maturity across routing, loop actions, UI controls, tracker sync, validators, tests, fixtures, and optional active workflow proof.",
   ].join("\n");
 }
 

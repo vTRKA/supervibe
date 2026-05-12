@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -13,14 +12,35 @@ import {
 import {
   validateDesignVariantSet,
 } from "./lib/design-variant-set.mjs";
+import {
+  activeWorkflowStateToWorkflow,
+  buildActiveWorkflowResumeInfo,
+  readActiveWorkflowStateFiles,
+  validateActiveWorkflowStateFiles,
+} from "./lib/supervibe-active-workflow-state.mjs";
 
 const PLUGIN_ROOT = resolve(fileURLToPath(new URL("../", import.meta.url)));
 
 export function validateActiveWorkflows(rootDir = process.cwd(), options = {}) {
   const workflows = discoverActiveWorkflows(rootDir, options);
+  const strict = boolish(options.strict);
+  const stateValidation = validateActiveWorkflowStateFiles(rootDir, { strict });
+  const persistedStates = stateValidation.files.flatMap((file) => file.states || []);
+  const resume = buildResumeInfoForPersistedStates(persistedStates);
   const checks = [];
   const issues = [];
   const warnings = [];
+  if (stateValidation.checked > 0 || stateValidation.issues.length > 0) {
+    checks.push({
+      id: "active-workflow-state",
+      command: "state-files",
+      pass: stateValidation.pass === true,
+      report: stateValidation,
+    });
+  }
+  for (const issue of stateValidation.issues) {
+    issues.push(issue);
+  }
   if (workflows.length === 0) {
     warnings.push({
       code: "active-workflow-not-started",
@@ -110,12 +130,15 @@ export function validateActiveWorkflows(rootDir = process.cwd(), options = {}) {
   }
   return {
     pass: issues.length === 0,
-    status: workflows.length === 0 ? "not-started" : issues.length === 0 ? "passed" : "blocked",
+    status: issues.length > 0 ? "blocked" : workflows.length === 0 ? "not-started" : "passed",
+    strict,
     activeWorkflows: workflows.length,
     checked: checks.length,
     checks,
     issues,
     warnings,
+    resume,
+    state: stateValidation,
   };
 }
 
@@ -135,11 +158,9 @@ export function discoverActiveWorkflows(rootDir = process.cwd(), options = {}) {
       requireBrowserEvidence: options.requireBrowserEvidence || process.env.SUPERVIBE_ACTIVE_REQUIRES_BROWSER_EVIDENCE || false,
     }]
     : [];
-  const files = [
-    join(rootDir, ".supervibe", "memory", "active-workflow.json"),
-    join(rootDir, ".supervibe", "memory", "active-workflows.json"),
-  ];
-  const persisted = files.flatMap(readActiveWorkflowFile);
+  const persisted = readActiveWorkflowStateFiles(rootDir)
+    .flatMap((file) => file.states.map(activeWorkflowStateToWorkflow))
+    .filter((workflow) => !["none", "archived"].includes(workflow.stage || ""));
   return uniqueWorkflows([...explicit, ...persisted]
     .filter((item) => item && normalizeCommand(item.command)));
 }
@@ -153,6 +174,9 @@ export function formatActiveWorkflowValidation(result = {}) {
     `CHECKS: ${result.checked || 0}`,
     `ISSUES: ${(result.issues || []).length}`,
     `WARNINGS: ${(result.warnings || []).length}`,
+    `CAN_RESUME: ${result.resume?.canResume === true}`,
+    `NEXT_COMMAND: ${result.resume?.nextCommand || "none"}`,
+    `NEXT_ACTION: ${result.resume?.nextAction || "none"}`,
   ];
   for (const check of result.checks || []) {
     lines.push(`CHECK: ${check.id} ${check.command || "unknown"} pass=${check.pass === true}`);
@@ -164,34 +188,6 @@ export function formatActiveWorkflowValidation(result = {}) {
     lines.push(`WARNING: ${warning.code} ${warning.file} - ${warning.message}`);
   }
   return lines.join("\n");
-}
-
-function readActiveWorkflowFile(path) {
-  if (!existsSync(path)) return [];
-  try {
-    const parsed = JSON.parse(readFileSync(path, "utf8"));
-    const items = Array.isArray(parsed)
-      ? parsed
-      : Array.isArray(parsed.activeWorkflows)
-        ? parsed.activeWorkflows
-        : parsed.command
-          ? [parsed]
-          : [];
-    return items.map((item) => ({
-      command: item.command || item.workflow || item.activeCommand,
-      host: item.host || item.activeHost || "",
-      slug: item.slug || item.prototypeSlug || "",
-      handoffId: item.handoffId || item.handoff || "",
-      workflowRunId: item.workflowRunId || item.workflow_run_id || "",
-      requestedVariantCount: item.requestedVariantCount || item.requestedVariants || item.variantCount || item.requested_variants || "",
-      target: item.target || "",
-      mode: item.mode || "",
-      requiresCapabilityPlan: item.requiresCapabilityPlan || item.requireCapabilityPlan || false,
-      requireBrowserEvidence: item.requireBrowserEvidence || item.requiresBrowserEvidence || false,
-    }));
-  } catch {
-    return [];
-  }
 }
 
 function uniqueWorkflows(items = []) {
@@ -216,6 +212,16 @@ function uniqueWorkflows(items = []) {
     out.push(normalized);
   }
   return out;
+}
+
+function buildResumeInfoForPersistedStates(states = []) {
+  let fallback = null;
+  for (const state of states) {
+    const resume = buildActiveWorkflowResumeInfo(state);
+    if (fallback === null) fallback = resume;
+    if (resume.canResume) return resume;
+  }
+  return fallback || buildActiveWorkflowResumeInfo(null);
 }
 
 function normalizeCommand(value = "") {
@@ -255,6 +261,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     mode: options.mode,
     requiresCapabilityPlan: options["require-capability-plan"] || options.requiresCapabilityPlan || options.requireCapabilityPlan,
     requireBrowserEvidence: options["require-browser-evidence"] || options.requireBrowserEvidence,
+    strict: boolish(options.strict),
     pluginRoot: options["plugin-root"] || options.pluginRoot,
   });
   console.log(options.json ? JSON.stringify(result, null, 2) : formatActiveWorkflowValidation(result));

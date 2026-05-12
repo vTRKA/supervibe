@@ -18,6 +18,7 @@ const RETENTION_TIERS = Object.freeze({
 
 const COMPACT_MANIFEST_TYPE = "supervibe-agent-output-compact-manifest";
 const DEFAULT_RETENTION_DAYS = 14;
+const DEFAULT_WORKFLOW_ARTIFACT_RETENTION_DAYS = 90;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const RUNTIME_FILES = Object.freeze([
@@ -51,6 +52,7 @@ export async function scanSupervibeArtifactGc({
   const archiveCleanup = [];
   const scanned = new Set();
   const referenced = referencedOutputArtifacts(rootDir);
+  const workflowReceipts = workflowReceiptsWithTrust(rootDir);
   const referencedPaths = [...referenced.keys()];
   const cutoffMs = Date.parse(now) - Number(retentionDays) * DAY_MS;
   const compactCutoffMs = Date.parse(now) - Number(compactAgentOutputDays) * DAY_MS;
@@ -117,6 +119,61 @@ export async function scanSupervibeArtifactGc({
       ageDays: ageDays(item.stat, now),
       tier: RETENTION_TIERS.ARCHIVE,
     });
+  }
+
+  for (const receipt of workflowReceipts) {
+    const normalized = normalizeRelPath(receipt.receipt.__file);
+    if (!normalized || scanned.has(normalized)) continue;
+    const absPath = join(rootDir, ...normalized.split("/"));
+    if (!existsSync(absPath)) continue;
+    const itemStat = statSync(absPath);
+    activeNoise.push({
+      relPath: normalized,
+      reason: receipt.trusted ? "trusted-workflow-receipt" : "untrusted-workflow-receipt",
+      tier: receipt.trusted ? RETENTION_TIERS.REQUIRED : RETENTION_TIERS.DIAGNOSTIC_LATEST,
+      ageDays: ageDays(itemStat, now),
+      trustedReceipt: receipt.trusted,
+      issueCount: receipt.issues.length,
+      retentionDays: DEFAULT_WORKFLOW_ARTIFACT_RETENTION_DAYS,
+    });
+    scanned.add(normalized);
+  }
+
+  for (const item of listFiles(rootDir, ".supervibe")) {
+    const normalized = normalizeRelPath(item.relPath);
+    if (scanned.has(normalized)) continue;
+    if (/\.log$/i.test(normalized)) {
+      const itemAgeDays = ageDays(item.stat, now);
+      if (Number.isFinite(cutoffMs) && item.stat.mtimeMs <= cutoffMs) {
+        addCandidate({
+          rootDir,
+          relPath: normalized,
+          scanned,
+          candidates,
+          reason: "stale-telemetry-log",
+          ageDays: itemAgeDays,
+          tier: RETENTION_TIERS.DIAGNOSTIC_LATEST,
+        });
+      } else {
+        activeNoise.push({
+          relPath: normalized,
+          reason: "recent-telemetry-log",
+          tier: RETENTION_TIERS.DIAGNOSTIC_LATEST,
+          ageDays: itemAgeDays,
+        });
+        scanned.add(normalized);
+      }
+    } else if (/\.jsonl$/i.test(normalized)) {
+      activeNoise.push({
+        relPath: normalized,
+        reason: "telemetry-jsonl",
+        tier: normalized.includes("workflow-invocation-ledger") || normalized.includes("agent-invocations")
+          ? RETENTION_TIERS.REQUIRED
+          : RETENTION_TIERS.DIAGNOSTIC_LATEST,
+        ageDays: ageDays(item.stat, now),
+      });
+      scanned.add(normalized);
+    }
   }
 
   for (const item of listChildren(rootDir, ".supervibe/artifacts/_agent-outputs")) {
@@ -360,6 +417,142 @@ export function formatArtifactGcSchedule(schedule = {}) {
   ].join("\n");
 }
 
+export async function validateSupervibeGcStrict({
+  rootDir = process.cwd(),
+  now = new Date().toISOString(),
+  scan = null,
+  retentionDays = DEFAULT_RETENTION_DAYS,
+  compactAgentOutputDays = retentionDays,
+  archiveRetentionDays = 90,
+  maxArchiveBytes = 0,
+} = {}) {
+  const resolvedScan = scan || await scanSupervibeArtifactGc({
+    rootDir,
+    now,
+    retentionDays,
+    compactAgentOutputDays,
+    archiveRetentionDays,
+    maxArchiveBytes,
+  });
+  const inventory = collectSupervibeInventory(rootDir, now);
+  const referenced = referencedOutputArtifacts(rootDir);
+  const receiptTrustByPath = workflowReceiptTrustMap(rootDir);
+  const protectedPaths = buildReceiptProtectedPathSet(referenced);
+  const deletablePaths = [
+    ...(resolvedScan.candidates || []).map((item) => ({ ...item, cleanupMode: "candidate" })),
+    ...(resolvedScan.archiveCleanup || []).map((item) => ({ ...item, cleanupMode: "archive-cleanup" })),
+  ];
+  const unsafeProtectedCandidates = [];
+  for (const candidate of deletablePaths) {
+    const relPath = normalizeRelPath(candidate.relPath);
+    for (const protectedPath of protectedPaths) {
+      if (relPath === protectedPath || protectedPath.startsWith(`${relPath}/`)) {
+        unsafeProtectedCandidates.push({
+          relPath,
+          cleanupMode: candidate.cleanupMode,
+          reason: candidate.reason,
+          protectedPath,
+        });
+      }
+    }
+  }
+
+  const classified = inventory.map((item) => classifyStrictInventoryItem(item, {
+    archiveRetentionDays,
+    protectedPaths,
+    referenced,
+    receiptTrustByPath,
+    retentionDays,
+  }));
+  const coverage = summarizeStrictCoverage(classified);
+  const unclassified = classified.filter((item) => item.category === "unclassified");
+  const untrustedReceipts = classified.filter((item) => item.category === "workflow-artifact" && item.trustedReceipt === false);
+  const failures = [];
+  for (const item of unsafeProtectedCandidates) {
+    failures.push(`receipt-linked output would be deleted by ${item.cleanupMode}: ${item.relPath} protects ${item.protectedPath}`);
+  }
+  const pass = failures.length === 0;
+  const staleTelemetry = classified.filter((item) => item.reason === "stale-telemetry-log");
+  const backups = classified.filter((item) => item.category === "backup");
+  const workflowArtifacts = classified.filter((item) => item.category === "workflow-artifact" || item.category === "workflow-artifact-link" || item.category === "workflow-archive");
+  const protectedReceiptOutputs = classified.filter((item) => item.protectedByReceipt === true);
+  return {
+    schemaVersion: 1,
+    generatedAt: now,
+    pass,
+    failures,
+    summary: {
+      scanned: inventory.length,
+      candidates: resolvedScan.summary?.candidates || 0,
+      activeNoise: resolvedScan.summary?.activeNoise || 0,
+      compactable: resolvedScan.summary?.compactable || 0,
+      archiveCleanup: resolvedScan.summary?.archiveCleanup || 0,
+      unsafeProtectedCandidates: unsafeProtectedCandidates.length,
+      unclassified: unclassified.length,
+      untrustedReceipts: untrustedReceipts.length,
+    },
+    coverage,
+    classifications: {
+      protectedReceiptOutputs,
+      staleTelemetry,
+      backups,
+      workflowArtifacts,
+      unclassified,
+      untrustedReceipts,
+    },
+    unsafeProtectedCandidates,
+    retentionPolicy: {
+      artifactRetentionDays: Number(retentionDays),
+      compactAgentOutputDays: Number(compactAgentOutputDays),
+      workflowArtifactRetentionDays: DEFAULT_WORKFLOW_ARTIFACT_RETENTION_DAYS,
+      archiveRetentionDays: Number(archiveRetentionDays),
+      trustedWorkflowReceipts: "retain",
+      staleWorkflowReceipts: "prune with node scripts/workflow-receipt.mjs prune-stale --apply, then run npm run supervibe:gc -- --artifacts --dry-run",
+    },
+    nextActions: buildStrictGcNextActions({
+      pass,
+      staleTelemetry,
+      backups,
+      unsafeProtectedCandidates,
+      untrustedReceipts,
+    }),
+  };
+}
+
+export function formatSupervibeGcStrictReport(result = {}) {
+  const coverage = result.coverage || {};
+  return [
+    "SUPERVIBE_GC_STRICT",
+    `PASS: ${result.pass === true}`,
+    `SCANNED: ${result.summary?.scanned || 0}`,
+    `CANDIDATES: ${result.summary?.candidates || 0}`,
+    `ACTIVE_NOISE: ${result.summary?.activeNoise || 0}`,
+    `COMPACTABLE: ${result.summary?.compactable || 0}`,
+    `ARCHIVE_CLEANUP: ${result.summary?.archiveCleanup || 0}`,
+    `UNSAFE_PROTECTED_CANDIDATES: ${result.summary?.unsafeProtectedCandidates || 0}`,
+    `UNCLASSIFIED: ${result.summary?.unclassified || 0}`,
+    `UNTRUSTED_RECEIPTS: ${result.summary?.untrustedReceipts || 0}`,
+    `COVERAGE_ARTIFACTS: ${coverage.artifacts || 0}`,
+    `COVERAGE_MEMORY: ${coverage.memory || 0}`,
+    `COVERAGE_LOOPS: ${coverage.loops || 0}`,
+    `COVERAGE_WORK_ITEMS: ${coverage.workItems || 0}`,
+    `COVERAGE_RECEIPTS: ${coverage.receipts || 0}`,
+    `COVERAGE_BACKUPS: ${coverage.backups || 0}`,
+    `COVERAGE_TELEMETRY: ${coverage.telemetry || 0}`,
+    `COVERAGE_ARCHIVES: ${coverage.archives || 0}`,
+    `PROTECTED_RECEIPT_OUTPUTS: ${result.classifications?.protectedReceiptOutputs?.length || 0}`,
+    `STALE_TELEMETRY: ${result.classifications?.staleTelemetry?.length || 0}`,
+    `BACKUPS: ${result.classifications?.backups?.length || 0}`,
+    `WORKFLOW_ARTIFACTS: ${result.classifications?.workflowArtifacts?.length || 0}`,
+    `RETENTION_WORKFLOW_ARTIFACT_DAYS: ${result.retentionPolicy?.workflowArtifactRetentionDays || DEFAULT_WORKFLOW_ARTIFACT_RETENTION_DAYS}`,
+    "FAILURES:",
+    ...((result.failures || []).slice(0, 10).map((failure) => `  - ${failure}`) || []),
+    ...(result.failures?.length ? [] : ["  - none"]),
+    "NEXT_ACTIONS:",
+    ...((result.nextActions || []).map((action) => `  - ${action}`)),
+  ].join("\n");
+}
+
 export function formatSupervibeArtifactGcReport(scan = {}, archiveResult = {}) {
   const top = (scan.candidates || [])
     .slice(0, 10)
@@ -464,8 +657,7 @@ function listFiles(rootDir, relDir, { includeArchive = false } = {}) {
 function referencedOutputArtifacts(rootDir) {
   try {
     const references = new Map();
-    for (const receipt of readWorkflowReceipts(rootDir)) {
-      const trusted = !receipt.__invalidJson && validateWorkflowReceiptTrust(rootDir, receipt).pass === true;
+    for (const { receipt, trusted } of workflowReceiptsWithTrust(rootDir)) {
       for (const item of receipt.outputArtifacts || []) {
         const path = normalizeRelPath(typeof item === "string" ? item : item?.path);
         if (!path) continue;
@@ -478,6 +670,37 @@ function referencedOutputArtifacts(rootDir) {
   } catch {
     return new Map();
   }
+}
+
+function workflowReceiptsWithTrust(rootDir) {
+  try {
+    return readWorkflowReceipts(rootDir).map((receipt) => {
+      const trust = receipt.__invalidJson
+        ? { pass: false, issues: ["invalid receipt json"] }
+        : validateWorkflowReceiptTrust(rootDir, receipt);
+      return {
+        receipt,
+        trusted: trust.pass === true,
+        issues: trust.issues || [],
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+function workflowReceiptTrustMap(rootDir) {
+  const map = new Map();
+  for (const item of workflowReceiptsWithTrust(rootDir)) {
+    const relPath = normalizeRelPath(item.receipt.__file);
+    if (!relPath) continue;
+    map.set(relPath, {
+      trusted: item.trusted,
+      issues: item.issues,
+      receiptId: item.receipt.receiptId,
+    });
+  }
+  return map;
 }
 
 function readAgentOutputState(rootDir, relPath) {
@@ -606,6 +829,208 @@ function sanitizeId(value) {
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
+}
+
+function collectSupervibeInventory(rootDir, now) {
+  return listFiles(rootDir, ".supervibe", { includeArchive: true }).map((item) => ({
+    relPath: normalizeRelPath(item.relPath),
+    ageDays: ageDays(item.stat, now),
+    bytes: Number(item.stat.size || 0),
+    mtimeMs: item.stat.mtimeMs,
+  }));
+}
+
+function buildReceiptProtectedPathSet(referenced) {
+  const paths = new Set();
+  for (const path of referenced.keys()) {
+    const normalized = normalizeRelPath(path);
+    if (!normalized) continue;
+    paths.add(normalized);
+  }
+  return paths;
+}
+
+function classifyStrictInventoryItem(item, {
+  archiveRetentionDays,
+  protectedPaths,
+  receiptTrustByPath,
+  referenced,
+  retentionDays,
+}) {
+  const relPath = normalizeRelPath(item.relPath);
+  const receiptRefs = referenced.get(relPath) || [];
+  const protectedByReceipt = protectedPaths.has(relPath);
+  const base = {
+    relPath,
+    ageDays: item.ageDays,
+    bytes: item.bytes,
+    protectedByReceipt,
+    trustedReceipt: receiptRefs.some((ref) => ref.trusted === true),
+    receiptIds: receiptRefs.map((ref) => ref.receiptId).filter(Boolean),
+  };
+  if (protectedByReceipt) {
+    return {
+      ...base,
+      category: "receipt-linked-output",
+      reason: "protected-by-workflow-receipt",
+      tier: RETENTION_TIERS.REQUIRED,
+      nextAction: "retain; compact only through Supervibe GC compact manifest path",
+    };
+  }
+  if (relPath.includes("/_workflow-invocations/") || relPath.includes("/workflow-receipts-stale/")) {
+    const receipt = relPath.includes("/_workflow-invocations/") && relPath.endsWith(".json") && !relPath.endsWith("/artifact-links.json");
+    const staleArchive = relPath.includes("/workflow-receipts-stale/");
+    const artifactLink = relPath.endsWith("/artifact-links.json");
+    const receiptTrust = receiptTrustByPath?.get(relPath) || null;
+    return {
+      ...base,
+      category: staleArchive
+        ? "workflow-archive"
+        : artifactLink
+          ? "workflow-artifact-link"
+          : "workflow-artifact",
+      reason: staleArchive
+        ? "stale-workflow-receipt-archive"
+        : artifactLink
+          ? "workflow-artifact-link"
+          : "workflow-receipt-retention",
+      tier: staleArchive ? RETENTION_TIERS.ARCHIVE : RETENTION_TIERS.REQUIRED,
+      retentionDays: staleArchive ? Number(archiveRetentionDays) : DEFAULT_WORKFLOW_ARTIFACT_RETENTION_DAYS,
+      trustedReceipt: receipt ? receiptTrust?.trusted === true : base.trustedReceipt,
+      trustIssues: receipt ? receiptTrust?.issues || [] : [],
+      nextAction: staleArchive
+        ? "run npm run supervibe:gc -- --artifacts --dry-run, then --apply after review"
+        : "retain trusted receipts; repair or prune stale receipts with workflow-receipt.mjs",
+    };
+  }
+  if (/\.bak$/i.test(relPath)) {
+    return {
+      ...base,
+      category: "backup",
+      reason: item.ageDays >= Number(retentionDays) ? "stale-backup" : "recent-backup",
+      tier: RETENTION_TIERS.ARCHIVE,
+      retentionDays: Number(retentionDays),
+      nextAction: "run npm run supervibe:gc -- --artifacts --dry-run",
+    };
+  }
+  if (/\.log$/i.test(relPath)) {
+    return {
+      ...base,
+      category: "telemetry",
+      reason: item.ageDays >= Number(retentionDays) ? "stale-telemetry-log" : "recent-telemetry-log",
+      tier: RETENTION_TIERS.DIAGNOSTIC_LATEST,
+      retentionDays: Number(retentionDays),
+      nextAction: "run npm run supervibe:gc -- --artifacts --dry-run",
+    };
+  }
+  if (/\.jsonl$/i.test(relPath)) {
+    return {
+      ...base,
+      category: "telemetry",
+      reason: "telemetry-jsonl",
+      tier: relPath.includes("workflow-invocation-ledger") || relPath.includes("agent-invocations")
+        ? RETENTION_TIERS.REQUIRED
+        : RETENTION_TIERS.DIAGNOSTIC_LATEST,
+      nextAction: "retain append-only telemetry unless a domain validator marks it stale",
+    };
+  }
+  if (relPath.startsWith(".supervibe/.archive/")) {
+    return {
+      ...base,
+      category: "archive",
+      reason: "archive-retention",
+      tier: RETENTION_TIERS.ARCHIVE,
+      retentionDays: Number(archiveRetentionDays),
+      nextAction: "run npm run supervibe:gc -- --artifacts --dry-run --archive-retention-days <days>",
+    };
+  }
+  if (relPath.startsWith(".supervibe/memory/work-items/")) {
+    return {
+      ...base,
+      category: "work-item",
+      reason: "work-item-state",
+      tier: RETENTION_TIERS.REQUIRED,
+      nextAction: "retain active work graph; archive only through work-item GC",
+    };
+  }
+  if (relPath.startsWith(".supervibe/memory/loops/")) {
+    return {
+      ...base,
+      category: "loop",
+      reason: "loop-state",
+      tier: RETENTION_TIERS.REQUIRED,
+      nextAction: "retain until loop terminal state is archived",
+    };
+  }
+  if (relPath.startsWith(".supervibe/memory/")) {
+    return {
+      ...base,
+      category: "memory",
+      reason: relPath.endsWith(".db") ? "regenerable-memory-cache" : "project-memory-state",
+      tier: relPath.endsWith(".db") ? RETENTION_TIERS.REGENERABLE_CACHE : RETENTION_TIERS.REQUIRED,
+      nextAction: "use memory-specific GC for project memory entries",
+    };
+  }
+  if (relPath.startsWith(".supervibe/artifacts/")) {
+    return {
+      ...base,
+      category: "artifact",
+      reason: "project-artifact",
+      tier: RETENTION_TIERS.DIAGNOSTIC_LATEST,
+      nextAction: "retain unless a typed artifact GC candidate classifies it",
+    };
+  }
+  if (relPath.startsWith(".supervibe/audits/")) {
+    return {
+      ...base,
+      category: "audit",
+      reason: "audit-report",
+      tier: RETENTION_TIERS.DIAGNOSTIC_LATEST,
+      nextAction: "retain latest audit reports; archive old reports only through typed GC",
+    };
+  }
+  return {
+    ...base,
+    category: "unclassified",
+    reason: "unclassified-supervibe-file",
+    tier: RETENTION_TIERS.DIAGNOSTIC_LATEST,
+    nextAction: "inspect and add an explicit GC classification before cleanup",
+  };
+}
+
+function summarizeStrictCoverage(classified) {
+  return {
+    artifacts: classified.filter((item) => item.relPath.startsWith(".supervibe/artifacts/")).length,
+    memory: classified.filter((item) => item.relPath.startsWith(".supervibe/memory/")).length,
+    loops: classified.filter((item) => item.category === "loop").length,
+    workItems: classified.filter((item) => item.category === "work-item").length,
+    receipts: classified.filter((item) => item.category === "workflow-artifact" || item.category === "workflow-artifact-link" || item.category === "workflow-archive").length,
+    backups: classified.filter((item) => item.category === "backup").length,
+    telemetry: classified.filter((item) => item.category === "telemetry").length,
+    archives: classified.filter((item) => item.relPath.startsWith(".supervibe/.archive/")).length,
+  };
+}
+
+function buildStrictGcNextActions({
+  pass,
+  staleTelemetry,
+  backups,
+  unsafeProtectedCandidates,
+  untrustedReceipts,
+}) {
+  const actions = [];
+  if (!pass || unsafeProtectedCandidates.length > 0) {
+    actions.push("STOP: repair GC classification before running apply; receipt-linked outputs must not be deletable");
+  }
+  if (untrustedReceipts.length > 0) {
+    actions.push("node scripts/workflow-receipt.mjs recovery-status");
+    actions.push("node scripts/workflow-receipt.mjs prune-stale --apply");
+  }
+  if (staleTelemetry.length > 0 || backups.length > 0) {
+    actions.push("npm run supervibe:gc -- --artifacts --dry-run");
+  }
+  if (actions.length === 0) actions.push("no strict GC action required");
+  return [...new Set(actions)];
 }
 
 function normalizeRelPath(path) {

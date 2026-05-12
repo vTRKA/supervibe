@@ -56,13 +56,20 @@ export function selectPaletteAction(palette = {}, actionId, { confirmed = false,
   const action = (palette.actions || []).find((candidate) => candidate.id === actionId);
   if (!action) throw new Error(`unknown palette action: ${actionId}`);
   if (!action.enabled) return { action, executable: false, reason: action.blockedReason || "action unavailable", command: action.command };
-  if (action.mutates && !confirmed && !yes) {
-    return { action, executable: false, reason: "confirmation required before mutation", command: action.command };
-  }
   if (action.risky && yes) {
     return { action, executable: false, reason: "--yes is not allowed for risky actions", command: action.command };
   }
-  return { action, executable: true, command: action.command, reason: "ready" };
+  if (action.mutates && !confirmed && !yes) {
+    return { action, executable: false, reason: "preview required before mutation", command: action.previewCommand || action.command };
+  }
+  if (action.mutates && !action.previewConfirmed && !action.previewAccepted && !confirmed) {
+    return { action, executable: false, reason: "preview acceptance required before mutation", command: action.previewCommand || action.command };
+  }
+  const command = action.mutates && !(action.previewConfirmed || action.previewAccepted)
+    ? (action.previewCommand || action.command)
+    : action.command;
+  const executable = action.mutates ? Boolean(action.previewConfirmed || action.previewAccepted) : true;
+  return { action, executable, command, reason: executable ? "ready" : "preview acceptance required before mutation" };
 }
 
 export function formatCommandPalette(palette = {}) {
@@ -76,13 +83,18 @@ export function formatCommandPalette(palette = {}) {
 }
 
 function action(id, label, command, options = {}) {
+  const mutates = Boolean(options.mutates);
+  const previewCommand = options.previewCommand
+    || (mutates && !/\s--preview\b/.test(command) ? `${command} --preview` : null);
   return {
     id,
     label,
     command,
     enabled: options.enabled !== false,
     blockedReason: options.blockedReason || null,
-    mutates: Boolean(options.mutates),
+    mutates,
     risky: Boolean(options.risky),
+    previewFirst: mutates,
+    previewCommand,
   };
 }

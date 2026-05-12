@@ -45,7 +45,7 @@ export async function promoteDesignApprovalState(rootDir = process.cwd(), {
     const prototypeRoot = join(prototypesRoot, slug);
     if (existsSync(prototypeRoot) && prototypeArtifactExists(prototypeRoot)) {
       preflightPrototypeRoot = prototypeRoot;
-      preflightQualityGate = evaluateDesignQualityGate(rootDir, { slug, requireReviews: true });
+      preflightQualityGate = evaluateDesignQualityGate(rootDir, { slug, requireReviews: true, handoffId: slug });
       if (!preflightQualityGate.approvalAllowed) {
         issues.push(`prototype quality gate blocked approval: blockers=${preflightQualityGate.blockerCount}, high=${preflightQualityGate.highCount}`);
         for (const issue of preflightQualityGate.issues) {

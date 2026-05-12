@@ -100,6 +100,8 @@ export function formatStatus(state) {
     `RATE_LIMIT: ${permissionSummary.rateLimitStatus || "unknown"}`,
     `TASKS: ready=${graphCounts.ready || 0} blocked=${graphCounts.blocked || 0} claimed=${graphCounts.claimed || 0} complete=${graphCounts.complete || 0} open=${graphCounts.open || 0}`,
     `REPEATED_FAILURE_SIGNATURES: ${repeatedFailures}`,
+    `NO_PROGRESS_TIMEOUT_MS: ${state.preflight?.no_progress_timeout_ms || "unknown"}`,
+    `DEFERRED_HEAVY_VERIFICATION: ${state.deferred_heavy_verification?.length || 0}`,
     `WORKTREE_SESSIONS: active=${worktreeSummary.counts.active || 0} stale=${worktreeSummary.counts.stale || 0} cleanup_blocked=${worktreeSummary.counts.cleanup_blocked || 0} total=${worktreeSummary.total}`,
     `OBSERVABILITY: duration=${observability.durationSeconds}s blocked=${observability.timeBlockedSeconds}s attempts=${Object.values(observability.attemptsPerTask || {}).reduce((sum, count) => sum + count, 0)} verification_pass=${observability.verificationPassCount || 0} verification_fail=${observability.verificationFailCount || 0} requeues=${observability.requeueCount || 0} stale_claims=${observability.staleClaimCount || 0}`,
   ];

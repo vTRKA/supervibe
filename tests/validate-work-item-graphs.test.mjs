@@ -27,6 +27,7 @@ test("work item graph validator fails malformed work-item graph files", async ()
       planPath: ".supervibe/artifacts/plans/graph-validation.md",
       epicId: "epic-graph-validation",
       planReviewPassed: true,
+      dryRun: true,
     });
     graph.items = graph.items.filter((item) => item.type === "epic");
     graph.tasks = [];
@@ -49,6 +50,7 @@ test("strict work item graph validation requires adjacent source plan snapshot",
       planPath: ".supervibe/artifacts/plans/graph-validation.md",
       epicId: "epic-graph-validation",
       planReviewPassed: true,
+      dryRun: true,
     });
     const { graphPath } = await writeWorkItemGraph(graph, { rootDir: temp });
 

@@ -122,6 +122,14 @@ test("inferred caps block high confidence when evidence gates or producer proven
   assert.ok(caps.every((cap) => cap.score < 9));
 });
 
+test("inferred caps treat null evidence gate as failed instead of unknown-pass", () => {
+  const caps = inferDeliveryHardCaps({
+    evidenceGatePass: null,
+  });
+
+  assert.deepEqual(caps.map((cap) => cap.code), ["evidence-gate-failed"]);
+});
+
 test("invalid dimension and risk numbers are clamped and reported", () => {
   const result = scoreDeliveryConfidence({
     dimensions: [

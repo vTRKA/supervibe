@@ -120,7 +120,7 @@ Plan atomization:
 /supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --plan-review-passed
 ```
 
-Atomization converts one reviewed plan into one epic, child work items, blocker edges, soft related links, gate items, and follow-ups. Writes require `--plan-review-passed` backed by a plan-review artifact with reviewer coverage and a Next User Decision; `--dry-run` previews the graph without writing. A reviewed plan with no parseable task/work-item structure must fail closed: the command exits non-zero and does not write `graph.json`, previews, registry entries, or tracker sync state unless an explicit invalid-graph override is used by a diagnostic tool.
+Atomization converts one reviewed plan into one epic, child work items, blocker edges, soft related links, gate items, and follow-ups. Writes require `--plan-review-passed` plus a validated plan-review artifact with `evidenceGatePass:true`, real-agent reviewer coverage, scoped runtime receipts carrying `hostInvocation.source` and `hostInvocation.invocationId`, and a Next User Decision; `--dry-run` previews the graph without writing. A reviewed plan with no parseable task/work-item structure must fail closed: the command exits non-zero and does not write `graph.json`, previews, registry entries, or tracker sync state unless an explicit invalid-graph override is used by a diagnostic tool.
 Generated work items use reusable templates for feature, bugfix, refactor, UI story, integration, migration, documentation, release-prep, production-prep, and research spike work. Items carry labels, severity, owner/component/stack fields, required gates, verification hints, comments, and optional repo/package/workspace/subproject routing metadata.
 Production-oriented plans also generate release, observability, rollback,
 security/privacy, and post-release learning work items so the loop does not
@@ -133,7 +133,7 @@ After atomization or a dry-run preview, print `NEXT_USER_ACTIONS[]` and wait for
 - **Start guided execution** - run `/supervibe-loop --guided` only after review and atomization evidence is accepted.
 - **Keep work graph and stop** - save the result without starting execution.
 
-Do not treat `--plan-review-passed` as permission to execute. It only permits atomization from a reviewed plan. Starting guided, manual, fresh-context, worktree, version bump, commit, push, cleanup, or plan deletion still requires the current visible user-choice gate to be answered after the generated work graph is shown.
+Do not treat `--plan-review-passed` as permission to execute. It only permits atomization from a reviewed plan with trusted current-run reviewer receipts. Starting guided, manual, fresh-context, worktree, version bump, commit, push, cleanup, or plan deletion still requires the current visible user-choice gate to be answered after the generated work graph is shown. Manual and guided modes are queue-control modes, not durable producer/reviewer/worker evidence. Subagent batches or inline controller summaries are diagnostic only unless they are bound to real host-agent invocation ids and scoped runtime receipts for the current run.
 
 Repair paths:
 
@@ -307,7 +307,7 @@ permission-prompt bridge requirement, spawn receipt requirement, and
 allow-spawn requirement. Cursor and Copilot are package/docs-supported but
 degrade to guided or manual execution until portable fresh-context adapters
 exist. Codex can use native goal workflows when available, Claude can use
-Stop/SubagentStop/TeammateIdle hook continuations, and every host keeps the
+supported hook continuations, and every host keeps the
 Supervibe state files, receipt gates, quality gates, and stop/resume/status
 commands as the portable baseline.
 
@@ -323,6 +323,12 @@ must stop with `external_adapter_spawn_requires_allow_spawn` or
 `permission_prompt_bridge_required` and print a status/resume artifact instead
 of pretending to run autonomously.
 
+Durable loop work is real-agent owned. A worker, reviewer, validator, epic, task
+graph, completion, or external-adapter output cannot be satisfied by a manual
+note, controller-authored summary, command receipt, skill receipt, or stale
+global receipt; it needs the current run's scoped runtime receipt bound to the
+named host-agent invocation and output artifact.
+
 ## Contract
 
 - Build a task queue from a reviewed work-item graph or request. Direct plan execution is legacy diagnostic-only; reviewed plans must atomize into a graph before guided, manual, fresh-context, or worktree execution.
@@ -334,7 +340,7 @@ of pretending to run autonomously.
 - Run provider permission audit before non-dry execution. The audit records the
   effective permission mode, denied tools, prompt-required tools, rate-limit
   state, network/MCP approval state, and next safe action.
-- Dispatch specialist chains by task type.
+- Dispatch named real-agent specialist chains by task type and bind their outputs to runtime receipts.
 - Keep structured handoffs, scores, audit events, side-effect ledger entries,
   and a final report under `.supervibe/memory/loops/<run-id>/`.
 - Include `contextPack.workflowSignal` in each handoff and fresh-context prompt

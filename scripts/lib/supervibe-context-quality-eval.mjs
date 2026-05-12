@@ -4,6 +4,7 @@ const DEFAULT_THRESHOLDS = Object.freeze({
   citationValidity: 0.95,
   graphImpactRecall: 0.9,
 });
+const TERMINAL_WORK_ITEM_STATUSES = new Set(["done", "closed", "complete", "completed", "verified", "skipped", "cancelled", "canceled"]);
 
 export function evaluateContextQualityCases(cases = [], { thresholds = DEFAULT_THRESHOLDS } = {}) {
   const results = (cases || [])
@@ -36,6 +37,11 @@ function evaluateContextQualityCase(testCase = {}, { thresholds = DEFAULT_THRESH
   const citations = retrieved.citations || [];
   const validCitations = citations.filter((citation) => citation?.id && citation?.source && citation?.path && citation?.redacted !== false);
   const staleEvidence = (retrieved.evidence || []).filter((entry) => entry?.stale === true);
+  const forbiddenWorkItems = new Set((gold.forbiddenWorkItemIds || []).map(String));
+  const activeWorkItemId = retrieved.activeWorkItemId ? String(retrieved.activeWorkItemId) : "";
+  const activeWorkItemStatus = String(retrieved.activeWorkItemStatus || "").toLowerCase();
+  const terminalActiveWork = activeWorkItemStatus && TERMINAL_WORK_ITEM_STATUSES.has(activeWorkItemStatus);
+  const forbiddenActiveWork = activeWorkItemId && forbiddenWorkItems.has(activeWorkItemId);
   const contradictionRequired = Boolean(gold.contradiction);
   const contradictionDetected = !contradictionRequired || Boolean(retrieved.contradictionWarning);
   const tokenBudgetCompliance = !quality.tokenBudget
@@ -50,6 +56,7 @@ function evaluateContextQualityCase(testCase = {}, { thresholds = DEFAULT_THRESH
     check("citation-validity", citationValidity >= thresholds.citationValidity, `citation precision below threshold: ${round(citationValidity)} < ${thresholds.citationValidity}`),
     check("graph-impact-recall", graph.recall >= thresholds.graphImpactRecall, `graph impact recall below threshold: ${round(graph.recall)} < ${thresholds.graphImpactRecall}`),
     check("stale-evidence-rate", staleEvidenceRate === 0, `stale evidence rate must be zero for release cases, got ${round(staleEvidenceRate)}`),
+    check("active-work-freshness", !terminalActiveWork && !forbiddenActiveWork, `active work item must not be terminal or forbidden: ${activeWorkItemId || "unknown"} status=${activeWorkItemStatus || "unknown"}`),
     check("contradiction-detection", contradictionDetected, "contradiction was expected but not detected"),
     check("token-budget", tokenBudgetCompliance, "context pack exceeded token budget"),
   ];
@@ -67,6 +74,7 @@ function evaluateContextQualityCase(testCase = {}, { thresholds = DEFAULT_THRESH
       contextPrecision: round(contextPrecision),
       citationValidity: round(citationValidity),
       staleEvidenceRate: round(staleEvidenceRate),
+      activeWorkFresh: !terminalActiveWork && !forbiddenActiveWork,
       contradictionDetected,
       tokenBudgetCompliance,
     },

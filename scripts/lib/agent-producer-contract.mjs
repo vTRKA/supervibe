@@ -51,6 +51,19 @@ function isRecoveryReceipt(receipt = {}) {
   return Boolean(receipt?.recovery || receipt?.runtime?.recovery);
 }
 
+function producerSignature(receipt = {}) {
+  const outputs = Array.isArray(receipt.outputArtifacts)
+    ? receipt.outputArtifacts.map(normalizeRelPath).sort()
+    : [];
+  return [
+    normalizeCommand(receipt.command),
+    String(receipt.subjectType || "").toLowerCase(),
+    receipt.subjectId || receipt.agentId || receipt.skillId || "",
+    receipt.stage || "",
+    outputs.join("|"),
+  ].join("::");
+}
+
 function readAgentInvocationLog(rootDir = process.cwd()) {
   const logPath = join(rootDir, ...AGENT_INVOCATION_LOG_RELATIVE_PATH.split("/"));
   if (!existsSync(logPath)) return [];
@@ -169,11 +182,24 @@ export function validateAgentProducerReceipts(rootDir = process.cwd(), options =
   const issues = [];
   const trustedHostAgentReceiptIds = new Set();
   const receiptBoundInvocationIds = new Set();
+  const trustedNonRecoveryProducerSignatures = new Set();
+
+  for (const receipt of receipts) {
+    if (receipt.__invalidJson || !isProducerReceipt(receipt) || isRecoveryReceipt(receipt)) continue;
+    const trust = validateWorkflowReceiptTrust(rootDir, receipt, options);
+    const hostIssues = isHostAgentReceipt(receipt)
+      ? validateHostInvocationProof(rootDir, receipt, { ...options, agentInvocationLog: invocationLog })
+      : [];
+    if (trust.issues.length === 0 && hostIssues.length === 0) {
+      trustedNonRecoveryProducerSignatures.add(producerSignature(receipt));
+    }
+  }
 
   for (const receipt of receipts) {
     if (receipt.__invalidJson) continue;
     if (!isProducerReceipt(receipt)) continue;
     if (isRecoveryReceipt(receipt)) {
+      if (trustedNonRecoveryProducerSignatures.has(producerSignature(receipt))) continue;
       issues.push({
         code: "recovery-receipt-not-producer-proof",
         file: receipt.__file || "workflow receipt",
@@ -395,6 +421,10 @@ export function expectedProducerReceiptsForDurableOutputs(rootDir = process.cwd(
   const expected = [];
   const prototypeSlug = normalizeOptional(options.prototypeSlug || options.slug);
   const requireDesignReviewStages = options.requireDesignReviewStages === true;
+  const designArtifactDirs = listDesignArtifactDirs(rootDir)
+    .filter((item) => !prototypeSlug || item.slug === prototypeSlug);
+  const activeDesignWorkStarted = designArtifactDirs
+    .some((item) => designArtifactWorkStarted(rootDir, item));
   const add = ({ command, outputArtifact, subjectType, subjectId, stageId, required = false }) => {
     if (required || existsSync(join(rootDir, ...outputArtifact.split("/")))) {
       expected.push({ command, outputArtifact, subjectType, subjectId, stageId });
@@ -407,6 +437,7 @@ export function expectedProducerReceiptsForDurableOutputs(rootDir = process.cwd(
     subjectType: "agent",
     subjectId: "creative-director",
     stageId: "stage-1-brand-direction",
+    required: requireDesignReviewStages && activeDesignWorkStarted,
   });
   add({
     command: "/supervibe-design",
@@ -437,12 +468,12 @@ export function expectedProducerReceiptsForDurableOutputs(rootDir = process.cwd(
     stageId: "stage-2-design-system",
   });
 
-  for (const designArtifact of listDesignArtifactDirs(rootDir).filter((item) => !prototypeSlug || item.slug === prototypeSlug)) {
+  for (const designArtifact of designArtifactDirs) {
     const { rootName, slug } = designArtifact;
     const base = `.supervibe/artifacts/${rootName}/${slug}`;
-    const prototypeIndexExists = existsSync(join(rootDir, ".supervibe", "artifacts", rootName, slug, "index.html"));
-    const requiredReviewStage = requireDesignReviewStages && prototypeIndexExists;
-    const requiredFoundationStage = requireDesignReviewStages && prototypeIndexExists;
+    const workStarted = designArtifactWorkStarted(rootDir, designArtifact);
+    const requiredReviewStage = requireDesignReviewStages && workStarted;
+    const requiredFoundationStage = requireDesignReviewStages && workStarted;
     const requiredTauriStage = requiredFoundationStage && designArtifactRequiresTauriUi(rootDir, rootName, slug);
     add({ command: "/supervibe-design", outputArtifact: `${base}/spec.md`, subjectType: "agent", subjectId: "ux-ui-designer", stageId: "stage-3-screen-spec", required: requiredFoundationStage });
     if (requiredTauriStage) {
@@ -555,6 +586,15 @@ function receiptMatchesProducerExpectation(receipt = {}, expectation = {}) {
 function listDesignArtifactDirs(rootDir) {
   return ["prototypes", "mockups"].flatMap((rootName) => listDesignDirs(rootDir, rootName)
     .map((slug) => ({ rootName, slug })));
+}
+
+function designArtifactWorkStarted(rootDir, designArtifact) {
+  const rootName = typeof designArtifact === "string" ? "prototypes" : designArtifact.rootName;
+  const slug = typeof designArtifact === "string" ? designArtifact : designArtifact.slug;
+  const base = join(rootDir, ".supervibe", "artifacts", rootName, slug);
+  return existsSync(join(base, "index.html"))
+    || existsSync(join(base, "variant-manifest.json"))
+    || listVariantArtifacts(rootDir, { rootName, slug }).length > 0;
 }
 
 function listDesignDirs(rootDir, rootName) {

@@ -380,8 +380,8 @@ test("supervibe-adapt metadata-only apply closes version and baseline drift", ()
     assert.match(out, /METADATA_UPDATED: true/);
     assert.match(out, /ADAPT_BASELINE_COMPLETE: true/);
     assert.match(out, /AGENT_RECEIPTS_REQUIRED: false/);
-    assert.match(out, /APP_VERIFICATION_STATUS: not-run-by-adapt/);
-    assert.match(out, /DEPLOY_VERIFICATION_STATUS: not-run-by-adapt/);
+    assert.match(out, /APP_VERIFICATION_STATUS: not-applicable/);
+    assert.match(out, /DEPLOY_VERIFICATION_STATUS: not-applicable/);
     assert.match(out, /VERSION_MARKER: updated/);
     assert.equal(
       readFileSync(join(projectRoot, ".supervibe", "memory", ".supervibe-version"), "utf8").trim(),

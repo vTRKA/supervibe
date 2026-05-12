@@ -18,6 +18,9 @@ import { chunkText, countTokens } from './chunker.mjs';
 import { loadNodeSqliteDatabaseSync } from './node-sqlite-runtime.mjs';
 
 const CATEGORIES = ['decisions', 'patterns', 'incidents', 'learnings', 'solutions'];
+const DEFAULT_SQLITE_BUSY_TIMEOUT_MS = 5000;
+const DEFAULT_READ_RETRY_ATTEMPTS = 3;
+const DEFAULT_READ_RETRY_DELAY_MS = 25;
 
 export class MemoryStore {
   constructor(projectRoot, opts = {}) {
@@ -28,6 +31,9 @@ export class MemoryStore {
     // useEmbeddings: enable semantic search (downloads ~25MB model first time)
     // Set to false for fast tests / minimal install
     this.useEmbeddings = opts.useEmbeddings !== false;
+    this.busyTimeoutMs = positiveInt(opts.busyTimeoutMs, DEFAULT_SQLITE_BUSY_TIMEOUT_MS);
+    this.readRetryAttempts = positiveInt(opts.readRetryAttempts, DEFAULT_READ_RETRY_ATTEMPTS);
+    this.readRetryDelayMs = positiveInt(opts.readRetryDelayMs, DEFAULT_READ_RETRY_DELAY_MS, { allowZero: true });
   }
 
   async init() {
@@ -39,7 +45,7 @@ export class MemoryStore {
     const DatabaseSync = await loadNodeSqliteDatabaseSync('Project memory');
     this.db = new DatabaseSync(this.dbPath);
     // WAL mode: allow concurrent readers + one writer (e.g. watcher + manual rebuild)
-    this.db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;');
+    this.db.exec(`PRAGMA busy_timeout=${this.busyTimeoutMs}; PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;`);
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS entries (
         id TEXT PRIMARY KEY,
@@ -212,7 +218,7 @@ export class MemoryStore {
   // Returns top-N entries with: id, type, date, tags, summary, confidence, file, score, semantic.
   async search({ query, tags = [], type = null, limit = 5, minConfidence = 0, semantic = true } = {}) {
     // Sync FTS5 path (existing) + async semantic rerank if enabled
-    const ftsResults = this._searchFTS({ query, tags, type, limit: limit * 3, minConfidence });
+    const ftsResults = this.runRead(() => this._searchFTS({ query, tags, type, limit: limit * 3, minConfidence }));
 
     if (!query || !semantic || !this.useEmbeddings) {
       return ftsResults.slice(0, limit);
@@ -229,7 +235,7 @@ export class MemoryStore {
 
     // Compute MAX semantic score per entry across its chunks (no truncation — every word is reachable)
     const computeChunkMaxSimilarity = (entryId) => {
-      const chunkRows = this.db.prepare('SELECT chunk_idx, embedding FROM entry_chunks WHERE entry_id = ?').all(entryId);
+      const chunkRows = this.runRead(() => this.db.prepare('SELECT chunk_idx, embedding FROM entry_chunks WHERE entry_id = ?').all(entryId));
       if (chunkRows.length === 0) return { score: 0, bestChunkIdx: -1 };
       let best = -1, bestIdx = -1;
       for (const cr of chunkRows) {
@@ -254,7 +260,7 @@ export class MemoryStore {
         allSql += ` AND id IN (SELECT entry_id FROM tags WHERE tag IN (${ph}) GROUP BY entry_id HAVING COUNT(DISTINCT tag) = ?)`;
         allParams.push(...tags, tags.length);
       }
-      const allRows = this.db.prepare(allSql).all(...allParams);
+      const allRows = this.runRead(() => this.db.prepare(allSql).all(...allParams));
       // e5 baseline cosine is high (~0.78 unrelated); related ≥0.82, very-related ≥0.86
       const E5_RELATED_THRESHOLD = 0.82;
       return allRows
@@ -361,6 +367,7 @@ export class MemoryStore {
     try {
       rows = this.db.prepare(sql).all(...params);
     } catch (err) {
+      if (isSqliteBusyError(err)) throw err;
       // FTS5 may reject malformed queries (rare with our quoting). Treat as no-match.
       if (err.code === 'ERR_SQLITE_ERROR' && useFTS) return [];
       throw err;
@@ -385,6 +392,13 @@ export class MemoryStore {
     const byType = this.db.prepare('SELECT type, COUNT(*) AS n FROM entries GROUP BY type').all();
     const tagCount = this.db.prepare('SELECT COUNT(DISTINCT tag) AS n FROM tags').get().n;
     return { totalEntries: total, byType, uniqueTags: tagCount };
+  }
+
+  runRead(operation) {
+    return runSqliteReadWithRetry(operation, {
+      attempts: this.readRetryAttempts,
+      delayMs: this.readRetryDelayMs,
+    });
   }
 
   /** Index or refresh a single memory entry from filesystem. Hash-based skip if unchanged. */
@@ -493,9 +507,55 @@ export async function rebuildMemory(projectRoot, opts = {}) {
 }
 
 export async function searchMemory(projectRoot, opts = {}) {
-  const store = new MemoryStore(projectRoot, { useEmbeddings: opts.semantic !== false });
+  const store = new MemoryStore(projectRoot, {
+    useEmbeddings: opts.semantic !== false,
+    busyTimeoutMs: opts.busyTimeoutMs,
+    readRetryAttempts: opts.readRetryAttempts,
+    readRetryDelayMs: opts.readRetryDelayMs,
+  });
   await store.init();
   const results = await store.search(opts);
   store.close();
   return results;
+}
+
+export function runSqliteReadWithRetry(operation, {
+  attempts = DEFAULT_READ_RETRY_ATTEMPTS,
+  delayMs = DEFAULT_READ_RETRY_DELAY_MS,
+} = {}) {
+  const maxAttempts = positiveInt(attempts, DEFAULT_READ_RETRY_ATTEMPTS);
+  const waitMs = positiveInt(delayMs, DEFAULT_READ_RETRY_DELAY_MS, { allowZero: true });
+  let lastError = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return operation();
+    } catch (error) {
+      lastError = error;
+      if (!isSqliteBusyError(error) || attempt >= maxAttempts) throw error;
+      sleepSync(waitMs * attempt);
+    }
+  }
+  throw lastError;
+}
+
+export function isSqliteBusyError(error) {
+  const code = String(error?.code || error?.cause?.code || '');
+  const message = String(error?.message || '');
+  return /SQLITE_BUSY|SQLITE_LOCKED|ERR_SQLITE_BUSY|ERR_SQLITE_LOCKED/i.test(code)
+    || /database is locked|database is busy|database table is locked/i.test(message);
+}
+
+function sleepSync(ms) {
+  const delay = Number(ms || 0);
+  if (delay <= 0) return;
+  const buffer = new SharedArrayBuffer(4);
+  Atomics.wait(new Int32Array(buffer), 0, 0, delay);
+}
+
+function positiveInt(value, fallback, { allowZero = false } = {}) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  const integer = Math.floor(number);
+  if (integer > 0 || (allowZero && integer === 0)) return integer;
+  return fallback;
 }

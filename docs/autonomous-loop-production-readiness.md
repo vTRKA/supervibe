@@ -108,3 +108,26 @@ If production-prep blocks, `prime` must show the exact ready front, open gates,
 approval boundary, and next safe action. `doctor` must be able to diagnose stale
 claims, unresolved side effects, missing artifacts, and graph blockers before a
 fresh agent resumes.
+
+Worker and reviewer attempts must have a bounded no-progress timeout. When the
+timeout fires, the controller stops the adapter when possible, records a stalled
+attempt with `no_progress_timeout`, releases or fails the claim, and resumes via
+a changed retry, smaller batch, or explicit blocker. Repeating the same stuck
+worker/reviewer wait is not valid progress.
+
+Heavy verification commands are final-epic gates, not per-task loop checks.
+Commands such as `npm run check`, `npm test`, `npm run check:release-strict`,
+`npm run validate:epic-completion`, broad `node --test`, and known global
+quality sweeps must be deferred while any epic work remains open. During the
+open epic, workers may run targeted module tests and lightweight validators
+only. The deferred heavy commands must be reported in loop state and run after
+the epic is complete or when explicitly allowed by a final verification mode.
+
+Continuation trigger phrases in Russian and English must read
+`.supervibe/memory/active-workflow.json`
+before the command catalog. If active state is valid, the router must execute the
+recorded next command. If active state is absent or invalid, it must route to
+`/supervibe-loop --status` and report close candidates instead of guessing a new
+producer command. After plan review passes, the default next command is
+atomization; after atomization, the default next command is `/supervibe-ui` so
+the user can inspect epic and task progress before execution continues.

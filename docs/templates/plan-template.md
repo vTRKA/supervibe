@@ -1,18 +1,18 @@
-# Billing Export MVP Implementation Plan
+# Scoped Capability Implementation Plan
 
-This is a filled canonical plan example. Keep the structure, but replace the domain values with real evidence from the current repository. A valid plan does not contain unresolved template tokens, generic paths, generic owners, or unverified claims.
+This is a neutral full-plan template. Keep the structure, replace the neutral capability labels with repository evidence, and do not approve the plan until every section contains concrete paths, owners, commands, risks, and scope decisions from the current project.
 
-> **For agentic workers:** REQUIRED SUB-SKILL: use `supervibe:writing-plans` before approval and `supervibe:executing-plans` after approval. Use `supervibe:subagent-driven-development` only when the user explicitly approved worker execution and write sets are disjoint.
+> **For agentic workers:** REQUIRED SUB-SKILL: use `supervibe:writing-plans` before approval and `supervibe:executing-plans` after approval. Durable outputs must be produced by real host agents or runtime tools with workflow receipts; inline notes are diagnostic only.
 
-**Goal:** Operators can export the last 90 days of billing events as a CSV from the admin billing screen, with a successful export created in under 30 seconds for accounts with up to 25,000 events.
+**Goal:** Deliver one user-approved capability as the smallest production-safe slice, with measurable behavior, verification evidence, rollback coverage, and no hidden optional functionality.
 
-**Owner:** Billing platform owner.
+**Owner:** Named delivery owner for the capability and release gate.
 
-**Architecture:** Add one backend export service behind the existing authenticated admin API and one UI action in the billing dashboard. Billing event storage remains owned by the billing module. The export service reads through the existing billing repository, streams normalized rows, records an audit log entry, and returns a signed short-lived download URL. The rejected approach is a client-side export because it would duplicate billing rules in the browser, expose raw event fields, and make rollback harder.
+**Architecture:** Add one bounded capability path through the existing ownership boundaries. New behavior must depend on established modules or explicitly approved new modules. The rejected approach is broad platform rewiring because it increases migration, review, support, and rollback cost without evidence that the current slice requires it.
 
-**Tech Stack:** Node.js 22.5+, npm, `node:test`, existing admin API routing, existing billing repository, CSV serialization in a local helper, existing audit logging, existing frontend component test stack, and `npm run check` as release gate.
+**Tech Stack:** Node.js 22.5+, npm, `node:test`, repository-local scripts, existing runtime modules, existing documentation structure, and the narrow verification command selected for this capability.
 
-**Constraints:** No production mutation during implementation. No new database table unless the PRD explicitly adds async export jobs. No raw payment identifiers in CSV, logs, screenshots, fixtures, or error output. Export scope is 90 days. Existing permissions decide access. The MVP must be reversible by disabling the UI action and reverting the final commit.
+**Constraints:** No production mutation during planning. No unapproved schema, permission, financial, security, infrastructure, or public API expansion. No private data in fixtures, logs, screenshots, or examples. The implementation must be reversible through source revert and documented operational rollback.
 
 ---
 
@@ -20,61 +20,59 @@ This is a filled canonical plan example. Keep the structure, but replace the dom
 
 | Area | Allowed | Redaction | Approval gate |
 |------|---------|-----------|---------------|
-| Local source reads | repository files, tests, package scripts, generated registry | secrets, tokens, private local notes | none for tracked repository files |
-| Local writes | plan, tests, billing export implementation, docs, changelog | generated artifacts that must not ship | diff review before commit |
-| Browser automation | local admin screen only when needed for UI smoke | cookies, private payloads, private screenshots | user approval before private data capture |
-| Design source | not used for this MVP | unreleased brand assets | explicit writeback approval if later needed |
-| External network/API | public documentation only for best-practice checks | request bodies, credentials, private responses | approval receipt for non-public targets |
-| PII/secrets | references to field classes only | customer names, emails, payment tokens, invoice ids in fixtures | named approver and receipt before using real data |
+| Local source reads | tracked repository files, tests, package scripts, generated indexes | secrets, tokens, private notes, unrelated local projects | none for tracked repository files |
+| Local writes | scoped plan, tests, source files, docs, generated evidence requested by the plan | unrelated artifacts and private data | diff review before commit |
+| MCP and browser automation | local tools needed for evidence, preview, or documentation checks | cookies, private payloads, private screenshots | user approval before private capture or writeback |
+| Figma and design source | read-only design evidence when the capability requires it | unreleased brand assets and comments | explicit writeback approval |
+| External network/API | public documentation and package metadata when freshness matters | request bodies, credentials, private responses | approval receipt for non-public targets |
+| PII/secrets | references to field classes and redaction rules only | names, emails, tokens, account ids, private record ids | named approver and receipt before real data is used |
 
-**Blocked without exact approval:** production mutation, destructive migration, credential changes, billing/account/DNS/access-control changes, Figma writeback, and screenshots containing private data.
+Blocked without exact approval: destructive production action, credential change, financial or access-control change, external writeback, and screenshots or fixtures containing private data.
 
 ---
 
 ## Retrieval, CodeGraph, And Visual Evidence
 
 ### Retrieval contract
-- Project memory entries read: query `billing export admin csv`, result count, and top relevant ids.
-- Code RAG queries: `billing repository export`, `admin billing routes`, `audit logging helper`, `download URL signing`; cite each source path and why it matters.
-- Top source citations: record path and line or section for every implementation claim, especially permission checks, billing data shape, and audit logging behavior.
-- Freshness checks: verify package scripts and current route names from local files before finalizing tasks.
+- Project memory entries read: record the query, result count, top ids, confidence, and how the findings affect scope.
+- Code RAG queries: record the exact query strings for the capability path, existing owner modules, tests, and release scripts.
+- Top source citations: cite path and line or section for every claim about behavior, ownership, API, data shape, permissions, and rollback.
+- Freshness checks: verify package scripts, current route names, current module boundaries, and active graph status from local files before finalizing tasks.
 
 ### CodeGraph contract
-- Graph mode: callers and impact for the billing repository, admin billing route, and audit logger.
-- Required commands are the source search, caller, and impact checks below.
-  ```bash
-  node scripts/search-code.mjs --context "billing export admin route" --limit 10
-  node scripts/search-code.mjs --callers "billingRepository.listEvents"
-  node scripts/search-code.mjs --impact "auditLog.record" --depth 2
-  ```
-- Expected evidence: Case A callers found for reused helpers, Case B zero callers only for newly created helper, or Case C graph not available with a concrete reason.
-- Resolution caveat: report source coverage, symbol coverage, edge resolution, and any warnings before claiming 10/10 readiness.
+- Graph mode: use callers, callees, neighbors, or impact for any renamed symbol, moved module, shared API, or ownership boundary.
+- Required commands are the source search and graph checks selected for the capability.
+```bash
+node scripts/search-code.mjs --context "capability owner module tests release gate" --limit 10
+node scripts/search-code.mjs --impact "capability boundary" --depth 2
+```
+- Expected evidence: Case A callers found for reused helpers, Case B zero callers only for newly created helpers, or Case C graph not available with a concrete reason and reduced confidence.
+- Resolution caveat: report source coverage, symbol coverage, edge resolution, and graph warnings before claiming 10/10 readiness.
 
 ### Visual explanation contract
-- Visual mode: text-first visual summary with a compact stage map, table, or improvised ASCII scheme. Browser preview is optional only for actual UI/prototype/browser evidence.
-- Audience: engineer and operator.
-- Accessibility: include a text fallback for the same information; if Mermaid fallback/export is emitted, include `accTitle` and `accDescr`.
+- Visual mode: text-first visual summary with a compact stage table or ASCII flow. Browser preview is required only when the capability changes UI, prototype, or rendered docs.
+- Audience: engineer, reviewer, and release owner.
+- Accessibility: include a text fallback for the same information; if Mermaid fallback or export is emitted, include `accTitle` and `accDescr`.
 
-| Card | Meaning | Evidence | Stop condition |
-|------|---------|----------|----------------|
-| Approved requirements | Billing PRD and scope gate are the input | PRD and memory/RAG/CodeGraph evidence | approval missing |
-| Failing tests | Contract tests define behavior first | node test output | tests do not fail for the expected reason |
-| Implementation | Service, route, client, and UI are built | source citations | unapproved scope appears |
-| Release gate | Verification, rollback, docs, and support are complete | `npm run check` and release note | open blocker remains |
+| Stage | Meaning | Evidence | Stop condition |
+|-------|---------|----------|----------------|
+| Approved scope | user-approved capability and non-goals are fixed | PRD, plan, memory, RAG, CodeGraph | approval missing |
+| Failing tests | contract tests define the behavior first | targeted test output | failure is syntax or environment only |
+| Implementation | smallest scoped source change is built | source citations and diff | unapproved scope appears |
+| Release gate | verification, rollback, docs, and support are complete | command output and release note | open blocker remains |
 
 ```mermaid
 flowchart LR
-  %% accTitle: Billing export MVP implementation flow
-  %% accDescr: The plan starts from approved billing requirements, verifies repository and permission boundaries, adds tests and implementation, then releases behind a reversible admin UI action.
-  PRD[Approved billing PRD] --> Evidence[Memory RAG CodeGraph evidence]
-  Evidence --> Tests[Failing contract and UI tests]
-  Tests --> Service[Export service and admin route]
-  Service --> UI[Billing dashboard action]
-  UI --> Verify[Security performance observability rollback checks]
-  Verify --> Release[Version commit push]
+  %% accTitle: Scoped capability implementation flow
+  %% accDescr: The plan starts from approved scope, collects memory RAG and CodeGraph evidence, writes failing tests, implements the smallest capability, verifies release readiness, and hands off with rollback.
+  Scope[Approved scope] --> Evidence[Memory RAG CodeGraph evidence]
+  Evidence --> Tests[Failing contract tests]
+  Tests --> Build[Scoped implementation]
+  Build --> Verify[Verification and readiness]
+  Verify --> Release[Receipt-backed handoff]
 ```
 
-Text fallback: approved billing requirements drive evidence collection, evidence drives tests, tests drive backend and UI implementation, and release waits for security, performance, observability, rollback, and documentation checks. The text-first summary is the primary visual; Mermaid is fallback/export only.
+Text fallback: approved scope drives evidence collection, evidence drives failing tests, tests drive the scoped implementation, and release waits for verification, rollback, documentation, support, and receipt-backed handoff.
 
 ---
 
@@ -82,16 +80,16 @@ Text fallback: approved billing requirements drive evidence collection, evidence
 
 | ID | Contract | Required details | Owner | Verification |
 |----|----------|------------------|-------|--------------|
-| C-BEH | Behavior contract | Admin can request CSV export, receives expected columns, and sees actionable errors for empty range, forbidden access, timeout, and degraded signing | Billing platform owner | `node --test tests/billing/export-service.test.mjs tests/admin/billing-export-route.test.mjs` |
-| C-ARCH | Architecture contract | Export service depends on billing repository and audit logger; UI depends on admin API client only; no reverse dependency from billing storage to UI | Billing platform owner | CodeGraph impact output plus code review |
-| C-DATA | Data and schema contract | Canonical CSV columns are `event_time`, `event_type`, `amount_cents`, `currency`, `invoice_reference`, `account_reference`; raw payment identifiers are excluded | Billing platform owner | CSV fixture snapshot and redaction test |
-| C-API | API and event contract | `POST /admin/billing/export` accepts date range and returns signed URL, row count, expiry, and correlation id with stable error envelope | API owner | API route test and typed client test |
-| C-UI | UI state contract | Button, loading, disabled, empty, success, error, permission, and retry states are represented without layout shift | Frontend owner | Component test and local smoke check |
-| C-SEC | Security and privacy contract | Admin permission required, PII excluded, audit log written, secrets never logged, signed URL expires in 10 minutes | Security owner | Permission, redaction, and audit assertions |
-| C-PERF | Performance contract | 25,000 events exported under 30 seconds with streaming and bounded memory | Billing platform owner | Performance fixture or profiling command |
-| C-OBS | Observability contract | Correlation id, export duration, row count, result status, and error code logged without sensitive fields | Operations owner | Log assertion or local structured log check |
-| C-ROLL | Rollout and rollback contract | UI action can be disabled by config, route can be reverted, no migration required, support can instruct manual invoice download | Release owner | Rollback note and config smoke check |
-| C-DOC | Documentation and support contract | Admin docs, changelog entry, support note, and known limits describe export range, permissions, and redaction | Support owner | Documentation review |
+| C-BEH | Behavior contract | user-visible behavior, success state, edge cases, failure modes, and invariants | capability owner | targeted behavior tests |
+| C-ARCH | Architecture contract | dependency direction, ownership boundary, module lifecycle, and rejected architecture | architecture owner | CodeGraph impact output and review |
+| C-DATA | Data and schema contract | input fields, output fields, persistence, retention, redaction, and fixture shape | data owner | schema, fixture, and redaction tests |
+| C-API | API and event contract | command, route, event, message, or error envelope surface touched by the plan | API owner | contract or integration tests |
+| C-UI | UI state contract | loading, empty, success, error, permission, retry, and responsive states when UI changes | UI owner | component, screenshot, or smoke evidence |
+| C-SEC | Security and privacy contract | permissions, secret handling, PII boundary, audit trail, and abuse cases | security owner | security and privacy assertions |
+| C-PERF | Performance contract | latency, memory, concurrency, throughput, or scale budget for the slice | performance owner | benchmark, fixture, or bounded smoke check |
+| C-OBS | Observability contract | logs, metrics, trace ids, result status, and operator repair output | operations owner | structured log or status assertion |
+| C-ROLL | Rollout and rollback contract | staged release, feature flag, revert path, data rollback, and support fallback | release owner | rollback note and smoke check |
+| C-DOC | Documentation and support contract | user docs, changelog, support note, known limits, and ownership | support owner | documentation review |
 
 ---
 
@@ -99,253 +97,155 @@ Text fallback: approved billing requirements drive evidence collection, evidence
 
 ### Created
 ```text
-src/billing/export-service.mjs
-src/admin/billing-export-route.mjs
-src/admin/billing-export-client.mjs
-tests/billing/export-service.test.mjs
-tests/admin/billing-export-route.test.mjs
-tests/admin/billing-export-client.test.mjs
-docs/admin/billing-export.md
+src/capability/capability-service.mjs
+tests/capability/capability-service.test.mjs
+docs/capability/capability-runbook.md
 ```
 
 ### Modified
-- `src/admin/billing-dashboard.mjs` - adds the export action and UI states.
-- `src/billing/billing-repository.mjs` - exposes a read-only date-range iterator if no suitable method exists.
-- `src/audit/audit-log.mjs` - reuses existing audit event shape for billing export.
-- `CHANGELOG.md` - records the MVP export capability and rollback note.
+- `src/capability/existing-entrypoint.mjs` - connects the scoped capability to the existing owner boundary.
+- `tests/capability/existing-entrypoint.test.mjs` - adds behavior and regression coverage for the owner boundary.
+- `docs/capability/index.md` - records support, rollout, known limits, and rollback.
 
 ---
 
 ## Critical Path
 
-`T1 -> T2 -> T3 -> T4 -> T-FINAL` is sequential.
+`T1 -> T2 -> T-FINAL` is sequential.
 
-Off-path tasks that can run only after T1 evidence is captured: documentation and support copy.
-
-Parallel work is allowed only when write sets are disjoint. Backend route and frontend client cannot be implemented in parallel until the API contract from T1 is fixed.
+Off-path parallel candidates after T1: documentation review and support copy can run separately when write sets are disjoint and receipt-backed. Implementation and API contract changes stay serialized until the failing tests define the exact behavior.
 
 ---
 
 ## Scope Safety Gate
 
-- **Approved scope baseline:** S1 CSV export for admin billing events, S2 permission check, S3 signed short-lived download URL, S4 audit log, S5 UI states, S6 docs and support note.
-- **Deferred scope:** scheduled recurring exports, async job queue, email delivery, multi-format export, full invoice PDF export, dashboard analytics, localization, and self-serve customer portal export.
-- **Rejected scope:** client-side export from raw table data because it duplicates billing rules, increases privacy risk, and weakens rollback.
-- **Scope expansion rule:** any new functionality requires a scope-change note with user outcome, evidence, complexity cost, tradeoff, owner, verification, rollout, and rollback.
-- **Execution stop condition:** if a task introduces functionality not mapped to S1-S6, stop and re-plan instead of silently building it.
+- **Approved scope baseline:** S1 one bounded capability path, S2 tests for success and failure behavior, S3 rollback evidence, S4 documentation and support note.
+- **Deferred scope:** analytics dashboards, multi-tenant configuration, broad redesign, background jobs, localization, and external integrations remain outside the current slice until evidence justifies them.
+- **Rejected scope:** rewriting unrelated owners, adding speculative abstractions, and shipping optional workflow variants are rejected because they increase maintenance and verification cost without improving the approved user outcome.
+- **Scope expansion rule:** every new behavior requires a scope-change note with user outcome, evidence, complexity cost, tradeoff, owner, verification, rollout, and rollback.
+- **Tradeoff:** strict scope control may delay convenient extras, but it protects delivery speed, review clarity, supportability, and rollback confidence.
+- **Execution stop condition:** if a task introduces behavior not mapped to S1-S4, stop and re-plan instead of silently building it.
 
 ---
 
 ## Delivery Strategy
 
-- **MVP production slice:** a single admin-triggered CSV export that is deployable, tested, observable, reversible, documented, and supportable.
-- **User value:** billing operators can answer account-level billing questions without asking engineering for ad hoc database extracts.
-- **No extra features / anti-bloat:** optional formats, scheduling, queues, and analytics stay deferred until export usage and support load justify them.
-- **Delivery discipline:** discovery evidence -> PRD -> reviewed plan -> tests -> implementation -> verification -> release -> post-release learning.
-- **Phase model:** evidence, contract, backend, frontend, hardening, release, learning.
-- **Launch model:** one-shot release behind admin permission and optional config disablement. Stop if permission checks, redaction tests, or rollback evidence fail.
+- **MVP production slice:** a single user-approved capability that is deployable, tested, observable, reversible, documented, and supportable.
+- **User value:** the primary user can complete the target job without manual engineering intervention or hidden operational work.
+- **No extra features / anti-bloat:** optional modes, speculative abstractions, broad UI changes, and unrelated cleanup stay deferred until usage, support, or risk evidence justifies them.
+- **Delivery discipline:** discovery evidence -> PRD or scope brief -> reviewed plan -> failing tests -> implementation -> verification -> release -> post-release learning.
+- **Phase model:** evidence, contract, implementation, hardening, release, learning.
+- **Task budget policy:** max tasks per phase=12; max child items per atomization run=80; phase-split required before graph write when either limit is exceeded.
+- **Launch model:** one scoped release with an explicit owner, rollback path, and support note. Stop if permission, redaction, rollback, or verification evidence fails.
 - **Production target:** support, observability, rollback, documentation, ownership, and handoff are complete before push.
 
 ---
 
 ## Production Readiness
 
-- **Test:** unit, integration, component, smoke, contract, fixture, permission, redaction, and regression coverage mapped to contract rows.
-- **Security/privacy:** threat review covers permission bypass, URL leakage, raw payment identifier exposure, audit log content, and fixture safety.
-- **Performance:** fixture with 25,000 events proves memory and duration budget or records a concrete risk accepted by the user.
-- **Observability:** logs include correlation id, duration, row count, result, and error code; metrics or structured log assertions are captured.
-- **Rollback:** disable UI config, revert route registration, and restore changed files before commit if verification fails. No migration means data rollback is not required.
-- **Release:** docs, changelog, support note, stakeholder notification, and final `npm run check` output are captured.
+- **Test:** unit, integration, contract, fixture, permission, redaction, regression, and smoke coverage mapped to contract rows.
+- **Security/privacy:** review covers permission bypass, secret exposure, PII leakage, fixture safety, and audit output.
+- **Performance:** bounded fixture or benchmark proves the agreed budget or records a concrete user-approved risk.
+- **Observability:** logs or status output include correlation id, duration, result, error code, and repair guidance without sensitive fields.
+- **Rollback:** disablement, revert, data recovery, support fallback, and post-revert verification are documented before release.
+- **Release:** docs, changelog, support note, stakeholder notification, and final targeted or release verification output are captured.
+- **Docs and support:** support staff can explain limits, known failure modes, escalation path, and rollback status.
 
 ---
 
 ## Final 10/10 Acceptance Gate
 
-- [ ] 10/10 acceptance: every requirement is implemented and verified.
+- [ ] 10/10 acceptance: every approved requirement is implemented and verified.
 - [ ] Verification: all task, phase, and release commands pass with captured output.
-- [ ] No open blockers: unresolved risks are closed or explicitly accepted by the user.
+- [ ] No open blockers: unresolved risks are closed, deferred, rejected, or explicitly accepted by the user.
 - [ ] Contract coverage: every touched Development Contract Map row has evidence.
 - [ ] Production readiness: security, performance, observability, rollback, docs, and support gates pass.
-- [ ] Deploy-only remaining: after this plan, no code, test, review, or documentation work remains before package deployment.
+- [ ] Deploy-only remaining: after this plan, no code, test, review, or documentation work remains before release.
 - [ ] Plan reread: compare final implementation against this plan and fix deviations before handoff.
 
 ---
 
-## Task T1: Lock Billing Export Contract And Failing Tests
+## Task T1: Lock Capability Contract And Failing Tests
 
 **Files:**
-- Create: `tests/billing/export-service.test.mjs`
-- Create: `tests/admin/billing-export-route.test.mjs`
-- Create: `tests/admin/billing-export-client.test.mjs`
-- Modify: `docs/admin/billing-export.md`
+- Create: `tests/capability/capability-service.test.mjs`
+- Create: `tests/capability/capability-entrypoint.test.mjs`
+- Modify: `docs/capability/capability-runbook.md`
 
-**Scope IDs:** S1, S2, S3, S4, S5, S6
-**Requirement IDs:** REQ-BILL-EXPORT-001, REQ-BILL-EXPORT-002, REQ-BILL-EXPORT-003
-**Contract rows touched:** C-BEH, C-DATA, C-API, C-UI, C-SEC, C-OBS, C-ROLL, C-DOC
-**Estimated time:** 45min, confidence high after CodeGraph confirms current route and repository names.
+**Scope IDs:** S1, S2, S3, S4
+**Requirement IDs:** REQ-CAP-001, REQ-CAP-002
+**Contract rows touched:** C-BEH, C-DATA, C-API, C-SEC, C-OBS, C-ROLL, C-DOC
+**Estimated time:** 45min, confidence: high after RAG and CodeGraph confirm owner names.
 **Rollback:** delete the created test files and docs draft before implementation commit.
-**Risks:** R1: tests encode a contract that conflicts with existing billing naming; mitigation: cite current repository fields from RAG and CodeGraph before writing assertions.
-**Stop conditions:** stop if no existing admin permission primitive is found, if export requires new persistent jobs, if secrets are required, or if verification cannot run.
+**Risks:** R1: tests may encode a contract that conflicts with current owner naming; mitigation: cite current source paths before writing assertions.
+**Stop conditions:** stop if the capability requires new permissions, a schema migration, private data, or production mutation not approved in the scope gate.
 
 **Acceptance Criteria:**
-- REQ-BILL-EXPORT-001 maps to a failing export service test for column order, date range, redaction, empty result, and 25,000-row fixture.
-- REQ-BILL-EXPORT-002 maps to a failing route test for permission, request validation, signed URL expiry, audit event, and stable error envelope.
-- REQ-BILL-EXPORT-003 maps to a failing client or component test for loading, success, empty, error, retry, and forbidden states.
-- Contract rows C-BEH, C-DATA, C-API, C-UI, C-SEC, C-OBS, C-ROLL, and C-DOC have explicit test or documentation evidence.
+- REQ-CAP-001 maps to a failing behavior test for success, validation, authorization, and observability.
+- REQ-CAP-002 maps to a failing documentation or runbook check for rollback, support, known limits, and owner.
+- Contract rows C-BEH, C-DATA, C-API, C-SEC, C-OBS, C-ROLL, and C-DOC have explicit test or documentation evidence.
 
-- [ ] **Step 1: Write failing tests**
+- [ ] **Step 1: Write failing test**
 ```bash
-node --test tests/billing/export-service.test.mjs tests/admin/billing-export-route.test.mjs tests/admin/billing-export-client.test.mjs
+node --test tests/capability/capability-service.test.mjs tests/capability/capability-entrypoint.test.mjs
 ```
-Expected output: command fails because export service, route, or client behavior is not implemented.
+Expected output: command fails because the scoped capability behavior is not implemented.
 
-- [ ] **Step 2: Verify the failure is meaningful**
+- [ ] **Step 2: Verify red phase**
 ```bash
-node --test tests/billing/export-service.test.mjs tests/admin/billing-export-route.test.mjs tests/admin/billing-export-client.test.mjs
+node --test tests/capability/capability-service.test.mjs tests/capability/capability-entrypoint.test.mjs
 ```
 Expected output: failures point to missing behavior, not syntax errors, missing fixtures, or environment setup.
 
 - [ ] **Step 3: Contract self-review before implementation**
-- Confirm every assertion maps to S1-S6 and REQ-BILL-EXPORT-001 through REQ-BILL-EXPORT-003.
-- Confirm no test fixture contains customer email, payment token, private invoice id, or secret.
+- Confirm every assertion maps to S1-S4 and REQ-CAP-001 through REQ-CAP-002.
+- Confirm fixtures contain no private data, secrets, or unrelated domain records.
 - Confirm docs name rollback and support path before implementation begins.
+
+- [ ] **Step 4: Commit policy**
+- No commits until all scoped task verification passes or the user asks for a commit.
 
 ---
 
-## Task T2: Implement Backend Export Service And Route
+## Task T2: Implement Scoped Capability And Release Evidence
 
 **Files:**
-- Create: `src/billing/export-service.mjs`
-- Create: `src/admin/billing-export-route.mjs`
-- Modify: `src/billing/billing-repository.mjs`
-- Modify: `src/audit/audit-log.mjs`
-- Test: `tests/billing/export-service.test.mjs`
-- Test: `tests/admin/billing-export-route.test.mjs`
+- Create: `src/capability/capability-service.mjs`
+- Modify: `src/capability/existing-entrypoint.mjs`
+- Modify: `docs/capability/index.md`
+- Test: `tests/capability/capability-service.test.mjs`
+- Test: `tests/capability/capability-entrypoint.test.mjs`
 
 **Scope IDs:** S1, S2, S3, S4
-**Requirement IDs:** REQ-BILL-EXPORT-001, REQ-BILL-EXPORT-002
-**Contract rows touched:** C-BEH, C-ARCH, C-DATA, C-API, C-SEC, C-PERF, C-OBS, C-ROLL
-**Estimated time:** 90min, confidence medium because route registration details must be verified locally.
-**Rollback:** remove the route registration, remove `src/billing/export-service.mjs`, restore repository and audit helper changes, and rerun targeted tests.
-**Risks:** R2: export creates memory pressure; mitigation: stream rows or process bounded batches and run the 25,000-row fixture. R3: audit log leaks sensitive data; mitigation: assert redacted structured payload.
-**Stop conditions:** stop if implementation needs a database migration, a queue, a new secrets provider, or a permissions redesign not approved in this MVP.
+**Requirement IDs:** REQ-CAP-001, REQ-CAP-002
+**Contract rows touched:** C-BEH, C-ARCH, C-DATA, C-API, C-SEC, C-PERF, C-OBS, C-ROLL, C-DOC
+**Estimated time:** 90min, confidence: medium because owner module details must be verified locally.
+**Rollback:** remove the new service, restore the entrypoint, restore docs, and rerun targeted tests.
+**Risks:** R2: implementation may grow beyond the approved slice; mitigation: compare each behavior against S1-S4 before coding. R3: observability may expose sensitive fields; mitigation: assert redacted structured output.
+**Stop conditions:** stop if implementation needs a database migration, new external service, new permission model, or broad owner rewrite outside this plan.
 
 **Acceptance Criteria:**
-- Export service returns the approved CSV columns in stable order.
-- Route validates date range, checks admin permission, writes audit log, returns signed URL, and uses stable error envelope.
-- Redaction, permission, performance fixture, and observability assertions pass.
+- The scoped capability performs the approved behavior and preserves existing owner boundaries.
+- Success, validation, authorization, observability, rollback, and documentation evidence pass.
+- No optional behavior outside S1-S4 is shipped.
 
-- [ ] **Step 1: Minimal implementation**
-- Implement only the listed files and keep unrelated billing behavior untouched.
+- [ ] **Step 1: Minimal implementation after red phase**
+- Implement only the listed files and keep unrelated owner behavior untouched.
 
-- [ ] **Step 2: Run targeted backend tests**
+- [ ] **Step 2: Run targeted verification**
 ```bash
-node --test tests/billing/export-service.test.mjs tests/admin/billing-export-route.test.mjs
+node --test tests/capability/capability-service.test.mjs tests/capability/capability-entrypoint.test.mjs
 ```
-Expected output: command exits 0 and covers behavior, data, API, security, performance, observability, and rollback criteria.
+Expected output: command exits 0 and covers behavior, data, API, security, performance, observability, rollback, and docs criteria.
 
 - [ ] **Step 3: Run dependency impact check**
 ```bash
-node scripts/search-code.mjs --impact "billing export" --depth 2
+node scripts/search-code.mjs --impact "capability boundary" --depth 2
 ```
 Expected output: output cites impacted modules or records graph limitation without hiding it.
 
----
-
-## Task T3: Implement Admin UI Action And Client States
-
-**Files:**
-- Create: `src/admin/billing-export-client.mjs`
-- Modify: `src/admin/billing-dashboard.mjs`
-- Test: `tests/admin/billing-export-client.test.mjs`
-
-**Scope IDs:** S3, S5
-**Requirement IDs:** REQ-BILL-EXPORT-003
-**Contract rows touched:** C-BEH, C-API, C-UI, C-SEC, C-OBS, C-ROLL
-**Estimated time:** 60min, confidence medium because existing frontend test harness must be confirmed.
-**Rollback:** remove the UI action and typed client, restore the dashboard file, and keep backend route disabled if UI verification fails.
-**Risks:** R4: UI permits unauthorized users to discover export action; mitigation: permission-driven rendering and forbidden-state test.
-**Stop conditions:** stop if UI state coverage requires a broader dashboard rewrite or new design-system work outside the MVP.
-
-**Acceptance Criteria:**
-- Export action renders only for permitted admins.
-- Loading, disabled, empty, success, error, retry, and forbidden states are tested.
-- Signed URL result is handled without logging sensitive data.
-
-- [ ] **Step 1: Implement typed client and UI state changes**
-- Keep the dashboard layout stable and avoid unrelated visual refactors.
-
-- [ ] **Step 2: Run targeted UI/client tests**
-```bash
-node --test tests/admin/billing-export-client.test.mjs
-```
-Expected output: command exits 0 and covers all UI states.
-
----
-
-## Task T4: Release Readiness, Documentation, Version, Commit, Push
-
-**Files:**
-- Modify: `docs/admin/billing-export.md`
-- Modify: `CHANGELOG.md`
-- Modify: `package.json`
-- Modify: `package-lock.json`
-
-**Scope IDs:** S6
-**Requirement IDs:** REQ-BILL-EXPORT-004
-**Contract rows touched:** C-DOC, C-OBS, C-ROLL
-**Estimated time:** 45min, confidence high after T1-T3 pass.
-**Rollback:** restore version files and changelog before commit if release gate fails; after commit, revert the final commit.
-**Risks:** R5: release notes overclaim unsupported behavior; mitigation: docs must cite exact limits, support path, and rollback.
-**Stop conditions:** stop if `npm run check` fails for changes caused by this plan, if old blockers remain open, or if version surfaces disagree.
-
-**Acceptance Criteria:**
-- Documentation explains range limit, permissions, redacted fields, support path, known limits, and rollback.
-- Version files are synchronized.
-- Final verification passes.
-- Commit contains only scoped changes and is pushed to the intended branch.
-
-- [ ] **Step 1: Run full release check**
-```bash
-npm run check
-```
-Expected output: command exits 0 before commit or push.
-
-- [ ] **Step 2: Run final old-token and placeholder scan**
-```bash
-node scripts/validate-template-quality.mjs
-```
-Expected output: command exits 0 and reports no unresolved template placeholders.
-
-- [ ] **Step 3: Commit and push**
-```bash
-git status --short
-git add src tests docs CHANGELOG.md package.json package-lock.json
-git commit -m "Add billing export MVP"
-git push origin main
-```
-Expected output: commit succeeds and push updates `main`.
-
----
-
-## REVIEW GATE 1 After Contract Lock
-
-Before T2:
-- [ ] T1 tests fail for the intended missing behavior.
-- [ ] Scope safety reread confirms S1-S6 only.
-- [ ] API contract, data contract, permission contract, observability contract, and rollback contract have explicit evidence.
-- [ ] User approval or documented no-approval-required rationale exists.
-
----
-
-## REVIEW GATE 2 Before Release
-
-Before T4:
-- [ ] T1-T3 targeted commands pass.
-- [ ] No regressions in affected contracts.
-- [ ] Security/privacy assertions pass and fixtures are redacted.
-- [ ] Rollback path is executable without data migration.
-- [ ] No open blockers remain.
+- [ ] **Step 4: Commit policy**
+- Commit suppressed until review confirms only scoped files changed.
 
 ---
 
@@ -354,43 +254,43 @@ Before T4:
 ### Spec coverage
 | Requirement | Task | Contract rows | Verification |
 |-------------|------|---------------|--------------|
-| REQ-BILL-EXPORT-001 | T1, T2 | C-BEH, C-DATA, C-PERF | `node --test tests/billing/export-service.test.mjs` |
-| REQ-BILL-EXPORT-002 | T1, T2 | C-API, C-SEC, C-OBS, C-ROLL | `node --test tests/admin/billing-export-route.test.mjs` |
-| REQ-BILL-EXPORT-003 | T1, T3 | C-UI, C-API, C-SEC | `node --test tests/admin/billing-export-client.test.mjs` |
-| REQ-BILL-EXPORT-004 | T4 | C-DOC, C-OBS, C-ROLL | `npm run check` |
+| REQ-CAP-001 | T1, T2 | C-BEH, C-ARCH, C-DATA, C-API, C-SEC, C-PERF, C-OBS, C-ROLL | `node --test tests/capability/capability-service.test.mjs tests/capability/capability-entrypoint.test.mjs` |
+| REQ-CAP-002 | T1, T2 | C-DOC, C-OBS, C-ROLL | documentation review and rollback note |
 
 ### Contract coverage
 | Contract row | Covered by task | Evidence |
 |--------------|-----------------|----------|
-| C-BEH | T1, T2, T3 | service, route, and client tests |
+| C-BEH | T1, T2 | behavior tests |
 | C-ARCH | T2 | CodeGraph impact output and review |
-| C-DATA | T1, T2 | CSV fixture and redaction test |
-| C-API | T1, T2, T3 | route and typed client tests |
-| C-UI | T1, T3 | UI state tests |
-| C-SEC | T1, T2, T3 | permission, redaction, audit assertions |
-| C-PERF | T2 | 25,000-row fixture or accepted risk |
-| C-OBS | T2, T4 | structured log assertion and docs |
-| C-ROLL | T1, T2, T3, T4 | rollback notes and disable path |
-| C-DOC | T1, T4 | admin docs and changelog |
+| C-DATA | T1, T2 | fixture and schema assertions |
+| C-API | T1, T2 | contract or integration tests |
+| C-UI | not touched | explicitly outside scope unless UI changes are approved |
+| C-SEC | T1, T2 | permission and redaction assertions |
+| C-PERF | T2 | bounded fixture or accepted risk |
+| C-OBS | T2 | structured status or log assertion |
+| C-ROLL | T1, T2 | rollback note and disablement path |
+| C-DOC | T1, T2 | runbook and support note |
 
 ### Placeholder scan
-- The final plan must contain no unresolved brace tokens, angle tokens, generic file paths, generic owners, empty evidence fields, or acceptance criteria without commands.
+- No unresolved placeholder tokens, generic file paths, generic owners, empty evidence fields, or acceptance criteria without commands remain.
 
 ### Type consistency
-- CSV columns, request fields, response fields, error codes, and audit event names match implementation and tests.
+- Request fields, response fields, error codes, event names, and data records match implementation and tests.
 
 ### Dependency consistency
 - Dependency direction matches the architecture contract and CodeGraph evidence.
 
 ### Scope consistency
-- Every implemented behavior maps to S1-S6. Deferred and rejected scope remains outside the commit.
+- Every implemented behavior maps to the user-approved S1-S4 scope. Deferred and rejected scope remains outside the commit, and any scope expansion requires a new approval gate.
 
 ---
 
 ## Execution Handoff
 
-**Approved worker batches:** none in this example because backend and frontend depend on the same API contract. Add worker batches only after disjoint write sets and receipts are available.
+**Real-agent receipt-backed handoff:** Batch 1 handles T1, then Batch 2 handles T2 only after T1 evidence is captured and runtime-issued workflow receipts are available for the owning specialist.
 
-**Inline batches:** T1-T4 executed sequentially with targeted command evidence, final `npm run check`, release owner signoff, version update, commit, and push.
+**Subagent-Driven batches:** prohibited for durable production work in this template.
 
-**Blocked items:** any failed permission, redaction, performance, observability, rollback, or full-check gate blocks release and requires plan repair before continuing.
+**Inline batches:** prohibited for durable implementation, review, validation, release, and completion claims.
+
+**Blocked items:** any failed permission, redaction, performance, observability, rollback, documentation, or targeted verification gate blocks release and requires plan repair before continuing.

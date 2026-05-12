@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { access, mkdir, readFile, readdir } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   forkAutonomousLoopCheckpoint,
@@ -67,6 +67,7 @@ import {
   getLoopProviderCapabilityMatrix,
 } from "./lib/autonomous-loop-tool-adapters.mjs";
 import { startBackgroundNodeScript } from "./lib/supervibe-process-manager.mjs";
+import { validatePlanReviewGateForPlan } from "./validate-plan-review-artifacts.mjs";
 
 function parseArgs(argv) {
   const args = { _: [] };
@@ -150,6 +151,7 @@ function parseArgs(argv) {
     "auto-ui",
     "auto-ui-dry-run",
     "no-auto-ui",
+    "allow-unverified-plan-review",
   ]);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -173,6 +175,18 @@ function parseArgs(argv) {
     }
   }
   return args;
+}
+
+function planReviewLookupPath(rootDir, planPath) {
+  const resolved = resolve(rootDir, planPath);
+  const rel = relative(rootDir, resolved).replace(/\\/g, "/");
+  if (rel && !rel.startsWith("../") && rel !== "..") return rel;
+  return String(planPath).replace(/\\/g, "/");
+}
+
+function allowUnverifiedPlanReview(args) {
+  return Boolean(args["allow-unverified-plan-review"])
+    && process.env.SUPERVIBE_ALLOW_UNVERIFIED_PLAN_REVIEW === "1";
 }
 
 async function main() {
@@ -859,15 +873,27 @@ async function main() {
       || args.plan
       || args._[0];
     if (!planPath) throw new Error("atomize requires --atomize-plan <plan-path> or --from-plan <plan-path>");
-    const reviewed = Boolean(args["plan-review-passed"] || args.reviewed || args["dry-run"] || args.preview);
+    const dryRunAtomization = Boolean(args["dry-run"] || args.preview);
+    const reviewed = Boolean(args["plan-review-passed"] || dryRunAtomization);
     if (!reviewed) {
       throw new Error("Atomization writes require --plan-review-passed. Use --dry-run for a preview before the review gate passes.");
+    }
+    if (!dryRunAtomization && !allowUnverifiedPlanReview(args)) {
+      const reviewGate = await validatePlanReviewGateForPlan({
+        rootDir,
+        planPath: planReviewLookupPath(rootDir, planPath),
+        requireActiveReview: true,
+      });
+      if (!reviewGate.pass) {
+        const detail = reviewGate.issues?.length ? ` ${reviewGate.issues.join("; ")}` : "";
+        throw new Error(`Atomization writes require a validated plan review artifact with trusted reviewer receipts, not only --plan-review-passed.${detail}`);
+      }
     }
     const graph = await atomizePlanFile(resolve(rootDir, planPath), {
       planPath,
       epicId: args.epic,
-      dryRun: Boolean(args["dry-run"] || args.preview),
-      planReviewPassed: Boolean(args["plan-review-passed"] || args.reviewed),
+      dryRun: dryRunAtomization,
+      planReviewPassed: Boolean(args["plan-review-passed"]),
     });
     if (args.json) {
       console.log(JSON.stringify(graph, null, 2));
@@ -902,6 +928,7 @@ async function main() {
       const mapped = Object.keys(trackerResult.mapping?.items || {}).length;
       console.log(`TRACKER_MAPPED_ITEMS: ${mapped}`);
     }
+    printAtomizationAutoUiHandoff({ rootDir, args, graphPath: writeResult.graphPath });
     return;
   }
 
@@ -1170,10 +1197,13 @@ async function resolveCompletionGraphPath({ rootDir, args } = {}) {
 }
 
 function printEpicStatus({ graph, graphPath, epicId = null, source = "explicit" }) {
-  const grouped = groupWorkItemsByStatus(createWorkItemIndex({ graph }));
+  const index = createWorkItemIndex({ graph });
+  const grouped = groupWorkItemsByStatus(index);
+  const taskItems = index.filter((item) => item.type !== "epic");
   console.log("SUPERVIBE_EPIC_STATUS");
   console.log(`EPIC: ${epicId || graph.epicId || graph.graph_id || "unknown"}`);
   console.log(`SOURCE: ${source}`);
+  console.log(`TASKS: ${taskItems.length}`);
   console.log(`READY: ${grouped.ready.length}`);
   console.log(`BLOCKED: ${grouped.blocked.length}`);
   console.log(`CLAIMED: ${grouped.claimed.length}`);
@@ -1181,8 +1211,29 @@ function printEpicStatus({ graph, graphPath, epicId = null, source = "explicit" 
   console.log(`REVIEW: ${grouped.review.length}`);
   console.log(`DONE: ${grouped.done.length}`);
   console.log(`NEXT_READY: ${grouped.ready[0]?.itemId || grouped.ready[0]?.id || "none"}`);
-  console.log(`NEXT_ACTION: ${nextActionForEpicStatus(grouped)}`);
+  console.log(`NEXT_ACTION: ${nextActionForEpicStatus(grouped, graph)}`);
+  for (const item of taskItems) {
+    console.log(formatEpicTaskStatusLine(item));
+  }
   console.log(`GRAPH: ${graphPath}`);
+}
+
+function formatEpicTaskStatusLine(item = {}) {
+  const id = item.itemId || item.id || "unknown";
+  const status = item.effectiveStatus || item.status || "open";
+  const blocks = Array.isArray(item.blocks) && item.blocks.length ? item.blocks.join(",") : "none";
+  const blockedBy = Array.isArray(item.blockedBy) && item.blockedBy.length ? item.blockedBy.join(",") : "none";
+  const claim = item.claims?.[0]?.agentId || item.claimOwner || item.owner || "none";
+  const next = status === "ready"
+    ? "claim"
+    : status === "blocked"
+      ? (item.blockerNextAction || item.blockerReason || "inspect blockers")
+      : status === "claimed"
+        ? "continue or recover stale claim"
+        : status === "done"
+          ? "verified"
+          : "wait";
+  return `TASK: ${id} STATUS: ${status} BLOCKS: ${blocks} BLOCKED_BY: ${blockedBy} CLAIM: ${claim} NEXT: ${next}`;
 }
 
 function printAutoUiStatus({ rootDir, args, graphPath }) {
@@ -1212,6 +1263,27 @@ function printAutoUiStatus({ rootDir, args, graphPath }) {
   console.log(`LOG_STDERR: ${child.logs.stderr}`);
   console.log(`COMMAND: ${plan.command}`);
   console.log(`GRAPH: ${graphPath || "active"}`);
+}
+
+function printAtomizationAutoUiHandoff({ rootDir, args, graphPath }) {
+  if (args["no-auto-ui"]) {
+    console.log("SUPERVIBE_AUTO_UI");
+    console.log("STATUS: opted-out");
+    console.log(`GRAPH: ${graphPath || "active"}`);
+    console.log("NEXT_ACTION: run /supervibe-loop --status --file <graph.json> --auto-ui-dry-run when UI tracking is wanted");
+    return;
+  }
+  if (shouldEmitAutoUi(args)) {
+    printAutoUiStatus({ rootDir, args, graphPath });
+    return;
+  }
+  const plan = createAutoUiPlan({ rootDir, args, graphPath });
+  console.log("SUPERVIBE_AUTO_UI");
+  console.log("STATUS: action-required");
+  console.log(`URL: ${plan.url}`);
+  console.log(`COMMAND: ${plan.command}`);
+  console.log(`GRAPH: ${graphPath || "active"}`);
+  console.log("NEXT_QUESTION: Start the loop UI sidecar now, or continue without UI using --no-auto-ui?");
 }
 
 function shouldEmitAutoUi(args = {}) {
@@ -1264,11 +1336,16 @@ function splitCsv(value = "") {
     .filter(Boolean);
 }
 
-function nextActionForEpicStatus(grouped = {}) {
+function nextActionForEpicStatus(grouped = {}, graph = {}) {
   const nextReady = grouped.ready?.[0]?.itemId || grouped.ready?.[0]?.id || null;
   if (nextReady) return `claim ${nextReady} or run /supervibe-loop --claim-ready`;
   if ((grouped.blocked || []).length > 0) return "inspect blockers, unblock tasks, or validate dependency completion";
   if ((grouped.review || []).length > 0) return "complete required review and gate work items";
+  try {
+    if (validateEpicCompletion(graph).pass === true) return "finish/archive completed epic";
+  } catch {
+    // Keep status reporting usable even if completion validation cannot inspect a legacy graph.
+  }
   return "run /supervibe-loop --validate-completion";
 }
 

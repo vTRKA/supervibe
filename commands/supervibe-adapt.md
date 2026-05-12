@@ -81,11 +81,11 @@ supervibe-adapt --scope deploy --target docker --apply
    node "<resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs" --apply --include "<project-relative-path-1>,<project-relative-path-2>"
    ```
 
-6. **Update metadata and lifecycle state.** After approved artifact writes, refresh `.supervibe/memory/.supervibe-version`, write `baseline.pluginVersion`, and let apply write `.supervibe/memory/adapt/state.json` with `approved -> applied -> artifact_verified` or `failed_recoverable`, evidence, updated artifacts, blocked artifacts, recovery notes, and layered verification fields: `artifactVerified`, `agentReceiptsVerified`, `appVerified`, and `deployVerified`. If the dry-run reports `UPDATES: 0` and `ADDS: 0` with `VERSION_DRIFT: true` or `METADATA_UPDATE_REQUIRED: true`, run the printed `NEXT_APPLY_METADATA` command; it updates only the version marker and baseline metadata.
+6. **Update metadata and lifecycle state.** When drift is reported, Adapt writes `.supervibe/memory/adapt/state.json` as a resume artifact with `drift_reported`, dirty-state classification, and next commands. After approved artifact writes, refresh `.supervibe/memory/.supervibe-version`, write `baseline.pluginVersion`, and let apply move the same state through `approved -> applied -> artifact_verified` or `failed_recoverable`, evidence, updated artifacts, blocked artifacts, recovery notes, and layered verification fields: `artifactVerified`, `agentReceiptsVerified`, `appVerified`, and `deployVerified`. If the dry-run reports `UPDATES: 0` and `ADDS: 0` with `VERSION_DRIFT: true` or `METADATA_UPDATE_REQUIRED: true`, run the printed `NEXT_APPLY_METADATA` command; it updates only the version marker and baseline metadata.
 
 7. **Score the result.** Run a quick `/supervibe-audit` to verify no new drift was introduced. Confidence ≥9 to declare done.
 
-8. **Separate adapt from index health.** A clean adapt can still leave code index health red. Treat `ARTIFACT_ADAPT_CLEAN: true` as the artifact-sync result and `CODE_INDEX_READY: false` as a separate follow-up. When index repair is needed, run the printed `NEXT_INDEX_REPAIR` command instead of calling the adapt incomplete.
+8. **Separate adapt from app/deploy/index health.** A clean adapt can still leave app verification, deploy verification, or code index health pending. Treat `ARTIFACT_ADAPT_CLEAN: true` as the artifact-sync result, `APP_VERIFICATION_STATUS` / `DEPLOY_VERIFICATION_STATUS` as layered follow-ups, and `CODE_INDEX_READY: false` as a separate index follow-up. When app or deploy checks are not run, print `NEXT_APP_VERIFICATION` or `NEXT_DEPLOY_VERIFICATION`; when index repair is needed, run the printed `NEXT_INDEX_REPAIR` command instead of calling adapt incomplete.
 
 9. **Handle dependency remediation as policy.** If dependency health reports a
    vulnerable nested package, block `npm audit fix --force` when it downgrades a
@@ -105,6 +105,9 @@ Archived:    <count>
 Deleted:     <count>
 State:       .supervibe/memory/adapt/state.json (artifact_verified | applied_unverified | failed_recoverable)
 Layers:      artifactVerified=<bool> agentReceiptsVerified=<bool> appVerified=<bool> deployVerified=<bool>
+App hook:    APP_VERIFICATION_STATUS=<verified|not-run-app-verification|not-applicable> NEXT_APP_VERIFICATION=<command|none>
+Deploy hook: DEPLOY_VERIFICATION_STATUS=<verified|not-run-deploy-adapt|not-run-compose-verification|not-run-deploy-runtime-verification|not-applicable> NEXT_DEPLOY_VERIFICATION=<command|none>
+Dirty state: expectedReceipts=<n> expectedMemory=<n> staleGarbage=<n> unexpectedMutations=<n>
 Frontend:    target=<next-app|vite-spa|monorepo-two-frontends|none> bundler=<turbopack|vite|mixed|none>
 Diff mode:   git | no-git snapshot
 
@@ -113,8 +116,9 @@ Confidence:  N/10  Rubric: agent-delivery
 
 ## Safety Boundaries
 
-- Dry-run is read-only by default and must not refresh memory indexes unless
-  explicitly requested.
+- Dry-run does not mutate host artifacts and must not refresh memory indexes
+  unless explicitly requested. When drift is detected, it may update only the
+  Adapt resume artifact at `.supervibe/memory/adapt/state.json`.
 - Apply writes only approved project host artifacts and `.supervibe/memory/`
   metadata required by the adapt plan.
 - No-git projects use `.supervibe/memory/adapt/file-manifest.json` snapshots
@@ -123,9 +127,17 @@ Confidence:  N/10  Rubric: agent-delivery
   frontend target resolution.
 - User-owned host instruction text outside managed blocks is never overwritten.
 - Index repair is a separate follow-up from artifact adaptation.
-- Completion claims require real runtime receipts. Without
-  `.supervibe/memory/agent-invocations.jsonl`, Adapt may claim artifact
-  changes were applied, but not that real agents completed.
+- Completion claims require real host-agent invocation evidence and scoped
+  runtime receipts. Without `.supervibe/memory/agent-invocations.jsonl` entries
+  plus receipts carrying `hostInvocation.source` and
+  `hostInvocation.invocationId`, Adapt may claim approved CLI artifact changes
+  were applied, but not that producer, reviewer, worker, or validator agents
+  completed durable work.
+- Dirty state after Adapt must be classified before completion: workflow
+  receipts and agent outputs are expected receipt evidence, `.supervibe/memory`
+  writes are expected memory, stale receipt/archive folders are cleanup
+  candidates, and any other mutation is an unexpected mutation that blocks a
+  clean completion claim until reviewed.
 
 ## Deploy Add-ons
 
@@ -182,9 +194,12 @@ managed block.
 
 This command must load its executable profile from `scripts/lib/command-agent-orchestration-contract.mjs` and follow `rules/command-agent-orchestration.md`. The profile is the source of truth for `ownerAgentId`, `agentPlan`, `requiredAgentIds`, dynamic specialist selection, default `real-agents` mode, and `agent-required-blocked` behavior.
 
-Before durable work or completion claims, run `node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /supervibe-adapt --dry-run --adds <n> --updates <n> --project-only <n> --conflicts <n>` and follow the printed `SUPERVIBE_COMMAND_AGENT_PLAN`. Adapt dry-run is read-only and may print `EXECUTION_MODE: dry-run-no-agent`; approved `--apply` and `--verify-agents` are separate gates. The plan must show host dispatch support, proof source, `AGENT_SELECTION_MODE`, required agents, `REQUIRED_AGENT_SOURCES`, `CALLABLE_AGENT_SOURCES`, `CALLABLE_AGENTS_READY`, `SCOPED_RECEIPT_GATE`, `MISSING_CALLABLE_AGENTS`, and durable-write permission before any agent-owned artifact is produced. Role sources must distinguish definition availability from host-callable availability: `REQUIRED_AGENT_SOURCES` may include `plugin-only`, but `CALLABLE_AGENT_SOURCES`, `CALLABLE_AGENTS_READY`, and `MISSING_CALLABLE_AGENTS` decide whether the selected host can actually invoke the role. Plugin-only definitions are not enough for a real-agent completion claim. Role sources must distinguish definition availability from host-callable availability: `REQUIRED_AGENT_SOURCES` may include `plugin-only`, but `CALLABLE_AGENT_SOURCES`, `CALLABLE_AGENTS_READY`, and `MISSING_CALLABLE_AGENTS` decide whether the selected host can actually invoke the role. Plugin-only definitions are not enough for a real-agent completion claim.
+Before durable work or completion claims, run `node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /supervibe-adapt --dry-run --adds <n> --updates <n> --project-only <n> --conflicts <n>` and follow the printed `SUPERVIBE_COMMAND_AGENT_PLAN`. Adapt dry-run is read-only and may print `EXECUTION_MODE: dry-run-no-agent`; approved `--apply` and `--verify-agents` are separate gates. The plan must show host dispatch support, proof source, `AGENT_SELECTION_MODE`, required agents, `REQUIRED_AGENT_SOURCES`, `CALLABLE_AGENT_SOURCES`, `CALLABLE_AGENTS_READY`, `SCOPED_RECEIPT_GATE`, `MISSING_CALLABLE_AGENTS`, and durable-write permission before any agent-owned artifact is produced. Role sources must distinguish definition availability from host-callable availability: `REQUIRED_AGENT_SOURCES` may include `plugin-only`, but `CALLABLE_AGENT_SOURCES`, `CALLABLE_AGENTS_READY`, and `MISSING_CALLABLE_AGENTS` decide whether the selected host can actually invoke the role. Plugin-only definitions are not enough for a real-agent completion claim.
 
 Invoke the real host agents named by the plan and issue runtime receipts with `hostInvocation.source` and `hostInvocation.invocationId`. For active workflows, build the plan with `--active --slug <slug> --handoff-id <handoff-id>`; `SCOPED_RECEIPT_GATE` must be trusted for the current run before durable agent-owned outputs are allowed. Old global receipts are diagnostic only and do not unlock a new command/handoff. In Codex, invoke with `spawn_agent` using the `CODEX_SPAWN_PAYLOAD_RULES` and `CODEX_SPAWN_PAYLOADS` printed by `command-agent-plan.mjs`: forked payloads must set `fork_context=true`, must omit `agent_type`, `model`, and `reasoning_effort`, and must encode the Supervibe logical role in `message` instead of Codex `agent_type`. Record each returned Codex agent id with `node <resolved-supervibe-plugin-root>/scripts/agent-invocation.mjs log ...` before receipts are issued. `inline` is diagnostic/dry-run only. Do not emulate specialist agents, and do not let command or skill receipts substitute for agent, worker, or reviewer output.
+
+Adapt's CLI can apply explicitly approved artifact diffs, but any claimed agent-produced merge decision, verification review, recovery judgment, or completion assessment is durable only when it is backed by a real host-agent invocation id, runtime-issued scoped workflow receipt, and linked output artifact for the current adapt handoff.
+Subagent batches, inline producer notes, or controller-authored summaries are diagnostic only and cannot satisfy durable adapt producer/reviewer/worker proof for completion claims.
 ## Workflow Invocation Receipts
 
 Any claim that this command invoked another Supervibe command, skill, agent, reviewer, worker, validator, or external tool must be backed by a runtime-issued workflow receipt created with `node <resolved-supervibe-plugin-root>/scripts/workflow-receipt.mjs issue ...`. Hand-written receipts are untrusted. Agent, worker, and reviewer receipts must include `hostInvocation.source` and `hostInvocation.invocationId` from a real host dispatch; command or skill receipts must not substitute for specialist output. Scoped current-run receipts are required for active command/handoff claims; old global receipts are diagnostic only and cannot authorize a new agent-owned output. Durable artifacts produced by this command must stay linked through `.supervibe/memory/workflow-invocation-ledger.jsonl` and `artifact-links.json`; run `npm run validate:workflow-receipts` and `npm run validate:agent-producer-receipts` before claiming the command, delegated stage, or produced artifact is complete.

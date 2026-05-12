@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 import { existsSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
-import { join, relative, sep } from "node:path";
+import { join, relative, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
+import { readWorkflowReceipts, validateWorkflowReceiptTrust } from "./lib/supervibe-workflow-receipt-runtime.mjs";
+import { resolveActiveWorkItemGraph } from "./lib/supervibe-work-item-registry.mjs";
 
 export const PLAN_REVIEW_REQUIRED_SECTIONS = Object.freeze([
   "Review Summary",
@@ -35,6 +37,12 @@ export const PLAN_REVIEW_DIMENSION_TERMS = Object.freeze([
   "worktree-suitability",
   "provider-policy",
   "convergence-decision",
+]);
+const REQUIRED_REVIEWERS = Object.freeze([
+  "supervibe-orchestrator",
+  "systems-analyst",
+  "architect-reviewer",
+  "quality-gate-reviewer",
 ]);
 
 const PLACEHOLDER_PATTERNS = Object.freeze([
@@ -71,6 +79,10 @@ function requireTerms({ issues, section, body, terms }) {
 
 export function validatePlanReviewArtifact(markdown) {
   const issues = [];
+  const summary = sectionBody(markdown, "Review Summary");
+  const scorecard = sectionBody(markdown, "Plan Review Scorecard");
+  const findings = sectionBody(markdown, "Findings");
+  const evidence = sectionBody(markdown, "Evidence");
   if (!/^#\s+Plan Review:/im.test(markdown)) {
     issues.push('format: missing "# Plan Review:" heading');
   }
@@ -99,10 +111,19 @@ export function validatePlanReviewArtifact(markdown) {
   requireTerms({
     issues,
     section: "Plan Review Scorecard",
-    body: sectionBody(markdown, "Plan Review Scorecard"),
+    body: scorecard,
     terms: PLAN_REVIEW_DIMENSION_TERMS,
   });
-  const scorecard = sectionBody(markdown, "Plan Review Scorecard");
+  if (!/Rubric\s*:\s*(?:`?plan-review(?:\.ya?ml)?`?)/i.test(scorecard)) {
+    issues.push("plan review scorecard: missing rubric reference to plan-review");
+  }
+  const scoreMatch = /(?:Overall|Final|Review)?\s*Score\s*:\s*([0-9]+(?:\.[0-9]+)?)\s*\/\s*10/i.exec(scorecard)
+    || /Score\s*:\s*([0-9]+(?:\.[0-9]+)?)\s*\/\s*10/i.exec(summary);
+  if (!scoreMatch) {
+    issues.push("plan review scorecard: missing numeric score out of 10");
+  } else if (Number(scoreMatch[1]) < 9) {
+    issues.push("plan review scorecard: score must be >= 9.0 for plan-review-passed gate");
+  }
   if (!/\|\s*Dimension\s*\|\s*Score\s*\|\s*Evidence\s*\|/i.test(scorecard)) {
     issues.push("plan review scorecard: missing evidence column");
   }
@@ -112,8 +133,20 @@ export function validatePlanReviewArtifact(markdown) {
     body: sectionBody(markdown, "Findings"),
     terms: ["Critical", "Major", "Minor", "Resolved", "Open"],
   });
-  const summary = sectionBody(markdown, "Review Summary");
-  const findings = sectionBody(markdown, "Findings");
+  if (!hasSection(markdown, "Blocker Findings")) {
+    issues.push("missing section: Blocker Findings");
+  }
+  if (!hasSection(markdown, "Non-Blocker Findings")) {
+    issues.push("missing section: Non-Blocker Findings");
+  }
+  const blockerBody = sectionBody(markdown, "Blocker Findings");
+  if (!/\b(Critical|Major)\b/i.test(blockerBody)) {
+    issues.push("blocker findings: missing critical/major classification");
+  }
+  const nonBlockerBody = sectionBody(markdown, "Non-Blocker Findings");
+  if (!/\b(Minor|Info|Advisory)\b/i.test(nonBlockerBody)) {
+    issues.push("non-blocker findings: missing minor/info/advisory classification");
+  }
   if (/\b(Verdict|plan-review-passed)\b[\s\S]{0,80}\bpass(?:ed)?\b/i.test(summary)) {
     if (/\b(Critical|Major)\s*:\s*[1-9]\d*\s+Open\b/i.test(findings)) {
       issues.push("findings: pass verdict cannot have open critical or major findings");
@@ -152,14 +185,122 @@ export function validatePlanReviewArtifact(markdown) {
   requireTerms({
     issues,
     section: "Evidence",
-    body: sectionBody(markdown, "Evidence"),
-    terms: ["workflow receipt", "verification command", "plan-review-passed"],
+    body: evidence,
+    terms: ["workflow receipt", "verification command", "plan-review-passed", "evidenceGatePass"],
   });
+  const evidenceGateMatch = /\bevidenceGatePass\s*[:=]\s*(true|false|null)\b/i.exec(evidence);
+  if (!evidenceGateMatch) {
+    issues.push("evidence gate: missing evidenceGatePass:true");
+  } else if (evidenceGateMatch[1].toLowerCase() !== "true") {
+    issues.push(`evidence gate: evidenceGatePass:${evidenceGateMatch[1].toLowerCase()} blocks plan-review-passed`);
+  }
 
   if (PLACEHOLDER_PATTERNS.some((pattern) => pattern.test(markdown))) {
     issues.push("placeholders: unresolved placeholder or weak wording found");
   }
   return issues;
+}
+
+function normalizePath(value = "") {
+  return String(value).replace(/\\/g, "/");
+}
+
+function resolvePlanPathFromReview(markdown = "") {
+  const planMatch = /-\s*Plan:\s*`?([^`\r\n]+)`?/i.exec(markdown);
+  return planMatch ? normalizePath(planMatch[1].trim()) : null;
+}
+
+function rel(rootDir, filePath) {
+  return normalizePath(relative(rootDir, filePath));
+}
+
+function reviewMentionsPlan(markdown = "", planPath = "") {
+  const normalizedPlan = normalizePath(planPath);
+  if (!normalizedPlan) return false;
+  return new RegExp(escapeRegex(normalizedPlan), "i").test(markdown);
+}
+
+export async function inspectActivePlanReviewSource({ rootDir = process.cwd(), planPath = null } = {}) {
+  const targetPlan = planPath ? normalizePath(planPath) : null;
+  const active = await resolveActiveWorkItemGraph({ rootDir });
+  if (!targetPlan && active.status !== "active") {
+    return { status: active.status === "none" ? "no-active-graph" : active.status, active, issues: [], warnings: [] };
+  }
+  const reviews = await walkMarkdown(join(rootDir, ".supervibe", "artifacts", "plan-reviews"));
+  if (!reviews.length) {
+    return { status: "no-review-artifacts", active, issues: ["no plan review artifacts found"], warnings: [] };
+  }
+  const desiredPlanPath = targetPlan || (() => null);
+  let matched = [];
+  for (const reviewFile of reviews) {
+    const markdown = await readFile(reviewFile, "utf8");
+    const declaredPlan = resolvePlanPathFromReview(markdown);
+    const reviewRel = rel(rootDir, reviewFile);
+    const reviewAbs = resolve(rootDir, reviewRel);
+    const passesPlanMatch = desiredPlanPath
+      ? declaredPlan === desiredPlanPath || reviewMentionsPlan(markdown, desiredPlanPath)
+      : true;
+    if (!passesPlanMatch) continue;
+    matched.push({ reviewPath: reviewAbs, reviewRel, markdown, declaredPlan });
+  }
+  if (!matched.length && desiredPlanPath) {
+    return {
+      status: "missing-review-for-plan",
+      active,
+      issues: [`no review artifact references plan ${desiredPlanPath}`],
+      warnings: [],
+    };
+  }
+  matched = matched.sort((a, b) => b.reviewRel.localeCompare(a.reviewRel));
+  const chosen = matched[0];
+  return {
+    status: "review-found",
+    active,
+    reviewPath: chosen.reviewPath,
+    reviewRel: chosen.reviewRel,
+    markdown: chosen.markdown,
+    issues: [],
+    warnings: [],
+  };
+}
+
+function trustedReviewerReceiptsForArtifact(rootDir, reviewRel) {
+  const coverage = new Map(REQUIRED_REVIEWERS.map((id) => [id, false]));
+  const issues = [];
+  const receipts = readWorkflowReceipts(rootDir);
+  for (const receipt of receipts) {
+    if (!receipt?.receiptId) continue;
+    if (!["reviewer", "agent", "worker"].includes(String(receipt.subjectType || "").toLowerCase())) continue;
+    const outputArtifacts = Array.isArray(receipt.outputArtifacts) ? receipt.outputArtifacts.map(normalizePath) : [];
+    if (!outputArtifacts.includes(normalizePath(reviewRel))) continue;
+    const trust = validateWorkflowReceiptTrust(rootDir, receipt);
+    if (!trust.pass) continue;
+    const id = String(receipt.subjectId || receipt.agentId || "").toLowerCase();
+    if (coverage.has(id)) coverage.set(id, true);
+  }
+  for (const [reviewer, seen] of coverage.entries()) {
+    if (!seen) issues.push(`missing trusted reviewer receipt for ${reviewer} bound to current review artifact`);
+  }
+  return { pass: issues.length === 0, issues };
+}
+
+export async function validatePlanReviewGateForPlan({ rootDir = process.cwd(), planPath, requireActiveReview = true } = {}) {
+  const inspection = await inspectActivePlanReviewSource({ rootDir, planPath });
+  if (inspection.status !== "review-found") {
+    return {
+      pass: !requireActiveReview,
+      reviewPath: null,
+      issues: inspection.issues?.length ? inspection.issues : ["missing active review artifact"],
+    };
+  }
+  const artifactIssues = validatePlanReviewArtifact(inspection.markdown);
+  const receiptGate = trustedReviewerReceiptsForArtifact(rootDir, inspection.reviewRel);
+  return {
+    pass: artifactIssues.length === 0 && receiptGate.pass,
+    reviewPath: inspection.reviewPath,
+    reviewRel: inspection.reviewRel,
+    issues: [...artifactIssues, ...receiptGate.issues],
+  };
 }
 
 async function walkMarkdown(dir) {
@@ -191,6 +332,8 @@ async function main() {
       file: { type: "string", short: "f" },
       all: { type: "boolean", default: false },
       "fixture-dir": { type: "string" },
+      plan: { type: "string" },
+      "require-active-review": { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
   });
@@ -199,16 +342,47 @@ async function main() {
     console.log(`Usage:
   node scripts/validate-plan-review-artifacts.mjs --file .supervibe/artifacts/plan-reviews/review.md
   node scripts/validate-plan-review-artifacts.mjs --all
-  node scripts/validate-plan-review-artifacts.mjs --fixture-dir tests/fixtures/artifacts/plan-reviews`);
+  node scripts/validate-plan-review-artifacts.mjs --fixture-dir tests/fixtures/artifacts/plan-reviews
+  node scripts/validate-plan-review-artifacts.mjs --plan .supervibe/artifacts/plans/example.md --require-active-review`);
     return;
   }
 
   const root = process.cwd();
-  const files = values.file
+  let files = values.file
     ? [values.file]
     : values["fixture-dir"]
       ? await walkMarkdown(join(root, values["fixture-dir"]))
       : await walkMarkdown(join(root, ".supervibe", "artifacts", "plan-reviews"));
+
+  let activeReviewIssueCount = 0;
+  if (values.plan || values["require-active-review"]) {
+    const inspection = await inspectActivePlanReviewSource({
+      rootDir: root,
+      planPath: values.plan || null,
+    });
+    if (inspection.status === "review-found") {
+      files = [inspection.reviewPath];
+      const receiptGate = trustedReviewerReceiptsForArtifact(root, inspection.reviewRel);
+      if (!receiptGate.pass) {
+        activeReviewIssueCount += 1;
+        console.error(`FAIL active-review ${inspection.reviewRel}`);
+        for (const issue of receiptGate.issues) console.error(`  - ${issue}`);
+      } else {
+        console.log(`OK   active-review ${inspection.reviewRel}`);
+      }
+    } else if (values["require-active-review"]) {
+      activeReviewIssueCount += 1;
+      console.error("FAIL active-review");
+      for (const issue of inspection.issues || ["missing active review artifact"]) console.error(`  - ${issue}`);
+    } else {
+      for (const issue of inspection.issues || []) console.warn(`WARN active-review ${issue}`);
+    }
+  }
+
+  if (files.length === 0 && activeReviewIssueCount > 0) {
+    console.error(`\n${activeReviewIssueCount}/${activeReviewIssueCount} plan review artifact(s) failed`);
+    process.exit(1);
+  }
 
   if (files.length === 0) {
     console.log("[validate-plan-review-artifacts] no plan review markdown files found; skipping");
@@ -225,8 +399,9 @@ async function main() {
       for (const issue of result.issues) console.error(`  - ${issue}`);
     }
   }
-  if (!report.pass) {
-    console.error(`\n${report.results.filter((item) => item.issues.length > 0).length}/${report.results.length} plan review artifact(s) failed`);
+  const failedArtifacts = report.results.filter((item) => item.issues.length > 0).length;
+  if (!report.pass || activeReviewIssueCount > 0) {
+    console.error(`\n${failedArtifacts + activeReviewIssueCount}/${report.results.length + (activeReviewIssueCount > 0 ? 1 : 0)} plan review artifact(s) failed`);
     process.exit(1);
   }
   console.log(`\nAll ${report.results.length} plan review artifact(s) passed`);

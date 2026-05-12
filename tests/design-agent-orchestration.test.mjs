@@ -1273,6 +1273,58 @@ test("active design receipt validator requires reviewer stage receipts after pro
   }
 });
 
+test("active design receipt validator requires reviewer receipts for variant-only prototype outputs", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-design-active-variant-reviewers-"));
+  try {
+    const manifest = {
+      schemaVersion: 1,
+      slug: "agent-chat",
+      requestedVariantCount: 2,
+      variants: [
+        {
+          id: "variant-1",
+          artifactPath: ".supervibe/artifacts/prototypes/agent-chat/variants/variant-1/index.html",
+          feedbackTargetId: "agent-chat:variant-1",
+          reviewArtifacts: {
+            polish: ".supervibe/artifacts/prototypes/agent-chat/_reviews/variant-1-polish.md",
+            a11y: ".supervibe/artifacts/prototypes/agent-chat/_reviews/variant-1-a11y.md",
+          },
+        },
+        {
+          id: "variant-2",
+          artifactPath: ".supervibe/artifacts/prototypes/agent-chat/variants/variant-2/index.html",
+          feedbackTargetId: "agent-chat:variant-2",
+          reviewArtifacts: {
+            polish: ".supervibe/artifacts/prototypes/agent-chat/_reviews/variant-2-polish.md",
+            a11y: ".supervibe/artifacts/prototypes/agent-chat/_reviews/variant-2-a11y.md",
+          },
+        },
+      ],
+    };
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/variant-manifest.json", `${JSON.stringify(manifest, null, 2)}\n`);
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/variants/variant-1/index.html", "<!doctype html>\n");
+    await writeUtf8(root, ".supervibe/artifacts/prototypes/agent-chat/variants/variant-2/index.html", "<!doctype html>\n");
+
+    const result = validateDesignAgentInvocationReceipts(root, {
+      active: true,
+      slug: "agent-chat",
+      handoffId: "agent-chat-run",
+      secret: "test-secret",
+    });
+
+    assert.equal(result.pass, false);
+    assert.ok(result.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "creative-director"));
+    assert.ok(result.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "ux-ui-designer"));
+    assert.ok(result.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "copywriter"));
+    assert.ok(result.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "prototype-builder" && /variant-1/.test(issue.file)));
+    assert.ok(result.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "ui-polish-reviewer"));
+    assert.ok(result.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "accessibility-reviewer"));
+    assert.ok(result.issues.some((issue) => issue.code === "missing-design-agent-receipt" && issue.expectedAgentId === "quality-gate-reviewer"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("design stage contracts expose blocking scoped receipts for active prototype work", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-stage-contracts-"));
   try {

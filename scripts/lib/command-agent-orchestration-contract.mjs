@@ -11,6 +11,266 @@ export const COMMAND_AGENT_ORCHESTRATION_CONTRACT = Object.freeze({
   durableOutputPolicy: "blocked-without-real-agent-receipts",
 });
 
+export const COMMAND_AGENT_SELECTOR_INPUT_FIELDS = Object.freeze([
+  "intent",
+  "stackTags",
+  "riskDomains",
+  "artifactType",
+  "stage",
+]);
+
+export const REGULATED_DOMAIN_REVIEWER_GATES = Object.freeze({
+  finance: regulatedGate("finance", [
+    "payments-billing-architect",
+    "privacy-compliance-architect",
+    "security-auditor",
+    "release-governance-reviewer",
+  ], [
+    "domain-evidence",
+    "privacy-risk-evidence",
+    "payment-or-billing-impact",
+    "rollback-plan",
+  ]),
+  fintech: regulatedGate("fintech", [
+    "payments-billing-architect",
+    "privacy-compliance-architect",
+    "security-auditor",
+    "release-governance-reviewer",
+  ], [
+    "domain-evidence",
+    "privacy-risk-evidence",
+    "payment-or-billing-impact",
+    "rollback-plan",
+  ]),
+  health: regulatedGate("health", [
+    "privacy-compliance-architect",
+    "security-auditor",
+    "release-governance-reviewer",
+  ], [
+    "domain-evidence",
+    "privacy-risk-evidence",
+    "safety-impact",
+    "rollback-plan",
+  ]),
+  medical: regulatedGate("medical", [
+    "privacy-compliance-architect",
+    "security-auditor",
+    "release-governance-reviewer",
+  ], [
+    "domain-evidence",
+    "privacy-risk-evidence",
+    "safety-impact",
+    "rollback-plan",
+  ]),
+  legal: regulatedGate("legal", [
+    "privacy-compliance-architect",
+    "security-auditor",
+    "release-governance-reviewer",
+  ], [
+    "domain-evidence",
+    "privacy-risk-evidence",
+    "legal-risk-boundary",
+    "rollback-plan",
+  ]),
+  government: regulatedGate("government", [
+    "privacy-compliance-architect",
+    "security-auditor",
+    "release-governance-reviewer",
+  ], [
+    "domain-evidence",
+    "privacy-risk-evidence",
+    "public-sector-compliance-boundary",
+    "rollback-plan",
+  ]),
+  security: regulatedGate("security", [
+    "security-auditor",
+    "security-researcher",
+    "release-governance-reviewer",
+  ], [
+    "threat-model",
+    "secret-handling-evidence",
+    "rollback-plan",
+  ]),
+  privacy: regulatedGate("privacy", [
+    "privacy-compliance-architect",
+    "security-auditor",
+    "release-governance-reviewer",
+  ], [
+    "privacy-risk-evidence",
+    "data-flow-evidence",
+    "rollback-plan",
+  ]),
+});
+
+const STACK_SPECIALIST_AGENTS = Object.freeze({
+  android: { implementers: ["android-developer"], architects: ["mobile-ui-designer"] },
+  aspnet: { implementers: ["aspnet-developer"], architects: ["api-designer"] },
+  chrome: { implementers: ["chrome-extension-developer"], architects: ["chrome-extension-architect"], designers: ["extension-ui-designer"] },
+  django: { implementers: ["django-developer"], architects: ["django-architect"] },
+  electron: { implementers: ["react-implementer"], architects: ["electron-ui-designer"], designers: ["electron-ui-designer"] },
+  express: { implementers: ["express-developer"], architects: ["api-designer"] },
+  fastapi: { implementers: ["fastapi-developer"], architects: ["fastapi-architect"] },
+  fastify: { implementers: ["fastify-developer"], architects: ["api-designer"] },
+  flutter: { implementers: ["flutter-developer"], architects: ["mobile-ui-designer"], designers: ["mobile-ui-designer"] },
+  go: { implementers: ["go-service-developer"], architects: ["api-designer"] },
+  ios: { implementers: ["ios-developer"], architects: ["mobile-ui-designer"], designers: ["mobile-ui-designer"] },
+  laravel: { implementers: ["laravel-developer"], architects: ["laravel-architect"] },
+  mongo: { implementers: [], architects: ["mongo-architect"], reviewers: ["db-reviewer"] },
+  mysql: { implementers: [], architects: ["mysql-architect"], reviewers: ["db-reviewer"] },
+  nestjs: { implementers: ["nestjs-developer"], architects: ["api-designer"] },
+  nextjs: { implementers: ["nextjs-developer", "react-implementer"], architects: ["nextjs-architect"], designers: ["ux-ui-designer"] },
+  nuxt: { implementers: ["nuxt-developer"], architects: ["nuxt-architect"], designers: ["ux-ui-designer"] },
+  postgres: { implementers: [], architects: ["postgres-architect"], reviewers: ["db-reviewer"] },
+  rails: { implementers: ["rails-developer"], architects: ["rails-architect"] },
+  react: { implementers: ["react-implementer"], architects: ["nextjs-architect"], designers: ["ux-ui-designer"] },
+  redis: { implementers: [], architects: ["redis-architect"], reviewers: ["performance-reviewer"] },
+  spring: { implementers: ["spring-developer"], architects: ["spring-architect"] },
+  sveltekit: { implementers: ["sveltekit-developer"], architects: ["sveltekit-developer"], designers: ["ux-ui-designer"] },
+  tauri: { implementers: ["tauri-rust-engineer", "react-implementer"], architects: ["tauri-rust-engineer"], designers: ["tauri-ui-designer"] },
+});
+
+const STACK_ALIASES = Object.freeze({
+  "android-native": "android",
+  "asp.net": "aspnet",
+  "browser-extension": "chrome",
+  "chrome-extension": "chrome",
+  "electronjs": "electron",
+  "go-service": "go",
+  "ios-native": "ios",
+  "next": "nextjs",
+  "next.js": "nextjs",
+  "node": "express",
+  "nodejs": "express",
+  "postgresql": "postgres",
+  "reactjs": "react",
+  "rust-tauri": "tauri",
+  "svelte": "sveltekit",
+});
+
+const RISK_REVIEWER_AGENTS = Object.freeze({
+  accessibility: ["accessibility-reviewer"],
+  api: ["api-contract-reviewer"],
+  database: ["db-reviewer"],
+  db: ["db-reviewer"],
+  dependency: ["dependency-reviewer"],
+  deploy: ["devops-sre", "release-governance-reviewer"],
+  performance: ["performance-reviewer"],
+  privacy: ["privacy-compliance-architect"],
+  release: ["release-governance-reviewer"],
+  security: ["security-auditor", "security-researcher"],
+});
+
+const ARTIFACT_OWNER_AGENTS = Object.freeze({
+  agent: ["prompt-ai-engineer", "quality-gate-reviewer"],
+  agents: ["prompt-ai-engineer", "quality-gate-reviewer"],
+  api: ["api-designer", "api-contract-reviewer"],
+  code: ["code-reviewer"],
+  command: ["supervibe-orchestrator", "quality-gate-reviewer"],
+  commands: ["supervibe-orchestrator", "quality-gate-reviewer"],
+  design: ["ux-ui-designer", "ui-polish-reviewer", "accessibility-reviewer"],
+  epic: ["ai-agent-orchestrator", "quality-gate-reviewer"],
+  graph: ["repo-researcher", "quality-gate-reviewer"],
+  memory: ["memory-curator", "repo-researcher"],
+  plan: ["systems-analyst", "architect-reviewer", "quality-gate-reviewer"],
+  prototype: ["prototype-builder", "ui-polish-reviewer", "accessibility-reviewer"],
+  receipt: ["quality-gate-reviewer", "repo-researcher"],
+  receipts: ["quality-gate-reviewer", "repo-researcher"],
+  rule: ["rules-curator", "quality-gate-reviewer"],
+  rules: ["rules-curator", "quality-gate-reviewer"],
+  skill: ["prompt-ai-engineer", "quality-gate-reviewer"],
+  skills: ["prompt-ai-engineer", "quality-gate-reviewer"],
+  task: ["ai-agent-orchestrator", "quality-gate-reviewer"],
+  ui: ["ux-ui-designer", "ui-polish-reviewer", "accessibility-reviewer"],
+  workflow: ["supervibe-orchestrator", "ai-agent-orchestrator", "quality-gate-reviewer"],
+});
+
+const INTENT_AGENT_HINTS = Object.freeze({
+  adapt: ["repo-researcher", "rules-curator", "memory-curator"],
+  audit: ["repo-researcher", "memory-curator", "quality-gate-reviewer"],
+  design: ["creative-director", "ux-ui-designer", "prototype-builder", "ui-polish-reviewer", "accessibility-reviewer"],
+  gc: ["memory-curator", "quality-gate-reviewer"],
+  loop: ["ai-agent-orchestrator", "repo-researcher", "quality-gate-reviewer"],
+  plan: ["systems-analyst", "architect-reviewer", "quality-gate-reviewer"],
+  preview: ["prototype-builder", "ui-polish-reviewer", "accessibility-reviewer"],
+  review: ["architect-reviewer", "code-reviewer", "quality-gate-reviewer"],
+  security: ["security-auditor", "security-researcher", "dependency-reviewer"],
+  status: ["repo-researcher", "quality-gate-reviewer"],
+});
+
+const DYNAMIC_AGENT_SELECTOR_HANDLERS = Object.freeze({
+  "artifact-owner-agents": (context) => selectArtifactOwners(context),
+  "audit-domain-specialists": (context) => [
+    ...selectDomainSpecialists(context),
+    ...selectRiskReviewers(context),
+  ],
+  "changed-artifact-specialists": (context) => [
+    ...selectArtifactOwners(context),
+    ...selectStackAgents(context, "implementers"),
+  ],
+  "changed-stack-specialists": (context) => [
+    ...selectStackAgents(context, "architects"),
+    ...selectStackAgents(context, "implementers"),
+    ...selectRiskReviewers(context),
+  ],
+  "competitive-design-researcher": (context) => context.intent.includes("design") || ["design", "prototype", "ui"].includes(context.artifactType)
+    ? [select("competitive-design-researcher", "design or prototype context needs competitive evidence")]
+    : [skip("competitive-design-researcher", "no design/prototype signal")],
+  "dashboard-domain-reviewers": (context) => [
+    ...selectArtifactOwners({ ...context, artifactType: context.artifactType || "ui" }),
+    select("quality-gate-reviewer", "dashboard changes need final quality gate"),
+  ],
+  "design-reviewers": (context) => [
+    ...selectArtifactOwners({ ...context, artifactType: context.artifactType || "prototype" }),
+    select("copywriter", "presentation/design output needs copy review"),
+  ],
+  "detected-stack-specialists": (context) => [
+    ...selectStackAgents(context, "architects"),
+    ...selectStackAgents(context, "implementers"),
+  ],
+  "domain-specialists": (context) => selectDomainSpecialists(context),
+  "health-domain-specialists": (context) => [
+    ...selectRiskReviewers(context),
+    select("observability-architect", "status/health flows need observability evidence"),
+    select("devops-sre", "status/health flows need runtime health owner"),
+  ],
+  "host-adapter-specialists": () => [
+    select("devops-sre", "host adapter diagnostics need runtime/process evidence"),
+    select("infrastructure-architect", "host adapter diagnostics need integration architecture review"),
+  ],
+  "intent-router": (context) => selectIntentAgents(context),
+  "low-risk-fast-path": (context) => context.lowRisk
+    ? [skip("low-risk-fast-path", "low-risk base required agents are handled before dynamic selection")]
+    : [skip("low-risk-fast-path", "low-risk context not present")],
+  reviewers: (context) => [
+    ...selectRiskReviewers(context),
+    ...selectStageReviewers(context),
+  ],
+  "risk-reviewers": (context) => selectRiskReviewers(context),
+  "rubric-owner-reviewers": () => [
+    select("quality-gate-reviewer", "rubric scoring must be owned by the quality gate"),
+  ],
+  "stack-architects": (context) => selectStackAgents(context, "architects"),
+  "stack-implementers": (context) => selectStackAgents(context, "implementers"),
+  "stack-security-specialists": (context) => [
+    ...selectStackAgents(context, "architects"),
+    select("security-auditor", "security audit needs implementation-aware security review"),
+    select("dependency-reviewer", "security audit needs dependency risk review"),
+  ],
+  "target-platform-designers": (context) => [
+    ...selectStackAgents(context, "designers"),
+    ...selectArtifactOwners({ ...context, artifactType: context.artifactType || "ui" }),
+  ],
+  "task-wave-specialists": (context) => [
+    ...selectArtifactOwners(context),
+    ...selectStackAgents(context, "implementers"),
+    ...selectRiskReviewers(context),
+  ],
+  "weak-artifact-specialists": (context) => [
+    ...selectArtifactOwners(context),
+    select("prompt-ai-engineer", "weak agent/skill artifacts need prompt and instruction hardening"),
+  ],
+});
+
 const HOST_AGENT_DISPATCHERS = Object.freeze({
   claude: dispatcher({
     hostAdapterId: "claude",
@@ -195,7 +455,7 @@ const COMMAND_AGENT_PROFILES = Object.freeze(Object.fromEntries([
     "systems-analyst",
     "architect-reviewer",
     "quality-gate-reviewer",
-  ], { dynamicAgentSelectors: ["stack-architects", "domain-specialists"] }),
+  ], { dynamicAgentSelectors: ["stack-architects", "domain-specialists", "reviewers"] }),
   profile("/supervibe-presentation", [
     "supervibe-orchestrator",
     "presentation-director",
@@ -307,6 +567,7 @@ export function buildCommandAgentPlan(commandId, {
   const scopedReceiptGateActive = shouldUseScopedReceiptTrust(workflowContext);
   const activeReceiptStatus = scopedReceiptGateActive ? scopedReceiptStatus : receiptStatus;
   const runtimeReceiptsTrusted = activeReceiptStatus.trusted === true;
+  const dynamicAgentResolution = resolveDynamicCommandAgents(profile, workflowContext);
   const baseRequiredAgentIds = adaptBaselineOnlyApplyPhase
     ? (profile.baselineOnlyRequiredAgentIds || profile.lowRiskRequiredAgentIds || [])
     : [
@@ -315,6 +576,7 @@ export function buildCommandAgentPlan(commandId, {
       ];
   const requiredAgentIds = unique([
     ...baseRequiredAgentIds,
+    ...dynamicAgentResolution.selectedAgentIds,
     ...extraRequiredAgentIds,
   ]);
   const callableAgentSourceRows = agentSourcesFor(requiredAgentIds, callableAgentSources);
@@ -362,6 +624,13 @@ export function buildCommandAgentPlan(commandId, {
   const dryRunAgentless = executionMode === "dry-run-no-agent";
   const baselineOnly = executionMode === "baseline-only-fast-path";
   const receiptTrustApplies = runtimeReceiptsTrusted && !blocked && !bootstrapOnly && !dryRunAgentless && !baselineOnly;
+  const activeScopedCommandAgentPlanRequired = scopedReceiptGateActive && !bootstrapOnly && !dryRunAgentless && !baselineOnly;
+  const globalReceiptTrustIgnoredForActiveScope = activeScopedCommandAgentPlanRequired
+    && receiptStatus.trusted === true
+    && scopedReceiptStatus.trusted !== true;
+  const durableWriteProofSource = receiptTrustApplies
+    ? (scopedReceiptGateActive ? "scoped-runtime-agent-receipts" : "runtime-agent-receipts")
+    : "blocked";
   const codexSpawnPayloads = hostDispatch?.hostAdapterId === "codex"
     && requestedMode !== "inline"
     && !bootstrapPreAgent
@@ -389,6 +658,21 @@ export function buildCommandAgentPlan(commandId, {
     stageGateCommand: profile.stageGateCommand || null,
     stageGateReason: profile.stageGateReason || null,
     dynamicAgentSelectors: [...profile.dynamicAgentSelectors],
+    dynamicAgentResolution,
+    selectorInputFields: [...COMMAND_AGENT_SELECTOR_INPUT_FIELDS],
+    selectorInputs: dynamicAgentResolution.inputs,
+    regulatedDomainGates: dynamicAgentResolution.regulatedDomainGates,
+    mandatoryEvidence: dynamicAgentResolution.mandatoryEvidence,
+    reviewerGateAgentIds: dynamicAgentResolution.reviewerGateAgentIds,
+    orchestratorDecisionArtifact: buildOrchestratorDecisionArtifact({
+      commandId: profile.commandId,
+      profile,
+      workflowContext,
+      dynamicAgentResolution,
+      requiredAgentIds,
+      immediateAgentIds,
+      deferredAgentIds,
+    }),
     missingAgents,
     missingCallableAgents,
     hostDispatch,
@@ -419,6 +703,9 @@ export function buildCommandAgentPlan(commandId, {
     scopedReceiptGateActive,
     scopedReceiptTrust: scopedReceiptStatus,
     activeReceiptTrust: activeReceiptStatus,
+    activeScopedCommandAgentPlanRequired,
+    globalReceiptTrustIgnoredForActiveScope,
+    durableWriteProofSource,
     requiredPlanFields: [...profile.requiredPlanFields],
     requiredReceiptFields: [...profile.requiredReceiptFields],
     durableWritesAllowed: (bootstrapOnly && workflowContext.dryRun !== true) || baselineOnly || receiptTrustApplies,
@@ -463,6 +750,109 @@ export function buildCommandAgentPlan(commandId, {
     emulationPolicy: profile.emulationPolicy,
     codexSpawnPayloadRules: codexSpawnPayloads.length ? [...CODEX_SPAWN_PAYLOAD_RULES] : undefined,
     codexSpawnPayloads: codexSpawnPayloads.length ? codexSpawnPayloads : undefined,
+  };
+}
+
+export function listDynamicAgentSelectors() {
+  return Object.keys(DYNAMIC_AGENT_SELECTOR_HANDLERS).sort();
+}
+
+function resolveDynamicCommandAgents(profileOrCommandId = {}, workflowContext = {}) {
+  const profile = typeof profileOrCommandId === "string"
+    ? getCommandAgentProfile(profileOrCommandId)
+    : profileOrCommandId;
+  const context = normalizeSelectorContext(workflowContext);
+  const selectors = [...(profile?.dynamicAgentSelectors || [])];
+  const decisions = [];
+
+  for (const selectorId of selectors) {
+    const handler = DYNAMIC_AGENT_SELECTOR_HANDLERS[selectorId];
+    if (!handler) {
+      decisions.push({
+        selectorId,
+        decision: "skip",
+        subject: selectorId,
+        reason: "selector is not executable",
+      });
+      continue;
+    }
+    const rows = handler(context, profile) || [];
+    if (rows.length === 0) {
+      decisions.push({
+        selectorId,
+        decision: "skip",
+        subject: selectorId,
+        reason: "selector returned no candidates",
+      });
+      continue;
+    }
+    for (const row of rows) decisions.push({ selectorId, ...row });
+  }
+
+  const regulated = resolveRegulatedDomainGates(context);
+  decisions.push(...regulated.decisions);
+  const selectedAgentIds = unique(decisions
+    .filter((entry) => entry.decision === "select" && entry.agentId)
+    .map((entry) => entry.agentId));
+
+  return {
+    schemaVersion: 1,
+    inputFields: [...COMMAND_AGENT_SELECTOR_INPUT_FIELDS],
+    inputs: {
+      intent: context.intent || null,
+      stackTags: [...context.stackTags],
+      riskDomains: [...context.riskDomains],
+      artifactType: context.artifactType || null,
+      stage: context.stage || null,
+    },
+    selectors,
+    executableSelectors: selectors.filter((selectorId) => Boolean(DYNAMIC_AGENT_SELECTOR_HANDLERS[selectorId])),
+    selectedAgentIds,
+    selected: selectedAgentIds.map((agentId) => ({
+      agentId,
+      reasons: decisions
+        .filter((entry) => entry.decision === "select" && entry.agentId === agentId)
+        .map((entry) => `${entry.selectorId}: ${entry.reason}`),
+    })),
+    skipped: decisions.filter((entry) => entry.decision !== "select"),
+    decisions,
+    regulatedDomainGates: regulated.gates,
+    reviewerGateAgentIds: regulated.reviewerGateAgentIds,
+    mandatoryEvidence: regulated.mandatoryEvidence,
+  };
+}
+
+function buildOrchestratorDecisionArtifact({
+  commandId = "unknown",
+  profile = {},
+  workflowContext = {},
+  dynamicAgentResolution = resolveDynamicCommandAgents(profile, workflowContext),
+  requiredAgentIds = [],
+  immediateAgentIds = [],
+  deferredAgentIds = [],
+} = {}) {
+  return {
+    schemaVersion: 1,
+    artifactType: "supervibe-orchestrator-agent-selection-decision",
+    generatedAt: "deterministic-local",
+    commandId: normalizeCommandId(commandId),
+    selectorInputFields: [...COMMAND_AGENT_SELECTOR_INPUT_FIELDS],
+    selectorInputs: dynamicAgentResolution.inputs || normalizeSelectorContext(workflowContext),
+    dynamicSelectors: [...(dynamicAgentResolution.selectors || [])],
+    baseRequiredAgentIds: [...(profile.requiredAgentIds || [])],
+    selectedDynamicAgentIds: [...(dynamicAgentResolution.selectedAgentIds || [])],
+    requiredAgentIds: [...requiredAgentIds],
+    immediateAgentIds: [...immediateAgentIds],
+    deferredAgentIds: [...deferredAgentIds],
+    regulatedDomainGates: [...(dynamicAgentResolution.regulatedDomainGates || [])],
+    mandatoryEvidence: [...(dynamicAgentResolution.mandatoryEvidence || [])],
+    reviewerGateAgentIds: [...(dynamicAgentResolution.reviewerGateAgentIds || [])],
+    decisions: [...(dynamicAgentResolution.decisions || [])],
+    policy: {
+      ownerAgentId: COMMAND_AGENT_ORCHESTRATION_CONTRACT.ownerAgentId,
+      emulationAllowed: false,
+      durableOutputPolicy: COMMAND_AGENT_ORCHESTRATION_CONTRACT.durableOutputPolicy,
+    },
   };
 }
 
@@ -597,6 +987,9 @@ export function formatCommandAgentPlan(plan = {}) {
     `AGENT_INVOCATIONS_COMPLETED: ${plan.agentInvocationsCompleted === true}`,
     `AGENT_RECEIPTS_TRUSTED: ${plan.agentReceiptsTrusted === true}`,
     `SCOPED_RECEIPT_GATE: ${plan.scopedReceiptGateActive === true}`,
+    `ACTIVE_SCOPED_COMMAND_AGENT_PLAN_REQUIRED: ${plan.activeScopedCommandAgentPlanRequired === true}`,
+    `GLOBAL_RECEIPTS_IGNORED_FOR_ACTIVE_SCOPE: ${plan.globalReceiptTrustIgnoredForActiveScope === true}`,
+    `DURABLE_WRITE_PROOF_SOURCE: ${plan.durableWriteProofSource || "unknown"}`,
     `BOOTSTRAP_PRE_AGENT_ALLOWED: ${plan.bootstrapPreAgentAllowed === true}`,
     `DRY_RUN_AGENTLESS_ALLOWED: ${plan.dryRunAgentlessAllowed === true}`,
     `BASELINE_ONLY_FAST_PATH_ALLOWED: ${plan.baselineOnlyFastPathAllowed === true}`,
@@ -610,6 +1003,13 @@ export function formatCommandAgentPlan(plan = {}) {
     `AGENT_STAGE_GATE_COMMAND: ${plan.stageGateCommand || "none"}`,
     `AGENT_STAGE_GATE_REASON: ${plan.stageGateReason || "none"}`,
     `DYNAMIC_SELECTORS: ${(plan.dynamicAgentSelectors || []).join(", ") || "none"}`,
+    `SELECTOR_INPUT_FIELDS: ${(plan.selectorInputFields || COMMAND_AGENT_SELECTOR_INPUT_FIELDS).join(", ")}`,
+    `SELECTOR_INPUTS: ${formatSelectorInputs(plan.selectorInputs)}`,
+    `SELECTOR_SELECTED_AGENTS: ${(plan.dynamicAgentResolution?.selectedAgentIds || []).join(", ") || "none"}`,
+    `REGULATED_DOMAIN_GATES: ${(plan.regulatedDomainGates || []).map((gate) => gate.domain).join(", ") || "none"}`,
+    `REVIEWER_GATE_AGENTS: ${(plan.reviewerGateAgentIds || []).join(", ") || "none"}`,
+    `MANDATORY_EVIDENCE: ${(plan.mandatoryEvidence || []).join(", ") || "none"}`,
+    `ORCHESTRATOR_DECISION_ARTIFACT: ${plan.orchestratorDecisionArtifact ? "embedded" : "none"}`,
     `MISSING_AGENTS: ${(plan.missingAgents || []).join(", ") || "none"}`,
     `MISSING_CALLABLE_AGENTS: ${(plan.missingCallableAgents || []).join(", ") || "none"}`,
     `LOGICAL_FALLBACK_AGENTS: ${(plan.logicalFallbackRequiredAgents || []).join(", ") || "none"}`,
@@ -693,6 +1093,11 @@ export function validateCommandAgentProfiles({
     if (new Set(profile.requiredAgentIds).size !== profile.requiredAgentIds.length) {
       issues.push(issue(commandId, "duplicate-required-agent", "requiredAgentIds must not contain duplicates."));
     }
+    for (const selectorId of profile.dynamicAgentSelectors || []) {
+      if (!DYNAMIC_AGENT_SELECTOR_HANDLERS[selectorId]) {
+        issues.push(issue(commandId, "unknown-dynamic-agent-selector", `Dynamic selector is not executable: ${selectorId}`));
+      }
+    }
     if (profile.emulationAllowed !== false || !/Do not emulate/i.test(profile.emulationPolicy)) {
       issues.push(issue(commandId, "emulation-not-forbidden", "Specialist emulation must be explicitly forbidden."));
     }
@@ -748,6 +1153,7 @@ function profile(commandId, requiredAgentIds, options = {}) {
     lowRiskRequiredAgentIds: Object.freeze(unique(options.lowRiskRequiredAgentIds || requiredAgentIds)),
     baselineOnlyRequiredAgentIds: Object.freeze(unique(options.baselineOnlyRequiredAgentIds || [])),
     dynamicAgentSelectors: Object.freeze(options.dynamicAgentSelectors || []),
+    selectorInputFields: Object.freeze(options.selectorInputFields || COMMAND_AGENT_SELECTOR_INPUT_FIELDS),
     immediateAgentIds: Object.freeze(options.immediateAgentIds || []),
     stageGate: options.stageGate || null,
     stageGateCommand: options.stageGateCommand || null,
@@ -778,6 +1184,7 @@ function copyCommandAgentProfile(profile) {
     lowRiskRequiredAgentIds: [...(profile.lowRiskRequiredAgentIds || profile.requiredAgentIds)],
     baselineOnlyRequiredAgentIds: [...(profile.baselineOnlyRequiredAgentIds || [])],
     dynamicAgentSelectors: [...profile.dynamicAgentSelectors],
+    selectorInputFields: [...(profile.selectorInputFields || COMMAND_AGENT_SELECTOR_INPUT_FIELDS)],
     immediateAgentIds: [...(profile.immediateAgentIds || [])],
     executionModes: [...profile.executionModes],
     requiredPlanFields: [...profile.requiredPlanFields],
@@ -886,6 +1293,215 @@ function shouldUseScopedReceiptTrust(workflowContext = {}) {
     || workflowContext.workflowRunId
     || workflowContext.slug
   );
+}
+
+function resolveRegulatedDomainGates(context = normalizeSelectorContext()) {
+  const domains = unique(context.riskDomains.map(normalizeRiskDomainToken));
+  const gates = domains
+    .map((domain) => REGULATED_DOMAIN_REVIEWER_GATES[domain])
+    .filter(Boolean)
+    .map(copyRegulatedGate);
+  const reviewerGateAgentIds = unique(gates.flatMap((gate) => gate.reviewerGateAgentIds || []));
+  const mandatoryEvidence = unique(gates.flatMap((gate) => gate.mandatoryEvidence || []));
+  const decisions = reviewerGateAgentIds.map((agentId) => ({
+    selectorId: "regulated-domain-reviewer-gates",
+    decision: "select",
+    agentId,
+    reason: `regulated domain gate requires reviewer for ${gates.map((gate) => gate.domain).join(", ")}`,
+    gateDomains: gates.map((gate) => gate.domain),
+  }));
+  if (domains.length && gates.length === 0) {
+    decisions.push({
+      selectorId: "regulated-domain-reviewer-gates",
+      decision: "skip",
+      subject: domains.join(","),
+      reason: "risk domains are not configured as regulated gates",
+    });
+  }
+  return { gates, reviewerGateAgentIds, mandatoryEvidence, decisions };
+}
+
+function selectIntentAgents(context = normalizeSelectorContext()) {
+  const intent = context.intent || "";
+  const matched = Object.entries(INTENT_AGENT_HINTS)
+    .filter(([token]) => intent === token || intent.includes(token))
+    .flatMap(([, agents]) => agents);
+  if (!matched.length) return [skip("intent-router", "no intent-specific agent hint matched")];
+  return unique(matched).map((agentId) => select(agentId, `intent=${intent}`));
+}
+
+function selectArtifactOwners(context = normalizeSelectorContext()) {
+  const artifactType = normalizeArtifactToken(context.artifactType);
+  const agents = ARTIFACT_OWNER_AGENTS[artifactType] || [];
+  if (!agents.length) return [skip("artifact-owner", `no artifact owner mapping for ${artifactType || "unspecified"}`)];
+  return agents.map((agentId) => select(agentId, `artifactType=${artifactType}`));
+}
+
+function selectDomainSpecialists(context = normalizeSelectorContext()) {
+  const domains = unique(context.riskDomains.map(normalizeRiskDomainToken));
+  const agents = [];
+  for (const domain of domains) {
+    const gate = REGULATED_DOMAIN_REVIEWER_GATES[domain];
+    if (gate) agents.push("best-practices-researcher", ...(gate.reviewerGateAgentIds || []));
+  }
+  if (!agents.length) return [skip("domain-specialists", "no regulated or specialist domain signal")];
+  return unique(agents).map((agentId) => select(agentId, `riskDomain=${domains.join(",")}`));
+}
+
+function selectRiskReviewers(context = normalizeSelectorContext()) {
+  const risks = unique([
+    ...context.riskDomains,
+    riskFromArtifact(context.artifactType),
+  ].filter(Boolean).map(normalizeRiskDomainToken));
+  const agents = unique(risks.flatMap((risk) => RISK_REVIEWER_AGENTS[risk] || []));
+  if (!agents.length) return [skip("risk-reviewers", "no risk reviewer mapping matched")];
+  return agents.map((agentId) => select(agentId, `risk=${risks.join(",")}`));
+}
+
+function selectStageReviewers(context = normalizeSelectorContext()) {
+  const stage = context.stage || "";
+  const artifactType = context.artifactType || "";
+  const agents = [];
+  if (["review", "gate", "quality-gate", "release"].some((token) => stage.includes(token))) {
+    agents.push("code-reviewer", "quality-gate-reviewer");
+  }
+  if (stage.includes("release") || stage.includes("deploy")) {
+    agents.push("release-governance-reviewer", "devops-sre");
+  }
+  if (["design", "prototype", "ui"].some((token) => artifactType.includes(token) || stage.includes(token))) {
+    agents.push("ui-polish-reviewer", "accessibility-reviewer");
+  }
+  if (!agents.length) return [skip("stage-reviewers", "no stage reviewer mapping matched")];
+  return unique(agents).map((agentId) => select(agentId, `stage=${stage || "unspecified"}`));
+}
+
+function selectStackAgents(context = normalizeSelectorContext(), group = "implementers") {
+  const rows = [];
+  for (const stackTag of context.stackTags) {
+    const stack = normalizeStackToken(stackTag);
+    const config = STACK_SPECIALIST_AGENTS[stack];
+    if (!config) {
+      rows.push(skip(stack, `no stack specialist mapping for ${stack}`));
+      continue;
+    }
+    const agents = config[group] || [];
+    if (!agents.length) {
+      rows.push(skip(stack, `no ${group} specialists for ${stack}`));
+      continue;
+    }
+    rows.push(...agents.map((agentId) => select(agentId, `stack=${stack} group=${group}`)));
+  }
+  return rows.length ? rows : [skip(`stack-${group}`, "no stack tags supplied")];
+}
+
+function normalizeSelectorContext(workflowContext = {}) {
+  return {
+    intent: normalizeContextToken(workflowContext.intent || workflowContext.commandIntent || workflowContext.routeIntent || ""),
+    stackTags: normalizeList(workflowContext.stackTags ?? workflowContext.stackTag ?? workflowContext.stacks ?? workflowContext.stack)
+      .map(normalizeStackToken),
+    riskDomains: normalizeList(workflowContext.riskDomains ?? workflowContext.riskDomain ?? workflowContext.domain ?? workflowContext.domains)
+      .map(normalizeRiskDomainToken),
+    artifactType: normalizeArtifactToken(workflowContext.artifactType || workflowContext.artifact || workflowContext.targetArtifact || ""),
+    stage: normalizeContextToken(workflowContext.stage || workflowContext.workflowStage || workflowContext.phase || ""),
+    lowRisk: workflowContext.lowRisk === true || workflowContext["low-risk"] === true,
+  };
+}
+
+function normalizeList(value) {
+  if (Array.isArray(value)) return unique(value.flatMap((item) => normalizeList(item)));
+  if (value === undefined || value === null || value === "") return [];
+  return String(value)
+    .split(/[,\s;|]+/u)
+    .map(normalizeContextToken)
+    .filter(Boolean);
+}
+
+function normalizeStackToken(value = "") {
+  const token = normalizeContextToken(value);
+  return STACK_ALIASES[token] || token;
+}
+
+function normalizeRiskDomainToken(value = "") {
+  const token = normalizeContextToken(value);
+  if (["payments", "payment", "billing", "banking"].includes(token)) return "finance";
+  if (["gov", "public-sector"].includes(token)) return "government";
+  if (["medical-care", "healthcare"].includes(token)) return "health";
+  if (["privacy-compliance", "pii"].includes(token)) return "privacy";
+  if (["sec", "security-audit"].includes(token)) return "security";
+  return token;
+}
+
+function normalizeArtifactToken(value = "") {
+  const token = normalizeContextToken(value);
+  if (["work-item", "work-items", "task-graph", "tasks"].includes(token)) return "task";
+  if (["prototype-set", "mockup", "mockups", "screen"].includes(token)) return "prototype";
+  if (["command-route", "route", "router"].includes(token)) return "command";
+  if (["skill-file"].includes(token)) return "skill";
+  return token;
+}
+
+function normalizeContextToken(value = "") {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/_/g, "-")
+    .replace(/[^\p{L}\p{N}.+#/-]+/gu, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function riskFromArtifact(artifactType = "") {
+  const artifact = normalizeArtifactToken(artifactType);
+  if (artifact === "api") return "api";
+  if (artifact === "db" || artifact === "database") return "database";
+  if (artifact === "prototype" || artifact === "ui" || artifact === "design") return "accessibility";
+  if (artifact === "release" || artifact === "deploy") return "release";
+  return "";
+}
+
+function regulatedGate(domain, reviewerGateAgentIds = [], mandatoryEvidence = []) {
+  return Object.freeze({
+    domain,
+    reviewerGateAgentIds: Object.freeze(unique(reviewerGateAgentIds)),
+    mandatoryEvidence: Object.freeze(unique(mandatoryEvidence)),
+  });
+}
+
+function copyRegulatedGate(gate = {}) {
+  return {
+    domain: gate.domain,
+    reviewerGateAgentIds: [...(gate.reviewerGateAgentIds || [])],
+    mandatoryEvidence: [...(gate.mandatoryEvidence || [])],
+  };
+}
+
+function select(agentId, reason, extra = {}) {
+  return {
+    decision: "select",
+    agentId,
+    reason,
+    ...extra,
+  };
+}
+
+function skip(subject, reason, extra = {}) {
+  return {
+    decision: "skip",
+    subject,
+    reason,
+    ...extra,
+  };
+}
+
+function formatSelectorInputs(inputs = {}) {
+  const stackTags = (inputs.stackTags || []).join(",") || "none";
+  const riskDomains = (inputs.riskDomains || []).join(",") || "none";
+  return [
+    `intent=${inputs.intent || "none"}`,
+    `stackTags=${stackTags}`,
+    `riskDomains=${riskDomains}`,
+    `artifactType=${inputs.artifactType || "none"}`,
+    `stage=${inputs.stage || "none"}`,
+  ].join(" ");
 }
 
 function normalizeImmediateAgentIds(profile, requiredAgentIds) {

@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -31,7 +33,12 @@ test("design workflow report separates declared maturity from active readiness",
   assert.equal(report.pass, false);
   assert.equal(report.declaredMaturity, "10/10-global-diagnostic");
   assert.equal(report.activeWorkflowReadiness, "blocked");
+  assert.equal(report.releaseGate.pass, false);
+  assert.equal(report.releaseGate.status, "blocked");
+  assert.equal(report.strictChecks.receiptCoveragePass, "not-checked");
   assert.match(formatDesignWorkflowReport(report), /ACTIVE_WORKFLOW_READINESS: blocked/);
+  assert.match(formatDesignWorkflowReport(report), /RELEASE_GATE: blocked/);
+  assert.match(formatDesignWorkflowReport(report), /STRICT_CHECKS:/);
   assert.match(formatDesignWorkflowReport(report), /NEXT_REPAIR_ACTION: run real specialists/);
 });
 
@@ -61,6 +68,7 @@ test("design workflow report does not mark not-started workflow as ready", () =>
   assert.equal(report.pass, false);
   assert.equal(report.status, "not-started");
   assert.equal(report.activeWorkflowReadiness, "not-started");
+  assert.equal(report.releaseGate.status, "not-started");
   assert.match(formatDesignWorkflowReport(report), /ACTIVE_WORKFLOW_READINESS: not-started/);
 });
 
@@ -104,6 +112,8 @@ test("design workflow report lists required agents, missing receipts, and eviden
 
   assert.deepEqual(report.requiredAgents, ["creative-director", "prototype-builder"]);
   assert.deepEqual(report.missingReceipts, ["prototype-builder"]);
+  assert.equal(report.strictChecks.variantSetPass, false);
+  assert.equal(report.strictChecks.screenshotSimilarityPass, false);
   assert.ok(report.evidencePaths.includes(".supervibe/artifacts/prototypes/agent-chat/variant-manifest.json"));
   assert.ok(report.evidencePaths.includes(".supervibe/artifacts/prototypes/agent-chat/screenshot-similarity.json"));
 });
@@ -128,4 +138,25 @@ test("design workflow report CLI emits JSON", () => {
 
   assert.equal(parsed.schemaVersion, 1);
   assert.ok(["not-started", "blocked", "ready"].includes(parsed.activeWorkflowReadiness));
+});
+
+test("design workflow report CLI treats non-active not-started state as diagnostic success", () => {
+  const root = mkdtempSync(join(tmpdir(), "supervibe-design-workflow-report-cli-"));
+  let output = "";
+  try {
+    output = execFileSync(process.execPath, [
+      join(ROOT, "scripts", "validate-design-workflow-report.mjs"),
+      "--root",
+      root,
+    ], {
+      cwd: ROOT,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+
+  assert.match(output, /SUPERVIBE_DESIGN_WORKFLOW_REPORT/);
+  assert.match(output, /STATUS: not-started/);
 });

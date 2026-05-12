@@ -4,6 +4,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { parseArgs } from 'node:util';
 import { resolveActiveWorkItemGraph } from './lib/supervibe-work-item-registry.mjs';
+import { parseTaskBudgetPolicyFromText } from './lib/supervibe-task-budget-policy.mjs';
 
 const PLACEHOLDER_PATTERNS = [
   /\bTBD\b/i,
@@ -72,10 +73,10 @@ function hasFiles(body) {
 }
 
 function hasEstimate(body) {
-  return /\*\*Estimated time:\*\*/i.test(body) && /confidence\s*:\s*(high|medium|low)/i.test(body);
+  return /\*\*Estimated time:\*\*/i.test(body) && /confidence\s*:?\s*(high|medium|low)/i.test(body);
 }
 
-function hasTaskMetadata(body) {
+function requiredTaskFieldIssues(body) {
   const required = [
     ["scope ids", /\*\*Scope IDs:\*\*\s*\S/i],
     ["requirement ids", /\*\*Requirement IDs:\*\*\s*\S/i],
@@ -83,7 +84,9 @@ function hasTaskMetadata(body) {
     ["acceptance criteria", /\*\*Acceptance Criteria:\*\*/i],
     ["stop conditions", /\*\*Stop conditions:\*\*\s*\S/i],
   ];
-  return required.filter(([, re]) => !re.test(body)).map(([name]) => name);
+  const missing = required.filter(([, re]) => !re.test(body)).map(([name]) => name);
+  if (!hasEstimate(body)) missing.push("estimated time with confidence");
+  return missing;
 }
 
 function acceptanceBody(body) {
@@ -100,6 +103,12 @@ function hasGenericAcceptance(body) {
     /\bmake it work\b/i,
     /\bshould work\b/i,
   ].some(re => re.test(acceptance));
+}
+
+function hasUserApprovedScopeReview(selfReview, scopeSafety) {
+  const explicitScopeReview = /(Scope consistency|user-approved scope|approved scope|scope boundary|scope decisions|scope expansion)/i.test(selfReview);
+  const matrixTiedToApprovedScope = /\|\s*Requirement\s*\|\s*Task\s*\|/i.test(selfReview) && /approved scope/i.test(scopeSafety);
+  return explicitScopeReview || matrixTiedToApprovedScope;
 }
 
 function hasPlaceholder(markdown) {
@@ -169,10 +178,17 @@ export function validatePlanArtifact(markdown) {
   for (const term of ['approved', 'deferred', 'rejected', 'tradeoff']) {
     if (!new RegExp(term, 'i').test(scopeSafety)) issues.push(`scope safety gate: missing ${term}`);
   }
+  if (!/scope expansion/i.test(scopeSafety)) {
+    issues.push('scope safety gate: missing scope expansion rule');
+  }
 
   const deliveryStrategy = sectionBody(markdown, 'Delivery Strategy');
   for (const term of ['MVP', 'phase', 'production', 'value', 'anti-bloat']) {
     if (!new RegExp(term, 'i').test(deliveryStrategy)) issues.push(`delivery strategy: missing ${term}`);
+  }
+  const taskBudgetPolicy = parseTaskBudgetPolicyFromText(deliveryStrategy);
+  if (!taskBudgetPolicy.hasExplicitPolicy) {
+    issues.push('delivery strategy: missing task budget policy with max tasks per phase, max child items per atomization run, and phase-split rule');
   }
 
   const productionReadiness = sectionBody(markdown, 'Production Readiness');
@@ -192,11 +208,10 @@ export function validatePlanArtifact(markdown) {
   for (const task of tasks) {
     const prefix = `task ${task.title} (line ${task.line})`;
     if (!hasFiles(task.body)) issues.push(`${prefix}: missing Files block with Create/Modify/Test path`);
-    if (!hasEstimate(task.body)) issues.push(`${prefix}: missing estimate with confidence`);
     if (!hasRollback(task.body)) issues.push(`${prefix}: missing rollback`);
     if (!hasRisks(task.body)) issues.push(`${prefix}: missing risks/mitigation`);
-    const missingMetadata = hasTaskMetadata(task.body);
-    for (const item of missingMetadata) issues.push(`${prefix}: missing ${item}`);
+    const missingFields = requiredTaskFieldIssues(task.body);
+    for (const item of missingFields) issues.push(`${prefix}: missing ${item}`);
     if (!hasCheckboxSteps(task.body)) issues.push(`${prefix}: missing bite-sized checkbox steps`);
     if (!hasFailingTest(task.body)) issues.push(`${prefix}: missing failing-test-first/red phase evidence`);
     if (!hasVerification(task.body)) issues.push(`${prefix}: missing verification command/code block`);
@@ -210,6 +225,9 @@ export function validatePlanArtifact(markdown) {
   }
   if (!/\|\s*Requirement\s*\|\s*Task\s*\|/i.test(selfReview)) {
     issues.push('self-review: missing spec coverage matrix');
+  }
+  if (!hasUserApprovedScopeReview(selfReview, scopeSafety)) {
+    issues.push('self-review: missing user-approved scope consistency check');
   }
 
   const handoff = sectionBody(markdown, 'Execution Handoff');
@@ -323,9 +341,11 @@ async function main() {
       : await walkMarkdown(join(root, '.supervibe', 'artifacts', 'plans'));
 
   let failed = 0;
+  const validatedFiles = new Map();
   for (const file of files) {
     const markdown = await readFile(file, 'utf8');
     const issues = validatePlanArtifact(markdown);
+    validatedFiles.set(resolve(root, file), issues);
     const rel = relative(root, file).split(sep).join('/');
     if (issues.length === 0) {
       console.log(`OK   plan       ${rel}`);
@@ -338,7 +358,17 @@ async function main() {
 
   const activeSource = await inspectActivePlanSource({ rootDir: root });
   if (activeSource.status === 'original') {
-    console.log(`OK   active-source ${toRel(root, activeSource.sourcePath)}`);
+    const sourceKey = resolve(activeSource.sourcePath);
+    const sourceIssues = validatedFiles.has(sourceKey)
+      ? validatedFiles.get(sourceKey)
+      : validatePlanArtifact(await readFile(activeSource.sourcePath, 'utf8'));
+    if (sourceIssues.length > 0) {
+      if (!validatedFiles.has(sourceKey)) failed++;
+      console.error(`FAIL active-source ${toRel(root, activeSource.sourcePath)}`);
+      for (const issue of sourceIssues) console.error(`  - ${issue}`);
+    } else {
+      console.log(`OK   active-source ${toRel(root, activeSource.sourcePath)}`);
+    }
   } else if (activeSource.status === 'snapshot') {
     if (values['require-active-source']) failed++;
     const write = values['require-active-source'] ? console.error : console.warn;
@@ -349,7 +379,12 @@ async function main() {
     write(`${values['require-active-source'] ? 'FAIL' : 'WARN'} active-source ${toRel(root, activeSource.graphPath)}`);
     for (const issue of activeSource.issues) write(`  - ${issue}`);
   } else if (files.length === 0) {
-    console.log('[validate-plan-artifacts] no .supervibe/artifacts/plans/*.md files found and no active work graph source to inspect; skipping');
+    if (values['require-active-source']) {
+      failed++;
+      console.error('FAIL plan-source strict mode found zero plan artifacts and no original active source');
+    } else {
+      console.log('[validate-plan-artifacts] no .supervibe/artifacts/plans/*.md files found and no active work graph source to inspect; skipping');
+    }
   }
 
   if (failed > 0) {

@@ -3,6 +3,7 @@ import { basename, join, relative } from "node:path";
 
 import {
   COMMAND_AGENT_ORCHESTRATION_CONTRACT,
+  COMMAND_AGENT_SELECTOR_INPUT_FIELDS,
   copyCommandAgentContract,
   getCommandAgentProfile,
 } from "./command-agent-orchestration-contract.mjs";
@@ -858,9 +859,15 @@ export function formatCommandMatch(match) {
     match.agentContract ? `AGENT_BLOCKED_MODE: ${match.agentContract.blockedMode}` : null,
     match.agentContract ? `AGENT_PROOF: ${match.agentContract.requiredReceiptFields.join(", ")}` : null,
     match.agentProfile ? `REQUIRED_AGENTS: ${match.agentProfile.requiredAgentIds.join(", ")}` : null,
+    match.agentProfile ? `DYNAMIC_SELECTORS: ${(match.agentProfile.dynamicAgentSelectors || []).join(", ") || "none"}` : null,
+    match.agentProfile ? `SELECTOR_INPUT_FIELDS: ${(match.agentProfile.selectorInputFields || COMMAND_AGENT_SELECTOR_INPUT_FIELDS).join(", ")}` : null,
     match.agentProfile ? `AGENT_PLAN_COMMAND: node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command ${match.agentProfile.commandId}` : null,
     match.agentContract ? `AGENT_EMULATION: ${match.agentContract.emulationPolicy}` : null,
     ...(match.followUpCommands?.length ? ["FOLLOW_UP_COMMANDS:", ...match.followUpCommands.map((command) => `- ${command}`)] : []),
+    match.diagnostics?.selectedBecause ? `SELECTED_BECAUSE: ${match.diagnostics.selectedBecause}` : null,
+    ...(match.diagnostics?.closeCandidates?.length
+      ? match.diagnostics.closeCandidates.map((candidate) => `CLOSE_CANDIDATE: ${candidate.id} intent=${candidate.intent} confidence=${candidate.confidence} reason=${candidate.reason}`)
+      : []),
     `WHY: ${match.reason}`,
     `NEXT: ${match.nextAction}`,
   ].filter(Boolean).join("\n");
@@ -883,6 +890,7 @@ function createSlashShortcut(profile) {
     priorityPhrases: profile.priorityPhrases || [],
     agentContract: copyCommandAgentContract(),
     agentProfile: getCommandAgentProfile(profile.command),
+    selectorInputFields: COMMAND_AGENT_SELECTOR_INPUT_FIELDS,
     mutationRisk: "delegates-to-slash-command",
     directRoute,
     requiredGroupIndexes: profile.requiredGroupIndexes || [0, 1],
@@ -1014,6 +1022,7 @@ function copyShortcut(shortcut) {
     keywordGroups: (shortcut.keywordGroups || []).map((group) => [...group]),
     requiredGroupIndexes: [...(shortcut.requiredGroupIndexes || [])],
     followUpCommands: [...(shortcut.followUpCommands || [])],
+    selectorInputFields: [...(shortcut.selectorInputFields || COMMAND_AGENT_SELECTOR_INPUT_FIELDS)],
     agentContract: shortcut.agentContract ? copyCommandAgentContract(shortcut.agentContract) : undefined,
     agentProfile: shortcut.agentProfile ? copyAgentProfile(shortcut.agentProfile) : undefined,
   };
@@ -1119,6 +1128,7 @@ function copyAgentProfile(profile) {
     ...profile,
     requiredAgentIds: [...(profile.requiredAgentIds || [])],
     dynamicAgentSelectors: [...(profile.dynamicAgentSelectors || [])],
+    selectorInputFields: [...(profile.selectorInputFields || COMMAND_AGENT_SELECTOR_INPUT_FIELDS)],
     executionModes: [...(profile.executionModes || [])],
     requiredPlanFields: [...(profile.requiredPlanFields || [])],
     requiredReceiptFields: [...(profile.requiredReceiptFields || [])],

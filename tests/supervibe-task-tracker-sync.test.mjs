@@ -199,6 +199,26 @@ test("tracker mapping validation rejects stale or duplicate native links before 
   assert.ok(report.issues.some((item) => item.code === "orphan-mapping"));
 });
 
+test("tracker mapping refreshes native item status and hash on repeated sync", async () => {
+  const graph = sampleGraph();
+  const pushed = await syncPush(graph, createMemoryTaskTrackerAdapter(), { dryRun: true });
+  const taskId = graph.items.find((item) => item.type !== "epic").itemId;
+  const originalHash = pushed.mapping.items[taskId].itemHash;
+  const closedGraph = {
+    ...graph,
+    items: graph.items.map((item) => item.itemId === taskId ? { ...item, status: "closed" } : item),
+    tasks: graph.tasks.map((task) => task.id === taskId ? { ...task, status: "complete" } : task),
+  };
+
+  const refreshed = await syncPush(closedGraph, createMemoryTaskTrackerAdapter(), {
+    dryRun: true,
+    mapping: pushed.mapping,
+  });
+
+  assert.equal(refreshed.mapping.items[taskId].nativeStatus, "closed");
+  assert.notEqual(refreshed.mapping.items[taskId].itemHash, originalHash);
+});
+
 test("tracker sync reports native, external, and both-changed conflicts without mutating mapping", async () => {
   const graph = sampleGraph();
   const pushed = await syncPush(graph, createMemoryTaskTrackerAdapter(), { dryRun: true });

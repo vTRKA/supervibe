@@ -1,7 +1,8 @@
 import { createServer } from "node:http";
-import { readFile } from "node:fs/promises";
+import { createHash, randomUUID } from "node:crypto";
+import { appendFile, mkdir, readFile } from "node:fs/promises";
 import { existsSync, statSync } from "node:fs";
-import { relative, resolve, sep } from "node:path";
+import { dirname, relative, resolve, sep } from "node:path";
 import { CodeStore } from "./code-store.mjs";
 import { MemoryStore } from "./memory-store.mjs";
 import { SQLITE_NODE_MIN_VERSION, hasNodeSqliteSupport } from "./node-sqlite-runtime.mjs";
@@ -24,6 +25,7 @@ export function createSupervibeUiServer({
   rootDir = process.cwd(),
   graphPath = null,
 } = {}) {
+  const previewTokens = new Map();
   const server = createServer(async (req, res) => {
     try {
       const url = new URL(req.url, "http://127.0.0.1");
@@ -150,12 +152,36 @@ export function createSupervibeUiServer({
       }
       if (url.pathname === "/api/action" && req.method === "POST") {
         const body = await readJsonBody(req);
-        if (body.apply === true && body.confirm !== "apply-local") {
-          throw new Error("apply requires confirm=apply-local after preview");
-        }
         const file = await resolveGraphPath({ rootDir, requested: body.file || graphPath });
-        const result = await mutateWorkItemGraphFile(file, { ...body, rootDir, dryRun: body.apply !== true });
-        return sendJson(res, result);
+        const scope = createPreviewTokenScope({ file, body });
+        if (body.apply === true) {
+          if (body.confirm !== "apply-local") {
+            await appendUiActionAudit({ rootDir, file, body, status: "rejected", reason: "missing-confirm" });
+            throw new Error("apply requires confirm=apply-local after preview");
+          }
+          const tokenCheck = consumePreviewToken(previewTokens, body.previewToken, scope);
+          if (!tokenCheck.pass) {
+            await appendUiActionAudit({ rootDir, file, body, status: "rejected", reason: tokenCheck.reason });
+            throw new Error(`apply requires valid previewToken from the matching preview: ${tokenCheck.reason}`);
+          }
+          const result = await mutateWorkItemGraphFile(file, { ...body, rootDir, dryRun: false });
+          await appendUiActionAudit({ rootDir, file, body, result, status: "applied", previewToken: body.previewToken });
+          return sendJson(res, { ...result, previewTokenAccepted: true });
+        }
+        const result = await mutateWorkItemGraphFile(file, { ...body, rootDir, dryRun: true });
+        const previewToken = randomUUID();
+        const previewTokenExpiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+        previewTokens.set(previewToken, {
+          ...scope,
+          expiresAtMs: Date.parse(previewTokenExpiresAt),
+        });
+        await appendUiActionAudit({ rootDir, file, body, result, status: "previewed", previewToken });
+        return sendJson(res, {
+          ...result,
+          previewToken,
+          previewTokenExpiresAt,
+          applyRequires: "confirm=apply-local and matching previewToken",
+        });
       }
       return sendJson(res, { error: "not found" }, 404);
     } catch (err) {
@@ -1420,6 +1446,69 @@ function resolveSafe(rootDir, file) {
   const full = resolve(rootDir, file);
   if (!full.startsWith(root)) throw new Error("path escapes project root");
   return full;
+}
+
+function createPreviewTokenScope({ file, body = {} } = {}) {
+  return {
+    file: resolve(file),
+    type: String(body.type || body.action || "").toLowerCase(),
+    itemId: body.itemId || body.id || null,
+    payloadHash: hashPreviewMutationPayload(body),
+  };
+}
+
+function consumePreviewToken(tokens, token, scope) {
+  const value = String(token || "").trim();
+  if (!value) return { pass: false, reason: "missing previewToken" };
+  const record = tokens.get(value);
+  if (!record) return { pass: false, reason: "unknown previewToken" };
+  tokens.delete(value);
+  if (record.expiresAtMs && record.expiresAtMs < Date.now()) return { pass: false, reason: "expired previewToken" };
+  if (
+    record.file !== scope.file
+    || record.type !== scope.type
+    || record.itemId !== scope.itemId
+    || record.payloadHash !== scope.payloadHash
+  ) {
+    return { pass: false, reason: "previewToken scope mismatch" };
+  }
+  return { pass: true };
+}
+
+function hashPreviewMutationPayload(body = {}) {
+  const canonical = canonicalizeActionPayload(body);
+  return createHash("sha256").update(JSON.stringify(canonical)).digest("hex");
+}
+
+function canonicalizeActionPayload(value) {
+  if (Array.isArray(value)) return value.map(canonicalizeActionPayload);
+  if (!value || typeof value !== "object") return value;
+  const ignored = new Set(["apply", "confirm", "previewToken", "previewTokenExpiresAt"]);
+  return Object.fromEntries(
+    Object.keys(value)
+      .filter((key) => !ignored.has(key))
+      .sort()
+      .map((key) => [key, canonicalizeActionPayload(value[key])]),
+  );
+}
+
+async function appendUiActionAudit({ rootDir, file, body = {}, result = null, status, reason = null, previewToken = null } = {}) {
+  const auditPath = resolve(rootDir, ".supervibe", "memory", "ui-action-audit.jsonl");
+  await mkdir(dirname(auditPath), { recursive: true });
+  const record = {
+    schemaVersion: 1,
+    ts: new Date().toISOString(),
+    status,
+    reason,
+    file: relative(rootDir, file).split(sep).join("/"),
+    action: String(body.type || body.action || "").toLowerCase(),
+    itemId: body.itemId || body.id || null,
+    apply: body.apply === true,
+    previewTokenIssued: status === "previewed" ? Boolean(previewToken) : false,
+    previewTokenUsed: status === "applied" ? Boolean(previewToken) : false,
+    changed: result?.changed ?? null,
+  };
+  await appendFile(auditPath, `${JSON.stringify(record)}\n`, "utf8");
 }
 
 async function resolveGraphPath({ rootDir, requested }) {

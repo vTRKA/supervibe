@@ -20,6 +20,9 @@ const { values } = parseArgs({
     type: { type: 'string', default: '' },
     limit: { type: 'string', short: 'n', default: '5' },
     'min-confidence': { type: 'string', default: '0' },
+    'busy-timeout-ms': { type: 'string', default: '5000' },
+    'read-retry-attempts': { type: 'string', default: '3' },
+    'read-retry-delay-ms': { type: 'string', default: '25' },
     graph: { type: 'boolean', default: false },
     'include-history': { type: 'boolean', default: false },
     'include-superseded': { type: 'boolean', default: false }
@@ -33,7 +36,10 @@ const opts = {
   tags: values.tags ? values.tags.split(',').filter(Boolean) : [],
   type: values.type || null,
   limit: parseInt(values.limit, 10),
-  minConfidence: parseInt(values['min-confidence'], 10)
+  minConfidence: parseInt(values['min-confidence'], 10),
+  busyTimeoutMs: parseInt(values['busy-timeout-ms'], 10),
+  readRetryAttempts: parseInt(values['read-retry-attempts'], 10),
+  readRetryDelayMs: parseInt(values['read-retry-delay-ms'], 10)
 };
 
 try {

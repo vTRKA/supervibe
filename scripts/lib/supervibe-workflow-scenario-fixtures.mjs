@@ -1,0 +1,126 @@
+export const WORKFLOW_INTENT_SCENARIO_FIXTURES = Object.freeze([
+  scenario({
+    id: "design-web-prototype",
+    request: "build a UI prototype with feedback overlay",
+    expectedIntent: "design_new",
+    expectedCommand: "/supervibe-design",
+    workflowContext: {
+      intent: "design_new",
+      stackTags: ["react", "web"],
+      riskDomains: [],
+      artifactType: "prototype",
+      stage: "exploration",
+    },
+    expectedAgents: ["prototype-builder", "ux-ui-designer", "ui-polish-reviewer", "accessibility-reviewer"],
+  }),
+  scenario({
+    id: "audit-agent-maturity",
+    request: "audit agent system maturity out of 10",
+    expectedIntent: "supervibe_audit",
+    expectedCommand: "/supervibe-audit",
+    workflowContext: {
+      intent: "audit",
+      stackTags: ["node"],
+      riskDomains: ["security"],
+      artifactType: "agent",
+      stage: "audit",
+    },
+    expectedAgents: ["repo-researcher", "memory-curator", "security-auditor", "security-researcher"],
+  }),
+  scenario({
+    id: "finance-plan-review",
+    request: "create implementation plan",
+    expectedIntent: "supervibe_plan",
+    expectedCommand: "/supervibe-plan",
+    workflowContext: {
+      intent: "plan",
+      stackTags: ["nextjs", "postgres"],
+      riskDomains: ["finance"],
+      artifactType: "plan",
+      stage: "review",
+    },
+    expectedAgents: ["nextjs-architect", "postgres-architect", "payments-billing-architect", "privacy-compliance-architect", "security-auditor", "release-governance-reviewer"],
+  }),
+  scenario({
+    id: "adapt-artifact-update",
+    request: "adapt project artifacts after update",
+    expectedIntent: "supervibe_adapt",
+    expectedCommand: "/supervibe-adapt",
+    workflowContext: {
+      intent: "adapt",
+      stackTags: ["laravel"],
+      riskDomains: [],
+      artifactType: "rules",
+      stage: "apply",
+    },
+    expectedAgents: ["laravel-developer", "rules-curator", "memory-curator"],
+  }),
+  scenario({
+    id: "gc-memory-cleanup",
+    request: "garbage collect memory",
+    expectedIntent: "supervibe_gc",
+    expectedCommand: "/supervibe-gc",
+    workflowContext: {
+      intent: "gc",
+      stackTags: [],
+      riskDomains: [],
+      artifactType: "memory",
+      stage: "cleanup",
+    },
+    expectedAgents: ["memory-curator", "repo-researcher", "quality-gate-reviewer"],
+  }),
+  scenario({
+    id: "plan-review",
+    request: "review plan with specialist agents",
+    expectedIntent: "plan_review",
+    expectedCommand: "/supervibe-plan --review",
+    workflowContext: {
+      intent: "review",
+      stackTags: ["react"],
+      riskDomains: ["performance"],
+      artifactType: "plan",
+      stage: "review",
+    },
+    expectedAgents: ["architect-reviewer", "code-reviewer", "performance-reviewer"],
+  }),
+  scenario({
+    id: "loop-continuation",
+    request: "continue loop",
+    expectedIntent: "task_graph_resume",
+    expectedCommand: "/supervibe-loop --status",
+    workflowContext: {
+      intent: "loop",
+      stackTags: ["nextjs"],
+      riskDomains: [],
+      artifactType: "task",
+      stage: "execution",
+    },
+    expectedAgents: ["ai-agent-orchestrator", "nextjs-developer", "react-implementer"],
+  }),
+  scenario({
+    id: "ambiguous-status",
+    request: "show project status",
+    expectedIntent: "supervibe_status",
+    expectedCommand: "/supervibe-status",
+    workflowContext: {
+      intent: "status",
+      stackTags: [],
+      riskDomains: [],
+      artifactType: "workflow",
+      stage: "status",
+    },
+    expectedAgents: ["repo-researcher", "observability-architect", "devops-sre"],
+  }),
+]);
+
+function scenario(fields) {
+  return Object.freeze({
+    ...fields,
+    workflowContext: Object.freeze({
+      ...fields.workflowContext,
+      stackTags: Object.freeze([...(fields.workflowContext.stackTags || [])]),
+      riskDomains: Object.freeze([...(fields.workflowContext.riskDomains || [])]),
+    }),
+    expectedAgents: Object.freeze([...(fields.expectedAgents || [])]),
+  });
+}

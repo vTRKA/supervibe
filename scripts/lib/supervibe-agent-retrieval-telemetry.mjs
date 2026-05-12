@@ -469,7 +469,16 @@ function hasProvidedRetrievalPolicy(policy = {}) {
   ));
   if (hasMandatorySource) return true;
   if (policy.provided === false) return false;
+  if (policy.provided === true) return true;
+  if (hasExplicitSourcePolicy(policy) || hasExplicitSourcePolicy(nested)) return true;
   return false;
+}
+
+function hasExplicitSourcePolicy(policy = {}) {
+  return ["memory", "rag", "codegraph"].some((source) => (
+    policy[source] !== undefined
+    || policy.sources?.[source] !== undefined
+  ));
 }
 
 function sourceSatisfactionRate(entries = [], source) {

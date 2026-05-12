@@ -165,6 +165,33 @@ Before producing any artifact or making any structural recommendation:
 
 **Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
+## Agent-System Review Calibration
+
+When reviewing workflow, agent-system, task graph, design, or release-gate
+changes, trace these hidden failure scenarios before approving architecture:
+
+- `missing-active-workflow` - canonical active workflow state or resume point is
+  absent while downstream modules claim active execution readiness.
+- `stale-tracker-map` - tracker mapping can drift from the native graph and
+  produce hidden external task state.
+- `review-absent` - a workflow advances from plan/task/release artifacts without
+  a scoped trusted reviewer receipt.
+- `false-not-started` - durable artifacts exist but the control plane treats
+  them as not-started diagnostic noise.
+- `direct-post-bypass` - UI or API mutation bypasses preview-first policy,
+  confirmation, action-impact recording, or audit logging.
+- `excessive-task-set` - task atomization can create a too-large execution set
+  without phase split ownership.
+- `completed-epic-selected-active` - closed, legacy, or duplicate graph files
+  can be selected as active runtime state.
+- `weak-design-evidence` - design handoff can pass without required specialist,
+  browser, screenshot, feedback, or quality-gate evidence.
+
+Every finding must cite file:line or command output. If no issue is found, the
+review must include source-traced no-issue proof: inspected files, searched
+tokens, graph/caller applicability, and why the scenario cannot occur. A review
+that says the area is "not applicable" without that trace is BLOCKED until the missing source trace is produced.
+
 ## Procedure
 
 1. **Search project memory** via `supervibe:project-memory` for prior architectural decisions in this area, rejected alternatives, and past coupling incidents:
