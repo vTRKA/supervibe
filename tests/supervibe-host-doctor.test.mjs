@@ -26,7 +26,7 @@ test("host doctor validates current multi-host package surfaces without local ho
   });
 
   assert.equal(result.pass, true);
-  assert.equal(result.packageVersion, "2.1.29");
+  assert.equal(result.packageVersion, "2.1.30");
   assert.equal(result.hosts.length, 5);
   assert.ok(result.hosts.every((host) => host.pass), "default mode should warn, not fail, when local CLIs are absent");
 
@@ -73,14 +73,18 @@ test("strict host doctor accepts complete Codex cache/config/native skill regist
   const homeDir = await mkdtemp(join(tmpdir(), "supervibe-host-home-"));
   await mkdir(join(homeDir, ".codex", "plugins", "cache", "supervibe-marketplace", "supervibe", "local"), { recursive: true });
   await mkdir(join(homeDir, ".agents", "skills", "supervibe"), { recursive: true });
-  await writeFile(join(homeDir, ".codex", "config.toml"), [
-    "[features]",
-    "plugins = true",
-    "",
-    "[plugins.\"supervibe@supervibe-marketplace\"]",
-    "enabled = true",
-    "",
-  ].join("\n"), "utf8");
+    await writeFile(join(homeDir, ".codex", "config.toml"), [
+      "[features]",
+      "apps = true",
+      "",
+      "[apps._default]",
+      "enabled = true",
+      "",
+      "[[tool_suggest.discoverables]]",
+      "type = \"plugin\"",
+      "id = \"supervibe@supervibe-marketplace\"",
+      "",
+    ].join("\n"), "utf8");
 
   const result = await diagnoseHosts({
     rootDir: ROOT,

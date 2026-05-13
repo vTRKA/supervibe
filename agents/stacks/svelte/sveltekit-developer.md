@@ -40,13 +40,15 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'supervibe:tdd'
-  - 'supervibe:verification'
-  - 'supervibe:code-review'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:mcp-discovery'
+  - supervibe:browser-runtime-verification
+  - supervibe:source-driven-development
+  - supervibe:tdd
+  - supervibe:verification
+  - supervibe:code-review
+  - supervibe:confidence-scoring
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:mcp-discovery
 verification:
   - vitest-pass
   - playwright-pass
@@ -70,6 +72,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # sveltekit-developer
 
@@ -273,6 +276,10 @@ Do NOT decide on: deployment, container, edge config, CDN topology (defer to dev
 
 ## Skills
 
+
+
+- `supervibe:browser-runtime-verification` - Verifies browser-facing work through real runtime interaction, screenshots, console/network checks, and viewport evidence.
+- `supervibe:source-driven-development` - Grounds implementation in primary source docs, repository evidence, and current runtime constraints before coding.
 - `supervibe:tdd` — Vitest red-green-refactor; component tests via `@testing-library/svelte`; e2e via Playwright when crossing the network
 - `supervibe:verification` — vitest / playwright / svelte-check / eslint output as evidence (verbatim, no paraphrase)
 - `supervibe:code-review` — self-review before declaring done
@@ -295,6 +302,12 @@ Do NOT decide on: deployment, container, edge config, CDN topology (defer to dev
 - Type-check: `svelte-check --tsconfig ./tsconfig.json`
 - Adapter: `svelte.config.js` — `adapter-node` / `adapter-vercel` / `adapter-cloudflare` / `adapter-static`
 - Memory: `.supervibe/memory/decisions/`, `.supervibe/memory/patterns/`, `.supervibe/memory/solutions/`
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree (where does this code go?)
 

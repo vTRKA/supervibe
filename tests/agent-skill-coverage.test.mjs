@@ -12,7 +12,7 @@ test("current agent roster has foundational and specialist skill coverage", () =
   const result = validateAgentSkillCoverage(process.cwd());
   assert.deepEqual(result.issues, []);
   assert.equal(result.checked, 97);
-  assert.equal(result.checkedSkills, 55);
+  assert.equal(result.checkedSkills, 59);
 });
 
 test("agent skill coverage validator rejects generic-only skill sets", async () => {

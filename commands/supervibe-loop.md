@@ -289,6 +289,8 @@ overlap and should not be used for normal parallel work.
 Execution modes:
 
 ```bash
+/supervibe-loop --request "validate integrations"
+/supervibe-loop --file .supervibe/memory/work-items/<epic-id>/graph.json
 /supervibe-loop --dry-run --request "validate integrations"
 /supervibe-loop --guided --file .supervibe/memory/work-items/<epic-id>/graph.json
 /supervibe-loop --manual --file .supervibe/memory/work-items/<epic-id>/graph.json
@@ -311,17 +313,23 @@ supported hook continuations, and every host keeps the
 Supervibe state files, receipt gates, quality gates, and stop/resume/status
 commands as the portable baseline.
 
-Fresh-context execution from a provider CLI is opt-in and fail-closed. A true
-headless loop needs all of these at once: a configured provider CLI command
-(`codex`, `claude`, `gemini`, or `opencode`, or `--adapter-command <command>`),
-`--allow-spawn` to approve a visible external adapter process, and
-`--permission-prompt-bridge` so non-interactive execution preserves provider
-permission prompts instead of bypassing them. Each spawned worker must also
-emit runtime workflow receipts for the external adapter and any delegated
-agent/reviewer/validator output. Without those flags the command
-must stop with `external_adapter_spawn_requires_allow_spawn` or
-`permission_prompt_bridge_required` and print a status/resume artifact instead
-of pretending to run autonomously.
+Bare loop execution defaults to the selected provider's recommended real mode.
+For Codex, Claude, Gemini, and OpenCode this is fresh-context execution; without
+a real provider adapter the fallback is guided mode so the local deterministic
+stub cannot produce fake production completion. Pass `--dry-run` only when a
+preview/compatibility artifact is intentional.
+
+Fresh-context execution from a provider CLI is provider-safe and fail-closed. A
+true headless loop needs a configured provider CLI command (`codex`, `claude`,
+`gemini`, or `opencode`, or `--adapter-command <command>`), visible external
+adapter process tracking, and the permission-prompt bridge so non-interactive
+execution preserves provider permission prompts instead of bypassing them. Bare
+provider loops enable those runtime defaults; the flags remain available for
+explicit scripts and diagnostics. Each spawned worker must also emit runtime
+workflow receipts for the external adapter and any delegated
+agent/reviewer/validator output. If policy or configuration is incomplete the
+command must stop with the provider permission status and print a status/resume
+artifact instead of pretending to run autonomously.
 
 Durable loop work is real-agent owned. A worker, reviewer, validator, epic, task
 graph, completion, or external-adapter output cannot be satisfied by a manual

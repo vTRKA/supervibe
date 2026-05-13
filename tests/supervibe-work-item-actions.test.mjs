@@ -106,6 +106,50 @@ test("work-item terminal actions append audit events", () => {
   assert.equal(result.graph.events[0].reason, "verified");
 });
 
+test("closing a parent auto-closes covered plan-step subtasks", () => {
+  const graph = baseGraph();
+  graph.items.push(
+    {
+      itemId: "task-1-s1",
+      type: "subtask",
+      status: "blocked",
+      title: "Step 1",
+      parentId: "task-1",
+      blockedBy: ["task-1"],
+      blocks: ["task-1-s2"],
+      discoveredFrom: { type: "plan-step", parentItemId: "task-1" },
+    },
+    {
+      itemId: "task-1-s2",
+      type: "subtask",
+      status: "blocked",
+      title: "Step 2",
+      parentId: "task-1",
+      blockedBy: ["task-1", "task-1-s1"],
+      blocks: [],
+      discoveredFrom: { type: "plan-step", parentItemId: "task-1" },
+    },
+  );
+  graph.tasks.push(
+    { id: "task-1-s1", status: "blocked", dependencies: ["task-1"], parentId: "task-1" },
+    { id: "task-1-s2", status: "blocked", dependencies: ["task-1", "task-1-s1"], parentId: "task-1" },
+  );
+
+  const result = mutateWorkItemGraph(graph, {
+    type: "close",
+    itemId: "task-1",
+    actor: "agent-a",
+    reason: "parent work covered generated plan steps",
+    now: "2026-05-07T00:00:00.000Z",
+  });
+
+  assert.deepEqual(result.autoClosedCoveredItems.sort(), ["task-1-s1", "task-1-s2"]);
+  assert.equal(result.graph.items.find((item) => item.itemId === "task-1-s1").status, "closed");
+  assert.equal(result.graph.items.find((item) => item.itemId === "task-1-s2").status, "closed");
+  assert.equal(result.graph.tasks.find((task) => task.id === "task-1-s1").status, "closed");
+  assert.deepEqual(result.graph.events[0].autoClosedCoveredItems.sort(), ["task-1-s1", "task-1-s2"]);
+});
+
 test("work-item terminal actions preserve structured verification evidence", () => {
   const evidence = {
     command: "node --test tests/first.test.mjs",

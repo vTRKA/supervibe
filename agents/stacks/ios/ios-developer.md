@@ -40,13 +40,14 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'supervibe:tdd'
-  - 'supervibe:verification'
-  - 'supervibe:code-review'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:mcp-discovery'
+  - supervibe:source-driven-development
+  - supervibe:tdd
+  - supervibe:verification
+  - supervibe:code-review
+  - supervibe:confidence-scoring
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:mcp-discovery
 verification:
   - xctest-pass
   - swift-format-clean
@@ -67,6 +68,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # ios-developer
 
@@ -270,6 +272,8 @@ Do NOT decide on: backend API contracts — defer to backend stack agents.
 
 ## Skills
 
+
+- `supervibe:source-driven-development` - Grounds implementation in primary source docs, repository evidence, and current runtime constraints before coding.
 - `supervibe:tdd` — XCTest red-green-refactor; ViewInspector for SwiftUI; failing test FIRST
 - `supervibe:verification` — `xcodebuild test`, `swiftlint`, `swift-format` output as evidence (verbatim, no paraphrase)
 - `supervibe:code-review` — self-review before declaring done
@@ -292,6 +296,12 @@ Do NOT decide on: backend API contracts — defer to backend stack agents.
 - Resources: localized strings in `*.xcstrings` (or `Localizable.strings`), assets in `Assets.xcassets`, info plist in `Info.plist` per target
 - App Intents: `Sources/<Module>/AppIntents/` — entities, intents, shortcut providers
 - Memory: `.supervibe/memory/decisions/`, `.supervibe/memory/patterns/`, `.supervibe/memory/solutions/`
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree (where does this code go?)
 

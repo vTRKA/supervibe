@@ -50,11 +50,12 @@ export function generateContracts(tasks = [], options = {}) {
   return tasks.map((task) => generateContractForTask(task, options));
 }
 
-export function scoreAutonomyReadiness({ tasks = [], graph = null, contracts = null, preflight = {}, gates = [], reviewerAvailable = true } = {}) {
+export function scoreAutonomyReadiness({ tasks = [], graph = null, contracts = null, preflight = {}, gates = [], reviewerAvailable = true, reviewMode = "final-sweep" } = {}) {
   const taskGraph = graph || createTaskGraph({ tasks });
   const graphValidation = validateTaskGraph(taskGraph);
   const contractList = contracts || generateContracts(taskGraph.tasks);
   const byTask = new Map(contractList.map((contract) => [contract.taskId, contract]));
+  const finalSweepReview = normalizeReviewMode(reviewMode) === "final-sweep";
   const dimensions = [
     check("graph-validity", graphValidation.valid, "Fix graph duplicates, unknown dependencies, cycles, or impossible ready front."),
     check("contract-coverage", taskGraph.tasks.every((task) => byTask.has(task.id)), "Generate one execution contract per task."),
@@ -71,7 +72,11 @@ export function scoreAutonomyReadiness({ tasks = [], graph = null, contracts = n
       Array.isArray(preflight.allowed_write_scope) && preflight.allowed_write_scope.length > 0 && !(preflight.blocked_actions || []).includes("fresh-context execution"),
       "Define allowed write/tool scope and select a provider mode supported by the host capability matrix."
     ),
-    check("reviewer-independence", reviewerAvailable === true, "Provide independent reviewer availability."),
+    check(
+      "reviewer-independence",
+      finalSweepReview || reviewerAvailable === true,
+      "Provide independent reviewer availability or use the final-sweep reviewer gate after graph completion."
+    ),
     check("progress-resume", taskGraph.tasks.every((task) => task.stopConditions?.length > 0), "Define stop conditions and resume path for every task."),
     check("side-effect-boundaries", contractList.every((contract) => contract.forbiddenBehavior.includes("unapproved production mutation")), "Declare forbidden side effects and production mutation boundaries."),
   ];
@@ -101,6 +106,12 @@ export function summarizeContracts(contracts = []) {
 
 function check(id, pass, remediation) {
   return { id, pass: Boolean(pass), remediation };
+}
+
+function normalizeReviewMode(value) {
+  const normalized = String(value || "final-sweep").trim().toLowerCase().replace(/_/g, "-");
+  if (["per-task", "per-wave", "inline", "wave", "stage-2"].includes(normalized)) return "per-task";
+  return "final-sweep";
 }
 
 function inferModuleType(task) {

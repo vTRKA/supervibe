@@ -47,13 +47,13 @@ recommended-mcps:
   - figma
   - firecrawl
 skills:
-  - 'supervibe:brandbook'
-  - 'supervibe:project-memory'
-  - 'supervibe:design-intelligence'
-  - 'supervibe:adapt'
-  - 'supervibe:prototype'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:mcp-discovery'
+  - supervibe:brandbook
+  - supervibe:project-memory
+  - supervibe:design-intelligence
+  - supervibe:adapt
+  - supervibe:prototype
+  - supervibe:confidence-scoring
+  - supervibe:mcp-discovery
 verification:
   - brand-direction-document
   - mood-board-rationale
@@ -89,6 +89,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # creative-director
 
@@ -544,6 +545,12 @@ Do NOT skip the design-system approval gate — even for "small" projects. The g
 - Existing identity assets: `assets/logo/`, `assets/brand/`
 - Critique log: `.supervibe/memory/brand-critiques/` — past direction reviews and decisions
 - Animation pipeline outputs: `assets/lottie/`, `assets/motion/`, `src/motion/`
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree (engagement type)
 

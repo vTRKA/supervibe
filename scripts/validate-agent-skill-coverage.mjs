@@ -17,6 +17,19 @@ const FOUNDATIONAL_SKILLS = Object.freeze(new Set([
   "supervibe:tdd",
 ]));
 
+const CRITICAL_SKILL_OWNER_POLICY = Object.freeze({
+  "supervibe:autonomous-agent-loop": { minOwners: 2, class: "foundational-workflow" },
+  "supervibe:subagent-driven-development": { minOwners: 2, class: "foundational-workflow" },
+  "supervibe:dispatching-parallel-agents": { minOwners: 2, class: "foundational-workflow" },
+  "supervibe:executing-plans": { minOwners: 2, class: "foundational-workflow" },
+  "supervibe:verification": { minOwners: 2, class: "foundational" },
+  "supervibe:code-review": { minOwners: 2, class: "review" },
+  "supervibe:source-driven-development": { minOwners: 2, class: "lifecycle" },
+  "supervibe:doubt-driven-development": { minOwners: 2, class: "review" },
+  "supervibe:browser-runtime-verification": { minOwners: 2, class: "specialist" },
+  "supervibe:using-supervibe-skills": { minOwners: 2, class: "support" },
+});
+
 export function validateAgentSkillCoverage(rootDir = process.cwd()) {
   const issues = [];
   const availableSkills = readAvailableSkillIds(rootDir);
@@ -70,6 +83,10 @@ export function validateAgentSkillCoverage(rootDir = process.cwd()) {
   for (const [skill, owners] of agentSkillOwners) {
     if (owners.length === 0) {
       issues.push(issue(skill, "skill-unowned-by-agent", "Skill exists under skills/ but no agent declares it in frontmatter."));
+    }
+    const policy = CRITICAL_SKILL_OWNER_POLICY[skill];
+    if (policy && owners.length < policy.minOwners) {
+      issues.push(issue(skill, "fragile-critical-skill-ownership", `Critical ${policy.class} skill needs at least ${policy.minOwners} independent owning agents or an explicit policy exception.`));
     }
   }
 

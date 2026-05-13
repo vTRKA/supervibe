@@ -219,6 +219,38 @@ test("tracker mapping refreshes native item status and hash on repeated sync", a
   assert.notEqual(refreshed.mapping.items[taskId].itemHash, originalHash);
 });
 
+test("tracker mapping prunes stale native items when active graph changes", async () => {
+  const first = sampleGraph();
+  const firstPush = await syncPush(first, createMemoryTaskTrackerAdapter(), { dryRun: true });
+  const base = sampleGraph();
+  const second = {
+    ...base,
+    graph_id: "epic-second",
+    epicId: "epic-second",
+    items: base.items.map((item) => ({
+      ...item,
+      itemId: String(item.itemId).replace("epic-sample", "epic-second"),
+      parentId: item.parentId ? String(item.parentId).replace("epic-sample", "epic-second") : item.parentId,
+      blocks: (item.blocks || []).map((id) => String(id).replace("epic-sample", "epic-second")),
+      dependencies: (item.dependencies || []).map((id) => String(id).replace("epic-sample", "epic-second")),
+    })),
+    tasks: base.tasks.map((task) => ({
+      ...task,
+      id: String(task.id).replace("epic-sample", "epic-second"),
+      dependencies: (task.dependencies || []).map((id) => String(id).replace("epic-sample", "epic-second")),
+    })),
+  };
+
+  const secondPush = await syncPush(second, createMemoryTaskTrackerAdapter(), {
+    dryRun: true,
+    mapping: firstPush.mapping,
+  });
+
+  assert.equal(secondPush.status, "synced");
+  assert.equal(validateTrackerMapping({ graph: second, mapping: secondPush.mapping, requireComplete: true }).ok, true);
+  assert.equal(Object.keys(secondPush.mapping.items).some((id) => id.startsWith("epic-sample")), false);
+});
+
 test("tracker sync reports native, external, and both-changed conflicts without mutating mapping", async () => {
   const graph = sampleGraph();
   const pushed = await syncPush(graph, createMemoryTaskTrackerAdapter(), { dryRun: true });

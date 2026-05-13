@@ -37,13 +37,14 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'supervibe:tdd'
-  - 'supervibe:verification'
-  - 'supervibe:code-review'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:mcp-discovery'
+  - supervibe:source-driven-development
+  - supervibe:tdd
+  - supervibe:verification
+  - supervibe:code-review
+  - supervibe:confidence-scoring
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:mcp-discovery
 verification:
   - prd decision section-recorded
   - decision-criteria-explicit
@@ -66,6 +67,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # rails-architect
 
@@ -259,6 +261,8 @@ Do NOT decide on infra (container, Kubernetes, fly.io, Heroku) — defer to devo
 
 ## Skills
 
+
+- `supervibe:source-driven-development` - Grounds implementation in primary source docs, repository evidence, and current runtime constraints before coding.
 - `supervibe:tdd` — architecture is testable too; write characterization tests before extracting engines or splitting modules
 - `supervibe:verification` — produce PRD decision section + criteria + alternatives + follow-ups (verbatim) for every decision
 - `supervibe:code-review` — self-review the PRD decision section against the alternatives matrix
@@ -281,6 +285,12 @@ Do NOT decide on infra (container, Kubernetes, fly.io, Heroku) — defer to devo
 - PRD decision sections / decisions: `.supervibe/memory/decisions/` (this agent writes here)
 - Patterns: `.supervibe/memory/patterns/`
 - Tests: `spec/` (RSpec) or `test/` (Minitest) — architecture tests in `spec/architecture/` if present
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree (which architectural fork are we at?)
 

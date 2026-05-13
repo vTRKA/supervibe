@@ -5,6 +5,7 @@ import { summarizeToolAdapterAvailability } from "./autonomous-loop-tool-adapter
 import { summarizeWorktreeSessions } from "./supervibe-worktree-session-manager.mjs";
 import { summarizePermissionAudit } from "./autonomous-loop-permission-audit.mjs";
 import { summarizeRunObservability } from "./supervibe-run-dashboard.mjs";
+import { createFinalReviewerSweep } from "./supervibe-final-review-sweep.mjs";
 
 export function createState(fields = {}) {
   return versionEnvelope({
@@ -33,6 +34,8 @@ export function createState(fields = {}) {
     provider_capabilities: fields.providerCapabilities || null,
     provider_capability_summary: fields.providerCapabilitySummary || null,
     provider_capability_matrix: fields.providerCapabilityMatrix || [],
+    provider_limit_policy: fields.providerLimitPolicy || null,
+    max_concurrent_agents: fields.maxConcurrentAgents ?? null,
     execution_mode: fields.executionMode || "dry-run",
     commit_per_task: Boolean(fields.commitPerTask),
     attempts: fields.attempts || [],
@@ -68,7 +71,11 @@ export function formatStatus(state) {
   const permissionSummary = state.permission_audit_summary || summarizePermissionAudit(state.permission_audit || null);
   const observability = state.observability_summary || summarizeRunObservability({ state });
   const providerCapabilities = state.provider_capabilities || state.preflight?.provider_capabilities || null;
+  const providerLimitPolicy = state.provider_limit_policy || state.preflight?.provider_limit_policy || null;
+  const effectiveConcurrency = state.max_concurrent_agents || state.preflight?.max_concurrent_agents || providerLimitPolicy?.effectiveMaxConcurrentAgents || "unknown";
   const userGoalAcceptance = state.user_goal_acceptance || { required: false, status: "not-required" };
+  const finalReviewerSweep = createFinalReviewerSweep(state);
+  const finalReviewSummary = finalReviewerSweep.summary || {};
   const lines = [
     "SUPERVIBE_LOOP_STATUS",
     `STATUS: ${state.status}`,
@@ -87,6 +94,9 @@ export function formatStatus(state) {
     `CONTINUATION_MODE: ${providerCapabilities?.nativeContinuation || "unknown"}`,
     `PROVIDER_RECOMMENDED_MODE: ${providerCapabilities?.recommendedMode || "unknown"}`,
     `PROVIDER_STABILITY: ${providerCapabilities?.stabilityScore ?? "unknown"}`,
+    `MAX_CONCURRENT_AGENTS: ${effectiveConcurrency}`,
+    `PROVIDER_MAX_THREADS: ${providerLimitPolicy?.providerMaxThreads ?? "unknown"}`,
+    `PROVIDER_CONCURRENCY_SOURCE: ${providerLimitPolicy?.source || "unknown"}`,
     `POLICY_PROFILE: ${state.policy_profile?.name || "none"}`,
     `POLICY_ROLE: ${state.policy_profile?.role || "none"}`,
     `ADAPTERS: ${adapterSummary.available.join(",") || "none"}`,
@@ -94,6 +104,10 @@ export function formatStatus(state) {
     `USER_GOAL_ACCEPTANCE: ${userGoalAcceptance.status}`,
     `USER_GOAL_REQUIRED: ${userGoalAcceptance.required === true}`,
     `USER_GOAL_NEXT_ACTION: ${userGoalAcceptance.next_action || "none"}`,
+    `FINAL_REVIEW_SWEEP: ${finalReviewerSweep.status}`,
+    `FINAL_REVIEW_PRODUCTION_READY: ${finalReviewerSweep.productionReady === true}`,
+    `FINAL_REVIEW_TASKS: reviewed=${finalReviewSummary.reviewed || 0}/${finalReviewSummary.required || 0} pending=${finalReviewSummary.pending || 0} not_ready=${finalReviewSummary.notReady || 0} failed=${finalReviewSummary.failed || 0} blockers=${finalReviewSummary.blockers || 0}`,
+    `FINAL_REVIEW_NEXT_ACTION: ${finalReviewerSweep.nextAction || "none"}`,
     `BYPASS_DISABLED: ${permissionSummary.bypassDisabled}`,
     `DENIED_TOOLS: ${permissionSummary.deniedToolClasses.join(",") || "none"}`,
     `PROMPT_REQUIRED_TOOLS: ${permissionSummary.promptRequiredToolClasses.join(",") || "none"}`,

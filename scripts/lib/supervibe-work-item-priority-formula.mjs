@@ -12,17 +12,27 @@ const RISK_PENALTY = {
   low: 0,
 };
 
+const PRIORITY_WEIGHT = {
+  blocker: 50,
+  critical: 40,
+  high: 30,
+  medium: 15,
+  normal: 10,
+  low: 5,
+};
+
 export function scoreWorkItemPriority(item = {}, { graph = {}, now = new Date(), ownerAvailability = {}, worktreeFit = {} } = {}) {
   const tasks = graph.tasks || graph.items || [];
   const dependencyDepth = calculateDependencyDepth(item.itemId || item.id, tasks);
   const blockerCount = (item.blocks || item.dependents || []).length;
   const ageHours = ageInHours(item.createdAt || item.created_at, now);
-  const severity = String(item.severity || item.priorityLabel || "medium").toLowerCase();
+  const priorityInfo = normalizePriorityValue(item.priority);
+  const severity = normalizeSeverityValue(item, priorityInfo);
   const owner = item.owner || item.assignee || "unassigned";
   const ownerScore = ownerAvailability[owner] === false ? -20 : ownerAvailability[owner] === true ? 10 : 0;
   const fitScore = worktreeFit[item.itemId || item.id] === false ? -10 : worktreeFit[item.itemId || item.id] === true ? 8 : 0;
   const risk = String(item.policyRiskLevel || item.risk || "low").toLowerCase();
-  const basePriority = Number(item.priority || 0);
+  const basePriority = priorityInfo.score;
   const dueUrgency = scoreDueUrgency(item, { now });
   const staleClaimPenalty = hasStaleClaim(item, now) ? -8 : 0;
   const score = basePriority
@@ -41,7 +51,7 @@ export function scoreWorkItemPriority(item = {}, { graph = {}, now = new Date(),
     score: Number(score.toFixed(2)),
     criticalPath: dependencyDepth > 0 || blockerCount > 0,
     explanation: [
-      `priority=${basePriority}`,
+      `priority=${priorityInfo.label}`,
       `severity=${severity}`,
       `dependencyDepth=${dependencyDepth}`,
       `blockerCount=${blockerCount}`,
@@ -126,4 +136,20 @@ function hasStaleClaim(item, now) {
     const heartbeat = Date.parse(claim.heartbeatAt || claim.claimedAt || "");
     return Number.isFinite(heartbeat) && Number.isFinite(current) && current - heartbeat > 30 * 60_000;
   });
+}
+
+function normalizePriorityValue(value) {
+  if (value == null || value === "") return { score: 0, label: "none:0" };
+  const numeric = Number(value);
+  if (Number.isFinite(numeric)) return { score: numeric, label: String(numeric) };
+  const key = String(value).trim().toLowerCase();
+  const score = PRIORITY_WEIGHT[key] ?? PRIORITY_WEIGHT.medium;
+  return { score, label: `${key || "unknown"}:${score}` };
+}
+
+function normalizeSeverityValue(item = {}, priorityInfo = {}) {
+  const explicit = item.severity || item.priorityLabel;
+  if (explicit) return String(explicit).trim().toLowerCase();
+  const priorityLabel = String(priorityInfo.label || "").split(":")[0];
+  return SEVERITY_WEIGHT[priorityLabel] != null ? priorityLabel : "medium";
 }

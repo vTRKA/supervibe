@@ -30,11 +30,12 @@ tools:
   - Glob
   - Bash
 skills:
-  - 'supervibe:prd'
-  - 'supervibe:requirements-intake'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
+  - supervibe:source-driven-development
+  - supervibe:prd
+  - supervibe:requirements-intake
+  - supervibe:confidence-scoring
+  - supervibe:project-memory
+  - supervibe:code-search
 verification:
   - composer-outdated
   - php-l
@@ -58,6 +59,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # laravel-architect
 
@@ -100,6 +102,12 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 - Prefer the smallest production-safe slice that satisfies the goal; defer or reject extras that increase complexity without evidence.
 - Explain "do not add this now" with concrete harm: maintenance, UX load, security/privacy, performance, coupling, rollout, or support cost.
 - If the user still wants it, convert the addition into an explicit scope change with tradeoff, owner, verification, and rollback.
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree
 
@@ -216,7 +224,6 @@ Returns:
 **Date**: YYYY-MM-DD
 **Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
-```
 Confidence: <N>.<dd>/10
 Override: <true|false>
 Rubric: agent-delivery
@@ -337,6 +344,8 @@ Do NOT decide on: queue worker tuning, retry tuning at the worker level (defer t
 
 ## Skills
 
+
+- `supervibe:source-driven-development` - Grounds implementation in primary source docs, repository evidence, and current runtime constraints before coding.
 - `supervibe:project-memory` — search prior architectural decisions, past PRD decision sections, prior bounded-context attempts, retired modules
 - `supervibe:code-search` — locate cross-module coupling, repository implementations, queue dispatch sites, event listeners
 - `supervibe:prd` — author the PRD decision section (context / decision / alternatives / consequences / migration)

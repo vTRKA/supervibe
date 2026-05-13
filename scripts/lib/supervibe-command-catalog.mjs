@@ -250,6 +250,93 @@ const SLASH_COMMAND_SHORTCUTS = Object.freeze([
 
 const COMMAND_SHORTCUTS = Object.freeze([
   {
+    id: "lifecycle-spec",
+    intent: "lifecycle_spec",
+    title: "Capture a feature spec",
+    command: "/supervibe-brainstorm",
+    aliases: ["/spec", "spec"],
+    exactAliasOnly: true,
+    keywordGroups: [["spec", "brief", "requirements"], ["feature", "capture", "write"]],
+    requiredGroupIndexes: [0, 1],
+    mutationRisk: "delegates-to-slash-command",
+    directRoute: true,
+    commandId: "/supervibe-brainstorm",
+    nextAction: "Run /supervibe-brainstorm to capture the spec through the normal workflow and receipts.",
+  },
+  {
+    id: "lifecycle-plan",
+    intent: "lifecycle_plan",
+    title: "Create or review a plan",
+    command: "/supervibe-plan",
+    aliases: ["/plan"],
+    exactAliasOnly: true,
+    keywordGroups: [["plan", "implementation plan"], ["create", "review", "write"]],
+    requiredGroupIndexes: [0, 1],
+    mutationRisk: "delegates-to-slash-command",
+    directRoute: true,
+    commandId: "/supervibe-plan",
+    nextAction: "Run /supervibe-plan for durable planning, review gates, and graph-ready output.",
+  },
+  {
+    id: "lifecycle-build",
+    intent: "lifecycle_build",
+    title: "Execute reviewed plan work",
+    command: "/supervibe-execute-plan",
+    aliases: ["/build", "build plan"],
+    exactAliasOnly: true,
+    keywordGroups: [["build", "implement", "execute"], ["plan", "work", "tasks"]],
+    requiredGroupIndexes: [0, 1],
+    mutationRisk: "delegates-to-slash-command",
+    directRoute: true,
+    commandId: "/supervibe-execute-plan",
+    nextAction: "Run /supervibe-execute-plan against the reviewed plan; use loop graph execution for durable multi-agent work.",
+  },
+  {
+    id: "lifecycle-test",
+    intent: "lifecycle_test",
+    title: "Validate completed graph work",
+    command: "/supervibe-loop --validate-completion",
+    aliases: ["/test"],
+    exactAliasOnly: true,
+    keywordGroups: [["test", "validate"], ["graph", "completion", "work"]],
+    requiredGroupIndexes: [0, 1],
+    mutationRisk: "delegates-to-slash-command",
+    directRoute: true,
+    commandId: "/supervibe-loop",
+    commandArgs: "--validate-completion",
+    nextAction: "Run /supervibe-loop --validate-completion only after the graph work has completed.",
+  },
+  {
+    id: "lifecycle-review",
+    intent: "lifecycle_review",
+    title: "Run final reviewer sweep",
+    command: "/supervibe-loop --final-review-sweep",
+    aliases: ["/review"],
+    exactAliasOnly: true,
+    keywordGroups: [["review", "reviewer"], ["final", "sweep", "graph"]],
+    requiredGroupIndexes: [0, 1],
+    mutationRisk: "delegates-to-slash-command",
+    directRoute: true,
+    commandId: "/supervibe-loop",
+    commandArgs: "--final-review-sweep",
+    nextAction: "Run /supervibe-loop --final-review-sweep after all epics and tasks are complete.",
+  },
+  {
+    id: "lifecycle-ship",
+    intent: "lifecycle_ship",
+    title: "Prepare completed work for release",
+    command: "/supervibe-loop --final-review-sweep --validate-completion",
+    aliases: ["/ship", "ship"],
+    exactAliasOnly: true,
+    keywordGroups: [["ship", "release"], ["review", "validate", "completion"]],
+    requiredGroupIndexes: [0, 1],
+    mutationRisk: "delegates-to-slash-command",
+    directRoute: true,
+    commandId: "/supervibe-loop",
+    commandArgs: "--final-review-sweep --validate-completion",
+    nextAction: "Run the final review sweep and completion validation before release handoff.",
+  },
+  {
     id: "index-rag-codegraph",
     intent: "code_index_build",
     title: "Index RAG and CodeGraph",
@@ -908,6 +995,8 @@ function scoreShortcut(shortcut, text) {
     });
   }
 
+  if (shortcut.exactAliasOnly) return null;
+
   if (shortcut.id === "agent-provisioning" && looksLikeReadOnlyAgentAudit(text) && !looksLikeProvisioningMutation(text)) {
     return null;
   }
@@ -1138,28 +1227,56 @@ function copyAgentProfile(profile) {
 function parseExplicitNpmRun(request) {
   const text = String(request || "");
   const runMatch = text.match(/(?:^|[\s`"'(])(?<command>(?<manager>npm|pnpm|bun)\s+(?:run|run-script)\s+(?<script>[@\w:.-]+))(?<tail>(?:\s+--\s+[^\n`"']+)?)?/i);
-  if (runMatch?.groups?.script) return parsedPackageScript(runMatch.groups);
+  if (runMatch?.groups?.script && !isNegatedCommandMention(text, runMatch.index)) {
+    return parsedPackageScript(runMatch.groups);
+  }
 
   const yarnMatch = text.match(/(?:^|[\s`"'(])(?<command>(?<manager>yarn)\s+(?:run\s+)?(?<script>[@\w:.-]+))(?<tail>(?:\s+--\s+[^\n`"']+)?)?/i);
-  if (yarnMatch?.groups?.script && !["add", "install", "remove", "upgrade"].includes(yarnMatch.groups.script)) {
+  if (yarnMatch?.groups?.script && !["add", "install", "remove", "upgrade"].includes(cleanPackageScriptToken(yarnMatch.groups.script)) && !isNegatedCommandMention(text, yarnMatch.index)) {
     return parsedPackageScript(yarnMatch.groups);
   }
 
   const npmShortcut = text.match(/(?:^|[\s`"'(])(?<command>(?<manager>npm)\s+(?<script>test|start|stop|restart))(?<tail>(?:\s+--\s+[^\n`"']+)?)?/i);
-  if (npmShortcut?.groups?.script) return parsedPackageScript(npmShortcut.groups);
+  if (npmShortcut?.groups?.script && !isNegatedCommandMention(text, npmShortcut.index)) {
+    return parsedPackageScript(npmShortcut.groups);
+  }
 
   return null;
 }
 
 function parsedPackageScript(groups) {
   const args = String(groups.tail || "").match(/\s+--\s+(.+)$/)?.[1]?.trim() || "";
-  const command = args ? `${groups.command} -- ${args}` : groups.command;
+  const script = cleanPackageScriptToken(groups.script);
+  const commandText = String(groups.command || "");
+  const command = args
+    ? `${commandText.replace(new RegExp(`${escapeRegExp(groups.script)}$`), script)} -- ${args}`
+    : commandText.replace(new RegExp(`${escapeRegExp(groups.script)}$`), script);
   return {
     command: command.trim(),
-    script: groups.script,
+    script,
     packageManager: groups.manager,
     args,
   };
+}
+
+function cleanPackageScriptToken(value) {
+  return String(value || "").replace(/[.,;:!?]+$/u, "");
+}
+
+function isNegatedCommandMention(text, matchIndex = -1) {
+  const prefix = normalizeText(String(text || "").slice(0, Math.max(0, matchIndex)));
+  return [
+    "do not",
+    "dont",
+    "don't",
+    "never",
+    "no need to",
+    "without",
+    "не",
+    "не запускай",
+    "не запускать",
+    "не надо",
+  ].some((phrase) => includesPhrase(prefix, phrase));
 }
 
 function parseBareNpmScriptReference(request, scriptNames = []) {
@@ -1316,6 +1433,7 @@ function portablePluginScriptCommand(command, args = "") {
 function findSemanticPackageScript(request, { projectScripts = [], pluginScripts = [] } = {}) {
   const text = normalizeText(request);
   if (!text || !PACKAGE_SCRIPT_ACTION_WORDS.some((word) => includesPhrase(text, word))) return null;
+  if (looksLikeFinalReviewerWorkflowRequest(text)) return null;
 
   const candidates = [];
   const seen = new Set();
@@ -1379,6 +1497,26 @@ function findSemanticPackageScript(request, { projectScripts = [], pluginScripts
     mutationRisk: "unknown",
     nextAction: "Run the portable plugin-root command from the project root; do not search the repository for this script.",
   };
+}
+
+function looksLikeFinalReviewerWorkflowRequest(text) {
+  const asksForFinalReview = [
+    "final review",
+    "final-review",
+    "final reviewer",
+    "final-reviewer",
+    "reviewer",
+    "reviewers",
+  ].some((phrase) => includesPhrase(text, phrase));
+  if (!asksForFinalReview) return false;
+  return ![
+    "npm run",
+    "pnpm",
+    "yarn",
+    "bun",
+    "supervibe:upgrade",
+    "supervibe:update",
+  ].some((phrase) => includesPhrase(text, phrase));
 }
 
 function scorePackageScriptName(script, text) {

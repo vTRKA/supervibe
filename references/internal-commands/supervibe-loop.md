@@ -11,11 +11,13 @@ cancellable, policy-gated, and must not be used as hidden background automation.
 - Diagnostics: `--readiness`, `graph`, `--graph`, `doctor`, `prime`,
   `archive`, `export`, `import`.
 - Execution modes: `--dry-run`, `--guided`, `--manual`, `--fresh-context`.
-  Default remains `dry-run`.
-- `--fresh-context --tool codex|claude|gemini|opencode` selects an adapter, but
-  external spawning still requires explicit adapter policy, allow-spawn
-  plumbing, permission-prompt bridge, context-forking task packets, and runtime
-  spawn receipts. Command docs must not imply hidden unattended execution.
+  Bare loop runs default to provider-recommended real execution; use `--dry-run`
+  only for explicit preview/compatibility artifacts.
+- `--fresh-context --tool codex|claude|gemini|opencode` selects an adapter.
+  Bare provider loops may enable visible spawn and permission-prompt bridge
+  defaults, but external execution still requires adapter policy, side-effect
+  tracking, context-forking task packets, and runtime spawn receipts. Command
+  docs must not imply hidden unattended execution.
 - `--provider-matrix` prints the shared host capability matrix. Unsupported
   fresh-context requests for package-only hosts must block readiness and
   degrade to guided/manual mode instead of silently falling back to a different

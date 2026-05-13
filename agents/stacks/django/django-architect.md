@@ -31,12 +31,13 @@ tools:
   - Glob
   - Bash
 skills:
-  - 'supervibe:prd'
-  - 'supervibe:requirements-intake'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:mcp-discovery'
+  - supervibe:source-driven-development
+  - supervibe:prd
+  - supervibe:requirements-intake
+  - supervibe:confidence-scoring
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:mcp-discovery
 verification:
   - pip-list
   - python-manage-check
@@ -62,6 +63,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # django-architect
 
@@ -100,6 +102,12 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 - Prefer the smallest production-safe slice that satisfies the goal; defer or reject extras that increase complexity without evidence.
 - Explain "do not add this now" with concrete harm: maintenance, UX load, security/privacy, performance, coupling, rollout, or support cost.
 - If the user still wants it, convert the addition into an explicit scope change with tradeoff, owner, verification, and rollback.
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree
 
@@ -251,7 +259,6 @@ Returns:
 **Date**: YYYY-MM-DD
 **Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
-```
 Confidence: <N>.<dd>/10
 Override: <true|false>
 Rubric: agent-delivery
@@ -385,6 +392,8 @@ Do NOT decide on: Celery worker tuning beyond the topology level (defer to celer
 
 ## Skills
 
+
+- `supervibe:source-driven-development` - Grounds implementation in primary source docs, repository evidence, and current runtime constraints before coding.
 - `supervibe:project-memory` — search prior architectural decisions, past PRD decision sections, prior app-split attempts, retired modules
 - `supervibe:code-search` — locate cross-app coupling, signal receivers, Celery task dispatch sites, middleware insertion points
 - `supervibe:prd` — author the PRD decision section (context / decision / alternatives / consequences / migration)

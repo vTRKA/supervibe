@@ -58,14 +58,18 @@ test("install lifecycle audit accepts Codex official cache/config/native skills"
   await writeFile(join(codexPlugin, ".codex-plugin", "plugin.json"), "{}", "utf8");
   await mkdir(join(codexSkills, "genesis"), { recursive: true });
   await writeFile(join(codexSkills, "genesis", "SKILL.md"), "# Genesis\n", "utf8");
-  await writeFile(join(homeDir, ".codex", "config.toml"), [
-    "[features]",
-    "plugins = true",
-    "",
-    "[plugins.\"supervibe@supervibe-marketplace\"]",
-    "enabled = true",
-    "",
-  ].join("\n"), "utf8");
+    await writeFile(join(homeDir, ".codex", "config.toml"), [
+      "[features]",
+      "apps = true",
+      "",
+      "[apps._default]",
+      "enabled = true",
+      "",
+      "[[tool_suggest.discoverables]]",
+      "type = \"plugin\"",
+      "id = \"supervibe@supervibe-marketplace\"",
+      "",
+    ].join("\n"), "utf8");
 
   const audit = await runInstallLifecycleAudit({
     rootDir: process.cwd(),

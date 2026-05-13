@@ -31,11 +31,11 @@ tools:
   - Write
   - Edit
 skills:
-  - 'supervibe:mock-data-contract'
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:verification'
+  - supervibe:mock-data-contract
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:confidence-scoring
+  - supervibe:verification
 verification:
   - mock-contract-schema-read
   - scenario-fixture-coverage
@@ -56,6 +56,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # mock-data-designer
 
@@ -104,6 +105,12 @@ Before producing any artifact or structural recommendation:
 1. Run `supervibe:project-memory --query "<domain> mock data API contract prototype handoff"` or `node <resolved-supervibe-plugin-root>/scripts/lib/memory-preflight.mjs --query "<domain> mock data API contract prototype handoff"`. Cite matching memory paths or state that no prior memory applies.
 2. Run `supervibe:code-search` or `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "mock data API contract fixtures schema frontend backend"` and read the top relevant hits before writing a new convention.
 3. Use Code Graph for refactor, rename, move, delete, public API, or shared fixture loader changes. Run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers "<symbol>"` and cite Case A/B/C graph evidence.
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Procedure
 

@@ -29,13 +29,15 @@ const MUTABLE_OUTPUT_PATTERNS = Object.freeze([
   /^\.supervibe\/memory\/workflow-receipt-runtime\.key$/i,
   /^\.supervibe\/memory\/workflow-invocation-ledger\.lock$/i,
   /^\.supervibe\/memory\/index\.json$/i,
+  /^\.supervibe\/memory\/active-plan\.json$/i,
+  /^\.supervibe\/memory\/work-items\/index\.json$/i,
+  /^\.supervibe\/memory\/loops\/task-tracker-map\.json$/i,
   /^\.supervibe\/memory\/(?:.+\/)?state\.json$/i,
   /\.jsonl$/i,
   /\.log$/i,
   /\.lock$/i,
   /\.key$/i,
 ]);
-
 export function defaultWorkflowReceiptKeyPath(rootDir = process.cwd()) {
   return join(rootDir, ...KEY_RELATIVE_PATH.split("/"));
 }
@@ -59,6 +61,7 @@ export async function issueWorkflowInvocationReceipt({
   invocationReason,
   inputEvidence = [],
   outputArtifacts = [],
+  allowMutableOutputArtifacts = false,
   startedAt,
   completedAt = null,
   runTimestamp = null,
@@ -84,7 +87,7 @@ export async function issueWorkflowInvocationReceipt({
   if (isHostAgentSubject(subjectType) && !hostInvocation && !allowMissingHostInvocationProof) {
     throw new Error("hostInvocation proof required for agent, worker, and reviewer receipts");
   }
-  assertReceiptableOutputArtifacts(outputArtifacts, rootDir);
+  if (!allowMutableOutputArtifacts) assertReceiptableOutputArtifacts(outputArtifacts, rootDir);
   const normalizedHostInvocation = enrichHostInvocationProof(rootDir, hostInvocation);
   if (isHostAgentSubject(subjectType) && !allowMissingHostInvocationProof) {
     assertHostInvocationProofExists(rootDir, normalizedHostInvocation, agentId || subjectId);
@@ -270,6 +273,15 @@ export function validateWorkflowReceiptTrust(rootDir = process.cwd(), receipt = 
   const linkCheck = validateArtifactLinks(rootDir, receipt);
   issues.push(...linkCheck.issues);
 
+  if (options.requireHostInvocationProof === true && isHostAgentSubject(receipt.subjectType)) {
+    try {
+      const proof = enrichHostInvocationProof(rootDir, receipt.hostInvocation);
+      assertHostInvocationProofExists(rootDir, proof, receipt.agentId || receipt.subjectId);
+    } catch (err) {
+      issues.push(err.message);
+    }
+  }
+
   return { pass: issues.length === 0, issues };
 }
 
@@ -365,6 +377,7 @@ export async function reissueWorkflowInvocationReceipt({
     invocationReason: reason || existing.invocationReason || "workflow receipt reissued for current artifact hashes",
     inputEvidence: existing.inputEvidence || [],
     outputArtifacts: existing.outputArtifacts,
+    allowMutableOutputArtifacts: true,
     startedAt: timestamp,
     completedAt: timestamp,
     runTimestamp: timestamp,
@@ -925,10 +938,14 @@ function signCanonical(canonical, secret) {
 
 function hashEvidencePath(rootDir, path, { required }) {
   const relPath = normalizeInputPath(path, rootDir);
-  const absPath = join(rootDir, ...relPath.split("/"));
+  let absPath = join(rootDir, ...relPath.split("/"));
   if (!existsSync(absPath)) {
-    if (required) throw new Error(`Required artifact missing: ${relPath}`);
-    return { path: relPath, exists: false, sha256: null };
+    const archived = resolveArchivedWorkItemArtifact(rootDir, relPath);
+    if (archived) absPath = archived.absPath;
+    else {
+      if (required) throw new Error(`Required artifact missing: ${relPath}`);
+      return { path: relPath, exists: false, sha256: null };
+    }
   }
   const content = readFileSync(absPath);
   const compactDigest = compactManifestOriginalDigest(rootDir, relPath, content);
@@ -945,6 +962,36 @@ function hashEvidencePath(rootDir, path, { required }) {
     exists: true,
     sha256: sha256(content),
   };
+}
+
+function resolveArchivedWorkItemArtifact(rootDir, relPath) {
+  const normalized = normalizeRelPath(relPath);
+  const match = normalized.match(/^\.supervibe\/memory\/work-items\/([^/]+)\/(.+)$/);
+  if (!match || normalized.includes("/.archive/")) return null;
+  const [, graphId, suffix] = match;
+  const archiveRoot = join(rootDir, ".supervibe", "memory", "work-items", ".archive");
+  const logPath = join(archiveRoot, "_archive-log.jsonl");
+  if (!existsSync(logPath)) return null;
+  const entries = readFileSync(logPath, "utf8")
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .flatMap((line) => {
+      try {
+        return [JSON.parse(line)];
+      } catch {
+        return [];
+      }
+    })
+    .reverse();
+  for (const entry of entries) {
+    if (entry.type !== "work-item-graph") continue;
+    if (String(entry.graphId || "") !== graphId) continue;
+    if (!entry.archivePath) continue;
+    const archivePath = isAbsolute(entry.archivePath) ? entry.archivePath : join(rootDir, ...normalizeRelPath(entry.archivePath).split("/"));
+    const candidate = join(archivePath, ...suffix.split("/"));
+    if (existsSync(candidate)) return { absPath: candidate, archivePath: normalizeRelPath(relative(rootDir, candidate)) };
+  }
+  return null;
 }
 
 function compactManifestOriginalDigest(rootDir, relPath, content) {

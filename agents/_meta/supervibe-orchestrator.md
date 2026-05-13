@@ -27,21 +27,23 @@ tools:
   - Glob
   - Bash
 skills:
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:audit'
-  - 'supervibe:strengthen'
-  - 'supervibe:adapt'
-  - 'supervibe:evaluate'
-  - 'supervibe:requirements-intake'
-  - 'supervibe:project-memory'
-  - 'supervibe:stack-discovery'
-  - 'supervibe:dispatching-parallel-agents'
-  - 'supervibe:executing-plans'
-  - 'supervibe:genesis'
-  - 'supervibe:new-feature'
-  - 'supervibe:subagent-driven-development'
-  - 'supervibe:trigger-diagnostics'
-  - 'supervibe:using-git-worktrees'
+  - supervibe:using-supervibe-skills
+  - supervibe:autonomous-agent-loop
+  - supervibe:confidence-scoring
+  - supervibe:audit
+  - supervibe:strengthen
+  - supervibe:adapt
+  - supervibe:evaluate
+  - supervibe:requirements-intake
+  - supervibe:project-memory
+  - supervibe:stack-discovery
+  - supervibe:dispatching-parallel-agents
+  - supervibe:executing-plans
+  - supervibe:genesis
+  - supervibe:new-feature
+  - supervibe:subagent-driven-development
+  - supervibe:trigger-diagnostics
+  - supervibe:using-git-worktrees
 verification:
   - decision-trace
   - user-confirm-before-state-change
@@ -68,6 +70,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # supervibe-orchestrator
 
@@ -314,6 +317,10 @@ Do NOT execute: dispatched sub-agent's actual work — only route and observe.
 
 ## Skills
 
+
+
+- `supervibe:using-supervibe-skills` - Selects skills by phase, owner, and evidence requirements instead of treating skill names as decorative prompts.
+- `supervibe:autonomous-agent-loop` - Runs durable graph work through bounded multi-agent orchestration, receipts, and final completion gates.
 - `supervibe:confidence-scoring` — score the recommendation (≥9 required to dispatch)
 - `supervibe:audit` — health check (delegated)
 - `supervibe:strengthen` — deepen weak (delegated)
@@ -341,6 +348,12 @@ Do NOT execute: dispatched sub-agent's actual work — only route and observe.
 - Registry: `registry.yaml` (auto-generated)
 - Project memory: `.supervibe/memory/` — prior decisions, incidents, conventions
 - Agent catalog: `agents/_core/`, `agents/_meta/`, `agents/_ops/`, `agents/_stack/`
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree (full implementation, Phase 7)
 

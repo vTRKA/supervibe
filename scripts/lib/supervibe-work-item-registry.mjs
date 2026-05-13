@@ -177,10 +177,14 @@ export async function updateActiveWorkItemGraph({
       lastActivationReason: reason,
     },
   };
+  const currentActiveGraph = registry.activeGraphPath
+    ? toProjectRelativePath(resolvedRoot, resolveRegistryPath(resolvedRoot, registry.activeGraphPath))
+    : null;
+  const wroteCurrentActive = registry.activeEpicId === summary.epicId || currentActiveGraph === summary.graphPath;
   const next = normalizeRegistry({
     ...registry,
-    activeEpicId: summary.epicId,
-    activeGraphPath: summary.graphPath,
+    activeEpicId: summary.status === "active" ? summary.epicId : wroteCurrentActive ? null : registry.activeEpicId,
+    activeGraphPath: summary.status === "active" ? summary.graphPath : wroteCurrentActive ? null : registry.activeGraphPath,
     updatedAt: now,
     epics,
   });
@@ -209,36 +213,54 @@ export async function resolveActiveWorkItemGraph({
   if (registry.activeGraphPath) {
     const candidate = resolve(rootDir, registry.activeGraphPath);
     if (existsSync(candidate)) {
-      return {
-        status: "active",
-        graphPath: candidate,
-        epicId: registry.activeEpicId,
-        source: "registry",
-        candidates: [candidate],
-        registry,
-      };
+      try {
+        const graph = JSON.parse(await readFile(candidate, "utf8"));
+        const summary = summarizeGraphForRegistry({ graph, graphPath: candidate, rootDir });
+        if (summary.status === "active") {
+          return {
+            status: "active",
+            graphPath: candidate,
+            epicId: registry.activeEpicId,
+            source: "registry",
+            candidates: [candidate],
+            registry,
+          };
+        }
+      } catch {
+        // Fall through to discovery; registry integrity repair can remove stale entries.
+      }
     }
   }
 
   const graphPaths = await findWorkItemGraphPaths(rootDir);
-  if (graphPaths.length === 1) {
+  const activeGraphPaths = [];
+  for (const graphPath of graphPaths) {
+    try {
+      const graph = JSON.parse(await readFile(graphPath, "utf8"));
+      const summary = summarizeGraphForRegistry({ graph, graphPath, rootDir });
+      if (summary.status === "active") activeGraphPaths.push(graphPath);
+    } catch {
+      // Ignore unreadable graphs during active resolution; integrity validation reports them.
+    }
+  }
+  if (activeGraphPaths.length === 1) {
     return {
       status: "active",
-      graphPath: graphPaths[0],
+      graphPath: activeGraphPaths[0],
       epicId: null,
-      source: "single-discovered-graph",
-      candidates: graphPaths,
+      source: "single-discovered-active-graph",
+      candidates: activeGraphPaths,
       registry,
     };
   }
-  if (graphPaths.length > 1) {
-    graphPaths.sort();
+  if (activeGraphPaths.length > 1) {
+    activeGraphPaths.sort();
     return {
       status: "ambiguous",
       graphPath: null,
       epicId: null,
       source: "discovered-graphs",
-      candidates: graphPaths,
+      candidates: activeGraphPaths,
       registry,
       nextAction: "pass --file <graph.json> or --epic <epic-id>",
     };
@@ -287,7 +309,7 @@ export async function findWorkItemGraphPaths(rootDir = process.cwd()) {
     }
     for (const entry of entries) {
       const full = join(dir, entry.name);
-      if (entry.isDirectory()) await walk(full, depth + 1);
+      if (entry.isDirectory() && entry.name !== ".archive") await walk(full, depth + 1);
       else if (entry.name === "graph.json" || entry.name.endsWith(".work-item-graph.json")) out.push(full);
     }
   }

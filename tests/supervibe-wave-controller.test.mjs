@@ -29,10 +29,23 @@ test("wave controller groups ready work by dependency, write-set, risk, reviewer
   assert.equal(summarizeWavePlan(plan).waves, 1);
 });
 
-test("wave controller pauses on stale worker sessions and missing reviewers", () => {
+test("wave controller defers reviewers to final sweep by default", () => {
   const plan = buildExecutionWaves({
     tasks: [{ id: "a", status: "open", dependencies: [], targetFiles: ["src/a.ts"], policyRiskLevel: "low" }],
     reviewers: [],
+  });
+
+  assert.equal(plan.status, "ready");
+  assert.deepEqual(plan.blockers, []);
+  assert.deepEqual(plan.waves[0].reviewers, []);
+  assert.equal(plan.waves[0].mergeStrategy, "verify-reconcile-final-review");
+});
+
+test("wave controller pauses on stale worker sessions and only requires missing reviewers in per-wave mode", () => {
+  const plan = buildExecutionWaves({
+    tasks: [{ id: "a", status: "open", dependencies: [], targetFiles: ["src/a.ts"], policyRiskLevel: "low" }],
+    reviewers: [],
+    reviewMode: "per-wave",
     worktreeSessions: [{ sessionId: "s1", status: "stale" }],
   });
 

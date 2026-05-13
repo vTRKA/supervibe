@@ -126,6 +126,8 @@ export function createPlanLifecycleReport({ rootDir = process.cwd(), planPath = 
     entry.exists
     && ARCHIVE_STATUSES.has(entry.status)
     && !isArchivePath(entry.path)
+    && entry.source !== "archive-index"
+    && !entry.archivedAt
     && (!activePlanPath || planKey(state.rootDir, entry.path) !== planKey(state.rootDir, activePlanPath))
   ));
   const activeSource = inspectActiveGraphSourceSync({ rootDir: state.rootDir });
@@ -655,4 +657,3 @@ if (isMain) {
     process.exit(2);
   });
 }
-

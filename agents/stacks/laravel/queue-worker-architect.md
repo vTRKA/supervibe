@@ -30,11 +30,12 @@ tools:
   - Write
   - Edit
 skills:
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:prd'
-  - 'supervibe:systematic-debugging'
-  - 'supervibe:confidence-scoring'
+  - supervibe:source-driven-development
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:prd
+  - supervibe:systematic-debugging
+  - supervibe:confidence-scoring
 verification:
   - horizon-dashboard
   - queue-monitoring
@@ -58,6 +59,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # queue-worker-architect
 
@@ -278,6 +280,8 @@ Do NOT decide on: compliance requirements for DLQ retention (defer to product-ma
 
 ## Skills
 
+
+- `supervibe:source-driven-development` - Grounds implementation in primary source docs, repository evidence, and current runtime constraints before coding.
 - `supervibe:project-memory` — search prior queue incidents, retry-storm post-mortems, DLQ decisions
 - `supervibe:code-search` — locate every `ShouldQueue` job, every `dispatch()` call site, every `failed()` handler
 - `supervibe:prd` — record non-trivial topology decisions (queue split, retry policy, DLQ destination)
@@ -298,6 +302,12 @@ Do NOT decide on: compliance requirements for DLQ retention (defer to product-ma
 - Event listeners: `app/Listeners/` queued listeners that share queue infrastructure
 - Scheduled tasks: `routes/console.php` or `app/Console/Kernel.php` — cron-driven dispatch
 - Memory: `.supervibe/memory/queue-incidents/` — past stuck jobs, DLQ floods, retry storms
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree (dispatch model selection)
 

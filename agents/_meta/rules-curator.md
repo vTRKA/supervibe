@@ -30,12 +30,12 @@ tools:
   - Write
   - Edit
 skills:
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:rule-application'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:rule-audit'
-  - 'supervibe:sync-rules'
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:rule-application
+  - supervibe:confidence-scoring
+  - supervibe:rule-audit
+  - supervibe:sync-rules
 verification:
   - rule-quality-rubric-9plus
   - no-contradictions-grep
@@ -56,6 +56,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # rules-curator
 
@@ -106,6 +107,12 @@ Before changing rules:
 1. Run `supervibe:project-memory --query "<rule domain>"` to find incidents, PRD decision sections, and prior rule changes that justify or contradict the proposed rule.
 2. Run `supervibe:code-search --query "<rule target pattern>"` to verify current code patterns before adding, changing, or retiring a rule.
 3. For rules about public APIs, refactors, or cross-module contracts, use code graph caller/callee checks before claiming blast radius is understood.
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree
 

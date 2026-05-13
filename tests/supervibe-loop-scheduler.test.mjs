@@ -8,6 +8,10 @@ import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 
 import { buildEvidencePacket } from "../scripts/lib/supervibe-evidence-packet.mjs";
+import {
+  atomizePlanToWorkItems,
+  writeWorkItemGraph,
+} from "../scripts/lib/supervibe-plan-to-work-items.mjs";
 import { buildExecutionWaves, formatWaveStatus } from "../scripts/lib/supervibe-wave-controller.mjs";
 import {
   defaultWorktreeRegistryPath,
@@ -134,9 +138,11 @@ test("assign-ready enforces task-local verification and defers full checks", asy
   ], { cwd: dir });
   const [dispatch] = JSON.parse(cli.stdout);
   assert.equal(dispatch.verificationPolicy.scope, "task-local");
+  assert.equal(dispatch.reviewPolicy.mode, "final-sweep");
   assert.deepEqual(dispatch.workerAssignmentPayload.verificationCommands, ["node --test tests/supervibe-loop-scheduler.test.mjs"]);
   assert.deepEqual(dispatch.workerAssignmentPayload.deferredFullVerificationCommands, ["npm run check"]);
   assert.equal(dispatch.workerAssignmentPayload.verificationPolicy.fullSuiteAllowed, false);
+  assert.equal(dispatch.reviewerAssignmentPayload.deferredUntil, "graph-release-gate");
 
   const explained = await execFileAsync(process.execPath, [
     join(ROOT, "scripts", "supervibe-loop.mjs"),
@@ -172,6 +178,59 @@ test("assign-ready enforces task-local verification and defers full checks", asy
   assert.match(commandPlan.stdout, /VERIFICATION_SCOPE: task-local/);
   assert.match(commandPlan.stdout, /FULL_SUITE_ALLOWED: false/);
   assert.match(commandPlan.stdout, /normal task agents run targeted commands only/);
+});
+
+test("combined final-review sweep and completion validation does not skip completion gate", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "supervibe-final-review-completion-"));
+  const cliPath = join(ROOT, "scripts", "supervibe-loop.mjs");
+  const graph = atomizePlanToWorkItems(`# Final Review Completion Plan
+
+## Task T1: Task with evidence
+**Files:**
+- Modify: \`scripts/supervibe-loop.mjs\`
+**Acceptance Criteria:**
+- Combined final review and completion command reaches both gates.
+\`\`\`bash
+node --test tests/supervibe-loop-scheduler.test.mjs
+\`\`\`
+`, {
+    planPath: ".supervibe/artifacts/plans/final-review-completion.md",
+    epicId: "epic-final-review-completion",
+    planReviewPassed: true,
+  });
+  const taskId = "epic-final-review-completion-t1";
+  const evidence = { taskId, command: "node --test tests/supervibe-loop-scheduler.test.mjs", status: "pass" };
+  graph.items = graph.items.map((item) => item.itemId === taskId
+    ? { ...item, status: "complete", verificationEvidence: [evidence] }
+    : item);
+  graph.tasks = graph.tasks.map((task) => task.id === taskId
+    ? { ...task, status: "complete", verificationEvidence: [evidence] }
+    : task);
+  graph.evidence = [evidence];
+  const { graphPath } = await writeWorkItemGraph(graph, { rootDir: dir });
+
+  const cli = await execFileAsync(process.execPath, [
+    cliPath,
+    "--record-final-review",
+    taskId,
+    "--reviewer-agent",
+    "quality-gate-reviewer",
+    "--score",
+    "10",
+    "--production-ready",
+    "true",
+    "--validate-completion",
+    "--file",
+    graphPath,
+    "--non-production",
+    "--allow-untrusted-final-review",
+    "--allow-open-epic",
+    "--no-auto-ui",
+  ], { cwd: dir, maxBuffer: 1024 * 1024 });
+
+  assert.match(cli.stdout, /SUPERVIBE_FINAL_REVIEWER_SWEEP/);
+  assert.match(cli.stdout, /SUPERVIBE_EPIC_COMPLETION/);
+  assert.match(cli.stdout, /PASS: true/);
 });
 
 test("release full-check gate is visible and child task handoff stays targeted", async () => {
@@ -493,12 +552,12 @@ test("plan wave scheduler caps concurrency from provider manifest and explains d
   assert.match(cli.stdout, /SUPERVIBE_SCHEDULER_POLICY/);
   assert.match(cli.stdout, /PROVIDER: codex/);
   assert.match(cli.stdout, /REQUESTED_MAX_CONCURRENCY: 10/);
-  assert.match(cli.stdout, /PROVIDER_MAX_THREADS: 6/);
-  assert.match(cli.stdout, /EFFECTIVE_MAX_CONCURRENCY: 6/);
+  assert.match(cli.stdout, /PROVIDER_MAX_THREADS: 8/);
+  assert.match(cli.stdout, /EFFECTIVE_MAX_CONCURRENCY: 8/);
   assert.match(cli.stdout, /TASK: plan-t01 DECISION: parallel/);
   assert.match(cli.stdout, /TASK: plan-t06 DECISION: parallel/);
-  assert.match(cli.stdout, /TASK: plan-t07 DECISION: serialized REASON: max concurrency 6 reached/);
-  assert.match(cli.stdout, /TASK: plan-t08 DECISION: serialized REASON: max concurrency 6 reached/);
+  assert.match(cli.stdout, /TASK: plan-t07 DECISION: parallel/);
+  assert.match(cli.stdout, /TASK: plan-t08 DECISION: parallel/);
 });
 
 test("agent heartbeat stall detection exposes retry and manual recovery state", async () => {

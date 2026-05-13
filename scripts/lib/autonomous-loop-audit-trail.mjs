@@ -17,12 +17,17 @@ export async function appendAuditEvent(filePath, type, payload = {}) {
   return event;
 }
 
-export function finalReportProvenance({ tasks = [], handoffs = [], scores = [], approvals = [], verification = [] } = {}) {
+export function finalReportProvenance({ tasks = [], handoffs = [], scores = [], approvals = [], verification = [], finalReviewerSweep = null } = {}) {
+  const sweep = finalReviewerSweep || {};
   return {
     taskIds: tasks.map((task) => task.id),
     handoffIds: handoffs.map((handoff, index) => handoff.id || `${handoff.taskId}:${index}`),
     scoreTaskIds: scores.map((score) => score.taskId),
     approvals,
     verification,
+    finalReviewerSweepReceiptIds: sweep.receiptIds || sweep.receipt_ids || [],
+    finalReviewerSweepTaskIds: (sweep.taskReviews || sweep.task_reviews || sweep.taskLedger || sweep.task_ledger || [])
+      .map((review) => review.taskId || review.itemId || review.id)
+      .filter(Boolean),
   };
 }

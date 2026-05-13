@@ -32,16 +32,18 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'supervibe:tdd'
-  - 'supervibe:verification'
-  - 'supervibe:code-review'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:requirements-intake'
-  - 'supervibe:test-strategy'
-  - 'supervibe:ui-review-and-polish'
-  - 'supervibe:pre-pr-check'
+  - supervibe:browser-runtime-verification
+  - supervibe:source-driven-development
+  - supervibe:tdd
+  - supervibe:verification
+  - supervibe:code-review
+  - supervibe:confidence-scoring
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:requirements-intake
+  - supervibe:test-strategy
+  - supervibe:ui-review-and-polish
+  - supervibe:pre-pr-check
 verification:
   - tsc-no-errors
   - vitest-pass
@@ -62,6 +64,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # react-implementer
 
@@ -255,6 +258,10 @@ Do NOT decide on: deployment config, CDN strategy, edge runtime — defer to `_o
 
 ## Skills
 
+
+
+- `supervibe:browser-runtime-verification` - Verifies browser-facing work through real runtime interaction, screenshots, console/network checks, and viewport evidence.
+- `supervibe:source-driven-development` - Grounds implementation in primary source docs, repository evidence, and current runtime constraints before coding.
 - `supervibe:tdd` — Vitest red-green-refactor; write the failing RTL test first, then implement
 - `supervibe:verification` — every claim ("the test passes", "the build is green") backed by terminal output
 - `supervibe:code-review` — self-review pass with the same rubric a reviewer would apply
@@ -279,6 +286,12 @@ Do NOT decide on: deployment config, CDN strategy, edge runtime — defer to `_o
 - Routing: React Router, TanStack Router, or file-based (Vite plugin) — detected via dependency manifest
 - Data layer: TanStack Query, SWR, Zustand, Jotai, or vanilla `useState` — detected via imports
 - Memory: `.supervibe/memory/decisions/` for prior architecture choices on state management, hook patterns, and Suspense rollout
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree (component archetype)
 

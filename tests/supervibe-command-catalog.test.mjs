@@ -113,6 +113,63 @@ test("command resolver treats no-slash update/adapt requests as command invocati
   }
 });
 
+test("command resolver maps short lifecycle aliases to canonical Supervibe workflows", () => {
+  const cases = [
+    ["/spec", "/supervibe-brainstorm"],
+    ["/plan", "/supervibe-plan"],
+    ["/build", "/supervibe-execute-plan"],
+    ["/test", "/supervibe-loop --validate-completion"],
+    ["/review", "/supervibe-loop --final-review-sweep"],
+    ["/ship", "/supervibe-loop --final-review-sweep --validate-completion"],
+  ];
+
+  for (const [request, expectedCommand] of cases) {
+    const match = resolveCommandRequest(request, {
+      pluginRoot: ROOT,
+      projectRoot: ROOT,
+    });
+
+    assert.equal(match.command, expectedCommand, request);
+    assert.equal(match.doNotSearchProject, true, request);
+    assert.equal(match.directRoute, true, request);
+  }
+});
+
+test("command resolver does not hijack normal review requests with lifecycle aliases", () => {
+  const match = resolveCommandRequest("review the architecture diff for hidden coupling", {
+    pluginRoot: ROOT,
+    projectRoot: ROOT,
+  });
+
+  assert.notEqual(match?.id, "lifecycle-review");
+  assert.notEqual(match?.command, "/supervibe-loop --final-review-sweep");
+});
+
+test("command resolver does not route final reviewer notes to upgrade scripts", () => {
+  const match = resolveCommandRequest("final review current audit-hardening update architect-reviewer", {
+    pluginRoot: ROOT,
+    projectRoot: ROOT,
+  });
+
+  assert.notEqual(match?.command, "npm run supervibe:upgrade");
+  assert.notEqual(match?.intent, "project_npm_script");
+});
+
+test("command resolver ignores negated npm command mentions and trims punctuation", () => {
+  const negated = resolveCommandRequest("Do not run npm run check.", {
+    pluginRoot: ROOT,
+    projectRoot: ROOT,
+  });
+  assert.notEqual(negated?.command, "npm run check");
+  assert.notEqual(negated?.intent, "project_npm_script");
+
+  const direct = resolveCommandRequest("run npm run check.", {
+    pluginRoot: ROOT,
+    projectRoot: ROOT,
+  });
+  assert.equal(direct.command, "npm run check");
+});
+
 test("command matches expose the real-agent orchestration contract", () => {
   const match = resolveCommandRequest("/supervibe-design build prototype", {
     pluginRoot: ROOT,

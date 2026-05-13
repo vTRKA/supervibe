@@ -114,6 +114,38 @@ Before the numbered steps, run the **Plan Scope Approval Gate**: print a compact
 12a. **Plan review receipt gate** - the plan-review artifact is a durable reviewer-owned output. It must be produced by the named real host reviewer agents and each reviewer output must have a runtime-issued scoped workflow receipt with `hostInvocation.source` and `hostInvocation.invocationId`. Inline review notes, controller summaries, command receipts, skill receipts, or subagent batch summaries are diagnostic only and cannot unlock atomization or execution.
 13. **After review passes**, hand off to atomic work item and epic creation before execution. Print `Step 1/1: split the plan into atomic work items and an epic?`.
 
+## When not to use
+
+- Do not use this skill to bypass the command or workflow that owns durable artifacts.
+- Do not use it when source evidence, RAG/CodeGraph, or required verification is missing.
+- Do not use it to replace a specialist producer, worker, or reviewer that must issue runtime evidence.
+
+## Common rationalizations
+
+- "This is small, so no source check is needed" - reject when the skill changes code, config, or durable artifacts.
+- "The user asked for speed, so skip receipts" - reject when durable work, delegation, or review is claimed.
+- "Existing prose is enough evidence" - reject when validators or command output are required.
+
+## Red flags
+
+- A durable artifact changes without a command, receipt, or verification path.
+- The skill is used outside its phase without an explicit handoff.
+- Claims of completion appear before evidence and confidence scoring.
+
+## Checklist
+
+- Source of truth read.
+- Scope and owner confirmed.
+- RAG/CodeGraph/memory requirement decided.
+- Evidence artifact or command recorded.
+- Stop condition and next handoff clear.
+
+## Failure modes
+
+- Inline emulation replaces a required producer or reviewer.
+- Broad use of the skill slows delivery without improving evidence.
+- Missing verification lets stale assumptions pass as production-ready.
+
 ## Output contract
 
 Returns: plan file with header (Goal/Architecture/Tech Stack), File Structure, Critical Path, Scope Safety Gate, Delivery Strategy, Production Readiness, numbered Tasks with bite-sized steps, text-first visual summary evidence, Final 10/10 Acceptance Gate, Self-Review, post-plan summary, mandatory Review Handoff, post-review Atomic/Epic Handoff, and a machine-readable `NEXT_STEP_HANDOFF`.

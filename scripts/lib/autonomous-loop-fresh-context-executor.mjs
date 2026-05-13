@@ -21,7 +21,7 @@ export const ATTEMPT_STATUSES = Object.freeze([
   "stalled",
 ]);
 
-export const DEFAULT_NO_PROGRESS_TIMEOUT_MS = 15 * 60 * 1000;
+export const DEFAULT_NO_PROGRESS_TIMEOUT_MS = 7 * 60 * 1000;
 
 const DEFAULT_OUTPUT_CONTRACT = {
   completionSignal: "SUPERVIBE_TASK_COMPLETE: true",
@@ -100,8 +100,10 @@ export async function runFreshContextAttempt({
   contextBudgetOptions = null,
   enforceContextBudget = false,
   noProgressTimeoutMs = DEFAULT_NO_PROGRESS_TIMEOUT_MS,
+  reviewMode = "final-sweep",
 } = {}) {
   const executionMode = normalizeExecutionMode(mode);
+  const normalizedReviewMode = normalizeReviewMode(reviewMode);
   const packet = buildFreshContextPacket({
     task,
     contract,
@@ -165,7 +167,8 @@ export async function runFreshContextAttempt({
       codeGraphHandled: true,
       handoffComplete: true,
       policyCompliant: true,
-      independentReview: true,
+      independentReview: normalizedReviewMode !== "final-sweep",
+      finalReviewerSweepDeferred: normalizedReviewMode === "final-sweep",
       userApproval: task.policyRiskLevel !== "high",
     });
     return createAttemptRecord({
@@ -323,7 +326,8 @@ export async function runFreshContextAttempt({
     codeGraphHandled: true,
     handoffComplete: true,
     policyCompliant: true,
-    independentReview: true,
+    independentReview: normalizedReviewMode !== "final-sweep",
+    finalReviewerSweepDeferred: normalizedReviewMode === "final-sweep",
     userApproval: task.policyRiskLevel !== "high",
   });
 
@@ -500,6 +504,12 @@ function stopAdapter(adapter) {
   } catch (err) {
     return { stopped: false, reason: err.message };
   }
+}
+
+function normalizeReviewMode(value) {
+  const normalized = String(value || "final-sweep").trim().toLowerCase().replace(/_/g, "-");
+  if (["per-task", "inline", "wave", "stage-2"].includes(normalized)) return "per-task";
+  return "final-sweep";
 }
 
 function sanitizeContextPack(contextPack) {

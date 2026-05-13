@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "source": "2026-05-13-agent-skills-comparison",
+  "policy": "advisory-with-local-validator-enforcement",
+  "requiredSkillAnatomy": [
+    "Expert Operating Standard",
+    "Step 0",
+    "When not to use",
+    "Decision tree",
+    "Procedure",
+    "Common rationalizations",
+    "Red flags",
+    "Checklist",
+    "Failure modes",
+    "Output contract",
+    "Guard rails",
+    "Verification",
+    "Related"
+  ],
+  "canonicalLifecycleDomains": [
+    "spec",
+    "plan",
+    "build",
+    "test",
+    "review",
+    "ship"
+  ]
+}

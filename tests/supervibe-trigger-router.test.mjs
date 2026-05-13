@@ -43,6 +43,15 @@ describe("supervibe trigger router", () => {
     assert.equal(route.requiredSafety.includes("documentation-approval-before-write"), true);
   });
 
+  it("does not route local evidence-lane safety wording to genesis", () => {
+    const route = routeTriggerRequest("Read-only evidence lane: inspect supervibe provider config for this project without overwriting user files", {
+      artifacts: { activeWorkGraph: true, taskId: "T002" },
+    });
+
+    assert.notEqual(route.intent, "genesis_setup");
+    assert.notEqual(route.command, "/supervibe-genesis");
+  });
+
   it("routes visual explanations to a text-first summary", () => {
     const route = routeTriggerRequest("explain this system visually with a text-first summary before implementation", {
       artifacts: { request: true },

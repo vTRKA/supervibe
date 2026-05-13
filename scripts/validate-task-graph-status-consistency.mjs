@@ -50,7 +50,9 @@ export async function validateTaskGraphStatusConsistency({ rootDir = process.cwd
     const active = await resolveActiveWorkItemGraph({ rootDir });
     if (active.status === "active") selectedPath = active.graphPath;
     else if (active.status === "none") {
-      return { pass: true, neutral: true, summaries: [], issues: [] };
+      const discovered = findGraphFiles(rootDir);
+      if (discovered.length > 0) paths = discovered;
+      else return { pass: true, neutral: true, summaries: [], issues: [] };
     } else if (active.status === "ambiguous") {
       const discovered = findGraphFiles(rootDir);
       if (discovered.length > 0 && discovered.every((path) => isTerminalGraphFile(path))) {

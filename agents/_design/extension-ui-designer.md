@@ -42,14 +42,14 @@ recommended-mcps:
   - figma
   - playwright
 skills:
-  - 'supervibe:prototype'
-  - 'supervibe:brandbook'
-  - 'supervibe:interaction-design-patterns'
-  - 'supervibe:ui-review-and-polish'
-  - 'supervibe:project-memory'
-  - 'supervibe:design-intelligence'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:chrome-extension-build'
+  - supervibe:prototype
+  - supervibe:brandbook
+  - supervibe:interaction-design-patterns
+  - supervibe:ui-review-and-polish
+  - supervibe:project-memory
+  - supervibe:design-intelligence
+  - supervibe:confidence-scoring
+  - supervibe:chrome-extension-build
 verification:
   - target-surfaces-declared
   - viewport-preset-loaded
@@ -77,6 +77,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # extension-ui-designer
 
@@ -320,6 +321,12 @@ Do NOT design custom new-tab override unless the product brief explicitly reques
 - Mockup output dir: `.supervibe/artifacts/prototypes/<feature>/extension/{popup,options,side-panel,newtab}/`
 - Permission rationale notes: `.supervibe/artifacts/permissions.md`, `.supervibe/artifacts/prototypes/<feature>/permission-rationale.md`
 - Prior extension decisions: `.supervibe/memory/decisions/` (search by tag `chrome-extension` or `mv3`)
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree (surface choice + interaction policy)
 

@@ -11,6 +11,7 @@ const REQUIRED_BODY_PATTERNS = Object.freeze([
   ["missing-project-context-section", /##\s+Project Context\b/i, "Agent needs a Project Context section with repo-specific evidence guidance."],
   ["missing-modern-expert-standard", /agent-modern-expert-standard|##\s+2026 Expert Standard\b/i, "Agent needs the modern expert standard reference."],
   ["missing-scope-safety", /##\s+Scope Safety\b|scope-safety-standard/i, "Agent needs scope-safety guidance."],
+  ["missing-invocation-boundary", /##\s+(Invocation Boundary|Composition Boundary|Composition And Invocation Boundary)\b/i, "Agent needs an invocation/composition boundary section."],
   ["missing-rag-memory-preflight", /RAG \+ Memory pre-flight|supervibe:project-memory/i, "Agent needs memory/RAG pre-flight guidance."],
   ["missing-codegraph-guidance", /Code Graph|--callers|--callees|--neighbors/i, "Agent needs Code Graph guidance for structural work."],
   ["missing-user-dialogue-discipline", /##\s+User dialogue discipline\b|Step N\/M/i, "Agent needs one-question-at-a-time dialogue discipline."],
@@ -36,6 +37,11 @@ export function validateAgentContentQuality(rootDir = process.cwd()) {
     const raw = readFileSync(file, "utf8");
     const parsed = matter(raw);
     const body = parsed.content;
+    const fenceIssue = findUnbalancedFencedCode(raw);
+
+    if (fenceIssue) {
+      issues.push(issue(rel, "unbalanced-fenced-code", `Agent file has an unclosed fenced code block opened on line ${fenceIssue.line}.`));
+    }
 
     if (/{{\s*[A-Z][A-Z0-9_-]*\s*}}/.test(raw)) {
       issues.push(issue(rel, "template-placeholder", "Agent file contains unresolved template placeholders."));
@@ -56,6 +62,17 @@ export function validateAgentContentQuality(rootDir = process.cwd()) {
     for (const [code, pattern, message] of REQUIRED_BODY_PATTERNS) {
       if (pattern.test(body)) continue;
       issues.push(issue(rel, code, message));
+    }
+
+    const bodyLength = Buffer.byteLength(body, "utf8");
+    if (bodyLength < 3_500) {
+      issues.push(issue(rel, "thin-agent-body", "Agent body is too shallow to provide reliable domain procedure, evidence expectations, and failure modes."));
+    }
+
+    const regulatedOrReleaseFacing = /(security|privacy|compliance|payment|billing|release|auth|audit|reviewer)/i.test(rel);
+    const procedure = extractSection(body, "Procedure");
+    if (regulatedOrReleaseFacing && Buffer.byteLength(procedure, "utf8") < 300) {
+      issues.push(issue(rel, "thin-high-risk-procedure", "Regulated or release-facing agent needs a concrete Procedure section, not a placeholder."));
     }
   }
 
@@ -92,6 +109,46 @@ function walkMarkdown(dir) {
 
 function issue(file, code, message) {
   return { file, code, message };
+}
+
+function extractSection(body, section) {
+  const match = new RegExp(`^##\\s+${escapeRegex(section)}\\b.*$`, "im").exec(body);
+  if (!match) return "";
+  const rest = body.slice(match.index + match[0].length);
+  const next = /^##\s+/m.exec(rest);
+  return next ? rest.slice(0, next.index) : rest;
+}
+
+function escapeRegex(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function findUnbalancedFencedCode(text) {
+  const lines = text.split(/\r?\n/);
+  let openFence = null;
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = /^(?<marker>`{3,}|~{3,})/.exec(lines[index]);
+    if (!match?.groups?.marker) continue;
+
+    const marker = match.groups.marker;
+    const fence = {
+      char: marker[0],
+      length: marker.length,
+      line: index + 1,
+    };
+
+    if (!openFence) {
+      openFence = fence;
+      continue;
+    }
+
+    if (fence.char === openFence.char && fence.length >= openFence.length) {
+      openFence = null;
+    }
+  }
+
+  return openFence;
 }
 
 function toPosix(path) {

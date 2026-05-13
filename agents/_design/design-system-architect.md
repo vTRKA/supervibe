@@ -27,14 +27,14 @@ tools:
   - Glob
   - Bash
 skills:
-  - 'supervibe:brandbook'
-  - 'supervibe:component-library-integration'
-  - 'supervibe:tokens-export'
-  - 'supervibe:prototype-handoff'
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:design-intelligence'
-  - 'supervibe:confidence-scoring'
+  - supervibe:brandbook
+  - supervibe:component-library-integration
+  - supervibe:tokens-export
+  - supervibe:prototype-handoff
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:design-intelligence
+  - supervibe:confidence-scoring
 verification:
   - approved-design-system-state
   - section-approval-coverage
@@ -63,6 +63,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # design-system-architect
 
@@ -252,6 +253,12 @@ Feedback requests a visual change?
   system-level -> update token/component rule with approval and memory writeback.
   instance-level -> keep tokens stable; fix the screen inside existing system.
 ```
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Procedure
 

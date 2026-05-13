@@ -39,7 +39,7 @@ import {
   DEFAULT_NO_PROGRESS_TIMEOUT_MS,
   runFreshContextAttempt,
 } from "./autonomous-loop-fresh-context-executor.mjs";
-import { createToolAdapter, normalizeExecutionMode } from "./autonomous-loop-tool-adapters.mjs";
+import { createToolAdapter, normalizeExecutionMode, resolveDefaultLoopExecutionMode } from "./autonomous-loop-tool-adapters.mjs";
 import { createWorkflowFlowModel } from "./supervibe-workflow-flow-model.mjs";
 import { evaluateArtifactGcSchedule, scanSupervibeArtifactGc } from "./supervibe-artifact-gc.mjs";
 import {
@@ -54,13 +54,21 @@ import {
   detectStaleWorkItems,
   groupWorkItemsByStatus,
 } from "./supervibe-work-item-query.mjs";
+import { createFinalReviewerSweep } from "./supervibe-final-review-sweep.mjs";
 
 export async function runAutonomousLoop(options = {}) {
   const rootDir = resolve(options.rootDir || process.cwd());
   const runId = options.runId || createRunId(options.request || options.plan || nowIso());
   const loopDir = join(rootDir, ".supervibe", "memory", "loops", runId);
   await mkdir(loopDir, { recursive: true });
-  const executionMode = normalizeExecutionMode(options.executionMode || (options.dryRun ? "dry-run" : "dry-run"));
+  const adapterId = options.adapterId || options.tool || "generic-shell-stub";
+  const executionMode = normalizeExecutionMode(options.executionMode || resolveDefaultLoopExecutionMode({
+    dryRun: Boolean(options.dryRun),
+    adapterId,
+  }));
+  const externalFreshContext = executionMode === "fresh-context" && adapterId !== "generic-shell-stub";
+  const allowSpawn = options.allowSpawn ?? externalFreshContext;
+  const permissionPromptBridge = options.permissionPromptBridge ?? externalFreshContext;
   const commitPerTask = Boolean(options.commitPerTask || options["commit-per-task"]);
   const sourcePlanPath = options.plan ? resolve(rootDir, options.plan) : null;
   const nativeWorkGraphPath = sourcePlanPath ? await detectNativeWorkGraphPath(sourcePlanPath) : null;
@@ -87,7 +95,7 @@ export async function runAutonomousLoop(options = {}) {
   const preflight = buildPreflight({
     request: options.request || options.plan || "",
     tasks,
-    options: { ...options, executionMode, commitPerTask },
+    options: { ...options, adapterId, executionMode, allowSpawn, permissionPromptBridge, commitPerTask },
   });
   const contracts = generateContracts(tasks);
   const verificationMatrix = createVerificationMatrix(tasks, contracts);
@@ -98,7 +106,12 @@ export async function runAutonomousLoop(options = {}) {
     levels: [...new Set(verificationMatrix.map((entry) => entry.level))],
   };
   preflight.no_progress_timeout_ms = Number(options.noProgressTimeoutMs || DEFAULT_NO_PROGRESS_TIMEOUT_MS);
-  preflight.autonomy_readiness = scoreAutonomyReadiness({ tasks, contracts, preflight, gates: [] });
+  const reviewMode = normalizeLoopReviewMode(options.reviewMode ?? options.reviewerMode ?? options.review_mode ?? options.reviewer_mode ?? preflight.review_mode ?? preflight.reviewer_mode);
+  preflight.review_policy = {
+    mode: reviewMode,
+    reviewersRequiredAt: reviewMode === "final-sweep" ? "final-graph-sweep" : "per-task",
+  };
+  preflight.autonomy_readiness = scoreAutonomyReadiness({ tasks, contracts, preflight, gates: [], reviewMode });
   await writePreflightArtifact(loopDir, preflight);
 
   const availableAgents = await loadAvailableAgents(rootDir);
@@ -187,6 +200,56 @@ export async function runAutonomousLoop(options = {}) {
     }
     stopScheduler = true;
   }
+  if (!stopScheduler && executionMode === "fresh-context" && preflight.blocked_actions?.includes("provider adapter unavailable")) {
+    stopReason = "provider_adapter_unavailable";
+    policyRisk = maxRisk(policyRisk, "medium");
+    const nextAction = `install or configure ${adapterId} adapter, or use ${preflight.provider_capabilities?.fallbackMode || "guided"} mode`;
+    for (const task of tasks) {
+      if (["open", "ready"].includes(task.status || "open")) {
+        task.status = "blocked";
+        task.resumeNotes = createResumeNotes({
+          task,
+          nextAction,
+          blocker: stopReason,
+        });
+        progressEntries.push(createProgressEntry({
+          taskId: task.id,
+          attemptId: `${task.id}-provider-adapter`,
+          section: "BLOCKERS",
+          summary: `Provider adapter blocked execution: ${stopReason}`,
+          nextAction,
+          evidencePaths: [`provider-adapter:${preflight.execution_policy?.provider?.selected_tool || adapterId}`],
+          blocker: stopReason,
+        }));
+      }
+    }
+    stopScheduler = true;
+  }
+  if (!stopScheduler && executionMode === "fresh-context" && preflight.provider_capabilities?.freshContextAdapter !== true) {
+    stopReason = "fresh_context_adapter_unavailable";
+    policyRisk = maxRisk(policyRisk, "medium");
+    const nextAction = `use ${preflight.provider_capabilities?.recommendedMode || "guided"} mode or configure a supported fresh-context adapter`;
+    for (const task of tasks) {
+      if (["open", "ready"].includes(task.status || "open")) {
+        task.status = "blocked";
+        task.resumeNotes = createResumeNotes({
+          task,
+          nextAction,
+          blocker: stopReason,
+        });
+        progressEntries.push(createProgressEntry({
+          taskId: task.id,
+          attemptId: `${task.id}-provider-capability`,
+          section: "BLOCKERS",
+          summary: `Provider capability blocked execution: ${stopReason}`,
+          nextAction,
+          evidencePaths: [`provider-capabilities:${preflight.execution_policy?.provider?.selected_tool || adapterId}`],
+          blocker: stopReason,
+        }));
+      }
+    }
+    stopScheduler = true;
+  }
 
   while (!stopScheduler) {
     const nativeReadyFront = calculateReadyFront({
@@ -197,6 +260,7 @@ export async function runAutonomousLoop(options = {}) {
       maxConcurrentAgents: preflight.max_concurrent_agents,
       maxPolicyRiskLevel: "high",
       reviewersAvailable: true,
+      reviewMode,
     });
     let readyFront = nativeReadyFront;
     let trackerReady = null;
@@ -209,6 +273,7 @@ export async function runAutonomousLoop(options = {}) {
         maxConcurrentAgents: preflight.max_concurrent_agents,
         maxPolicyRiskLevel: "high",
         reviewersAvailable: true,
+        reviewMode,
       });
       trackerMetrics.readyReconciliations += 1;
       trackerMetrics.blockedByTracker += trackerReady.blockedByTracker?.length || 0;
@@ -253,7 +318,7 @@ export async function runAutonomousLoop(options = {}) {
       break;
     }
 
-    const dispatch = dispatchTask(task, { availableAgents });
+    const dispatch = dispatchTask(task, { availableAgents, reviewMode });
     dispatches.push(dispatch);
     const attemptId = `${task.id}-attempt-${loopCount}`;
     const claimInput = {
@@ -450,7 +515,9 @@ export async function runAutonomousLoop(options = {}) {
     });
 
     if (executionMode !== "dry-run") {
-      const adapter = options.adapter || createToolAdapter(options.adapterId || "generic-shell-stub", options.adapterConfig || {});
+      const adapter = executionMode === "fresh-context"
+        ? options.adapter || createToolAdapter(adapterId, options.adapterConfig || {})
+        : options.adapter || null;
       const freshAttempt = await runFreshContextAttempt({
         task: executionTask,
         adapter,
@@ -474,10 +541,11 @@ export async function runAutonomousLoop(options = {}) {
           stopMustBeAvailable: true,
           defaultCommitBehavior: commitPerTask ? "commit-after-green-opt-in" : "no-auto-commit",
         },
-        allowSpawn: Boolean(options.allowSpawn),
+        allowSpawn: Boolean(allowSpawn),
         approvalLeaseId: preflight.approval_lease.scope,
         permissionAudit,
         noProgressTimeoutMs: options.noProgressTimeoutMs ?? preflight.no_progress_timeout_ms,
+        reviewMode,
       });
       attempts.push(freshAttempt);
       scores.push(freshAttempt.score || { taskId: task.id, finalScore: 0, status: freshAttempt.status });
@@ -555,7 +623,7 @@ export async function runAutonomousLoop(options = {}) {
       handoffs.push({
         taskId: task.id,
         sourceAgent: dispatch.primaryAgentId,
-        targetAgent: dispatch.reviewerAgentId,
+        targetAgent: handoffTargetAgent(dispatch),
         summary: `Fresh-context completed ${task.goal}`,
         confidenceScore: freshAttempt.score.finalScore,
         contextPack,
@@ -642,7 +710,8 @@ export async function runAutonomousLoop(options = {}) {
       codeGraphHandled: true,
       handoffComplete: true,
       policyCompliant: true,
-      independentReview: true,
+      independentReview: reviewMode !== "final-sweep",
+      finalReviewerSweepDeferred: reviewMode === "final-sweep",
       userApproval: task.policyRiskLevel !== "high" || Boolean(options.approvalLease),
     });
     scores.push(score);
@@ -665,7 +734,7 @@ export async function runAutonomousLoop(options = {}) {
     handoffs.push({
       taskId: task.id,
       sourceAgent: dispatch.primaryAgentId,
-      targetAgent: dispatch.reviewerAgentId,
+      targetAgent: handoffTargetAgent(dispatch),
       summary: `Dry-run completed ${task.goal}`,
       confidenceScore: score.finalScore,
       contextPack,
@@ -714,6 +783,8 @@ export async function runAutonomousLoop(options = {}) {
     providerCapabilities: preflight.provider_capabilities,
     providerCapabilitySummary: preflight.provider_capability_summary,
     providerCapabilityMatrix: preflight.provider_capability_matrix,
+    providerLimitPolicy: preflight.provider_limit_policy,
+    maxConcurrentAgents: preflight.max_concurrent_agents,
     executionMode,
     commitPerTask,
     attempts,
@@ -739,6 +810,16 @@ export async function runAutonomousLoop(options = {}) {
       ? "run deferred heavy verification only after epic completion"
       : "none",
   };
+  state.review_policy = {
+    mode: reviewMode,
+    reviewersRequiredAt: reviewMode === "final-sweep" ? "final-graph-sweep" : "per-task",
+    midGraphReviewersDeferred: reviewMode === "final-sweep",
+    finalReviewRequired: reviewMode === "final-sweep",
+  };
+  state.final_reviewer_sweep = normalizeLoopFinalReviewerSweep(options.finalReviewerSweep || options.final_reviewer_sweep, {
+    tasks,
+    reviewMode,
+  });
   state.task_graph = {
     graph_id: taskGraph.graph_id,
     source: taskGraph.source,
@@ -797,6 +878,7 @@ export async function runAutonomousLoop(options = {}) {
     scores,
     approvals: [preflight.approval_lease],
     verification: scores.map((score) => ({ taskId: score.taskId, finalScore: score.finalScore })),
+    finalReviewerSweep: state.final_reviewer_sweep,
   });
   state.final_report_provenance = provenance;
   const systemAcceptance = evaluateFinalAcceptance({
@@ -813,6 +895,8 @@ export async function runAutonomousLoop(options = {}) {
     verificationMatrix,
     failurePackets,
     sideEffectStatus,
+    finalReviewerSweep: state.final_reviewer_sweep,
+    requireTrustedFinalReviewReceipts: false,
   });
   state.system_acceptance = {
     acceptance_id: `${runId}:system-final-acceptance`,
@@ -841,6 +925,8 @@ export async function runAutonomousLoop(options = {}) {
     verificationMatrix,
     failurePackets,
     sideEffectStatus,
+    finalReviewerSweep: state.final_reviewer_sweep,
+    requireTrustedFinalReviewReceipts: false,
   });
   state.final_acceptance = finalAcceptance;
   if (!state.system_acceptance.pass && !stopReason) {
@@ -1427,12 +1513,37 @@ function markTaskForRetryOrBlock({ task, attempt, requeueCounts, maxRetries }) {
 }
 
 function createReviewerEvidence(dispatch, task, evidencePaths = []) {
+  const finalSweep = dispatch.reviewPolicy?.mode === "final-sweep";
   return {
     reviewerAgentId: dispatch.reviewerAgentId,
-    independent: dispatch.reviewerAgentId !== dispatch.primaryAgentId,
+    independent: finalSweep ? false : dispatch.reviewerAgentId !== dispatch.primaryAgentId,
     required: requiresIndependentReview(task),
+    policy: finalSweep ? "deferred-final-sweep" : "per-task",
+    deferredUntil: finalSweep ? "graph-release-gate" : null,
     evidencePaths,
   };
+}
+
+function handoffTargetAgent(dispatch = {}) {
+  return dispatch.reviewerAgentId || "final-reviewer-sweep";
+}
+
+function normalizeLoopReviewMode(value) {
+  const normalized = String(value || "final-sweep").trim().toLowerCase().replace(/_/g, "-");
+  if (["per-task", "inline", "wave", "stage-2"].includes(normalized)) return "per-task";
+  return "final-sweep";
+}
+
+function normalizeLoopFinalReviewerSweep(value = null, { tasks = [], reviewMode = "final-sweep" } = {}) {
+  if (reviewMode !== "final-sweep") return { status: "not-required", coveredTaskIds: [], requiredAt: "per-task" };
+  return createFinalReviewerSweep({
+    tasks,
+    final_reviewer_sweep: value,
+  }, {
+    taskReviews: value?.taskReviews || value?.task_reviews || value?.taskLedger || value?.task_ledger || value?.reviews || [],
+    reviewerAgentId: value?.reviewerAgentId || value?.reviewer_agent_id || null,
+    receiptIds: value?.receiptIds || value?.receipt_ids || [],
+  });
 }
 
 async function closeTrackerTask({ task, adapter, mapping, evidence = [], reason = "completed" } = {}) {

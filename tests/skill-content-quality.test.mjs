@@ -91,6 +91,11 @@ Follow docs/references/skill-expert-operating-standard.md and keep confidence be
 
 Read host instructions and relevant project artifacts.
 
+## When not to use
+
+- Do not use when the caller needs only a one-line status check.
+- Do not use when required source artifacts are unavailable.
+
 ## Decision tree
 
 \`\`\`
@@ -102,6 +107,27 @@ Evidence is missing
 
 1. Gather evidence.
 2. Score with confidence-scoring.
+
+## Common rationalizations
+
+- "The fixture is small, so evidence does not matter" is not acceptable.
+- "The validator probably caught enough" is not acceptable.
+
+## Red flags
+
+- Missing host instructions.
+- Missing verification command.
+
+## Checklist
+
+- Evidence was read.
+- Required sections are present.
+- Verification output was inspected.
+
+## Failure modes
+
+- False confidence from incomplete fixtures.
+- Drift between validation rules and complete examples.
 
 ## Output contract
 

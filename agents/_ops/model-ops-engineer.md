@@ -30,11 +30,11 @@ tools:
   - Glob
   - Bash
 skills:
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:feature-flag-rollout'
-  - 'supervibe:verification'
-  - 'supervibe:confidence-scoring'
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:feature-flag-rollout
+  - supervibe:verification
+  - supervibe:confidence-scoring
 verification:
   - latency-budget-pass
   - cost-budget-pass
@@ -54,6 +54,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # model-ops-engineer
 
@@ -147,6 +148,12 @@ Use `Step N/M:` in English. In Russian conversations, localize the visible word 
 - unbounded-token-cost
 - prompt-version-drift
 - release-without-observability
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Procedure
 

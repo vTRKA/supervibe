@@ -6,11 +6,13 @@ import {
   detectToolAdapters,
   getLoopProviderCapabilityMatrix,
   normalizeExecutionMode,
+  resolveDefaultLoopExecutionMode,
   resolveToolLoopCapabilities,
   summarizeLoopProviderCapabilities,
   summarizeToolAdapterAvailability,
 } from "./autonomous-loop-tool-adapters.mjs";
 import { createPermissionAudit } from "./autonomous-loop-permission-audit.mjs";
+import { loadProviderCapabilities } from "./supervibe-provider-config-doctor.mjs";
 
 export function classifyPreflight({ request = "", tasks = [] } = {}) {
   const text = `${request} ${tasks.map((task) => `${task.goal} ${task.category}`).join(" ")}`.toLowerCase();
@@ -23,16 +25,22 @@ export function buildPreflight({ request = "", tasks = [], options = {} } = {}) 
   const preflightClass = classifyPreflight({ request, tasks });
   const environmentTarget = options.environmentTarget || inferEnvironmentTarget(request, tasks);
   const autonomyLevel = options.autonomyLevel || (environmentTarget === "production" ? "production-prep" : "implement-and-test");
-  const executionMode = normalizeExecutionMode(options.executionMode || (options.dryRun ? "dry-run" : "dry-run"));
   const runBudget = normalizeGoalUntilCompleteBudget(options);
   const toolAdapters = detectToolAdapters({
     env: options.env || process.env,
-    availableCommands: options.availableCommands || {},
+    availableCommands: options.availableCommands ?? null,
     enabledAdapters: options.enabledAdapters,
   });
   const adapterId = options.adapterId || options.tool || "generic-shell-stub";
   const adapter = toolAdapters.find((candidate) => candidate.id === adapterId) || toolAdapters.find((candidate) => candidate.id === "generic-shell-stub");
   const providerCapabilities = resolveProviderCapabilities(adapterId, adapter?.id || "generic-shell-stub");
+  const executionMode = normalizeExecutionMode(options.executionMode || resolveDefaultLoopExecutionMode({
+    dryRun: Boolean(options.dryRun),
+    adapterId,
+    providerCapabilities,
+  }));
+  const providerLimitPolicy = resolveProviderLimitPolicy({ adapterId, options });
+  const maxConcurrentAgents = providerLimitPolicy.effectiveMaxConcurrentAgents;
   const providerCapabilityMatrix = getLoopProviderCapabilityMatrix();
   const providerCapabilitySummary = summarizeLoopProviderCapabilities(providerCapabilityMatrix);
   const permissionAudit = createPermissionAudit({
@@ -83,11 +91,15 @@ export function buildPreflight({ request = "", tasks = [], options = {} } = {}) 
   if (executionMode === "fresh-context" && !providerCapabilities.freshContextAdapter) {
     missingData.push(`${adapterId} fresh-context adapter`);
   }
+  if (executionMode === "fresh-context" && adapterId !== "generic-shell-stub" && adapter?.available !== true) {
+    missingData.push(`${adapterId} provider adapter unavailable`);
+  }
 
   const remoteApprovalMissing = missingData.some((item) => ["production approval policy", "server access reference"].includes(item));
   const blockedActions = [
     ...(remoteApprovalMissing ? ["remote mutation", "production deploy"] : []),
     ...(missingData.some((item) => item.includes("fresh-context adapter")) ? ["fresh-context execution"] : []),
+    ...(missingData.some((item) => item.includes("provider adapter unavailable")) ? ["provider adapter unavailable"] : []),
     ...permissionAudit.blockers.map((blocker) => blocker.status),
   ];
 
@@ -104,7 +116,8 @@ export function buildPreflight({ request = "", tasks = [], options = {} } = {}) 
     max_runtime_minutes: runBudget.maxRuntimeMinutes,
     run_until: runBudget.runUntil,
     budget_policy: runBudget.policy,
-    max_concurrent_agents: Number(options.maxConcurrentAgents || 3),
+    max_concurrent_agents: maxConcurrentAgents,
+    provider_limit_policy: providerLimitPolicy,
     allowed_write_scope: options.allowedWriteScope || ["project"],
     required_checks: options.requiredChecks || ["focused tests", "policy guard", "confidence score"],
     async_gates_supported: true,
@@ -132,6 +145,7 @@ export function buildPreflight({ request = "", tasks = [], options = {} } = {}) 
       provider: {
         selected_adapter: adapter?.id || "generic-shell-stub",
         selected_tool: adapterId,
+        provider_limits: providerLimitPolicy,
         continuation_mode: providerCapabilities.nativeContinuation,
         recommended_mode: providerCapabilities.recommendedMode,
         fallback_mode: providerCapabilities.fallbackMode,
@@ -184,7 +198,7 @@ export function buildPreflight({ request = "", tasks = [], options = {} } = {}) 
         max_loops: runBudget.maxLoops,
         max_runtime_minutes: runBudget.maxRuntimeMinutes,
         run_until: runBudget.runUntil,
-        max_concurrent_agents: Number(options.maxConcurrentAgents || 3),
+        max_concurrent_agents: maxConcurrentAgents,
       },
       duration: runBudget.duration,
       expires_after_loops: runBudget.expiresAfterLoops,
@@ -322,6 +336,55 @@ function resolveProviderCapabilities(requestedId, fallbackId) {
   }
 }
 
+function resolveProviderLimitPolicy({ adapterId = "generic-shell-stub", options = {} } = {}) {
+  const providerId = String(options.provider || adapterId || "generic-shell-stub").trim().toLowerCase();
+  const requested = positiveInt(
+    options.maxConcurrentAgents
+      ?? options["max-concurrent-agents"]
+      ?? options.maxConcurrency
+      ?? options["max-concurrency"],
+    null,
+  );
+  const fallbackDefault = 3;
+  const provider = findProviderLimitEntry(providerId, options);
+  const limits = provider?.providerLimits || {};
+  const providerMaxThreads = positiveInt(limits.defaultMaxThreads, null);
+  const effective = providerMaxThreads
+    ? Math.min(requested || providerMaxThreads, providerMaxThreads)
+    : requested || fallbackDefault;
+  return {
+    schemaVersion: 1,
+    providerId: provider?.id || providerId,
+    source: provider ? "provider-capabilities-manifest" : "preflight-default",
+    maxThreadsKey: limits.maxThreadsKey || null,
+    providerMaxThreads,
+    requestedMaxConcurrentAgents: requested,
+    effectiveMaxConcurrentAgents: Math.max(1, effective),
+    defaultMaxConcurrentAgents: providerMaxThreads || fallbackDefault,
+    capped: Boolean(providerMaxThreads && requested && requested > providerMaxThreads),
+    reason: providerMaxThreads
+      ? requested && requested > providerMaxThreads
+        ? `provider max threads ${providerMaxThreads} caps requested concurrency ${requested}`
+        : `provider max threads ${providerMaxThreads} sets loop concurrency`
+      : "provider has no shared max_threads cap; using requested or local fallback",
+  };
+}
+
+function findProviderLimitEntry(providerId, options = {}) {
+  const aliases = new Set([providerId]);
+  if (providerId === "claude") aliases.add("claude-code");
+  if (providerId === "gemini") aliases.add("gemini-cli");
+  try {
+    const manifest = options.providerManifest || loadProviderCapabilities({
+      rootDir: options.pluginRoot || options.providerManifestRoot,
+      manifestPath: options.providerManifestPath,
+    });
+    return (manifest.providers || []).find((entry) => aliases.has(String(entry.id || "").toLowerCase())) || null;
+  } catch {
+    return null;
+  }
+}
+
 function normalizeGoalUntilCompleteBudget(options = {}) {
   const maxLoops = optionalPositiveNumber(options.maxLoops);
   const maxRuntimeMinutes = optionalPositiveNumber(options.maxRuntimeMinutes);
@@ -358,4 +421,10 @@ function optionalPositiveNumber(value) {
   if (value === undefined || value === null || value === "" || value === false) return null;
   const number = Number(value);
   return Number.isFinite(number) && number > 0 ? number : 0;
+}
+
+function positiveInt(value, fallback = null) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return Math.floor(parsed);
 }

@@ -1,6 +1,10 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  createProviderConfigApplyReport,
+  formatProviderConfigApplyReport,
+} from "./supervibe-provider-config-applier.mjs";
 
 const LIB_DIR = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_ROOT = resolve(LIB_DIR, "..", "..");
@@ -9,7 +13,7 @@ const DEFAULT_MANIFEST_PATH = join(DEFAULT_ROOT, "tests", "fixtures", "provider-
 const REDACTED = "[REDACTED]";
 const SECRET_PATTERNS = [
   /\bsk-[A-Za-z0-9_-]{8,}\b/g,
-  /\b(?:api[_-]?key|token|secret|password|passwd|private[_-]?key)\s*[:=]\s*["']?[^"'\s,;}]+/gi,
+  /["']?\b(?:api[_-]?key|token|secret|password|passwd|private[_-]?key)\b["']?\s*[:=]\s*["']?[^"'\s,;}]+/gi,
   /-----BEGIN (?:RSA |EC |OPENSSH |PGP )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC |OPENSSH |PGP )?PRIVATE KEY-----/g,
 ];
 
@@ -36,7 +40,7 @@ export function createProviderConfigDoctorReport(options = {}) {
     homeDir: redactHomePath(homeDir),
     providers,
     missingRecommendationCount,
-    nextAction: "review preview recommendations; explicit apply flow is intentionally not implemented here",
+    nextAction: "review preview recommendations and dry-run apply reports; explicit config writes require a separate apply flow",
   };
 }
 
@@ -63,6 +67,10 @@ export function formatProviderConfigDoctorReport(report = {}) {
       lines.push(`RECOMMENDATION: ${provider.id} ${recommendation.id} target=${recommendation.target} tier=${recommendation.tier || "safe-default"} source=${recommendation.sourceUrl || "manifest"} previewOnly=${recommendation.previewOnly} reason=${recommendation.reason}`);
       lines.push(`PATCH_PREVIEW: ${provider.id} ${recommendation.preview}`);
     }
+    if (provider.applyPreview) {
+      lines.push(`APPLY_PREVIEW: ${provider.id} changed=${provider.applyPreview.changed === true} blocked=${provider.applyPreview.blocked === true} mode=${provider.applyPreview.mode}`);
+      lines.push(indentBlock(formatProviderConfigApplyReport(provider.applyPreview), "  "));
+    }
   }
   lines.push(`NEXT_ACTION: ${report.nextAction || "review recommendations"}`);
   return redactSensitiveText(lines.join("\n"));
@@ -72,6 +80,10 @@ function redactSensitiveText(value = "") {
   let redacted = String(value || "");
   for (const pattern of SECRET_PATTERNS) redacted = redacted.replace(pattern, REDACTED);
   return redacted;
+}
+
+function indentBlock(value = "", prefix = "  ") {
+  return String(value || "").split(/\r?\n/).map((line) => `${prefix}${line}`).join("\n");
 }
 
 function inspectProvider(provider, { rootDir, homeDir }) {
@@ -86,6 +98,11 @@ function inspectProvider(provider, { rootDir, homeDir }) {
     projectConfigStatuses,
     userConfigStatuses,
   });
+  const applyPreview = buildProviderApplyPreview(provider, {
+    projectConfig: projectConfigStatuses[0] || null,
+    rootDir,
+    homeDir,
+  });
 
   return {
     id: provider.id,
@@ -98,9 +115,22 @@ function inspectProvider(provider, { rootDir, homeDir }) {
     },
     providerLimits: provider.providerLimits || {},
     recommendations,
+    applyPreview,
     secretHandling: "presence-only-redacted",
     sources: provider.sources || [],
   };
+}
+
+function buildProviderApplyPreview(provider, { projectConfig, rootDir, homeDir } = {}) {
+  const targetPath = projectConfig?.displayPath || provider.paths?.config?.find((path) => !path.startsWith("~/")) || "project-config";
+  const resolvedPath = resolveProviderPath(targetPath, { rootDir, homeDir });
+  const text = projectConfig?.present && existsSync(resolvedPath) ? readFileSync(resolvedPath, "utf8") : "";
+  return createProviderConfigApplyReport({
+    provider,
+    text,
+    targetPath,
+    checkedAt: provider.sources?.[0]?.checkedAt || null,
+  });
 }
 
 function buildProviderRecommendations(provider, { projectConfigStatuses = [], userConfigStatuses = [] } = {}) {
@@ -156,7 +186,13 @@ function buildProviderRecommendations(provider, { projectConfigStatuses = [], us
 }
 
 function previewForProvider(provider) {
-  if (provider.id === "codex") return "[features].multi_agent=true; [agents].max_threads=6; [agents].max_depth=1";
+  if (provider.id === "codex") {
+    const limits = provider.providerLimits || {};
+    const maxThreads = limits.defaultMaxThreads ?? "review";
+    const maxDepth = limits.defaultMaxDepth ?? "review";
+    const jobRuntimeSeconds = limits.defaultJobRuntimeSeconds ?? "review";
+    return `approval_policy=never; sandbox_mode=workspace-write; default_permissions=:workspace; web_search=live; [features].apps=true; [features].multi_agent=true; [agents].max_threads=${maxThreads}; [agents].max_depth=${maxDepth}; [agents].job_max_runtime_seconds=${jobRuntimeSeconds}; [apps._default].enabled=true; [[tool_suggest.discoverables]].type=plugin; [[tool_suggest.discoverables]].id=supervibe@supervibe-marketplace`;
+  }
   if (provider.id === "claude-code") return "create .claude/settings.json with permissions deny rules, MCP allowlist, and hook placeholders";
   if (provider.id === "gemini-cli") return "create .gemini/settings.json with checkpointing, plan approval mode, MCP tool filters, and privacy settings";
   if (provider.id === "cursor") return "create scoped .cursor/rules and .cursor/mcp.json previews; do not auto-create remote background-agent config";

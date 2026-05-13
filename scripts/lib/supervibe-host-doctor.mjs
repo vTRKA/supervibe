@@ -502,7 +502,15 @@ function statusGlyph(status, color) {
 function codexConfigEnablesPlugin(config = "", pluginKey = "") {
   const features = tomlSection(config, "features");
   const plugin = tomlSection(config, `plugins."${pluginKey}"`);
-  return tomlBoolean(features, "plugins") === true && tomlBoolean(plugin, "enabled") === true;
+  const legacyPluginEnabled = tomlBoolean(features, "plugins") === true && tomlBoolean(plugin, "enabled") === true;
+  const appDefault = tomlSection(config, "apps._default");
+  const schemaBackedAppSuggestion = tomlBoolean(features, "apps") === true
+    && tomlBoolean(appDefault, "enabled") !== false
+    && tomlArrayTableIncludes(config, "tool_suggest.discoverables", {
+      type: "plugin",
+      id: pluginKey,
+    });
+  return legacyPluginEnabled || schemaBackedAppSuggestion;
 }
 
 function tomlSection(source = "", section = "") {
@@ -522,6 +530,34 @@ function tomlBoolean(section = "", key = "") {
   const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const match = new RegExp(`^\\s*${escaped}\\s*=\\s*(true|false)\\s*(?:#.*)?$`, "im").exec(section);
   return match ? match[1].toLowerCase() === "true" : null;
+}
+
+function tomlArrayTableIncludes(source = "", section = "", expected = {}) {
+  return tomlArrayTableSections(source, section).some((body) => {
+    return Object.entries(expected).every(([key, value]) => tomlString(body, key) === value);
+  });
+}
+
+function tomlArrayTableSections(source = "", section = "") {
+  if (!source || !section) return [];
+  const escaped = section.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const headerRe = new RegExp(`^\\[\\[${escaped}\\]\\][ \\t]*$`, "gm");
+  const sections = [];
+  let match = null;
+  while ((match = headerRe.exec(source))) {
+    const bodyStart = match.index + match[0].length;
+    const rest = source.slice(bodyStart);
+    const nextRel = rest.search(/^\s*\[/m);
+    const bodyEnd = nextRel === -1 ? source.length : bodyStart + nextRel;
+    sections.push(source.slice(bodyStart, bodyEnd));
+  }
+  return sections;
+}
+
+function tomlString(section = "", key = "") {
+  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = new RegExp(`^\\s*${escaped}\\s*=\\s*["']([^"']+)["']\\s*(?:#.*)?$`, "im").exec(section);
+  return match ? match[1] : null;
 }
 
 async function readJsonOptional(path) {

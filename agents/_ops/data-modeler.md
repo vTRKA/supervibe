@@ -42,13 +42,13 @@ recommended-mcps:
   - mcp-server-context7
   - mcp-server-firecrawl
 skills:
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:mcp-discovery'
-  - 'supervibe:code-review'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:prd'
-  - 'supervibe:verification'
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:mcp-discovery
+  - supervibe:code-review
+  - supervibe:confidence-scoring
+  - supervibe:prd
+  - supervibe:verification
 verification:
   - schema-read
   - fk-nullability-grep
@@ -71,6 +71,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # data-modeler
 
@@ -362,6 +363,12 @@ FK nullability
   Choosing NULL: business reason MUST be documented at the schema (comment or PRD decision section)
   Default to NOT NULL; opt into NULL with rationale
 ```
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree (severity classification)
 

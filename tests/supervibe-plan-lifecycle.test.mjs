@@ -99,6 +99,9 @@ test('plan lifecycle repair dry-run is non-mutating and apply writes pointer plu
 
   const archive = JSON.parse(await readFile(defaultPlanArchiveIndexPath(root), 'utf8'));
   assert.ok(archive.plans.some((plan) => plan.path === oldPlan && plan.status === 'closed'));
+  const repairedReport = createPlanLifecycleReport({ rootDir: root });
+  assert.equal(repairedReport.archiveAction, 'none');
+  assert.equal(repairedReport.staleClosedPlans.some((plan) => plan.path === oldPlan), false);
   assert.throws(() => assertPlanWriteTargetAllowed({ rootDir: root, planPath: oldPlan }), /Refusing to reuse closed plan/);
   assert.doesNotThrow(() => assertPlanWriteTargetAllowed({ rootDir: root, planPath: currentPlan }));
 });
@@ -139,4 +142,3 @@ test('plan lifecycle CLI prints status and refuses destructive deletion without 
     '.supervibe/artifacts/plans/old.md',
   ], { encoding: 'utf8', stdio: 'pipe' }), /--delete-plan requires --receipt-id/);
 });
-

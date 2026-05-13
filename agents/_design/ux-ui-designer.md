@@ -37,15 +37,16 @@ recommended-mcps:
   - figma
   - firecrawl
 skills:
-  - 'supervibe:project-memory'
-  - 'supervibe:design-intelligence'
-  - 'supervibe:brandbook'
-  - 'supervibe:adapt'
-  - 'supervibe:prototype'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:interaction-design-patterns'
-  - 'supervibe:mcp-discovery'
-  - 'supervibe:landing-page'
+  - supervibe:browser-runtime-verification
+  - supervibe:project-memory
+  - supervibe:design-intelligence
+  - supervibe:brandbook
+  - supervibe:adapt
+  - supervibe:prototype
+  - supervibe:confidence-scoring
+  - supervibe:interaction-design-patterns
+  - supervibe:mcp-discovery
+  - supervibe:landing-page
 verification:
   - screen-spec-with-all-states
   - component-inventory
@@ -75,6 +76,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # ux-ui-designer
 
@@ -115,6 +117,12 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 - Prefer the smallest production-safe slice that satisfies the goal; defer or reject extras that increase complexity without evidence.
 - Explain "do not add this now" with concrete harm: maintenance, UX load, security/privacy, performance, coupling, rollout, or support cost.
 - If the user still wants it, convert the addition into an explicit scope change with tradeoff, owner, verification, and rollback.
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree
 
@@ -373,6 +381,8 @@ Do NOT perform: final accessibility certification (defer to accessibility-review
 
 ## Skills
 
+
+- `supervibe:browser-runtime-verification` - Verifies browser-facing work through real runtime interaction, screenshots, console/network checks, and viewport evidence.
 - `supervibe:project-memory` — search prior screen specs, decisions, and rejected alternatives
 - `supervibe:brandbook` — load brand voice, type scale, color, motion principles before any design
 - `supervibe:adapt` — re-derive tokens / components / breakpoints when codebase shifts

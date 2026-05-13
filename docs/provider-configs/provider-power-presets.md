@@ -22,13 +22,15 @@ Risk labels:
 
 | Outcome | Setting | Label | Preview | Source |
 | --- | --- | --- | --- | --- |
-| more parallelism | `features.multi_agent`, `agents.max_threads`, `agents.max_depth`, `agents.job_max_runtime_seconds` | `max-power` | Enable multi-agent, cap threads at 6, keep depth at 1, and keep worker runtime bounded. | https://developers.openai.com/codex/config-reference |
+| more parallelism | `features.multi_agent`, `agents.max_threads`, `agents.max_depth`, `agents.job_max_runtime_seconds` | `max-power` | Enable multi-agent, cap threads at 8, keep depth at 1, and keep worker runtime bounded. | https://developers.openai.com/codex/config-reference |
+| live provider evidence | `web_search` | `max-power` | Set `web_search = "live"` for autonomous provider/config loops so fresh documentation is available by default. | https://developers.openai.com/codex/config-reference |
 | stronger reasoning | `review_model`, `plan_mode_reasoning_effort`, `model_context_window`, `model_auto_compact_token_limit` | `balanced` | Use reviewer model and context limits to avoid weak reviews and premature compaction. | https://developers.openai.com/codex/config-reference |
 | smarter context | `tool_output_token_limit`, `project_doc_max_bytes`, `project_doc_fallback_filenames`, `AGENTS.md` | `balanced` | Bound tool output, load project docs deliberately, and preserve instruction fallbacks. | https://developers.openai.com/codex/config-reference |
 | better memory | `features.memories`, `[memories]`, `sqlite_home`, history persistence | `balanced` | Enable memory use/generation and keep local state under a known `sqlite_home`. | https://developers.openai.com/codex/config-reference |
-| safer tools | `approval_policy`, `sandbox_mode`, `default_permissions`, MCP scopes/timeouts | `safe-default` | Keep workspace sandbox, explicit approvals, scoped MCP tools, and network disabled by default. | https://developers.openai.com/codex/config-reference |
+| safer noninteractive loop | `approval_policy`, `sandbox_mode`, `default_permissions`, MCP scopes/timeouts | `safe-default` | Use `approval_policy = "never"` only with workspace sandbox, scoped permissions, secret denials, and preview-only config writes. | https://developers.openai.com/codex/config-reference |
+| plugin/app discovery | `features.apps`, `apps._default`, `tool_suggest.discoverables` | `experimental` | Enable schema-backed app discovery and suggest `supervibe@supervibe-marketplace`; do not add an unlisted top-level plugin boolean. | https://developers.openai.com/codex/config-reference |
 | clearer observability | telemetry, notifications, history persistence, hooks | `safe-default` | Use local logs/history and notifications without leaking raw prompts by default. | https://developers.openai.com/codex/config-reference |
-| hidden capability | `features.goals` | `experimental` | Track as `sourceKind=slash-command-doc` and `schemaStatus=experimental/unlisted`; never auto-apply. | https://developers.openai.com/codex/config-reference |
+| durable goals | `features.goals` | `experimental` | Set `goals = true` under `[features]` so `/goal` can run durable long-running objectives; preserve any existing user value. | https://developers.openai.com/codex/use-cases/follow-goals |
 | built-in agents | worker/explorer roles and `spawn_agents_on_csv` | `manual-only` | Use only through real Codex spawn ids and runtime receipts. | https://developers.openai.com/codex/subagents |
 
 ## Claude Code

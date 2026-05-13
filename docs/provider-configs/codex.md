@@ -43,21 +43,23 @@ use as the automatic apply candidate after normal path and trust checks.
 
 model = "gpt-5.5"
 model_provider = "openai"
-approval_policy = "on-request"
+approval_policy = "never"
 sandbox_mode = "workspace-write"
-web_search = "cached"
+web_search = "live"
 default_permissions = ":workspace"
 project_doc_max_bytes = 32768
 project_doc_fallback_filenames = []
 
 [features]
+apps = true
 multi_agent = true
 memories = true
 shell_snapshot = true
 codex_hooks = true
+goals = true
 
 [agents]
-max_threads = 6
+max_threads = 8
 max_depth = 1
 job_max_runtime_seconds = 1800
 
@@ -69,6 +71,17 @@ max_bytes = 104857600
 generate_memories = true
 use_memories = true
 disable_on_external_context = false
+
+[apps._default]
+enabled = true
+destructive_enabled = false
+open_world_enabled = true
+default_tools_enabled = true
+default_tools_approval_mode = "auto"
+
+[[tool_suggest.discoverables]]
+type = "plugin"
+id = "supervibe@supervibe-marketplace"
 
 [sandbox_workspace_write]
 writable_roots = []
@@ -106,7 +119,10 @@ spawned.
 
 Use `[agents]` for global limits:
 
-- `agents.max_threads` caps concurrently open agent threads and defaults to `6`.
+- `agents.max_threads` caps concurrently open agent threads. Codex defaults to
+  `6` when unset; Supervibe pins the provider template to `8` to use the
+  maximum planned local worker wave while still respecting Codex's explicit
+  cap.
 - `agents.max_depth` caps nested spawning and defaults to `1`.
 - `agents.job_max_runtime_seconds` sets the default worker timeout for
   `spawn_agents_on_csv`; when unset, the tool falls back to 1800 seconds.
@@ -150,15 +166,38 @@ streamable HTTP servers with `url`, `bearer_token_env_var`, `http_headers`, and
 
 Prefer the top-level `web_search` key. Supported modes are:
 
-- `"cached"`: default for local tasks; uses an OpenAI-maintained index rather
-  than fetching live pages.
+- `"cached"`: upstream Codex default for local tasks; uses an
+  OpenAI-maintained index rather than fetching live pages.
 - `"live"`: fetches the most recent data, equivalent to `--search`.
 - `"disabled"`: removes the web search tool.
+
+Supervibe pins the managed Codex template to `web_search = "live"` for
+autonomous provider/configuration loops so provider evidence is fresh by
+default. This is additive only: provider-config tooling must not overwrite an
+existing user-owned `web_search` value.
 
 The legacy feature flags `features.web_search`, `features.web_search_cached`,
 and `features.web_search_request` are deprecated in the official config
 reference. The `tools.web_search` object can additionally tune search context,
 allowed domains, and approximate location when that granularity is needed.
+
+## Apps And Plugin Suggestions
+
+Codex exposes schema-backed app/connector controls through `[features].apps`,
+`[apps.<id>]`, `[apps._default]`, and `tool_suggest` entries. Supervibe enables
+the app surface in the template and records `supervibe@supervibe-marketplace`
+as a discoverable plugin suggestion instead of adding an unlisted top-level
+plugin boolean. Destructive app tools stay disabled by default, and
+provider-config tooling still operates in preview-only mode for home config.
+
+## Goals
+
+Codex `/goal` is an experimental CLI workflow for durable long-running
+objectives. The official "Follow a goal" use-case page says it can be enabled
+from `/experimental` or by adding `goals = true` under `[features]` in
+`config.toml`. Supervibe therefore includes `features.goals = true` in the
+Codex project template and provider-config applier, while still preserving any
+existing user-owned `[features]` values.
 
 ## Permissions And Sandbox
 
@@ -167,6 +206,13 @@ Schema-backed sandbox modes are `read-only`, `workspace-write`, and
 `danger-full-access`. Prefer `workspace-write` for implementation work and keep
 `sandbox_workspace_write.network_access = false` unless the task requires
 network access.
+
+Supervibe-managed noninteractive loop defaults use `approval_policy = "never"`
+so workers do not stall on repeated prompts. The safety tradeoff is that this
+must be paired with `sandbox_mode = "workspace-write"`, scoped
+`default_permissions`, secret read denials, and preview-only provider-config
+application. Existing user-owned approval policies are never overwritten by
+genesis/adapt/provider doctor flows.
 
 Use `default_permissions` for reusable permission profiles. Built-in profile
 names are `:read-only`, `:workspace`, and `:danger-no-sandbox`; custom names
@@ -184,20 +230,20 @@ discovered from the project root down to the current directory, with
 `project_doc_max_bytes` controls the maximum combined instruction bytes, and
 `project_doc_fallback_filenames` adds alternate instruction filenames.
 
-## Experimental And Unlisted Keys
+## Experimental Keys
 
-`features.goals` is not listed in the official config reference or sample
-configuration pages used for this template. Treat it as metadata from slash
-command documentation, not as a schema-backed config key:
+`features.goals` is documented by the official Codex "Follow a goal" use-case
+page as the config-file switch for `/goal`:
 
 ```yaml
 key: features.goals
-sourceKind: slash-command-doc
-schemaStatus: experimental/unlisted
-automaticApply: false
-reason: Exclude from schema-backed templates until the official Codex config
-  reference lists the key.
+sourceKind: codex-use-case-doc
+schemaStatus: documented-experimental
+automaticApply: true
+reason: Enable durable `/goal` workflows for long-running objectives while
+  preserving any existing user-owned value.
 ```
 
-Schema-backed templates must exclude `features.goals` from automatic apply
-until it is verified in the official Codex config reference.
+Unlisted top-level booleans such as `plugins = true` remain excluded from
+automatic apply; Supervibe uses schema-backed app/tool-suggestion surfaces for
+plugin discovery instead.

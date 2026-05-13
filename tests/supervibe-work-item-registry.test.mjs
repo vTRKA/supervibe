@@ -104,10 +104,18 @@ test("active graph resolver reports none, active, closed summaries, and ambiguit
     const summaries = await listWorkItemGraphSummaries(root);
     assert.ok(summaries.some((summary) => summary.epicId === "epic-closed" && summary.status === "closed"));
 
+    const second = atomizePlanToWorkItems(PLAN, {
+      planPath: ".supervibe/artifacts/plans/registry-two.md",
+      epicId: "epic-two",
+      planReviewPassed: true,
+    });
+    await writeWorkItemGraph(second, { rootDir: root });
+
     await writeFile(defaultWorkItemRegistryPath(root), JSON.stringify({ schemaVersion: 1, epics: {} }), "utf8");
     const ambiguous = await resolveActiveWorkItemGraph({ rootDir: root });
     assert.equal(ambiguous.status, "ambiguous");
     assert.equal(ambiguous.candidates.length, 2);
+    assert.equal(ambiguous.candidates.some((candidate) => candidate.includes("epic-closed")), false);
     assert.match(ambiguous.nextAction, /--file/);
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -131,6 +139,33 @@ test("registry keeps release-ready graph active until the epic itself is closed"
     const registry = await readWorkItemRegistry(defaultWorkItemRegistryPath(root));
     assert.equal(registry.activeEpicId, "epic-release");
     assert.equal(registry.epics["epic-release"].status, "active");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("registry clears active pointer when the active epic is closed", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-closed-active-registry-"));
+  try {
+    const graph = atomizePlanToWorkItems(PLAN, {
+      planPath: ".supervibe/artifacts/plans/registry-close-active.md",
+      epicId: "epic-close-active",
+      planReviewPassed: true,
+    });
+    await writeWorkItemGraph(graph, { rootDir: root });
+    const closed = {
+      ...graph,
+      status: "closed",
+      items: graph.items.map((item) => ({ ...item, status: "complete" })),
+      tasks: graph.tasks.map((task) => ({ ...task, status: "complete" })),
+    };
+    await writeWorkItemGraph(closed, { rootDir: root });
+
+    const registry = await readWorkItemRegistry(defaultWorkItemRegistryPath(root));
+    assert.equal(registry.activeEpicId, null);
+    assert.equal(registry.activeGraphPath, null);
+    assert.equal(registry.epics["epic-close-active"].status, "closed");
+    assert.equal((await resolveActiveWorkItemGraph({ rootDir: root })).status, "none");
   } finally {
     await rm(root, { recursive: true, force: true });
   }

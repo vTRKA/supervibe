@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
 
-import { CodeStore } from "../scripts/lib/code-store.mjs";
+import { CODE_GRAPH_EXTRACTOR_VERSION, CodeStore } from "../scripts/lib/code-store.mjs";
 import { hashFile } from "../scripts/lib/file-hash.mjs";
 
 const scriptPath = join(process.cwd(), "scripts", "build-code-index.mjs");
@@ -269,6 +269,52 @@ test("build-code-index indexes a 750KB Rust source file through large-file mode 
       assert.match(row.chunkingStrategy, /large-file/);
       assert.ok(row.lineCount >= 16000);
       assert.ok(chunks > 10, `expected many incremental chunks, got ${chunks}`);
+    } finally {
+      store.close();
+    }
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("build-code-index defaults route mid-sized generated sources through large-file mode", async () => {
+  const rootDir = join(tmpdir(), `supervibe-code-index-mid-large-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  try {
+    const relPath = "src/supervibe-loop-sized-fixture.ts";
+    const absPath = join(rootDir, ...relPath.split("/"));
+    await mkdir(join(rootDir, "src"), { recursive: true });
+    const content = Array.from({ length: 2800 }, (_, index) => {
+      return `export function generatedFixture${index}() { return "large-file-default-${index}"; }`;
+    }).join("\n");
+    await writeFile(absPath, content, "utf8");
+
+    assert.ok(Buffer.byteLength(content, "utf8") >= 131072, "fixture should exceed the default large-file byte threshold");
+    assert.ok(content.split("\n").length < 10000, "fixture should prove this no longer depends on the old 10k-line threshold");
+
+    const out = execFileSync(process.execPath, [
+      scriptPath,
+      "--root", rootDir,
+      "--graph",
+      "--no-embeddings",
+      "--debug-file", relPath,
+      "--json-progress",
+      "--heartbeat-seconds", "0",
+    ], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      maxBuffer: 1024 * 1024 * 4,
+    });
+
+    assert.match(out, /"chunkerMode":"large-file"/);
+    assert.match(out, /Files indexed: 1/);
+
+    const store = new CodeStore(rootDir, { useEmbeddings: false });
+    await store.init();
+    try {
+      const row = store.db.prepare("SELECT index_status AS indexStatus, chunking_strategy AS chunkingStrategy, graph_version AS graphVersion FROM code_files WHERE path = ?").get(relPath);
+      assert.equal(row.indexStatus, "full");
+      assert.match(row.chunkingStrategy, /large-file/);
+      assert.equal(row.graphVersion, CODE_GRAPH_EXTRACTOR_VERSION);
     } finally {
       store.close();
     }

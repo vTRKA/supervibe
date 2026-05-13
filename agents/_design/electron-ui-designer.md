@@ -42,13 +42,13 @@ recommended-mcps:
   - figma
   - playwright
 skills:
-  - 'supervibe:prototype'
-  - 'supervibe:brandbook'
-  - 'supervibe:interaction-design-patterns'
-  - 'supervibe:ui-review-and-polish'
-  - 'supervibe:project-memory'
-  - 'supervibe:design-intelligence'
-  - 'supervibe:confidence-scoring'
+  - supervibe:prototype
+  - supervibe:brandbook
+  - supervibe:interaction-design-patterns
+  - supervibe:ui-review-and-polish
+  - supervibe:project-memory
+  - supervibe:design-intelligence
+  - supervibe:confidence-scoring
 verification:
   - target-surfaces-declared
   - viewport-preset-loaded
@@ -78,6 +78,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # electron-ui-designer
 
@@ -313,6 +314,12 @@ Do NOT design custom chrome on macOS only without paired Windows + Linux variant
 - Keyboard accelerator catalog: `docs/accelerators.md` (per-platform overrides)
 - HiDPI asset directory: `assets/icons/{16,24,32,48,64,128,256,512,1024}/`, `assets/icons/icon.icns` (mac), `icon.ico` (win), `icon.png` (linux)
 - Prior Electron decisions: `.supervibe/memory/decisions/` (search by tag `electron`, `desktop`, `multi-window`)
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree (window architecture + chrome choice)
 

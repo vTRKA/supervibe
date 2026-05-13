@@ -35,3 +35,20 @@ test("priority overrides require visible audit reasons", () => {
   const audit = createPriorityOverrideAudit({ itemId: "t1", from: 1, to: 10, reason: "Customer launch blocker" });
   assert.equal(audit.type, "priority-override");
 });
+
+test("priority formula handles string work-item priorities without NaN", () => {
+  const graph = {
+    tasks: [
+      { id: "t001", dependencies: [], blocks: ["t002"] },
+      { id: "t002", dependencies: ["t001"] },
+    ],
+  };
+  const ordered = orderReadyWorkItems([
+    { itemId: "t001", title: "Provider defaults", priority: "critical", blocks: ["t002"], policyRiskLevel: "low" },
+  ], { graph, now: "2026-05-13T00:00:00.000Z" });
+
+  assert.equal(Number.isFinite(ordered[0].priorityScore), true);
+  assert.notEqual(formatPriorityExplanation(ordered[0]), "NaN");
+  assert.match(formatPriorityExplanation(ordered[0]), /priority=critical:40/);
+  assert.doesNotMatch(formatPriorityExplanation(ordered[0]), /NaN/);
+});

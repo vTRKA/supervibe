@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
@@ -17,6 +17,9 @@ import {
 import {
   issueWorkflowInvocationReceipt,
 } from "../scripts/lib/supervibe-workflow-receipt-runtime.mjs";
+import {
+  createFinalReviewerSweep,
+} from "../scripts/lib/supervibe-final-review-sweep.mjs";
 
 const PLAN = `# Completion Plan
 
@@ -51,6 +54,23 @@ test("validateEpicCompletion passes closed graph with production evidence", () =
   assert.equal(report.score, 10);
   assert.equal(report.counts.open, 0);
   assert.match(formatEpicCompletionReport(report), /PASS: true/);
+});
+
+test("validateEpicCompletion inherits parent evidence for covered plan-step subtasks", () => {
+  const graph = completedGraph();
+  const parent = graph.items.find((item) => item.type === "task");
+  const subtask = graph.items.find((item) => item.parentId === parent.itemId && item.type === "subtask")
+    || addCoveredPlanStepSubtask(graph, parent);
+  assert.ok(subtask);
+
+  subtask.verificationEvidence = [];
+  graph.tasks.find((task) => task.id === subtask.itemId).verificationEvidence = [];
+  graph.evidence = graph.evidence.filter((entry) => entry.taskId !== subtask.itemId);
+
+  const report = validateEpicCompletion(graph);
+
+  assert.equal(report.pass, true);
+  assert.equal(report.issues.some((issue) => issue.code === "missing-evidence" && issue.itemId === subtask.itemId), false);
 });
 
 test("validateEpicCompletion fails open tasks and open epic", () => {
@@ -409,6 +429,7 @@ test("supervibe-loop exposes completion validation for current commands", async 
     "--validate-completion",
     "--file",
     graphFile,
+    "--non-production",
   ], {
     cwd: new URL("../", import.meta.url),
     encoding: "utf8",
@@ -427,10 +448,11 @@ test("supervibe-loop closes epic when final full-check evidence is supplied on c
   delete epic.closedAt;
   delete epic.closeReason;
   const graphFile = join(root, "graph.json");
+  await attachTrustedFinalReviewSweep({ root, graph, graphFile });
   await writeFile(graphFile, `${JSON.stringify(graph, null, 2)}\n`, "utf8");
 
   const stdout = execFileSync(process.execPath, [
-    "scripts/supervibe-loop.mjs",
+    join(ROOT, "scripts/supervibe-loop.mjs"),
     "--close",
     "epic-completion",
     "--file",
@@ -442,7 +464,7 @@ test("supervibe-loop closes epic when final full-check evidence is supplied on c
     "--evidence",
     "release full check passed",
   ], {
-    cwd: new URL("../", import.meta.url),
+    cwd: root,
     encoding: "utf8",
   });
 
@@ -452,6 +474,106 @@ test("supervibe-loop closes epic when final full-check evidence is supplied on c
   assert.equal(closedEpic.status, "closed");
   assert.ok((closedEpic.verificationEvidence || []).some((entry) => entry.command === "npm run check:release"));
 });
+
+function addCoveredPlanStepSubtask(graph, parent) {
+  const subtask = {
+    ...parent,
+    itemId: `${parent.itemId}-s1`,
+    id: `${parent.itemId}-s1`,
+    parentId: parent.itemId,
+    type: "subtask",
+    title: "Covered plan-step subtask",
+    verificationEvidence: [],
+    discoveredFrom: {
+      type: "plan-step",
+      parentItemId: parent.itemId,
+    },
+  };
+  graph.items.push(subtask);
+  graph.tasks.push({
+    id: subtask.itemId,
+    itemId: subtask.itemId,
+    parentId: parent.itemId,
+    type: "subtask",
+    title: subtask.title,
+    status: subtask.status,
+    verificationEvidence: [],
+  });
+  return subtask;
+}
+
+async function attachTrustedFinalReviewSweep({ root, graph }) {
+  const reviewArtifact = join(root, ".supervibe", "artifacts", "reviews", "final-review.json");
+  const invocationId = "test-quality-gate-final-review";
+  await writeTestAgentInvocation(root, {
+    agentId: "quality-gate-reviewer",
+    invocationId,
+    taskSummary: "trusted final reviewer sweep for release close",
+  });
+  await mkdir(dirname(reviewArtifact), { recursive: true });
+  await writeFile(reviewArtifact, `${JSON.stringify({ status: "pass", reviewer: "quality-gate-reviewer" }, null, 2)}\n`, "utf8");
+  const receiptResult = await issueWorkflowInvocationReceipt({
+    rootDir: root,
+    command: "/supervibe-loop",
+    subjectType: "reviewer",
+    subjectId: "quality-gate-reviewer",
+    agentId: "quality-gate-reviewer",
+    stage: "final-review-sweep",
+    invocationReason: "trusted final reviewer sweep for release close",
+    outputArtifacts: [reviewArtifact],
+    startedAt: "2026-05-10T00:00:00.000Z",
+    completedAt: "2026-05-10T00:01:00.000Z",
+    handoffId: "final-review-sweep",
+    graphId: graph.epicId,
+    hostInvocation: {
+      source: "codex-spawn-agent",
+      invocationId,
+      agentId: "quality-gate-reviewer",
+    },
+  });
+  const receiptId = receiptResult.receipt.receiptId;
+  graph.reviewPolicy = {
+    mode: "final-sweep",
+    reviewersRequiredAt: "graph-release-gate",
+    midGraphBlocking: false,
+  };
+  graph.finalReviewerSweep = createFinalReviewerSweep(graph, {
+    reviewerAgentId: "quality-gate-reviewer",
+    receiptIds: [receiptId],
+    taskReviews: graph.items
+      .filter((item) => item.type !== "epic")
+      .map((item) => ({
+        taskId: item.itemId || item.id,
+        status: "pass",
+        score: 10,
+        productionReady: true,
+        reviewerAgentId: "quality-gate-reviewer",
+        receiptIds: [receiptId],
+      })),
+  });
+  return receiptId;
+}
+
+async function writeTestAgentInvocation(root, { agentId, invocationId, taskSummary }) {
+  const outputJson = `.supervibe/artifacts/_agent-outputs/${invocationId}/agent-output.json`;
+  await mkdir(join(root, ".supervibe", "memory"), { recursive: true });
+  await mkdir(dirname(join(root, ...outputJson.split("/"))), { recursive: true });
+  await writeFile(join(root, ...outputJson.split("/")), `${JSON.stringify({
+    schemaVersion: 1,
+    invocationId,
+    agentId,
+    taskSummary,
+  }, null, 2)}\n`, "utf8");
+  await appendFile(join(root, ".supervibe", "memory", "agent-invocations.jsonl"), `${JSON.stringify({
+    schemaVersion: 1,
+    ts: "2026-05-10T00:00:00.000Z",
+    invocation_id: invocationId,
+    agent_id: agentId,
+    task_summary: taskSummary,
+    confidence_score: 10,
+    structured_output: { json: outputJson },
+  })}\n`, "utf8");
+}
 
 function completedGraph() {
   const graph = atomizePlanToWorkItems(PLAN, {

@@ -16,6 +16,7 @@ import { generateContracts, scoreAutonomyReadiness } from "./lib/autonomous-loop
 import { exportGraph, loadStateForGraphExport } from "./lib/autonomous-loop-graph-export.mjs";
 import { formatDoctorReport, primeLoopRun, repairLoopRun } from "./lib/autonomous-loop-doctor.mjs";
 import { archiveLoopRun, exportLoopBundle, importLoopBundle } from "./lib/autonomous-loop-archive.mjs";
+import { archiveWorkItemGraph, classifyWorkItemGraphForGc } from "./lib/supervibe-work-item-gc.mjs";
 import { atomizePlanFile, createWorkItemPreview, writeWorkItemGraph } from "./lib/supervibe-plan-to-work-items.mjs";
 import { createCliTaskTrackerAdapter, createMemoryTaskTrackerAdapter, createUnavailableTaskTrackerAdapter } from "./lib/supervibe-durable-task-tracker-adapter.mjs";
 import { createTaskTrackerMcpAdapter } from "./lib/supervibe-task-tracker-mcp-bridge.mjs";
@@ -32,7 +33,7 @@ import { createFederatedSyncBundle, importFederatedSyncBundle, writeFederatedSyn
 import { formatNotificationRouteResult, routeNotificationEvent } from "./lib/supervibe-notification-router.mjs";
 import { deferWorkItemFile } from "./lib/supervibe-work-item-scheduler.mjs";
 import { mutateWorkItemGraphFile } from "./lib/supervibe-work-item-actions.mjs";
-import { resolveActiveWorkItemGraph, resolveActiveWorkItemGraphPath } from "./lib/supervibe-work-item-registry.mjs";
+import { repairWorkItemRegistryIntegrity, resolveActiveWorkItemGraph, resolveActiveWorkItemGraphPath } from "./lib/supervibe-work-item-registry.mjs";
 import { createGuidedWorkItemDraft, importGuidedWorkItemFromText, saveGuidedWorkItemDraft } from "./lib/supervibe-guided-work-item-forms.mjs";
 import { createDryRunPreview, runInteractiveCli } from "./lib/supervibe-interactive-cli.mjs";
 import { formatEvalHarnessReport, runAutonomousLoopEvals } from "./lib/autonomous-loop-eval-harness.mjs";
@@ -76,14 +77,24 @@ import {
 import {
   formatLoopProviderCapabilityMatrix,
   getLoopProviderCapabilityMatrix,
+  resolveDefaultLoopExecutionMode,
+  resolveToolLoopCapabilities,
+  TOOL_ADAPTER_IDS,
 } from "./lib/autonomous-loop-tool-adapters.mjs";
 import { loadProviderCapabilities } from "./lib/supervibe-provider-config-doctor.mjs";
 import { startBackgroundNodeScript } from "./lib/supervibe-process-manager.mjs";
+import { selectHostAdapter } from "./lib/supervibe-host-detector.mjs";
 import { validatePlanReviewGateForPlan } from "./validate-plan-review-artifacts.mjs";
+import {
+  createFinalReviewerSweep,
+  evaluateFinalReviewerSweep,
+  formatFinalReviewerSweepReport,
+  upsertFinalReviewerSweep,
+} from "./lib/supervibe-final-review-sweep.mjs";
 
 const SEMANTIC_EPIC_GROUPING_VERSION = 1;
 const DEFAULT_SEMANTIC_EPIC_MAX_TASKS = 25;
-const DEFAULT_AGENT_STALL_TIMEOUT_MINUTES = 20;
+const DEFAULT_AGENT_STALL_TIMEOUT_MINUTES = 7;
 const DEFAULT_AGENT_STALL_MAX_RETRIES = 2;
 const SEMANTIC_EPIC_BUCKETS = Object.freeze([
   {
@@ -141,6 +152,7 @@ function parseArgs(argv) {
     "manual",
     "fresh-context",
     "status",
+    "epic-status",
     "readiness",
     "json",
     "commit-per-task",
@@ -220,6 +232,10 @@ function parseArgs(argv) {
     "no-auto-ui",
     "allow-unverified-plan-review",
     "pre-loop-summary",
+    "final-review-sweep",
+    "final-review-status",
+    "write-final-review-sweep",
+    "allow-untrusted-final-review",
   ]);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -483,6 +499,8 @@ function allowUnverifiedPlanReview(args) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const rootDir = process.cwd();
+  let precomputedCompletionGraph = null;
+  let precomputedCompletionGraphPath = null;
 
   if (args.help) {
     printHelp();
@@ -701,7 +719,8 @@ async function main() {
         };
       }
       const writeSetLock = createAssignmentWriteSetLock(task, writeSet);
-      const dispatch = dispatchTask(task, { useCapabilityRegistry: true });
+      const reviewMode = args.reviewMode || args["review-mode"] || "final-sweep";
+      const dispatch = dispatchTask(task, { useCapabilityRegistry: true, reviewMode });
       const assignmentExplanation = attachVerificationPolicyToExplanation(dispatch.assignmentExplanation, verificationPolicy);
       return {
         ...dispatch,
@@ -722,6 +741,7 @@ async function main() {
           deferredFullVerificationCommands: verificationPolicy.deferredFullCommands,
         },
         reviewerAssignmentPayload: {
+          deferredUntil: dispatch.reviewPolicy?.mode === "final-sweep" ? "graph-release-gate" : null,
           agentId: dispatch.reviewerAgentId,
           taskId: dispatch.taskId,
           writeSet,
@@ -742,7 +762,7 @@ async function main() {
         } else {
           console.log(args.explain
             ? [formatAssignmentExplanation(dispatch.assignmentExplanation), formatTaskLocalVerificationPolicy(dispatch.verificationPolicy)].join("\n")
-            : `${dispatch.taskId}: ${dispatch.primaryAgentId} -> ${dispatch.reviewerAgentId}`);
+            : `${dispatch.taskId}: ${dispatch.primaryAgentId} -> ${dispatch.reviewerAgentId || "final-reviewer-sweep"}`);
         }
         console.log(formatEvidencePacketSummary(dispatch.evidencePacket));
       }
@@ -1033,6 +1053,19 @@ async function main() {
           process.exitCode = 1;
           return;
         }
+        const finalReviewGate = evaluateFinalReviewerSweep(graph, {
+          requireReceipt: !args["non-production"] || Boolean(args["require-trusted-evidence"]),
+          trustedReceiptIds: trustedFinalReviewerReceiptIdsForValidation(rootDir, graph, {
+            explicitReceiptIds: splitCsv(args["trusted-receipts"]),
+          }),
+        });
+        if (!args["non-production"] && !finalReviewGate.pass) {
+          console.log(formatFinalReviewerSweepReport(finalReviewGate.sweep));
+          console.log(`GRAPH: ${graphPath}`);
+          console.log("NEXT_ACTION: run final reviewer sweep after all graph tasks are complete, then close/archive the epic");
+          process.exitCode = 1;
+          return;
+        }
         const releaseFullCheckGate = createReleaseFullCheckGate(graph, workItemAction.verificationEvidence);
         if (!args["non-production"] && !args["allow-missing-release-full-check"] && !releaseFullCheckGate.pass) {
           console.log(formatReleaseFullCheckGate(releaseFullCheckGate));
@@ -1180,7 +1213,7 @@ async function main() {
     return;
   }
 
-  if (args.status) {
+  if (args.status || args["epic-status"]) {
     if (args.file) {
       try {
         const graphPath = resolve(rootDir, args.file);
@@ -1239,7 +1272,7 @@ async function main() {
       console.log("STATUS: no loop state found");
       console.log(`STATE: ${stateFile}`);
       console.log(`PROVIDER_CAPABILITIES: ${getLoopProviderCapabilityMatrix().map((entry) => `${entry.id}:${entry.nativeContinuation}`).join(",")}`);
-      console.log("NEXT_ACTION: start a loop with npm run supervibe:loop -- --request \"validate integrations\" --dry-run");
+      console.log("NEXT_ACTION: start a real loop with npm run supervibe:loop -- --request \"validate integrations\" or preview with --dry-run");
     }
     return;
   }
@@ -1270,6 +1303,20 @@ async function main() {
 
   if (args.archive || args._[0] === "archive") {
     const target = args.file || join(rootDir, ".supervibe", "memory", "loops", args.loop || "");
+    const workItemArchive = await maybeArchiveWorkItemGraph({
+      rootDir,
+      target: resolve(rootDir, target),
+      args,
+    });
+    if (workItemArchive) {
+      console.log("SUPERVIBE_WORK_ITEM_ARCHIVE");
+      console.log(`GRAPH_ID: ${workItemArchive.result.graphId}`);
+      console.log(`STATUS: ${workItemArchive.result.status}`);
+      console.log(`REASON: ${workItemArchive.result.reason}`);
+      console.log(`ARCHIVE_DIR: ${workItemArchive.result.archiveDir}`);
+      console.log(`REGISTRY_ACTIVE: ${workItemArchive.registry.after.activeEpicId || "none"}`);
+      return;
+    }
     const result = await archiveLoopRun(resolve(rootDir, target), { archiveRoot: args.out, label: args.label });
     console.log(`SUPERVIBE_LOOP_ARCHIVE\nBUNDLE: ${result.bundleDir}\nRUN_ID: ${result.runId}`);
     return;
@@ -1332,9 +1379,61 @@ async function main() {
     return;
   }
 
-  if (args["validate-completion"] || args["completion-status"] || args["close-eligible"]) {
+  if (args["final-review-sweep"] || args["final-review-status"] || args["record-final-review"]) {
     const graphPath = await resolveCompletionGraphPath({ rootDir, args });
     const graph = JSON.parse(await readFile(graphPath, "utf8"));
+    const reviewEntry = args["record-final-review"] ? finalReviewEntryFromArgs(args) : null;
+    const requireTrustedFinalReview = !args["non-production"] && !args["allow-untrusted-final-review"];
+    const trustedFinalReviewReceiptIds = trustedFinalReviewerReceiptIdsForValidation(rootDir, graph, {
+      explicitReceiptIds: splitCsv(args["trusted-receipts"]),
+    });
+    const nextGraph = reviewEntry
+      ? upsertFinalReviewerSweep(graph, {
+        entries: [reviewEntry],
+        reviewerAgentId: args.reviewer || args["reviewer-agent"] || args.agent,
+        receiptIds: splitCsv(args.receipts || args["receipt-ids"]),
+      })
+      : {
+        ...graph,
+        finalReviewerSweep: createFinalReviewerSweep(graph, {
+          reviewerAgentId: args.reviewer || args["reviewer-agent"] || args.agent,
+        }),
+      };
+    const sweep = nextGraph.finalReviewerSweep || createFinalReviewerSweep(nextGraph);
+    const evaluation = evaluateFinalReviewerSweep(nextGraph, {
+      sweep,
+      requireReceipt: requireTrustedFinalReview || Boolean(args["require-trusted-evidence"]),
+      trustedReceiptIds: trustedFinalReviewReceiptIds,
+    });
+    const entryReceiptTrusted = !reviewEntry
+      || !requireTrustedFinalReview
+      || finalReviewEntryHasTrustedReceipt(reviewEntry, trustedFinalReviewReceiptIds);
+    const shouldWriteSweep = Boolean((reviewEntry || args["write-final-review-sweep"]) && !args["dry-run"] && !args.preview && entryReceiptTrusted);
+    if (shouldWriteSweep) {
+      await writeFile(graphPath, `${JSON.stringify(nextGraph, null, 2)}\n`, "utf8");
+    }
+    console.log(formatFinalReviewerSweepReport(sweep));
+    console.log(`CHANGED: ${shouldWriteSweep}`);
+    console.log(`DRY_RUN: ${Boolean(args["dry-run"] || args.preview)}`);
+    console.log(`GRAPH: ${graphPath}`);
+    if (!entryReceiptTrusted) {
+      console.log("FINAL_REVIEW_WRITE_BLOCKED: untrusted-review-receipt");
+    }
+    if (!evaluation.pass || !entryReceiptTrusted) process.exitCode = 1;
+    if (args["validate-completion"] || args["completion-status"] || args["close-eligible"]) {
+      precomputedCompletionGraph = nextGraph;
+      precomputedCompletionGraphPath = graphPath;
+    } else {
+      return;
+    }
+  }
+
+  if (args["validate-completion"] || args["completion-status"] || args["close-eligible"]) {
+    const graphPath = precomputedCompletionGraphPath || await resolveCompletionGraphPath({ rootDir, args });
+    const graph = precomputedCompletionGraph || JSON.parse(await readFile(graphPath, "utf8"));
+    const trustedFinalReviewReceiptIds = trustedFinalReviewerReceiptIdsForValidation(rootDir, graph, {
+      explicitReceiptIds: splitCsv(args["trusted-receipts"]),
+    });
     const report = validateEpicCompletion(graph, {
       production: !args["non-production"],
       requireEvidence: !args["no-evidence-required"],
@@ -1351,6 +1450,11 @@ async function main() {
       requireEpicClosed: args["close-eligible"] ? false : !args["allow-open-epic"],
     });
     console.log(formatEpicCompletionReport(report));
+    const finalReviewGate = evaluateFinalReviewerSweep(graph, {
+      requireReceipt: !args["non-production"] || Boolean(args["require-trusted-evidence"]),
+      trustedReceiptIds: trustedFinalReviewReceiptIds,
+    });
+    console.log(formatFinalReviewerSweepReport(finalReviewGate.sweep));
     const releaseFullCheckGate = createReleaseFullCheckGate(graph);
     console.log(formatReleaseFullCheckGate(releaseFullCheckGate));
     console.log(`GRAPH: ${graphPath}`);
@@ -1358,7 +1462,7 @@ async function main() {
       process.exitCode = 1;
       return;
     }
-    if (!report.pass) process.exitCode = 1;
+    if (!report.pass || (!args["non-production"] && !finalReviewGate.pass)) process.exitCode = 1;
     return;
   }
 
@@ -1436,12 +1540,17 @@ async function main() {
     const tasks = sourcePlan
       ? await loadPlanTasks(resolve(rootDir, sourcePlan))
       : createTasksFromRequest(positionalRequest || "validate integrations");
+    const runtimeDefaults = resolveLoopRuntimeDefaults({ rootDir, args });
     const preflight = buildPreflight({
       request: positionalRequest || sourcePlan || "",
       tasks,
       options: {
         ...args,
-        executionMode: deriveExecutionMode(args),
+        tool: runtimeDefaults.tool,
+        adapterId: runtimeDefaults.tool,
+        executionMode: runtimeDefaults.executionMode,
+        allowSpawn: runtimeDefaults.allowSpawn,
+        permissionPromptBridge: runtimeDefaults.permissionPromptBridge,
         commitPerTask: Boolean(args["commit-per-task"]),
         policyProfile: await maybeLoadPolicyProfile(rootDir, args),
       },
@@ -1458,6 +1567,7 @@ async function main() {
         toolAdapters: preflight.tool_adapters,
         providerCapabilities: preflight.provider_capabilities,
         providerCapabilitySummary: preflight.provider_capability_summary,
+        providerLimitPolicy: preflight.provider_limit_policy,
         nextAction: nextReadinessAction,
       }, null, 2));
     } else {
@@ -1466,6 +1576,10 @@ async function main() {
       console.log(`PASS: ${readiness.pass}`);
       console.log(`MISSING: ${readiness.missing.join(", ") || "none"}`);
       console.log(`EXECUTION_MODE: ${preflight.execution_policy.mode}`);
+      console.log(`SELECTED_TOOL: ${preflight.execution_policy.provider.selected_tool}`);
+      console.log(`MAX_CONCURRENT_AGENTS: ${preflight.max_concurrent_agents}`);
+      console.log(`PROVIDER_MAX_THREADS: ${preflight.provider_limit_policy?.providerMaxThreads ?? "unknown"}`);
+      console.log(`PROVIDER_CONCURRENCY_SOURCE: ${preflight.provider_limit_policy?.source || "unknown"}`);
       console.log(`ADAPTERS: ${preflight.tool_adapter_summary.available.join(",") || "none"}`);
       console.log(`CONTINUATION_MODE: ${preflight.provider_capabilities.nativeContinuation}`);
       console.log(`PROVIDER_RECOMMENDED_MODE: ${preflight.provider_capabilities.recommendedMode}`);
@@ -1541,6 +1655,7 @@ async function main() {
   });
   const worktreeSession = await maybePrepareWorktreeSession(args, rootDir);
   const policyProfile = await maybeLoadPolicyProfile(rootDir, args);
+  const runtimeDefaults = resolveLoopRuntimeDefaults({ rootDir, args });
   const taskTrackerAdapter = shouldUseTaskTrackerAdapter(args)
     ? createTaskTrackerAdapterFromArgs(args)
     : null;
@@ -1553,15 +1668,16 @@ async function main() {
     fixture: args.fixture,
     maxLoops: args["max-loops"],
     maxRuntimeMinutes: args["max-runtime-minutes"] || parseDurationToMinutes(args["max-duration"]),
+    maxConcurrentAgents: args["max-concurrency"] || args.maxConcurrentAgents,
     environmentTarget: args.environment,
-    executionMode: deriveExecutionMode(args),
+    executionMode: runtimeDefaults.executionMode,
     commitPerTask: Boolean(args["commit-per-task"]),
-    adapterId: args.tool,
+    adapterId: runtimeDefaults.tool,
     adapterCommand: args["adapter-command"],
     adapterArgs: parseCsvArg(args["adapter-args"] || args["provider-args"]),
     adapterConfig: buildAdapterConfig(args),
-    allowSpawn: Boolean(args["allow-spawn"]),
-    permissionPromptBridge: Boolean(args["permission-prompt-bridge"]),
+    allowSpawn: runtimeDefaults.allowSpawn,
+    permissionPromptBridge: runtimeDefaults.permissionPromptBridge,
     networkApproved: Boolean(args["network-approved"]),
     networkTargets: parseCsvArg(args["network-targets"] || args["network-allowlist"]),
     mcpApproved: Boolean(args["mcp-approved"]),
@@ -1581,6 +1697,11 @@ async function main() {
   console.log(`STOP_REASON: ${result.stopReason || "none"}`);
   console.log(`REPORT: ${result.reportPath}`);
   console.log(`TASK_SOURCE: ${executionSource.source}`);
+  if (result.state?.provider_limit_policy) {
+    console.log(`MAX_CONCURRENT_AGENTS: ${result.state.max_concurrent_agents ?? result.state.preflight?.max_concurrent_agents ?? "unknown"}`);
+    console.log(`PROVIDER_MAX_THREADS: ${result.state.provider_limit_policy.providerMaxThreads ?? "unknown"}`);
+    console.log(`PROVIDER_CONCURRENCY_SOURCE: ${result.state.provider_limit_policy.source || "unknown"}`);
+  }
   if (result.state?.completion_semantics) {
     console.log(`COMPLETION_SEMANTICS: ${result.state.completion_semantics.status}`);
     console.log(`PRODUCTION_READY: ${result.state.completion_semantics.productionReady === true}`);
@@ -1684,6 +1805,38 @@ async function pathExists(filePath) {
   } catch {
     return false;
   }
+}
+
+async function maybeArchiveWorkItemGraph({ rootDir, target, args = {} } = {}) {
+  if (!target || !await pathExists(target)) return null;
+  let graph = null;
+  try {
+    graph = JSON.parse(String(await readFile(target, "utf8")).replace(/^\uFEFF/, ""));
+  } catch (error) {
+    if (error.name === "SyntaxError" || error.code === "EISDIR") return null;
+    throw error;
+  }
+  if (graph.kind !== "supervibe-work-item-graph" && !Array.isArray(graph.items)) return null;
+
+  const now = args.now || new Date().toISOString();
+  const classification = classifyWorkItemGraphForGc(graph, {
+    graphPath: target,
+    retentionDays: 0,
+    now,
+  });
+  if (!classification.archiveCandidate) {
+    throw new Error(`work-item graph is not archive-ready: ${classification.reason}`);
+  }
+
+  const result = await archiveWorkItemGraph(classification, {
+    archiveRoot: args.out ? resolve(rootDir, args.out) : join(rootDir, ".supervibe", "memory", "work-items", ".archive"),
+    dryRun: Boolean(args["dry-run"] || args.preview),
+    now,
+  });
+  const registry = result.dryRun
+    ? { after: { activeEpicId: "dry-run" } }
+    : await repairWorkItemRegistryIntegrity({ rootDir, now });
+  return { result, registry };
 }
 
 function runtimeInvocationIdFromArgs(args = {}) {
@@ -2009,6 +2162,7 @@ function printEpicStatus({ graph, graphPath, epicId = null, source = "explicit" 
   console.log(`RETRYABLE_STALLED: ${stalledSummary.retryable}`);
   console.log(`MANUAL_INTERVENTION: ${stalledSummary.manualIntervention}`);
   console.log(formatReleaseFullCheckGate(createReleaseFullCheckGate(graph)));
+  console.log(formatFinalReviewerSweepReport(createFinalReviewerSweep(graph), { includeTasks: false }));
   console.log(`NEXT_READY: ${grouped.ready[0]?.itemId || grouped.ready[0]?.id || "none"}`);
   console.log(`NEXT_ACTION: ${nextActionForEpicStatus(grouped, graph)}`);
   for (const item of taskItems) {
@@ -2175,11 +2329,39 @@ function trustedReceiptIdsForValidation(rootDir, { explicitReceiptIds = [] } = {
   const trusted = [];
   for (const receipt of readWorkflowReceipts(rootDir)) {
     if (!receipt?.receiptId) continue;
+    if (receipt.recovery) continue;
     if (explicit.size > 0 && !explicit.has(String(receipt.receiptId))) continue;
-    const trust = validateWorkflowReceiptTrust(rootDir, receipt);
+    const trust = validateWorkflowReceiptTrust(rootDir, receipt, { requireHostInvocationProof: true });
     if (trust.pass) trusted.push(String(receipt.receiptId));
   }
   return trusted;
+}
+
+function trustedFinalReviewerReceiptIdsForValidation(rootDir, graph = {}, { explicitReceiptIds = [] } = {}) {
+  const graphId = graph.epicId || graph.graph_id || graph.graphId || (graph.items || []).find((item) => item.type === "epic")?.itemId || null;
+  const explicit = new Set((explicitReceiptIds || []).map(String).filter(Boolean));
+  const trusted = [];
+  for (const receipt of readWorkflowReceipts(rootDir)) {
+    if (!receipt?.receiptId) continue;
+    if (receipt.recovery) continue;
+    if (explicit.size > 0 && !explicit.has(String(receipt.receiptId))) continue;
+    const subjectType = String(receipt.subjectType || "").toLowerCase();
+    if (subjectType !== "reviewer") continue;
+    if (receipt.command && receipt.command !== "/supervibe-loop") continue;
+    if (receipt.stage && receipt.stage !== "final-review-sweep") continue;
+    if (!receipt.hostInvocation?.source || !receipt.hostInvocation?.invocationId) continue;
+    const receiptGraphId = receipt.graphId || receipt.workItemBinding?.graphId || null;
+    if (graphId && receiptGraphId && receiptGraphId !== graphId) continue;
+    const trust = validateWorkflowReceiptTrust(rootDir, receipt, { requireHostInvocationProof: true });
+    if (trust.pass) trusted.push(String(receipt.receiptId));
+  }
+  return trusted;
+}
+
+function finalReviewEntryHasTrustedReceipt(reviewEntry = {}, trustedReceiptIds = []) {
+  const trusted = new Set((trustedReceiptIds || []).map(String));
+  const receiptIds = [reviewEntry.receiptId, ...(reviewEntry.receiptIds || [])].filter(Boolean);
+  return receiptIds.some((receiptId) => trusted.has(String(receiptId)));
 }
 
 function trustedGraphReceiptIdsForValidation(rootDir, graph = {}, { explicitReceiptIds = [] } = {}) {
@@ -2187,17 +2369,35 @@ function trustedGraphReceiptIdsForValidation(rootDir, graph = {}, { explicitRece
   if (!graphId) return [];
   const explicit = new Set((explicitReceiptIds || []).map(String).filter(Boolean));
   const trusted = [];
+  const allowedStages = new Set([
+    "final-review-sweep",
+    "final-review-sweep-graph-evidence",
+    "release-completion",
+    "work-item-graph-release",
+  ]);
   for (const receipt of readWorkflowReceipts(rootDir)) {
     if (!receipt?.receiptId) continue;
+    if (receipt.recovery) continue;
     if (explicit.size > 0 && !explicit.has(String(receipt.receiptId))) continue;
+    if (receipt.command !== "/supervibe-loop") continue;
+    if (!allowedStages.has(String(receipt.stage || ""))) continue;
+    const subjectType = String(receipt.subjectType || "").toLowerCase();
+    if (!["reviewer", "agent"].includes(subjectType)) continue;
+    if (!receipt.hostInvocation?.source || !receipt.hostInvocation?.invocationId) continue;
     const receiptGraphId = receipt.graphId || receipt.workItemBinding?.graphId || null;
     if (receiptGraphId !== graphId) continue;
     const taskId = receipt.taskId || receipt.workItemId || receipt.graphTaskId || receipt.workItemBinding?.taskId || null;
-    if (taskId) continue;
-    const trust = validateWorkflowReceiptTrust(rootDir, receipt);
+    if (taskId && !isGraphWideCompletionReceipt(receipt, taskId)) continue;
+    const trust = validateWorkflowReceiptTrust(rootDir, receipt, { requireHostInvocationProof: true });
     if (trust.pass) trusted.push(String(receipt.receiptId));
   }
   return trusted;
+}
+
+function isGraphWideCompletionReceipt(receipt = {}, taskId = "") {
+  const normalizedTaskId = String(taskId || "").toLowerCase();
+  if (!normalizedTaskId) return true;
+  return /(?:graph|epic|release)[-_ ]?(?:close|completion|handoff|proof|evidence)|completion[-_ ]?proof/.test(normalizedTaskId);
 }
 
 function splitCsv(value = "") {
@@ -2495,6 +2695,22 @@ function verificationEvidenceFromArgs(args, itemId) {
   }];
 }
 
+function finalReviewEntryFromArgs(args) {
+  const taskId = args["record-final-review"];
+  if (!taskId || taskId === true) throw new Error("--record-final-review requires a task/work item id");
+  return {
+    taskId,
+    status: args["reviewer-status"] || args.reviewStatus || args.verdict || args.status || "pass",
+    score: args.score || args["review-score"] || 10,
+    reviewerAgentId: args.reviewer || args["reviewer-agent"] || args.agent || null,
+    receiptId: args.receipt || args.receiptId || args["receipt-id"] || null,
+    receiptIds: splitCsv(args.receipts || args["receipt-ids"]),
+    evidence: splitCsv(args.evidence || args["evidence-paths"] || args["evidence-path"]),
+    notes: args.notes || args.summary || args["output-summary"] || null,
+    productionReady: args["production-ready"] == null ? null : args["production-ready"] !== "false",
+  };
+}
+
 async function findGraphContainingItem(rootDir, itemId) {
   const base = join(rootDir, ".supervibe", "memory", "work-items");
   const candidates = [];
@@ -2737,12 +2953,52 @@ function parseDurationToMinutes(value) {
   return unit.startsWith("h") ? amount * 60 : amount;
 }
 
-function deriveExecutionMode(args) {
+function resolveLoopRuntimeDefaults({ rootDir = process.cwd(), args = {} } = {}) {
+  const tool = resolveDefaultLoopTool({ rootDir, args });
+  const providerCapabilities = safeResolveToolCapabilities(tool);
+  const executionMode = deriveExecutionMode(args, {
+    tool,
+    providerCapabilities,
+  });
+  const externalFreshContext = executionMode === "fresh-context" && tool !== "generic-shell-stub";
+  return {
+    tool,
+    executionMode,
+    allowSpawn: args["allow-spawn"] ?? externalFreshContext,
+    permissionPromptBridge: args["permission-prompt-bridge"] ?? externalFreshContext,
+  };
+}
+
+function resolveDefaultLoopTool({ rootDir = process.cwd(), args = {} } = {}) {
+  const explicit = String(args.tool || args.provider || process.env.SUPERVIBE_PROVIDER || "").trim().toLowerCase();
+  if (explicit) return explicit;
+  try {
+    const selected = selectHostAdapter({ rootDir, env: process.env })?.adapter?.id || "";
+    if (TOOL_ADAPTER_IDS.includes(selected)) return selected;
+  } catch {
+    // Host detection should not block loop startup; fall back to a non-mutating local mode.
+  }
+  return "generic-shell-stub";
+}
+
+function safeResolveToolCapabilities(tool) {
+  try {
+    return resolveToolLoopCapabilities(tool);
+  } catch {
+    return null;
+  }
+}
+
+function deriveExecutionMode(args, { tool = null, providerCapabilities = null } = {}) {
   if (args.guided) return "guided";
   if (args.manual) return "manual";
   if (args["fresh-context"]) return "fresh-context";
   if (args["execution-mode"]) return args["execution-mode"];
-  return args["dry-run"] ? "dry-run" : "dry-run";
+  return resolveDefaultLoopExecutionMode({
+    dryRun: Boolean(args["dry-run"]),
+    adapterId: tool,
+    providerCapabilities,
+  });
 }
 
 function printHelp() {
@@ -2764,6 +3020,8 @@ Primary:
   supervibe-loop --close <task-id> --reason "verified" --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --validate-completion --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --validate-completion --file .supervibe/memory/work-items/<epic-id>/graph.json --require-trusted-evidence --trusted-receipts <id,id>
+  supervibe-loop --final-review-sweep --file .supervibe/memory/work-items/<epic-id>/graph.json
+  supervibe-loop --record-final-review <task-id> --reviewer quality-gate-reviewer --receipt <receipt-id> --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --edit <task-id> --title "Updated title" --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --split <task-id> --titles "Subtask A,Subtask B" --file .supervibe/memory/work-items/<epic-id>/graph.json --preview
   supervibe-loop --skip <task-id> --reason "out of scope" --file .supervibe/memory/work-items/<epic-id>/graph.json --preview
@@ -2817,11 +3075,12 @@ Advanced:
   supervibe-loop import --file <bundle-dir> --out <target-root>
 
 Execution modes:
+  default: provider-recommended real mode (fresh-context for supported providers, guided without a real provider)
   --dry-run
   --guided
   --manual
   --fresh-context --tool codex|claude|gemini|opencode
-  --fresh-context --tool codex|claude|gemini|opencode --allow-spawn --permission-prompt-bridge
+  --fresh-context --tool codex|claude|gemini|opencode [--allow-spawn --permission-prompt-bridge]
   --adapter-command <command> [--adapter-args arg1,arg2]
   --tracker memory|cli|mcp [--tracker-command <command>] [--tracker-base-args arg1,arg2]
   --tracker mcp --tracker-mcp-servers issue-tracker --tracker-mcp-tools create_issue,link_dependency --approve-mcp-tracker

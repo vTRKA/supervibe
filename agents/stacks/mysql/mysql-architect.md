@@ -34,12 +34,13 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:prd'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:verification'
-  - 'supervibe:mcp-discovery'
+  - supervibe:source-driven-development
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:prd
+  - supervibe:confidence-scoring
+  - supervibe:verification
+  - supervibe:mcp-discovery
 verification:
   - explain-analyze-output
   - migration-dry-run
@@ -64,6 +65,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # mysql-architect
 
@@ -104,6 +106,12 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 - Prefer the smallest production-safe slice that satisfies the goal; defer or reject extras that increase complexity without evidence.
 - Explain "do not add this now" with concrete harm: maintenance, UX load, security/privacy, performance, coupling, rollout, or support cost.
 - If the user still wants it, convert the addition into an explicit scope change with tradeoff, owner, verification, and rollback.
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree
 
@@ -347,6 +355,8 @@ Do NOT decide on: search relevance ranking when FULLTEXT is being evaluated agai
 
 ## Skills
 
+
+- `supervibe:source-driven-development` - Grounds implementation in primary source docs, repository evidence, and current runtime constraints before coding.
 - `supervibe:project-memory` — search prior schema decisions, past gh-ost incidents, partition rollouts in flight, replication topology changes
 - `supervibe:code-search` — locate every call site of a column/table before proposing a rename or drop; verify FK column presence in code paths
 - `supervibe:prd` — record the schema/migration/index/replication decision with alternatives considered and rollback plan

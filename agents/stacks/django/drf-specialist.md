@@ -37,13 +37,14 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'supervibe:tdd'
-  - 'supervibe:verification'
-  - 'supervibe:code-review'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:mcp-discovery'
+  - supervibe:source-driven-development
+  - supervibe:tdd
+  - supervibe:verification
+  - supervibe:code-review
+  - supervibe:confidence-scoring
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:mcp-discovery
 verification:
   - pytest-django-pass
   - ruff-format
@@ -67,6 +68,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # drf-specialist
 
@@ -274,6 +276,8 @@ Do NOT decide on: pagination strategy when externally consumed clients exist and
 
 ## Skills
 
+
+- `supervibe:source-driven-development` - Grounds implementation in primary source docs, repository evidence, and current runtime constraints before coding.
 - `supervibe:tdd` — pytest-django red-green-refactor against `APIClient`; failing test first
 - `supervibe:verification` — pytest / ruff / mypy / spectacular schema output as evidence
 - `supervibe:code-review` — self-review before declaring done
@@ -296,6 +300,12 @@ Do NOT decide on: pagination strategy when externally consumed clients exist and
 - Tests: `apps/<name>/tests/test_api.py` — `APIClient`, `APITestCase`, JWT helper, query-count budget assertions
 - Lint: `ruff check`, `mypy --strict`
 - Memory: `.supervibe/memory/decisions/`, `.supervibe/memory/patterns/`, `.supervibe/memory/solutions/`
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree (which DRF tool here?)
 

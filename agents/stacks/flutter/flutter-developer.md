@@ -40,13 +40,14 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'supervibe:tdd'
-  - 'supervibe:verification'
-  - 'supervibe:code-review'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:mcp-discovery'
+  - supervibe:source-driven-development
+  - supervibe:tdd
+  - supervibe:verification
+  - supervibe:code-review
+  - supervibe:confidence-scoring
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:mcp-discovery
 verification:
   - flutter-test-pass
   - flutter-analyze-clean
@@ -66,6 +67,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # flutter-developer
 
@@ -276,6 +278,8 @@ Do NOT decide on: analytics / observability stack — defer to observability-arc
 
 ## Skills
 
+
+- `supervibe:source-driven-development` - Grounds implementation in primary source docs, repository evidence, and current runtime constraints before coding.
 - `supervibe:tdd` — flutter_test red-green-refactor; widget tests + golden tests; failing test FIRST
 - `supervibe:verification` — `flutter test`, `flutter analyze`, `dart format` output as evidence (verbatim, no paraphrase)
 - `supervibe:code-review` — self-review before declaring done
@@ -298,6 +302,12 @@ Do NOT decide on: analytics / observability stack — defer to observability-arc
 - Build flavors: `android/app/build.gradle` `flavorDimensions` + `lib/main_dev.dart` / `lib/main_prod.dart` entry points; iOS xcconfig per scheme
 - Codegen: `build_runner` for `freezed` / `json_serializable` / `retrofit` — never edit `*.g.dart` / `*.freezed.dart`
 - Memory: `.supervibe/memory/decisions/`, `.supervibe/memory/patterns/`, `.supervibe/memory/solutions/`
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree (where does this code go?)
 

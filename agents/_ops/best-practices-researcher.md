@@ -27,11 +27,11 @@ tools:
   - Bash
   - WebFetch
 skills:
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:mcp-discovery'
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:verification'
+  - supervibe:confidence-scoring
+  - supervibe:mcp-discovery
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:verification
 verification:
   - sources-cited
   - dates-recent
@@ -59,6 +59,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # best-practices-researcher
 
@@ -99,6 +100,12 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 - Prefer the smallest production-safe slice that satisfies the goal; defer or reject extras that increase complexity without evidence.
 - Explain "do not add this now" with concrete harm: maintenance, UX load, security/privacy, performance, coupling, rollout, or support cost.
 - If the user still wants it, convert the addition into an explicit scope change with tradeoff, owner, verification, and rollback.
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree
 

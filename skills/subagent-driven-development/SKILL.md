@@ -1,7 +1,7 @@
 ---
 name: subagent-driven-development
 namespace: process
-description: "Use WHEN executing an implementation plan, epic, or atomic task wave with independent tasks AND subagents are available TO dispatch fresh subagent per task in isolated worktree/session with active session registry, heartbeat, stop/resume/status controls, and two-stage review. Trigger phrases: parallel subagents, fan-out, subagent-driven, atomic tasks, epic worktree, goal-until-complete autonomous, active session registry."
+description: "Use WHEN executing an implementation plan, epic, or atomic task wave with independent tasks AND subagents are available TO dispatch fresh subagent per task in isolated worktree/session with active session registry, heartbeat, stop/resume/status controls, and final-sweep review. Trigger phrases: parallel subagents, fan-out, subagent-driven, atomic tasks, epic worktree, goal-until-complete autonomous, active session registry."
 allowed-tools: [Read, Grep, Glob, Write, Edit, Bash]
 phase: exec
 prerequisites: [implementation-plan]
@@ -27,10 +27,10 @@ Before dispatching workers, verify the plan-review reviewer coverage, zero open 
 ## Continuation Contract
 
 Continue through every ready wave until the wave queue is exhausted, a
-verification/review gate fails, a policy or approval gate blocks progress, a
+verification gate fails, a policy or approval gate blocks progress, a
 write-set conflict appears, an explicit budget expires, or the user explicitly pauses. Do
 not stop after the first subagent result, first green task, first rejected task,
-or first review checkpoint when unrelated ready work remains.
+or first checkpoint when unrelated ready work remains.
 
 If one task fails, quarantine or re-queue that task with reason, retry count,
 owner, and next unblock action; keep independent ready tasks moving when their
@@ -40,8 +40,8 @@ write sets and dependencies are disjoint.
 
 A subagent task is ready only when it has a reviewed plan reference, dependency
 state, declared write set, expected files, acceptance criteria, verification
-command, rollback plan, scope id, risk level, stop condition, and reviewer. If
-any field is missing, split or repair the task before dispatch.
+command, rollback plan, scope id, risk level, stop condition, and final-sweep
+review policy. If any field is missing, split or repair the task before dispatch.
 
 ## Worker Execution Packet
 
@@ -69,10 +69,11 @@ them.
 ## Definition Of Done
 
 A wave is done only after every task in the wave is `SUCCESS`, `BLOCKED`, or
-`QUARANTINED` with evidence. `SUCCESS` requires worker evidence, independent
-Stage 2 review, verification output, side-effect reconciliation, scope safety,
+`QUARANTINED` with evidence. `SUCCESS` requires worker evidence, verification
+output, side-effect reconciliation, scope safety,
 `hostInvocation.source` + `hostInvocation.invocationId` for the real host
-subagent run, and confidence at least 9/10. Rejected or partial worker output is not progress
+subagent run, final-sweep reviewer coverage before release completion, and
+confidence at least 9/10. Rejected or partial worker output is not progress
 until it is repaired or explicitly accepted as partial by the user.
 
 ## Expert Operating Standard
@@ -102,10 +103,10 @@ Per task: which subagent type?
 ## Procedure
 
 1. **Plan analysis** (Step 0)
-1a. **Orchestration preflight** - for durable/epic execution, run or consult `/supervibe-loop --plan-waves <plan-or-state>` and use capability/preset assignment before dispatching a wave. Every task needs a worker, an independent reviewer, declared write scope, and required evidence before launch.
+1a. **Orchestration preflight** - for durable/epic execution, run or consult `/supervibe-loop --plan-waves <plan-or-state>` and use capability/preset assignment before dispatching a wave. Every task needs a worker, declared write scope, required evidence, and final-sweep reviewer policy before launch.
 2. **Wave organization** — group tasks; tasks within wave are parallelizable
 2a. **Session coordination** - if execution is epic/worktree-backed, check the active worktree session registry before dispatch. Do not let two sessions claim the same epic/work item unless explicitly allowed.
-2b. **Assignment explainability** - record why the worker/reviewer were chosen, which alternatives were rejected, and why any task was serialized or blocked.
+2b. **Assignment explainability** - record why the worker was chosen, which final reviewer sweep will cover completion, which alternatives were rejected, and why any task was serialized or blocked.
 3. **Per task: write brief** (subagent has no conversation memory; brief must be self-contained):
    - What to do (concrete deliverable)
    - What files to touch
@@ -113,21 +114,59 @@ Per task: which subagent type?
    - Quality gate (≥9 on agent-output)
    - Approved scope id and explicit instruction to reject or defer unapproved extras instead of implementing them
 4. **Dispatch wave** — parallel Agent tool calls in single message
-5. **Two-stage review per task**:
-   - Stage 1: subagent self-reviews via attached `supervibe:verification` and `supervibe:confidence-scoring`
-   - Stage 2: parent (this skill) reviews subagent output for scope respect, evidence completeness, regression safety
+5. **No mid-graph reviewer dispatch by default**:
+   - Stage 1: subagent self-checks via attached `supervibe:verification` and `supervibe:confidence-scoring`
+   - Stage 2: controller reconciles worker evidence for progress only
+   - Final stage: reviewer agents run once after all graph epics/tasks are complete
 6. **Reject if**: scope violation, unapproved feature expansion, missing evidence, regression introduced
 7. **Re-dispatch with corrected brief** if rejected
 8. **After wave completes** — proceed to next wave
 9. **Heartbeat/status** - update the session registry after each wave and mark stale/cleanup-blocked sessions explicitly.
-10. **Producer receipt gate** - for every durable worker/reviewer artifact, issue runtime workflow receipts with host invocation proof and run `npm run validate:agent-producer-receipts` before claiming the wave complete.
+10. **Producer receipt gate** - for every durable worker artifact, issue runtime workflow receipts with host invocation proof during execution. Reviewer receipts are required only for the final graph/epic/release sweep.
+
+## Examples
+
+- Use for real host subagents: invoke named specialists through the provider path, track invocation ids, bind receipts, and merge disjoint outputs through the controller.
+- Do not emulate a named worker or reviewer inline when the host can invoke the real specialist.
+
+## When not to use
+
+- Do not use this skill to bypass the command or workflow that owns durable artifacts.
+- Do not use it when source evidence, RAG/CodeGraph, or required verification is missing.
+- Do not use it to replace a specialist producer, worker, or reviewer that must issue runtime evidence.
+
+## Common rationalizations
+
+- "This is small, so no source check is needed" - reject when the skill changes code, config, or durable artifacts.
+- "The user asked for speed, so skip receipts" - reject when durable work, delegation, or review is claimed.
+- "Existing prose is enough evidence" - reject when validators or command output are required.
+
+## Red flags
+
+- A durable artifact changes without a command, receipt, or verification path.
+- The skill is used outside its phase without an explicit handoff.
+- Claims of completion appear before evidence and confidence scoring.
+
+## Checklist
+
+- Source of truth read.
+- Scope and owner confirmed.
+- RAG/CodeGraph/memory requirement decided.
+- Evidence artifact or command recorded.
+- Stop condition and next handoff clear.
+
+## Failure modes
+
+- Inline emulation replaces a required producer or reviewer.
+- Broad use of the skill slows delivery without improving evidence.
+- Missing verification lets stale assumptions pass as production-ready.
 
 ## Output contract
 
 Returns wave-by-wave execution log:
 ```
 Wave 1 (parallel, N tasks):
-  Assignment model: <worker-preset>/<subagent-type> + <reviewer-preset>, with why-worker, why-reviewer, rejected alternatives, required evidence, and wave/block reason
+  Assignment model: <worker-preset>/<subagent-type> + final-sweep reviewer policy, with why-worker, rejected alternatives, required evidence, and wave/block reason
   - Task 1: <subagent-type> → SUCCESS / REJECTED+reason
   - Task 2: ...
 Wave 2 (parallel, N tasks):
@@ -139,7 +178,7 @@ Final: combined deliverable + per-wave confidence score
 
 - DO NOT: include conversation context in subagent brief (will leak)
 - DO NOT: dispatch >5 parallel in single wave (track-ability suffers)
-- DO NOT: skip Stage 2 review (subagent can claim done without doing)
+- DO NOT: dispatch reviewer agents inside every worker task unless per-task review mode is explicitly selected
 - DO NOT: re-dispatch with same brief (will produce same output)
 - DO NOT: dispatch work already owned by another active worktree session
 - DO NOT: let a worker review its own output or share an overlapping write set in the same wave
@@ -153,10 +192,12 @@ Final: combined deliverable + per-wave confidence score
 
 ## Verification
 
-- Every task has dispatch + Stage 1 + Stage 2 outputs
-- Every successful worker/reviewer has a `hostInvocation.invocationId` linked to a runtime-issued workflow receipt
+- Every task has dispatch + worker self-check + controller reconciliation outputs
+- Every successful worker has a `hostInvocation.invocationId` linked to a runtime-issued workflow receipt
+- Run `/validate:agent-producer-receipts` before claiming delegated producer work is complete
+- Final reviewer sweep has reviewer `hostInvocation.invocationId` receipts before release completion
 - Failed tasks have new brief + re-dispatch evidence
-- Stage 2 review confirms no unapproved scope expansion shipped
+- Final reviewer sweep confirms no unapproved scope expansion shipped
 - Final deliverable passes overall agent-output rubric ≥9
 
 ## Related

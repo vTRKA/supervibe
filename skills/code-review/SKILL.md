@@ -81,8 +81,49 @@ Is the diff touching public symbols (rename / move / extract / delete)?
    - For each: `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers "<name>"`
    - Verify: all callers updated in same diff OR documented as breaking change
    - If breaking: require migration note + deprecation period per `api-contract-reviewer` rules
-7. **Output report** — see Output contract
-8. **Score** — `supervibe:confidence-scoring` artifact-type=agent-output; ≥9 required to mark review complete
+7. **Protected simplification check** (only if the diff simplifies/refactors generated, vendored, migration, or compatibility code):
+   - Respect `supervibe-simplify-ignore-start: <reason>` / `supervibe-simplify-ignore-end` blocks documented in `references/protected-block-simplification.md`
+   - Reject malformed or unreasoned protected blocks instead of silently deleting guarded code
+   - Use `scripts/lib/protected-block-simplification.mjs` for nested-safe range detection when tooling needs to inspect protected spans
+8. **Output report** — see Output contract
+9. **Score** — `supervibe:confidence-scoring` artifact-type=agent-output; ≥9 required to mark review complete
+
+## Examples
+
+- Use after implementation is complete: inspect the diff, rank findings by severity, cite file and line evidence, and block release on correctness, security, or missing verification gaps.
+- Do not run as a substitute for building the feature or as a mid-loop blocker unless the graph explicitly marks a review gate.
+
+## When not to use
+
+- Do not use this skill to bypass the command or workflow that owns durable artifacts.
+- Do not use it when source evidence, RAG/CodeGraph, or required verification is missing.
+- Do not use it to replace a specialist producer, worker, or reviewer that must issue runtime evidence.
+
+## Common rationalizations
+
+- "This is small, so no source check is needed" - reject when the skill changes code, config, or durable artifacts.
+- "The user asked for speed, so skip receipts" - reject when durable work, delegation, or review is claimed.
+- "Existing prose is enough evidence" - reject when validators or command output are required.
+
+## Red flags
+
+- A durable artifact changes without a command, receipt, or verification path.
+- The skill is used outside its phase without an explicit handoff.
+- Claims of completion appear before evidence and confidence scoring.
+
+## Checklist
+
+- Source of truth read.
+- Scope and owner confirmed.
+- RAG/CodeGraph/memory requirement decided.
+- Evidence artifact or command recorded.
+- Stop condition and next handoff clear.
+
+## Failure modes
+
+- Inline emulation replaces a required producer or reviewer.
+- Broad use of the skill slows delivery without improving evidence.
+- Missing verification lets stale assumptions pass as production-ready.
 
 ## Output contract
 
@@ -110,6 +151,7 @@ Evidence: <typecheck/test/lint output summary>
 - ALWAYS: cite file:line for every finding
 - ALWAYS: distinguish CRITICAL/MAJOR (blocking) from MINOR/SUGGESTION (advisory)
 - **Skip graph check on rename**: silent breakage waiting to happen. The rule `use-codegraph-before-refactor` makes this a HARD BLOCK; review must enforce.
+- **Deleting protected simplification blocks without checking reason/range**: can break generated, vendored, migration, or compatibility code. Treat malformed `supervibe-simplify-ignore-*` markers as review blockers.
 
 ## Verification
 

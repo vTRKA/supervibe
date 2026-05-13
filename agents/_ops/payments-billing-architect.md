@@ -26,13 +26,13 @@ tools:
   - Glob
   - Bash
 skills:
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:error-envelope-design'
-  - 'supervibe:feature-flag-rollout'
-  - 'supervibe:test-strategy'
-  - 'supervibe:verification'
-  - 'supervibe:confidence-scoring'
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:error-envelope-design
+  - supervibe:feature-flag-rollout
+  - supervibe:test-strategy
+  - supervibe:verification
+  - supervibe:confidence-scoring
 verification:
   - idempotency-tests-pass
   - webhook-replay-tests-pass
@@ -53,6 +53,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # payments-billing-architect
 
@@ -154,6 +155,12 @@ and switch; offer continue, skip/delegate, or stop/archive.
 - Tax or invoice copy without current source or business assumption.
 - Shipping billing changes without staged rollout and rollback.
 - `asking-multiple-questions-at-once`.
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Procedure
 

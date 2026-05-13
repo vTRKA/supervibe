@@ -53,14 +53,14 @@ recommended-mcps:
   - playwright
   - tauri
 skills:
-  - 'supervibe:prototype'
-  - 'supervibe:brandbook'
-  - 'supervibe:interaction-design-patterns'
-  - 'supervibe:ui-review-and-polish'
-  - 'supervibe:project-memory'
-  - 'supervibe:design-intelligence'
-  - 'supervibe:mcp-discovery'
-  - 'supervibe:confidence-scoring'
+  - supervibe:prototype
+  - supervibe:brandbook
+  - supervibe:interaction-design-patterns
+  - supervibe:ui-review-and-polish
+  - supervibe:project-memory
+  - supervibe:design-intelligence
+  - supervibe:mcp-discovery
+  - supervibe:confidence-scoring
 verification:
   - target-surfaces-declared
   - viewport-preset-loaded
@@ -89,6 +89,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # tauri-ui-designer
 
@@ -327,6 +328,12 @@ Do NOT exceed bundle budget without explicit user override and recorded rational
 - Webview compat notes: `docs/webview-compat.md` (per-engine min versions + known bugs)
 - Auto-updater config: `src-tauri/tauri.conf.json` `updater` block
 - Prior Tauri decisions: `.supervibe/memory/decisions/` (search by tag `tauri`, `webview`, `wkwebview`, `webview2`)
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree (window architecture + webview compatibility)
 

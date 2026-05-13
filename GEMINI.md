@@ -28,7 +28,7 @@ Same Supervibe project context, adapted for Gemini CLI:
 - Agent smartness is validated by `npm run validate:agent-content-quality`,
   `npm run validate:agent-skill-coverage`, `npm run validate:agent-empirical-hardening`, and `npm run validate:agent-tool-use-matrix`, not by padding files to a line count. Use `npm run supervibe:agent-heatmap` when you need per-agent quality scores instead of a pass/fail answer.
 - Every agent must explain each declared skill in `## Skills`; every process skill must have at least one owning agent.
-- 55 process skills in `./skills/`, validated by `npm run validate:skill-operational-contracts` and `npm run validate:skill-content-quality`
+- 59 process skills in `./skills/`, validated by `npm run validate:skill-operational-contracts` and `npm run validate:skill-content-quality`
 - 31 project rules in `./rules/`
 - 19 confidence rubrics in `./confidence-rubrics/`
 - Trigger-safe workflow routing for brainstorm -> plan -> review -> atomize -> worktree run

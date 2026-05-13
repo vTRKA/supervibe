@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -16,6 +16,7 @@ import {
   defaultWorkflowReceiptKeyPath,
   defaultWorkflowReceiptLedgerPath,
   issueWorkflowInvocationReceipt,
+  validateWorkflowReceiptTrust,
   validateWorkflowReceiptLedgerChain,
   validateWorkflowReceipts,
 } from "../scripts/lib/supervibe-workflow-receipt-runtime.mjs";
@@ -116,14 +117,63 @@ test("workflow receipt runtime preserves host trace metadata and emits receipt s
 test("workflow receipt output classifier blocks mutable log-like artifacts", () => {
   const blocked = classifyWorkflowReceiptOutputArtifact(".supervibe/memory/agent-invocations.jsonl");
   const mutableState = classifyWorkflowReceiptOutputArtifact(".supervibe/memory/genesis/state.json");
+  const mutableWorkItemIndex = classifyWorkflowReceiptOutputArtifact(".supervibe/memory/work-items/index.json");
   const stable = classifyWorkflowReceiptOutputArtifact(".supervibe/artifacts/_agent-outputs/run-1/agent-output.json");
 
   assert.equal(blocked.receiptable, false);
   assert.equal(blocked.reason, "mutable-log-like-output-artifact");
   assert.equal(mutableState.receiptable, false);
+  assert.equal(mutableWorkItemIndex.receiptable, false);
   assert.match(mutableState.recommendation, /state snapshot/);
   assert.match(blocked.recommendation, /stable per-agent/i);
   assert.equal(stable.receiptable, true);
+});
+
+test("workflow receipt validation treats mutable work-item graph state drift as stale", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-workflow-graph-drift-"));
+  try {
+    const graphRel = ".supervibe/memory/work-items/epic-graph/graph.json";
+    await writeUtf8(root, graphRel, `${JSON.stringify({ items: [{ itemId: "T1", status: "open" }] }, null, 2)}\n`);
+
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-loop",
+      subjectType: "command",
+      subjectId: "supervibe:autonomous-agent-loop",
+      stage: "work-item-execution",
+      invocationReason: "graph lifecycle state is a durable workflow output",
+      outputArtifacts: [graphRel],
+      startedAt: "2026-05-07T00:00:00.000Z",
+      completedAt: "2026-05-07T00:01:00.000Z",
+      handoffId: "graph-drift",
+      secret: "test-secret",
+      taskId: "T1",
+      graphId: "epic-graph",
+    });
+    assert.equal(validateWorkflowReceipts(root, { secret: "test-secret" }).pass, true);
+
+    await writeUtf8(root, graphRel, `${JSON.stringify({ items: [{ itemId: "T1", status: "closed" }] }, null, 2)}\n`);
+    const drifted = validateWorkflowReceipts(root, { secret: "test-secret" });
+    assert.equal(drifted.pass, false);
+    assert.ok(drifted.issues.some((issue) => /hash mismatch/.test(issue.message)));
+
+    await writeUtf8(root, graphRel, `${JSON.stringify({ items: [{ itemId: "T1", status: "open" }] }, null, 2)}\n`);
+    const sourceDir = join(root, ".supervibe", "memory", "work-items", "epic-graph");
+    const archiveDir = join(root, ".supervibe", "memory", "work-items", ".archive", "epic-graph-2026-05-07");
+    await mkdir(dirname(archiveDir), { recursive: true });
+    await rename(sourceDir, archiveDir);
+    await writeUtf8(root, ".supervibe/memory/work-items/.archive/_archive-log.jsonl", `${JSON.stringify({
+      type: "work-item-graph",
+      graphId: "epic-graph",
+      archivedAt: "2026-05-07T00:02:00.000Z",
+      reason: "completed-retention",
+      originalPath: sourceDir,
+      archivePath: archiveDir,
+    })}\n`);
+    assert.equal(validateWorkflowReceipts(root, { secret: "test-secret" }).pass, true);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("workflow receipt runtime accepts compact agent-output manifest when archived gzip preserves original digest", async () => {
@@ -343,6 +393,43 @@ test("workflow receipt runtime rejects mutable log-like output artifacts before 
       }),
       /mutable\/log-like.*per-agent.*agent-output\.json/,
     );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("workflow receipt trust can require durable host invocation proof", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-workflow-host-proof-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/reviews/final-review.json", "{\"status\":\"pass\"}\n");
+    const issued = await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-loop",
+      subjectType: "reviewer",
+      subjectId: "quality-gate-reviewer",
+      agentId: "quality-gate-reviewer",
+      stage: "final-review-sweep",
+      invocationReason: "final review proof",
+      outputArtifacts: [".supervibe/artifacts/reviews/final-review.json"],
+      startedAt: "2026-05-03T00:00:00.000Z",
+      completedAt: "2026-05-03T00:01:00.000Z",
+      handoffId: "final-review-sweep",
+      graphId: "epic-test",
+      hostInvocation: {
+        source: "codex-spawn-agent",
+        invocationId: "missing-host-invocation",
+        agentId: "quality-gate-reviewer",
+      },
+      allowMissingHostInvocationProof: true,
+    });
+
+    const receipt = { ...issued.receipt, __file: issued.receiptPath };
+    const weakTrust = validateWorkflowReceiptTrust(root, receipt);
+    assert.equal(weakTrust.pass, true);
+
+    const strongTrust = validateWorkflowReceiptTrust(root, receipt, { requireHostInvocationProof: true });
+    assert.equal(strongTrust.pass, false);
+    assert.ok(strongTrust.issues.some((issue) => /hostInvocation missing-host-invocation not found/.test(issue)));
   } finally {
     await rm(root, { recursive: true, force: true });
   }

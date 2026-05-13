@@ -158,6 +158,38 @@ If more information is needed, ask one question per message:
 - **Overfitting one phrase**: do not add a narrow phrase that damages adjacent intents.
 - **Mutating project state**: diagnostics is read-only unless the user explicitly asks for a fix.
 
+## When not to use
+
+- Do not use this skill to bypass the command or workflow that owns durable artifacts.
+- Do not use it when source evidence, RAG/CodeGraph, or required verification is missing.
+- Do not use it to replace a specialist producer, worker, or reviewer that must issue runtime evidence.
+
+## Common rationalizations
+
+- "This is small, so no source check is needed" - reject when the skill changes code, config, or durable artifacts.
+- "The user asked for speed, so skip receipts" - reject when durable work, delegation, or review is claimed.
+- "Existing prose is enough evidence" - reject when validators or command output are required.
+
+## Red flags
+
+- A durable artifact changes without a command, receipt, or verification path.
+- The skill is used outside its phase without an explicit handoff.
+- Claims of completion appear before evidence and confidence scoring.
+
+## Checklist
+
+- Source of truth read.
+- Scope and owner confirmed.
+- RAG/CodeGraph/memory requirement decided.
+- Evidence artifact or command recorded.
+- Stop condition and next handoff clear.
+
+## Failure modes
+
+- Inline emulation replaces a required producer or reviewer.
+- Broad use of the skill slows delivery without improving evidence.
+- Missing verification lets stale assumptions pass as production-ready.
+
 ## Verification
 
 - `node --test tests/supervibe-trigger-diagnostics.test.mjs`

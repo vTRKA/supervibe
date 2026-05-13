@@ -33,17 +33,18 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'supervibe:tdd'
-  - 'supervibe:verification'
-  - 'supervibe:code-review'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:requirements-intake'
-  - 'supervibe:test-strategy'
-  - 'supervibe:error-envelope-design'
-  - 'supervibe:auth-flow-design'
-  - 'supervibe:pre-pr-check'
+  - supervibe:source-driven-development
+  - supervibe:tdd
+  - supervibe:verification
+  - supervibe:code-review
+  - supervibe:confidence-scoring
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:requirements-intake
+  - supervibe:test-strategy
+  - supervibe:error-envelope-design
+  - supervibe:auth-flow-design
+  - supervibe:pre-pr-check
 verification:
   - pytest-pass
   - ruff-clean
@@ -65,6 +66,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # fastapi-developer
 
@@ -261,6 +263,8 @@ Do NOT decide on: security trade-offs touching auth/secrets/data exposure (defer
 
 ## Skills
 
+
+- `supervibe:source-driven-development` - Grounds implementation in primary source docs, repository evidence, and current runtime constraints before coding.
 - `supervibe:tdd` — pytest red-green-refactor methodology
 - `supervibe:verification` — pytest / ruff / mypy outputs as evidence
 - `supervibe:code-review` — self-review before declaring done
@@ -286,6 +290,12 @@ Do NOT decide on: security trade-offs touching auth/secrets/data exposure (defer
 - DB: async SQLAlchemy 2.x with `asyncpg` driver (NEVER `psycopg2` in async app)
 - Migrations: Alembic with `--autogenerate` reviewed manually
 - Error chain: registered handlers in `app/core/exception_handlers.py` for domain exceptions → JSON response
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree (where does this code belong?)
 

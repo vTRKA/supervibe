@@ -12,6 +12,7 @@ export const REQUEUE_REASONS = Object.freeze([
 ]);
 
 export function evaluateTask(task, evidence = {}, options = {}) {
+  const reviewCovered = evidence.independentReview === true || evidence.finalReviewerSweepDeferred === true;
   const dimensions = {
     acceptance: hasItems(task.acceptanceCriteria) && evidence.acceptance !== false ? 2 : 0,
     verification: hasItems(evidence.verificationEvidence) || hasItems(task.verificationCommands) ? 2 : 0,
@@ -26,7 +27,7 @@ export function evaluateTask(task, evidence = {}, options = {}) {
   const caps = [];
 
   if (task.policyRiskLevel === "high" && !evidence.userApproval) caps.push({ score: 6, reason: "high-risk action requires user approval" });
-  if (task.policyRiskLevel === "medium" && !evidence.independentReview) caps.push({ score: 8, reason: "medium-risk task lacks independent review" });
+  if (task.policyRiskLevel === "medium" && !reviewCovered) caps.push({ score: 8, reason: "medium-risk task lacks independent review or final reviewer sweep deferral" });
   if (hasItems(task.verificationCommands) && !evidence.verificationRan) caps.push({ score: 8, reason: "mandatory verification was not run" });
   if (!hasItems(task.acceptanceCriteria)) caps.push({ score: 8, reason: "acceptance criteria are incomplete" });
   if (evidence.policyCompliant === false) caps.push({ score: 7, reason: "policy risk is unresolved" });
@@ -39,7 +40,7 @@ export function evaluateTask(task, evidence = {}, options = {}) {
     caps.push({ score: evidence.failurePacket.confidenceCap, reason: `failure packet: ${evidence.failurePacket.requeueReason}` });
   }
   if (evidence.changedUndeclaredFiles) caps.push({ score: 5, reason: "undeclared file changes" });
-  if (evidence.independentEvaluationRequired && !evidence.independentReview) caps.push({ score: 8, reason: "independent evaluator unavailable" });
+  if (evidence.independentEvaluationRequired && !reviewCovered) caps.push({ score: 8, reason: "independent evaluator unavailable" });
 
   const deliveryConfidence = scoreDeliveryConfidence({
     dimensions: [
@@ -66,7 +67,7 @@ export function evaluateTask(task, evidence = {}, options = {}) {
       codeGraphHandled: evidence.codeGraphHandled === true,
       policyRiskLevel: task.policyRiskLevel,
       userApproval: evidence.userApproval === true,
-      independentReview: evidence.independentReview === true,
+      independentReview: reviewCovered,
       openCriticalFindings: evidence.openCriticalFindings,
       openMajorFindings: evidence.openMajorFindings,
       rollbackRequired: evidence.rollbackRequired === true,

@@ -40,13 +40,13 @@ tools:
 recommended-mcps:
   - tauri
 skills:
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:mcp-discovery'
-  - 'supervibe:error-envelope-design'
-  - 'supervibe:verification'
-  - 'supervibe:code-review'
-  - 'supervibe:confidence-scoring'
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:mcp-discovery
+  - supervibe:error-envelope-design
+  - supervibe:verification
+  - supervibe:code-review
+  - supervibe:confidence-scoring
 verification:
   - boundary-callers-mapped
   - request-response-schema-documented
@@ -67,6 +67,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # ipc-contract-reviewer
 
@@ -156,6 +157,12 @@ Before producing any artifact or making any structural recommendation:
 **Step 2: Code search.** Run `supervibe:code-search` or `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<concept>"` to find existing IPC boundaries, schemas and patterns before recommending changes.
 
 **Step 3 (refactor only): Code graph.** Before changing a public command, bridge API or message shape, run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers "<symbol>"` and report caller/callee evidence.
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Procedure
 

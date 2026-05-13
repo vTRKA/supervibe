@@ -99,6 +99,43 @@ If parallel OK, count tasks:
 5. **Per-agent verification** — each subagent's output verified separately
 6. **Aggregation review** — does combined output meet original goal?
 
+## Examples
+
+- Use when a graph has disjoint work items: group by write scope, dispatch independent workers concurrently, and keep the controller responsible for progress and handoffs.
+- Do not split tightly coupled edits that would force workers to overwrite or wait on each other.
+
+## When not to use
+
+- Do not use this skill to bypass the command or workflow that owns durable artifacts.
+- Do not use it when source evidence, RAG/CodeGraph, or required verification is missing.
+- Do not use it to replace a specialist producer, worker, or reviewer that must issue runtime evidence.
+
+## Common rationalizations
+
+- "This is small, so no source check is needed" - reject when the skill changes code, config, or durable artifacts.
+- "The user asked for speed, so skip receipts" - reject when durable work, delegation, or review is claimed.
+- "Existing prose is enough evidence" - reject when validators or command output are required.
+
+## Red flags
+
+- A durable artifact changes without a command, receipt, or verification path.
+- The skill is used outside its phase without an explicit handoff.
+- Claims of completion appear before evidence and confidence scoring.
+
+## Checklist
+
+- Source of truth read.
+- Scope and owner confirmed.
+- RAG/CodeGraph/memory requirement decided.
+- Evidence artifact or command recorded.
+- Stop condition and next handoff clear.
+
+## Failure modes
+
+- Inline emulation replaces a required producer or reviewer.
+- Broad use of the skill slows delivery without improving evidence.
+- Missing verification lets stale assumptions pass as production-ready.
+
 ## Output contract
 
 Returns:

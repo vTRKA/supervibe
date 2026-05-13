@@ -1,5 +1,7 @@
 import { spawn } from "node:child_process";
 import { scanProviderCommand } from "./autonomous-loop-provider-policy-guard.mjs";
+import { existsSync } from "node:fs";
+import { delimiter, extname, join } from "node:path";
 import {
   getHostLoopCapabilityMatrix,
   resolveHostLoopCapabilities,
@@ -7,6 +9,8 @@ import {
 
 export const EXECUTION_MODES = Object.freeze(["dry-run", "guided", "fresh-context", "manual"]);
 export const TOOL_ADAPTER_IDS = Object.freeze(["codex", "claude", "gemini", "opencode", "generic-shell-stub"]);
+const DEFAULT_REAL_LOOP_EXECUTION_MODE = "fresh-context";
+const DEFAULT_LOCAL_LOOP_EXECUTION_MODE = "guided";
 
 const ADAPTER_DEFINITIONS = {
   codex: { label: "Codex CLI", command: "codex", hostId: "codex" },
@@ -44,9 +48,24 @@ export function normalizeExecutionMode(mode = "dry-run") {
   return EXECUTION_MODES.includes(normalized) ? normalized : "dry-run";
 }
 
+export function resolveDefaultLoopExecutionMode({
+  dryRun = false,
+  adapterId = null,
+  tool = null,
+  providerCapabilities = null,
+} = {}) {
+  if (dryRun) return "dry-run";
+  const selectedAdapterId = String(adapterId || tool || "").trim().toLowerCase();
+  if (!selectedAdapterId || selectedAdapterId === "generic-shell-stub") return DEFAULT_LOCAL_LOOP_EXECUTION_MODE;
+  const capabilities = providerCapabilities || safeResolveToolLoopCapabilities(selectedAdapterId);
+  if (!capabilities) return DEFAULT_LOCAL_LOOP_EXECUTION_MODE;
+  const recommended = normalizeExecutionMode(capabilities.recommendedMode || DEFAULT_REAL_LOOP_EXECUTION_MODE);
+  return recommended === "dry-run" ? DEFAULT_LOCAL_LOOP_EXECUTION_MODE : recommended;
+}
+
 export function detectToolAdapters({
   env = process.env,
-  availableCommands = {},
+  availableCommands = null,
   enabledAdapters = parseEnabledAdapters(env.SUPERVIBE_ENABLED_ADAPTERS),
 } = {}) {
   const enabled = new Set(enabledAdapters);
@@ -75,8 +94,12 @@ export function detectToolAdapters({
 
     const envKey = `SUPERVIBE_${id.toUpperCase().replaceAll("-", "_")}_COMMAND`;
     const configuredCommand = env[envKey] || definition.command;
-    const configured = enabled.has(id) || Boolean(env[envKey]);
-    const commandKnown = Boolean(availableCommands[configuredCommand] || availableCommands[id]);
+    const commandKnown = Boolean(
+      availableCommands?.[configuredCommand]
+      || availableCommands?.[id]
+      || (!availableCommands && isCommandOnPath(configuredCommand, env)),
+    );
+    const configured = enabled.has(id) || Boolean(env[envKey]) || commandKnown;
     const available = configured && (commandKnown || Boolean(env[envKey]));
     return {
       id,
@@ -100,6 +123,29 @@ export function detectToolAdapters({
           : "not configured; safe detection does not spawn external CLIs",
     };
   });
+}
+
+function isCommandOnPath(command, env = process.env) {
+  if (!command || /[\\/]/.test(command)) return existsSync(command);
+  const pathEntries = String(env.PATH || env.Path || "")
+    .split(delimiter)
+    .filter(Boolean);
+  const extensions = process.platform === "win32"
+    ? Array.from(new Set([
+      ...String(env.PATHEXT || ".COM;.EXE;.BAT;.CMD")
+        .split(";")
+        .filter(Boolean),
+      ".PS1",
+    ]))
+    : [""];
+  const commandHasExt = Boolean(extname(command));
+  for (const entry of pathEntries) {
+    const candidates = commandHasExt
+      ? [join(entry, command)]
+      : extensions.map((extension) => join(entry, `${command}${extension}`));
+    if (candidates.some((candidate) => existsSync(candidate))) return true;
+  }
+  return false;
 }
 
 export function summarizeToolAdapterAvailability(adapters = []) {
@@ -158,6 +204,14 @@ export function resolveToolLoopCapabilities(id = "generic-shell-stub") {
   if (id === "generic-shell-stub") return copyCapabilities(STUB_LOOP_CAPABILITIES);
   const definition = ADAPTER_DEFINITIONS[id];
   return resolveHostLoopCapabilities(definition?.hostId || id);
+}
+
+function safeResolveToolLoopCapabilities(id) {
+  try {
+    return resolveToolLoopCapabilities(id);
+  } catch {
+    return null;
+  }
 }
 
 export function formatLoopProviderCapabilityMatrix(matrix = getLoopProviderCapabilityMatrix()) {

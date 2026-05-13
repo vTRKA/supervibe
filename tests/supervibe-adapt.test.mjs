@@ -31,6 +31,7 @@ function createUpToDateCodexProjectWithVersionDrift() {
   mkdirSync(join(projectRoot, ".supervibe", "memory", "adapt"), { recursive: true });
   writeFileSync(join(projectRoot, "AGENTS.md"), "# Project instructions\n");
   writeFileSync(join(projectRoot, artifactRel), readFileSync(join(ROOT, "agents", "_core", "repo-researcher.md"), "utf8"));
+  writeUpToDateCodexProviderConfig(projectRoot);
   writeFileSync(join(projectRoot, ".supervibe", "memory", ".supervibe-version"), previousPatchVersion(CURRENT_VERSION) + "\n");
   writeFileSync(join(projectRoot, ".supervibe", "memory", "adapt", "baseline.json"), JSON.stringify({
     schemaVersion: 1,
@@ -41,11 +42,43 @@ function createUpToDateCodexProjectWithVersionDrift() {
   return projectRoot;
 }
 
-function runAdapt(projectRoot, args = [], { pluginRoot = ROOT } = {}) {
+function writeUpToDateCodexProviderConfig(projectRoot) {
+  mkdirSync(join(projectRoot, ".codex"), { recursive: true });
+  writeFileSync(join(projectRoot, ".codex", "config.toml"), [
+    'approval_policy = "never"',
+    'sandbox_mode = "workspace-write"',
+    'default_permissions = ":workspace"',
+    'web_search = "live"',
+    "",
+    "[features]",
+    "apps = true",
+    "multi_agent = true",
+    "memories = true",
+    "shell_snapshot = true",
+    "codex_hooks = true",
+    "goals = true",
+    "",
+    "[agents]",
+    "max_threads = 8",
+    "max_depth = 1",
+    "job_max_runtime_seconds = 1800",
+    "",
+    "[apps._default]",
+    "enabled = true",
+    "",
+    "[[tool_suggest.discoverables]]",
+    'type = "plugin"',
+    'id = "supervibe@supervibe-marketplace"',
+    "",
+  ].join("\n"));
+}
+
+function runAdapt(projectRoot, args = [], { pluginRoot = ROOT, env = {} } = {}) {
   return execFileSync(process.execPath, [ADAPT_SCRIPT, ...args], {
     cwd: projectRoot,
     env: {
       ...process.env,
+      ...env,
       SUPERVIBE_HOST: "codex",
       SUPERVIBE_PLUGIN_ROOT: pluginRoot,
       SUPERVIBE_SKIP_DOCKER_PROBE: "1",
@@ -55,11 +88,12 @@ function runAdapt(projectRoot, args = [], { pluginRoot = ROOT } = {}) {
   });
 }
 
-function runAdaptRaw(projectRoot, args = [], { pluginRoot = ROOT } = {}) {
+function runAdaptRaw(projectRoot, args = [], { pluginRoot = ROOT, env = {} } = {}) {
   const result = execFileSync(process.execPath, [ADAPT_SCRIPT, ...args], {
     cwd: projectRoot,
     env: {
       ...process.env,
+      ...env,
       SUPERVIBE_HOST: "codex",
       SUPERVIBE_PLUGIN_ROOT: pluginRoot,
       SUPERVIBE_SKIP_DOCKER_PROBE: "1",
@@ -70,9 +104,9 @@ function runAdaptRaw(projectRoot, args = [], { pluginRoot = ROOT } = {}) {
   return { status: 0, stdout: result, stderr: "" };
 }
 
-function runAdaptMaybeFails(projectRoot, args = [], { pluginRoot = ROOT } = {}) {
+function runAdaptMaybeFails(projectRoot, args = [], { pluginRoot = ROOT, env = {} } = {}) {
   try {
-    return runAdaptRaw(projectRoot, args, { pluginRoot });
+    return runAdaptRaw(projectRoot, args, { pluginRoot, env });
   } catch (error) {
     return {
       status: error.status,
@@ -129,6 +163,101 @@ test("supervibe-adapt --help prints usage and does not run dry-run", () => {
   assert.match(out, /--apply/);
   assert.match(out, /--dry-run/);
   assert.doesNotMatch(out, /SUPERVIBE_ADAPT_DRY_RUN/);
+});
+
+test("supervibe-adapt dry-run previews Codex provider config without writing project or home config", () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-adapt-provider-dry-"));
+  const homeRoot = mkdtempSync(join(tmpdir(), "supervibe-adapt-home-"));
+  try {
+    writeFileSync(join(projectRoot, "AGENTS.md"), "# Project instructions\n");
+
+    const out = runAdapt(projectRoot, ["--dry-run", "--summary-json", "--no-refresh-memory-index", "--no-color"], {
+      env: { HOME: homeRoot, USERPROFILE: homeRoot },
+    });
+    const summary = JSON.parse(out);
+
+    assert.equal(summary.providerConfig.providerId, "codex");
+    assert.equal(summary.providerConfig.targetPath, ".codex/config.toml");
+    assert.equal(summary.providerConfig.changed, true);
+    assert.equal(summary.providerConfig.written, false);
+    assert.equal(summary.providerConfig.blocked, false);
+    assert.equal(summary.providerConfig.homeConfigAction, "manual-only");
+    assert.equal(summary.nextApply, "node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --apply");
+    assert.equal(existsSync(join(projectRoot, ".codex", "config.toml")), false);
+    assert.equal(existsSync(join(homeRoot, ".codex", "config.toml")), false);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+    rmSync(homeRoot, { recursive: true, force: true });
+  }
+});
+
+test("supervibe-adapt apply adds missing Codex project config defaults without overwriting user values", () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-adapt-provider-apply-"));
+  const homeRoot = mkdtempSync(join(tmpdir(), "supervibe-adapt-home-"));
+  try {
+    mkdirSync(join(projectRoot, ".codex"), { recursive: true });
+    writeFileSync(join(projectRoot, "AGENTS.md"), "# Project instructions\n");
+    writeFileSync(join(projectRoot, ".codex", "config.toml"), [
+      "# user tuned",
+      "approval_policy = \"on-request\"",
+      "",
+      "[agents]",
+      "max_threads = 4",
+      "",
+    ].join("\n"));
+
+    const out = runAdapt(projectRoot, ["--apply", "--no-refresh-memory-index", "--no-color"], {
+      env: { HOME: homeRoot, USERPROFILE: homeRoot },
+    });
+    const config = readFileSync(join(projectRoot, ".codex", "config.toml"), "utf8");
+    const state = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "adapt", "state.json"), "utf8"));
+
+    assert.match(out, /PROVIDER_CONFIG_WRITTEN: true/);
+    assert.match(out, /PROVIDER_CONFIG_HOME_WRITE: manual-only/);
+    assert.match(out, /MUTATED: \.codex\/config\.toml/);
+    assert.match(config, /# user tuned/);
+    assert.match(config, /approval_policy = "on-request"/);
+    assert.match(config, /max_threads = 4/);
+    assert.match(config, /web_search = "live"/);
+    assert.match(config, /sandbox_mode = "workspace-write"/);
+    assert.equal(state.providerConfig.written, true);
+    assert.equal(state.providerConfig.homeConfigAction, "manual-only");
+    assert.equal(existsSync(join(homeRoot, ".codex", "config.toml")), false);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+    rmSync(homeRoot, { recursive: true, force: true });
+  }
+});
+
+test("supervibe-adapt blocks duplicate Codex provider config keys without mutating files", () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-adapt-provider-duplicate-"));
+  const homeRoot = mkdtempSync(join(tmpdir(), "supervibe-adapt-home-"));
+  try {
+    mkdirSync(join(projectRoot, ".codex"), { recursive: true });
+    writeFileSync(join(projectRoot, "AGENTS.md"), "# Project instructions\n");
+    const before = [
+      "agents.max_threads = 2",
+      "",
+      "[agents]",
+      "max_threads = 4",
+      "",
+    ].join("\n");
+    writeFileSync(join(projectRoot, ".codex", "config.toml"), before);
+
+    const result = runAdaptMaybeFails(projectRoot, ["--apply", "--no-refresh-memory-index", "--no-color"], {
+      env: { HOME: homeRoot, USERPROFILE: homeRoot },
+    });
+
+    assert.equal(result.status, 2);
+    assert.match(result.stdout, /PROVIDER_CONFIG_BLOCKED: true/);
+    assert.match(result.stdout, /PROVIDER_CONFIG_DUPLICATE: agents\.max_threads/);
+    assert.equal(readFileSync(join(projectRoot, ".codex", "config.toml"), "utf8"), before);
+    assert.equal(existsSync(join(projectRoot, ".codex", "config.toml.supervibe-backup")), false);
+    assert.equal(existsSync(join(projectRoot, ".supervibe", "memory", "adapt", "state.json")), false);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+    rmSync(homeRoot, { recursive: true, force: true });
+  }
 });
 
 test("supervibe-adapt classifies CRLF-only managed artifact drift without blocking as both-changed", () => {
@@ -291,8 +420,9 @@ test("supervibe-adapt dry-run plans host-aware project artifact updates without 
     assert.match(out, /CHANGE_DETECTION: snapshot/);
     assert.match(out, /NO_GIT_SNAPSHOT: initial-snapshot-missing/);
     assert.match(out, /CONFLICTS: 0/);
-    assert.match(out, /FAST_PATH_ELIGIBLE: true/);
-    assert.match(out, /FAST_PATH_ROLES: .*supervibe-orchestrator.*quality-gate-reviewer/);
+    assert.match(out, /PROVIDER_CONFIG_APPLY_REQUIRED: true/);
+    assert.match(out, /FAST_PATH_ELIGIBLE: false/);
+    assert.match(out, /FAST_PATH_EXECUTION: standard-agent-plan/);
     assert.match(out, /UPDATE: \.codex\/agents\/repo-researcher\.md/);
     assert.match(out, /APPROVAL_REQUIRED: true/);
     assert.doesNotMatch(out, /SUPERVIBE_GENESIS_DRY_RUN/);
@@ -517,7 +647,8 @@ test("supervibe-adapt summary-json changed-only omits identical artifact payload
 
     assert.equal(summary.kind, "adapt-summary");
     assert.equal(summary.counts.update, 1);
-    assert.equal(summary.fastPath.eligible, true);
+    assert.equal(summary.providerConfigApplyRequired, true);
+    assert.equal(summary.fastPath.eligible, false);
     assert.match(summary.agentPlanCommand, /--adds 0 --updates 1 --project-only 0 --conflicts 0 --memory-writes false/);
     assert.equal(summary.commandAgentReadiness.ready, true);
     assert.deepEqual(summary.commandAgentReadiness.missingCallableAgents, []);

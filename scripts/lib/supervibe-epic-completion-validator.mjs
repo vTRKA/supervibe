@@ -187,9 +187,45 @@ function collectEvidenceByTask(graph = {}) {
       add(event.itemId || event.taskId, event.verificationEvidence);
       add(event.itemId || event.taskId, event.evidence);
       if (isStructuredProductionEvidence(event)) add(event.itemId || event.taskId, event);
+      for (const coveredId of event.autoClosedCoveredItems || []) {
+        add(coveredId, inheritedEvidence(event.verificationEvidence, event.itemId || event.taskId));
+        add(coveredId, inheritedEvidence(event.evidence, event.itemId || event.taskId));
+        if (isStructuredProductionEvidence(event)) add(coveredId, inheritedEvidence(event, event.itemId || event.taskId));
+      }
     }
   }
+  const items = Array.isArray(graph.items) ? graph.items : [];
+  const itemById = new Map(items.map((item) => [item.itemId || item.id, item]));
+  for (const item of items) {
+    const id = item.itemId || item.id;
+    if (!id || (evidenceByTask.get(id) || []).length > 0) continue;
+    const parentId = coveredPlanStepParentId(item);
+    if (!parentId || !itemById.has(parentId)) continue;
+    const parentEvidence = evidenceByTask.get(parentId) || [];
+    if (parentEvidence.length > 0) add(id, inheritedEvidence(parentEvidence, parentId));
+  }
   return evidenceByTask;
+}
+
+function coveredPlanStepParentId(item = {}) {
+  const discoveredFrom = item.discoveredFrom || {};
+  if (discoveredFrom.type === "plan-step" && discoveredFrom.parentItemId) return discoveredFrom.parentItemId;
+  if (item.parentId && item.type === "subtask" && String(item.itemId || item.id || "").startsWith(`${item.parentId}-s`)) {
+    return item.parentId;
+  }
+  return null;
+}
+
+function inheritedEvidence(evidence, inheritedFromTaskId) {
+  const entries = Array.isArray(evidence) ? evidence : evidence == null ? [] : [evidence];
+  return entries.map((entry) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return entry;
+    return {
+      ...entry,
+      inheritedFromTaskId,
+      source: entry.source ? `${entry.source}:covered-plan-step` : "covered-plan-step-parent-evidence",
+    };
+  });
 }
 
 function countCompletion(items = [], options = {}) {

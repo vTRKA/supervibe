@@ -19,6 +19,11 @@ import { validateAgentProducerReceipts } from "./lib/agent-producer-contract.mjs
 import { writeAdaptFileManifestSnapshot } from "./lib/supervibe-adapt.mjs";
 import { writeContextMigrationPlan } from "./lib/supervibe-context-migrator.mjs";
 import { resolveSupervibePluginRoot } from "./lib/supervibe-plugin-root.mjs";
+import { applyProjectProviderConfigDefaults } from "./lib/supervibe-provider-config-applier.mjs";
+import {
+  createProviderConfigDoctorReport,
+  loadProviderCapabilities,
+} from "./lib/supervibe-provider-config-doctor.mjs";
 import { buildRuntimeCommandAgentPlan } from "./command-agent-plan.mjs";
 
 const SCRIPT_PLUGIN_ROOT = fileURLToPath(new URL("../", import.meta.url));
@@ -62,7 +67,7 @@ async function main() {
     || previousState?.generateAppsStep?.appChoice?.id
     || "";
 
-  const report = buildGenesisDryRunReport({
+  const baseReport = buildGenesisDryRunReport({
     targetRoot,
     pluginRoot,
     env,
@@ -72,6 +77,16 @@ async function main() {
     stackText: options.request || "",
     appChoice,
   });
+  const providerConfigPreflight = await buildGenesisProviderConfigPreflight({
+    targetRoot,
+    pluginRoot,
+    host: baseReport.host?.adapterId,
+    write: false,
+  });
+  const report = {
+    ...baseReport,
+    providerConfig: providerConfigPreflight,
+  };
   const mode = options.apply ? "apply" : "dry-run";
   const dryRunState = await writeGenesisState({ targetRoot, report, mode: "dry-run", options });
 
@@ -90,6 +105,7 @@ async function main() {
     outputResult(result, options);
     return;
   }
+  assertProviderConfigCanApply(report.providerConfig, "genesis-provider-config-preflight");
 
   const applyResult = await applyGenesisReport({ targetRoot, pluginRoot, report, options });
   const appliedState = await writeGenesisState({
@@ -125,6 +141,14 @@ async function applyGenesisReport({ targetRoot, pluginRoot, report, options }) {
   const skipped = [];
   const missing = [];
   const adapter = report.host.folders;
+  const providerConfig = await buildGenesisProviderConfigPreflight({
+    targetRoot,
+    pluginRoot,
+    host: report.host?.adapterId,
+    write: true,
+  });
+  assertProviderConfigCanApply(providerConfig, "genesis-provider-config-apply");
+  recordProviderConfigMutation(providerConfig, { created, updated, skipped });
 
   for (const agentId of report.agentProfile.selectedAgents || []) {
     await copyNamedMarkdown({
@@ -185,10 +209,71 @@ async function applyGenesisReport({ targetRoot, pluginRoot, report, options }) {
     updated,
     skipped,
     missing,
+    providerConfig,
     generatedApps,
     postApplyCommands: report.postApplyCommands,
     verificationCommand: "node <resolved-supervibe-plugin-root>/scripts/supervibe-status.mjs",
   };
+}
+
+async function buildGenesisProviderConfigPreflight({ targetRoot, pluginRoot, host = "codex", write = false } = {}) {
+  const providerId = providerIdForHost(host);
+  const manifest = loadProviderCapabilities({ rootDir: pluginRoot });
+  const provider = manifest.providers?.find((candidate) => candidate.id === providerId) || null;
+  const doctor = createProviderConfigDoctorReport({
+    rootDir: targetRoot,
+    pluginRoot,
+    provider: providerId,
+    manifest,
+  });
+  const apply = await applyProjectProviderConfigDefaults({
+    provider,
+    providerId,
+    rootDir: targetRoot,
+    manifest,
+    write,
+  });
+  return {
+    schemaVersion: 1,
+    providerId,
+    host,
+    doctor,
+    apply,
+    homeConfigWriteAllowed: false,
+    homeConfigAction: "manual-only",
+  };
+}
+
+function providerIdForHost(host = "codex") {
+  const map = {
+    claude: "claude-code",
+    codex: "codex",
+    cursor: "cursor",
+    gemini: "gemini-cli",
+    opencode: "opencode",
+  };
+  return map[host] || host || "codex";
+}
+
+function recordProviderConfigMutation(providerConfig, { created, updated, skipped } = {}) {
+  const apply = providerConfig?.apply;
+  if (!apply?.targetPath) return;
+  if (apply.written && apply.created) created.push(apply.targetPath);
+  else if (apply.written && apply.updated) updated.push(apply.targetPath);
+  else skipped.push(apply.targetPath);
+  if (apply.backupPath) updated.push(apply.backupPath);
+}
+
+function assertProviderConfigCanApply(providerConfig, stage = "provider-config") {
+  if (providerConfig?.apply?.blocked !== true) return;
+  const issue = providerConfig.apply.report?.issues?.[0];
+  const duplicate = providerConfig.apply.report?.duplicateKeys?.[0];
+  const detail = duplicate
+    ? `duplicate key ${duplicate.path} at line ${duplicate.line}`
+    : issue
+      ? `${issue.code || "issue"} ${issue.path || "unknown"}`
+      : "blocked provider config apply";
+  throw new Error(`${stage}: ${detail}`);
 }
 
 async function copyNamedMarkdown({ pluginRoot, sourceRoot, id, targetPath, targetRoot, created, skipped, missing }) {
@@ -915,6 +1000,7 @@ async function writeGenesisState({ targetRoot, report, mode, options, operations
     filesToCreate: report.filesToCreate,
     filesToModify: report.filesToModify,
     missingArtifacts: report.missingArtifacts,
+    providerConfig: operations?.providerConfig || report.providerConfig || null,
     artifactVerification,
     generateAppsStep: {
       ...(report.generateAppsStep || {}),
@@ -1102,6 +1188,7 @@ function outputResult(result, options) {
   const displayReport = reportForExecutionMode(result.report, result.mode);
   const agentPlan = buildGenesisRuntimeAgentPlan({ result, displayReport });
   const deployHandoff = buildGenesisDeployHandoff(displayReport);
+  const providerConfig = result.providerConfig || displayReport.providerConfig || null;
   const lines = [
     "SUPERVIBE_GENESIS_RUNNER",
     `MODE: ${result.mode}`,
@@ -1127,11 +1214,19 @@ function outputResult(result, options) {
     `DEPLOY_STATUS: ${deployHandoff.status}`,
     `DEPLOY_VERIFIED: ${deployHandoff.deployVerified}`,
     `NEXT_DEPLOY_COMMAND: ${deployHandoff.nextCommand || "none"}`,
+    `PROVIDER_CONFIG_PROVIDER: ${providerConfig?.providerId || "unknown"}`,
+    `PROVIDER_CONFIG_TARGET: ${providerConfig?.apply?.targetPath || "none"}`,
+    `PROVIDER_CONFIG_CHANGED: ${providerConfig?.apply?.changed === true}`,
+    `PROVIDER_CONFIG_WRITTEN: ${providerConfig?.apply?.written === true}`,
+    `PROVIDER_CONFIG_BLOCKED: ${providerConfig?.apply?.blocked === true}`,
+    `PROVIDER_CONFIG_HOME_WRITE: ${providerConfig?.homeConfigAction || "manual-only"}`,
+    `PROVIDER_CONFIG_PRESERVED_EXISTING: ${providerConfig?.apply?.operationCounts?.preserved ?? 0}`,
     `VERIFY: ${result.verificationCommand || "dry-run only"}`,
     `NEXT_AGENT_GATE: ${result.nextAgentGate || buildVerifyAgentsCommand(displayReport.host.adapterId)}`,
     "",
     formatGenesisDryRunReport(displayReport),
   ];
+  appendProviderConfigIssueLines(lines, providerConfig);
   for (const entry of result.created.slice(0, 20)) lines.push(`CREATED_PATH: ${entry}`);
   for (const entry of (result.updated || []).slice(0, 20)) lines.push(`UPDATED_PATH: ${entry}`);
   for (const entry of result.skipped.slice(0, 20)) lines.push(`SKIPPED_PATH: ${entry}`);
@@ -1169,6 +1264,15 @@ function buildGenesisRuntimeAgentPlan({ result, displayReport } = {}) {
     },
     env: process.env,
   });
+}
+
+function appendProviderConfigIssueLines(lines, providerConfig) {
+  for (const issue of providerConfig?.apply?.report?.issues || []) {
+    lines.push(`PROVIDER_CONFIG_ISSUE: ${issue.code || "issue"} ${issue.path || "unknown"} ${issue.message || ""}`.trim());
+  }
+  for (const duplicate of providerConfig?.apply?.report?.duplicateKeys || []) {
+    lines.push(`PROVIDER_CONFIG_DUPLICATE: ${duplicate.path} line=${duplicate.line}`);
+  }
 }
 
 function buildGenesisDeployHandoff(report = null) {
@@ -1233,7 +1337,27 @@ function toGenesisSummaryResult(result) {
       verified: deployHandoff.deployVerified,
       nextCommand: deployHandoff.nextCommand,
     },
+    providerConfig: summarizeProviderConfig(result.providerConfig || report?.providerConfig || null),
     nextAgentGate: result.nextAgentGate || buildVerifyAgentsCommand(report?.host?.adapterId || "codex"),
+  };
+}
+
+function summarizeProviderConfig(providerConfig) {
+  const apply = providerConfig?.apply || null;
+  if (!providerConfig || !apply) return null;
+  return {
+    providerId: providerConfig.providerId || apply.providerId || "unknown",
+    targetPath: apply.targetPath || null,
+    changed: apply.changed === true,
+    written: apply.written === true,
+    blocked: apply.blocked === true,
+    projectConfigPresent: apply.projectConfigPresent === true,
+    overwriteExistingValues: apply.report?.overwriteExistingValues === true,
+    preserveUserComments: apply.report?.preserveUserComments !== false,
+    preservedExisting: apply.operationCounts?.preserved || 0,
+    addedMissing: apply.operationCounts?.added || 0,
+    homeConfigAction: providerConfig.homeConfigAction || apply.homeConfigAction || "manual-only",
+    backupPath: apply.backupPath || null,
   };
 }
 

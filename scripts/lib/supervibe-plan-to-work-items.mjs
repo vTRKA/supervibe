@@ -403,6 +403,19 @@ export function workItemsToLoopTasks(items = []) {
       epicId: item.epicId,
       acceptanceCriteria: item.acceptanceCriteria,
       verificationCommands: item.verificationCommands,
+      scopeIds: uniqueStrings([
+        ...(item.scopeIds || []),
+        ...(item.executionHints?.scopeIds || []),
+        ...(item.executionHints?.sourceAtomicId ? [item.executionHints.sourceAtomicId] : []),
+      ]),
+      requirementIds: uniqueStrings([
+        ...(item.requirementIds || []),
+        ...(item.executionHints?.requirementIds || []),
+      ]),
+      contractRows: uniqueStrings([
+        ...(item.contractRows || []),
+        ...(item.executionHints?.contractRows || []),
+      ]),
       policyRiskLevel: item.executionHints?.policyRiskLevel ?? "low",
       stopConditions: item.executionHints?.stopConditions ?? ["policy_stop", "budget_stop", "verification_failed"],
       requiredAgentCapability: item.executionHints?.requiredAgentCapability ?? capabilityForWorkItem(item),

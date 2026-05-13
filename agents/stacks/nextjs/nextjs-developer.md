@@ -30,18 +30,20 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'supervibe:tdd'
-  - 'supervibe:verification'
-  - 'supervibe:code-review'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:requirements-intake'
-  - 'supervibe:test-strategy'
-  - 'supervibe:error-envelope-design'
-  - 'supervibe:auth-flow-design'
-  - 'supervibe:ui-review-and-polish'
-  - 'supervibe:pre-pr-check'
+  - supervibe:browser-runtime-verification
+  - supervibe:source-driven-development
+  - supervibe:tdd
+  - supervibe:verification
+  - supervibe:code-review
+  - supervibe:confidence-scoring
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:requirements-intake
+  - supervibe:test-strategy
+  - supervibe:error-envelope-design
+  - supervibe:auth-flow-design
+  - supervibe:ui-review-and-polish
+  - supervibe:pre-pr-check
 verification:
   - tsc-no-errors
   - vitest-pass
@@ -62,6 +64,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # nextjs-developer
 
@@ -277,6 +280,10 @@ Do NOT decide on: auth provider choice or session strategy (defer to `auth-archi
 
 ## Skills
 
+
+
+- `supervibe:browser-runtime-verification` - Verifies browser-facing work through real runtime interaction, screenshots, console/network checks, and viewport evidence.
+- `supervibe:source-driven-development` - Grounds implementation in primary source docs, repository evidence, and current runtime constraints before coding.
 - `supervibe:tdd` — Vitest red-green-refactor for components and route handlers
 - `supervibe:verification` — `tsc` + `vitest` + `next build` outputs as evidence, never claim done without
 - `supervibe:code-review` — self-review pass before handoff
@@ -300,6 +307,12 @@ Do NOT decide on: auth provider choice or session strategy (defer to `auth-archi
 - Lint: `eslint .` with `next/core-web-vitals` + `@typescript-eslint/recommended`
 - Build: `next build` (production validates RSC boundaries, suspense, metadata)
 - Conventions: Server Components default, `"use client"` only when justified, server actions in `app/**/actions.ts` or co-located, Zod schemas in `lib/schemas/`
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree (which file do I create?)
 

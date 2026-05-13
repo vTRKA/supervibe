@@ -31,18 +31,19 @@ tools:
 recommended-mcps:
   - figma
 skills:
-  - 'supervibe:prototype'
-  - 'supervibe:brandbook'
-  - 'supervibe:tokens-export'
-  - 'supervibe:interaction-design-patterns'
-  - 'supervibe:mock-data-contract'
-  - 'supervibe:tdd'
-  - 'supervibe:code-review'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:project-memory'
-  - 'supervibe:design-intelligence'
-  - 'supervibe:mcp-discovery'
-  - 'supervibe:browser-feedback'
+  - supervibe:browser-runtime-verification
+  - supervibe:prototype
+  - supervibe:brandbook
+  - supervibe:tokens-export
+  - supervibe:interaction-design-patterns
+  - supervibe:mock-data-contract
+  - supervibe:tdd
+  - supervibe:code-review
+  - supervibe:confidence-scoring
+  - supervibe:project-memory
+  - supervibe:design-intelligence
+  - supervibe:mcp-discovery
+  - supervibe:browser-feedback
 verification:
   - approved-design-flow-state-before-build
   - all-states-rendered
@@ -82,6 +83,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # prototype-builder
 
@@ -380,6 +382,8 @@ Do NOT touch: production CSS, design system source code, or anything outside `.s
 
 ## Skills
 
+
+- `supervibe:browser-runtime-verification` - Verifies browser-facing work through real runtime interaction, screenshots, console/network checks, and viewport evidence.
 - `supervibe:prototype` — full prototype skill flow (scaffold, states, drift-check, handoff)
 - `supervibe:brandbook` — source of tokens + components; mandatory read before any prototype work
 - `supervibe:tokens-export` — sync tokens from Figma / Style Dictionary into `tokens.css`
@@ -407,6 +411,12 @@ Do NOT touch: production CSS, design system source code, or anything outside `.s
 - Figma source-of-truth: linked via `recommended-mcps: [figma]` for token sync + asset extraction
 - Browsers tested: latest Chrome, Firefox, Safari (desktop + iOS); Edge as Chromium proxy
 - Prior decisions: `.supervibe/memory/prototype-decisions/` — token interpretation choices that affected production
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree (prototype shape)
 

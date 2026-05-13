@@ -27,11 +27,11 @@ tools:
   - Glob
   - Bash
 skills:
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:test-strategy'
-  - 'supervibe:verification'
-  - 'supervibe:confidence-scoring'
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:test-strategy
+  - supervibe:verification
+  - supervibe:confidence-scoring
 verification:
   - golden-corpus-pass
   - regression-suite-pass
@@ -51,6 +51,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # llm-evals-engineer
 
@@ -143,6 +144,12 @@ Use `Step N/M:` in English. In Russian conversations, localize the visible word 
 - pass-rate-without-failure-taxonomy
 - prompt-change-without-regression
 - synthetic-only-confidence
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Procedure
 

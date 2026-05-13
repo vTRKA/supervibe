@@ -3,6 +3,7 @@ import { detectWriteSetConflicts } from "./supervibe-wave-controller.mjs";
 
 const OPEN_STATUSES = new Set(["open", "ready"]);
 const RISK_ORDER = { none: 0, low: 1, medium: 2, high: 3 };
+const DEFAULT_REVIEW_MODE = "final-sweep";
 
 export function calculateReadyFront(input = {}, options = {}) {
   const validation = validateTaskGraph(input);
@@ -32,12 +33,14 @@ export function calculateReadyFront(input = {}, options = {}) {
   const orderedReady = orderTasks(ready, graph);
   const maxConcurrent = Number(options.maxConcurrentAgents || options.max_concurrent_agents || orderedReady.length || 1);
   const maxRisk = options.maxPolicyRiskLevel || options.max_policy_risk_level || "medium";
+  const reviewMode = normalizeReviewMode(options.reviewMode ?? options.reviewerMode ?? options.review_mode ?? options.reviewer_mode);
   const reviewersAvailable = options.reviewersAvailable ?? options.reviewers_available ?? true;
-  const parallel = reviewersAvailable
-    ? orderedReady
+  const reviewerBlocksParallel = reviewMode !== "final-sweep" && reviewersAvailable === false;
+  const parallel = reviewerBlocksParallel
+    ? []
+    : orderedReady
       .filter((task) => (RISK_ORDER[task.policyRiskLevel] ?? 1) <= (RISK_ORDER[maxRisk] ?? 2))
-      .slice(0, maxConcurrent)
-    : [];
+      .slice(0, maxConcurrent);
   const writeSetConflicts = detectWriteSetConflicts(parallel);
 
   return {
@@ -47,7 +50,14 @@ export function calculateReadyFront(input = {}, options = {}) {
     blocked: orderTasks(blocked, graph),
     parallel,
     writeSetConflicts,
-    parallelizationBlockedBy: reviewersAvailable ? writeSetConflicts.map((conflict) => `write-set:${conflict.filePath}`) : ["missing-reviewer"],
+    parallelizationBlockedBy: reviewerBlocksParallel
+      ? ["missing-reviewer"]
+      : writeSetConflicts.map((conflict) => `write-set:${conflict.filePath}`),
+    reviewPolicy: {
+      mode: reviewMode,
+      reviewersAvailable,
+      reviewersRequiredAt: reviewMode === "final-sweep" ? "final-graph-sweep" : "per-task",
+    },
     graph,
   };
 }
@@ -91,4 +101,10 @@ function priorityRank(priority) {
   if (value === "medium") return 50;
   if (value === "low") return 25;
   return 0;
+}
+
+function normalizeReviewMode(value) {
+  const normalized = String(value || DEFAULT_REVIEW_MODE).trim().toLowerCase().replace(/_/g, "-");
+  if (["per-task", "inline", "wave", "stage-2"].includes(normalized)) return "per-task";
+  return DEFAULT_REVIEW_MODE;
 }

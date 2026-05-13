@@ -13,6 +13,7 @@ const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const execFileAsync = promisify(execFile);
 const LOOP = join(ROOT, "scripts", "supervibe-loop.mjs");
 const STATUS = join(ROOT, "scripts", "supervibe-status.mjs");
+const AGENT_INVOCATION = join(ROOT, "scripts", "agent-invocation.mjs");
 const FIXTURE_PLAN = join(ROOT, "tests", "fixtures", "task-graph", "full-flow-plan.md");
 
 test("task graph full flow: invalid plan is rejected before durable graph write", async () => {
@@ -168,6 +169,27 @@ test("task graph full flow: reviewed plan atomizes, loop syncs graph, UI applies
     }));
     await writeFile(graphPath, `${JSON.stringify(graph, null, 2)}\n`, "utf8");
 
+    for (const taskId of ["epic-full-flow-t1", "epic-full-flow-t2"]) {
+      const receiptId = await issueFinalReviewReceipt({ root, taskId });
+      let recorded = null;
+      try {
+        recorded = await execFileAsync(process.execPath, [
+          LOOP,
+          "--record-final-review",
+          taskId,
+          "--reviewer",
+          "quality-gate-reviewer",
+          "--receipt",
+          receiptId,
+          "--file",
+          graphPath,
+        ], { cwd: root });
+      } catch (error) {
+        recorded = error;
+      }
+      assert.match(`${recorded.stdout || ""}\n${recorded.stderr || ""}`, /CHANGED: true/);
+    }
+
     const eligible = await execFileAsync(process.execPath, [
       LOOP,
       "--close-eligible",
@@ -230,4 +252,43 @@ async function listen(server) {
 
 async function close(server) {
   await new Promise((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
+}
+
+async function issueFinalReviewReceipt({ root, taskId }) {
+  const invocationId = `full-flow-final-review-${taskId}`;
+  const outputArtifact = `.supervibe/artifacts/_agent-outputs/${invocationId}/agent-output.json`;
+  const result = await execFileAsync(process.execPath, [
+    AGENT_INVOCATION,
+    "log",
+    "--agent",
+    "quality-gate-reviewer",
+    "--host",
+    "codex",
+    "--host-invocation-id",
+    invocationId,
+    "--task",
+    `Final reviewer checked ${taskId} for production readiness.`,
+    "--confidence",
+    "10",
+    "--issue-receipt",
+    "--command",
+    "/supervibe-loop",
+    "--stage",
+    "final-review-sweep",
+    "--handoff-id",
+    invocationId,
+    "--subject-type",
+    "reviewer",
+    "--graph-id",
+    "epic-full-flow",
+    "--task-id",
+    taskId,
+    "--output-artifacts",
+    outputArtifact,
+  ], { cwd: root });
+  const receiptPath = result.stdout.match(/^WORKFLOW_RECEIPT: (.+)$/m)?.[1]?.trim();
+  assert.ok(receiptPath, "agent invocation should issue a workflow receipt");
+  const receipt = JSON.parse(await readFile(join(root, ...receiptPath.split("/")), "utf8"));
+  assert.ok(receipt.receiptId, "workflow receipt should include receipt id");
+  return receipt.receiptId;
 }

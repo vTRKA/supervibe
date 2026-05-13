@@ -899,6 +899,7 @@ export function routeTriggerRequest(input, options = {}) {
       },
     }));
   const scored = [...keywordScored, ...semanticScored]
+    .filter((candidate) => !shouldSuppressLocalEvidenceLaneRoute(candidate, text))
     .sort((a, b) => b.confidence - a.confidence || sourcePriority(b.source) - sourcePriority(a.source));
   if (scored.length > 0) {
     const route = ROUTES[scored[0].intent];
@@ -1261,6 +1262,44 @@ function sourcePriority(source) {
   if (source === "semantic-intent-profile") return 2;
   if (source === "keyword-rule") return 1;
   return 0;
+}
+
+function shouldSuppressLocalEvidenceLaneRoute(candidate, text) {
+  if (candidate.intent !== "genesis_setup") return false;
+  if (!looksLikeLocalEvidenceLane(text)) return false;
+  return !hasExplicitGenesisSetupIntent(text);
+}
+
+function looksLikeLocalEvidenceLane(text) {
+  return hasAny(text, [
+    "evidence lane",
+    "read-only evidence",
+    "readonly evidence",
+    "active graph task",
+    "active work item",
+    "assigned task",
+    "current task",
+    "work item evidence",
+  ]);
+}
+
+function hasExplicitGenesisSetupIntent(text) {
+  return hasAny(text, [
+    "run genesis",
+    "start genesis",
+    "execute genesis",
+    "supervibe-genesis",
+    "setup supervibe",
+    "set up supervibe",
+    "bootstrap supervibe",
+    "scaffold supervibe",
+    "install supervibe",
+    "initialize supervibe",
+    "init supervibe",
+    "инициализируй supervibe",
+    "подключи supervibe",
+    "разверни supervibe",
+  ]);
 }
 
 function detectLocale(text) {

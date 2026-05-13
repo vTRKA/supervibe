@@ -171,10 +171,19 @@ export function redactTrackerSyncDiagnostics(value) {
 
 export function createTrackerMapping({ graph = {}, adapterId = "native-json", existingMapping = createEmptyMapping() } = {}) {
   const mapping = normalizeMapping(existingMapping);
+  const previousGraphId = mapping.graphId || null;
+  const nextGraphId = graph.graph_id || graph.epicId || graph.graphId || mapping.graphId || "graph";
+  const graphItems = trackerItemsForGraph(graph);
+  const nativeIds = new Set(graphItems.map((item) => item.itemId));
   mapping.adapterId = adapterId;
-  mapping.graphId = graph.graph_id || graph.epicId || mapping.graphId || "graph";
+  mapping.graphId = nextGraphId;
   mapping.updatedAt = new Date().toISOString();
-  for (const item of trackerItemsForGraph(graph)) {
+  if (previousGraphId && previousGraphId !== nextGraphId) {
+    for (const nativeId of Object.keys(mapping.items || {})) {
+      if (!nativeIds.has(nativeId)) delete mapping.items[nativeId];
+    }
+  }
+  for (const item of graphItems) {
     const existing = mapping.items[item.itemId];
     const base = {
       ...(existing || {}),

@@ -217,6 +217,53 @@ test("epic-agent contract accepts a runtime-issued trusted agent receipt bound t
   }
 });
 
+test("epic-agent contract rejects recovery receipts as producer proof", async () => {
+  const root = await mkdtemp(join(tmpdir(), "epic-agent-contract-recovery-"));
+  try {
+    const graph = atomizePlanToWorkItems(PLAN, {
+      planPath: ".supervibe/artifacts/plans/agent-contract.md",
+      epicId: "epic-agent-contract",
+      planReviewPassed: true,
+    });
+    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: root });
+    await writeInvocation(root, {
+      agentId: "stack-developer",
+      invocationId: "stack-agent-recovery",
+      outputRel: ".supervibe/artifacts/_agent-outputs/stack-agent-recovery/agent-output.json",
+    });
+    const issued = await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-loop",
+      subjectType: "agent",
+      subjectId: "stack-developer",
+      agentId: "stack-developer",
+      stage: "work-item-atomization",
+      invocationReason: "create durable epic/task graph",
+      outputArtifacts: [relative(root, graphPath).replace(/\\/g, "/")],
+      startedAt: "2026-05-12T00:00:00.000Z",
+      completedAt: "2026-05-12T00:01:00.000Z",
+      handoffId: "epic-agent-contract",
+      hostInvocation: {
+        source: "agent-invocations-jsonl",
+        invocationId: "stack-agent-recovery",
+      },
+    });
+
+    const receiptPath = join(root, ...issued.receiptPath.split("/"));
+    const receipt = JSON.parse(await readFile(receiptPath, "utf8"));
+    receipt.recovery = { reason: "reissued stale receipt" };
+    await writeFile(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, "utf8");
+
+    const saved = JSON.parse(await readFile(graphPath, "utf8"));
+    const report = validateEpicAgentContract({ rootDir: root, graph: saved, graphPath });
+
+    assert.equal(report.pass, false);
+    assert.ok(report.issues.some((issue) => issue.code === "missing-epic-agent-receipt"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 async function writeInvocation(root, { agentId, invocationId, outputRel }) {
   await mkdir(join(root, ".supervibe", "memory"), { recursive: true });
   await mkdir(dirname(join(root, outputRel)), { recursive: true });

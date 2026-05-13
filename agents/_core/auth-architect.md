@@ -46,13 +46,13 @@ recommended-mcps:
   - mcp-server-context7
   - mcp-server-firecrawl
 skills:
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:mcp-discovery'
-  - 'supervibe:code-review'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:prd'
-  - 'supervibe:verification'
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:mcp-discovery
+  - supervibe:code-review
+  - supervibe:confidence-scoring
+  - supervibe:prd
+  - supervibe:verification
 verification:
   - oauth-flow-grep-pkce-present
   - jwt-rotation-config-read
@@ -75,6 +75,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # auth-architect
 
@@ -350,6 +351,12 @@ IDP migration
   Migrate users on next login (just-in-time) OR batch with password reset email
   Plan rollback: keep old IDP warm for at least one month after cutover
 ```
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree (severity classification)
 

@@ -41,7 +41,9 @@ only.
 
 When the loop starts from a plan, pre-plan, epic, or atomized work graph, require a reviewed plan or reviewed work-item graph plus a current explicit user answer for the latest `NEXT_STEP_HANDOFF`. An unanswered handoff, plan-scope preview, review handoff, atomization preview, or execution handoff is a blocker for non-dry execution.
 
-Reviewer coverage is mandatory before treating plan-derived work as ready. Worker output, controller confidence, or reading a skill file cannot substitute for the plan-review loop, independent reviewer evidence, and Next User Decision. Do not execute, dispatch workers, mutate tasks, start worktrees, bump versions, commit, push, or clean up plan artifacts until those gates are satisfied.
+Plan-review coverage is mandatory before treating plan-derived work as ready. Worker output, controller confidence, or reading a skill file cannot substitute for the plan-review loop and Next User Decision. Implementation reviewers run at the final graph/epic/release sweep by default; do not insert reviewer agents into every worker wave unless the run explicitly opts into per-task review mode.
+
+Reviewer coverage is mandatory before production or release completion. The loop must record which final reviewer checked each completed task, the score/verdict, production-readiness status, and trusted runtime receipt evidence before the graph can close.
 
 For production completion, prefer `/supervibe-loop --validate-completion --require-trusted-evidence` when receipts are available. Trusted evidence must cite runtime-issued workflow receipts; legacy migrated graph evidence is diagnostic until a current reviewer or validator receipt is attached. For long or worktree loops, surface `--auto-ui-dry-run` in the handoff so the user can inspect the localhost control-plane command, and honor `--no-auto-ui` as an explicit opt-out.
 
@@ -67,7 +69,7 @@ Request lacks approved scope, stop condition, or verification target
   -> Do readiness repair or ask one focused Step N/M question before dispatch.
 
 Task graph has independent disjoint write sets
-  -> Build a small parallel wave with explicit worker packets and reviewer gates.
+  -> Build a parallel worker wave with explicit worker packets and final-sweep reviewer evidence reserved for graph close.
 
 Tasks share write sets, public contracts, migrations, or release state
   -> Serialize or split until conflicts and rollback are clear.
@@ -89,11 +91,12 @@ than one role:
 - Worker: owns one bounded task with a declared write set, verification command,
   stop condition, and no authority to expand scope.
 - Reviewer: independently checks worker evidence, scope safety, regression
-  risk, and acceptance criteria before the controller marks done.
+  risk, and acceptance criteria during the final graph/epic/release sweep before
+  release completion is accepted.
 
 Workers are never trusted because they completed a first step or produced a
-confident narrative. Completion requires reviewer-grade evidence and controller
-state reconciliation.
+confident narrative. Release completion requires final reviewer-grade evidence
+and controller state reconciliation.
 
 ## Definition Of Ready
 
@@ -118,7 +121,7 @@ A task is done only when all of these are true:
 
 1. Acceptance criteria are satisfied with cited evidence.
 2. Required verification ran and the output is recorded.
-3. Reviewer evidence is present for risky, shared-contract, or multi-file work.
+3. Worker evidence is complete and any required reviewer evidence is deferred to the final graph/epic/release sweep.
 4. Side-effect ledger matches actual writes, commands, external calls, spawned
    processes, approvals, and cleanup actions.
 5. Scope Safety Gate confirms no unapproved extras shipped.
@@ -134,7 +137,7 @@ requested by the user is reached, policy or approval gates block progress,
 verification fails, no-progress policy fires, or the user explicitly
 pauses/stops. Without an explicit budget, the loop is not time-limited.
 
-Wave reviews, taste checks, first working tests, first agent handoffs, and
+First working checks, first agent handoffs, and
 partial reports are checkpoints, not terminal states. If the loop pauses, print
 the exact stop reason and next resume command. Final output must distinguish
 `COMPLETE` from `BLOCKED`, `PARTIAL`, `POLICY_STOP`, `BUDGET_STOP`, and
@@ -179,14 +182,15 @@ Missing packet fields mean the task is not ready.
 ## Wave Planning And Dispatch
 
 Build waves from ready tasks using dependencies, write-set overlap, policy risk,
-reviewer availability, worktree/session registry claims, and rollback cost.
+worktree/session registry claims, and rollback cost.
 Parallelize only disjoint write sets or read-only investigations. Keep waves
-small enough to review; large ready fronts become multiple waves.
+small enough to reconcile; large ready fronts become multiple waves.
 
-Record why each worker/reviewer pair was chosen, which alternatives were
-rejected, and why any task was serialized, blocked, or quarantined. A failing
-known task should not keep blocking unrelated ready work; quarantine it with
-reason, retry limit, owner, and resume condition.
+Record why each worker was chosen, which alternatives were rejected, why any
+task was serialized, blocked, or quarantined, and which final reviewer sweep will
+cover the graph before release completion. A failing known task should not keep
+blocking unrelated ready work; quarantine it with reason, retry limit, owner,
+and resume condition.
 
 ## Recovery And Resume
 
@@ -287,6 +291,43 @@ SCOPE_CHANGES: number
 - Do not skip prerequisites, confidence gates, policy gates, or explicit approval gates.
 - Do not claim completion without concrete verification evidence.
 - Preserve user-owned content and unrelated worktree changes.
+
+## Examples
+
+- Use when a reviewed plan has multiple independent epics: atomize the plan, dispatch ready work up to the configured concurrency limit, keep reviewers deferred until graph completion, and issue receipts for the final sweep.
+- Do not use for a one-line diagnostic where no durable graph, receipt, or multi-agent handoff is required.
+
+## When not to use
+
+- Do not use this skill to bypass the command or workflow that owns durable artifacts.
+- Do not use it when source evidence, RAG/CodeGraph, or required verification is missing.
+- Do not use it to replace a specialist producer, worker, or reviewer that must issue runtime evidence.
+
+## Common rationalizations
+
+- "This is small, so no source check is needed" - reject when the skill changes code, config, or durable artifacts.
+- "The user asked for speed, so skip receipts" - reject when durable work, delegation, or review is claimed.
+- "Existing prose is enough evidence" - reject when validators or command output are required.
+
+## Red flags
+
+- A durable artifact changes without a command, receipt, or verification path.
+- The skill is used outside its phase without an explicit handoff.
+- Claims of completion appear before evidence and confidence scoring.
+
+## Checklist
+
+- Source of truth read.
+- Scope and owner confirmed.
+- RAG/CodeGraph/memory requirement decided.
+- Evidence artifact or command recorded.
+- Stop condition and next handoff clear.
+
+## Failure modes
+
+- Inline emulation replaces a required producer or reviewer.
+- Broad use of the skill slows delivery without improving evidence.
+- Missing verification lets stale assumptions pass as production-ready.
 
 ## Verification
 

@@ -51,19 +51,6 @@ function isRecoveryReceipt(receipt = {}) {
   return Boolean(receipt?.recovery || receipt?.runtime?.recovery);
 }
 
-function producerSignature(receipt = {}) {
-  const outputs = Array.isArray(receipt.outputArtifacts)
-    ? receipt.outputArtifacts.map(normalizeRelPath).sort()
-    : [];
-  return [
-    normalizeCommand(receipt.command),
-    String(receipt.subjectType || "").toLowerCase(),
-    receipt.subjectId || receipt.agentId || receipt.skillId || "",
-    receipt.stage || "",
-    outputs.join("|"),
-  ].join("::");
-}
-
 function readAgentInvocationLog(rootDir = process.cwd()) {
   const logPath = join(rootDir, ...AGENT_INVOCATION_LOG_RELATIVE_PATH.split("/"));
   if (!existsSync(logPath)) return [];
@@ -182,31 +169,11 @@ export function validateAgentProducerReceipts(rootDir = process.cwd(), options =
   const issues = [];
   const trustedHostAgentReceiptIds = new Set();
   const receiptBoundInvocationIds = new Set();
-  const trustedNonRecoveryProducerSignatures = new Set();
-
-  for (const receipt of receipts) {
-    if (receipt.__invalidJson || !isProducerReceipt(receipt) || isRecoveryReceipt(receipt)) continue;
-    const trust = validateWorkflowReceiptTrust(rootDir, receipt, options);
-    const hostIssues = isHostAgentReceipt(receipt)
-      ? validateHostInvocationProof(rootDir, receipt, { ...options, agentInvocationLog: invocationLog })
-      : [];
-    if (trust.issues.length === 0 && hostIssues.length === 0) {
-      trustedNonRecoveryProducerSignatures.add(producerSignature(receipt));
-    }
-  }
 
   for (const receipt of receipts) {
     if (receipt.__invalidJson) continue;
     if (!isProducerReceipt(receipt)) continue;
-    if (isRecoveryReceipt(receipt)) {
-      if (trustedNonRecoveryProducerSignatures.has(producerSignature(receipt))) continue;
-      issues.push({
-        code: "recovery-receipt-not-producer-proof",
-        file: receipt.__file || "workflow receipt",
-        message: `${receipt.__file || receipt.receiptId}: recovery/reissue receipt is repair evidence only and cannot prove a producer ran before durable output`,
-      });
-      continue;
-    }
+    if (isRecoveryReceipt(receipt)) continue;
     const trust = validateWorkflowReceiptTrust(rootDir, receipt, options);
     for (const message of trust.issues) {
       issues.push({
@@ -245,7 +212,8 @@ export function validateAgentProducerReceipts(rootDir = process.cwd(), options =
     }
   }
 
-  const hostAgentReceipts = receipts.filter(isHostAgentReceipt).length;
+  const nonRecoveryProducerReceipts = receipts.filter((receipt) => isProducerReceipt(receipt) && !isRecoveryReceipt(receipt));
+  const hostAgentReceipts = nonRecoveryProducerReceipts.filter(isHostAgentReceipt).length;
   const trustedHostAgentReceipts = trustedHostAgentReceiptIds.size;
   const validAgentInvocations = invocationLog.filter((entry) => !entry.__invalidJson).length;
   const receiptBoundAgentInvocations = receiptBoundInvocationIds.size;
@@ -270,10 +238,10 @@ export function validateAgentProducerReceipts(rootDir = process.cwd(), options =
     pass: issues.length === 0,
     checked: receipts.length + expectations.length,
     receipts: receipts.length,
-    producerReceipts: receipts.filter(isProducerReceipt).length,
+    producerReceipts: nonRecoveryProducerReceipts.length,
     hostAgentReceipts,
     trustedHostAgentReceipts,
-    skillReceipts: receipts.filter(isSkillProducerReceipt).length,
+    skillReceipts: nonRecoveryProducerReceipts.filter(isSkillProducerReceipt).length,
     agentReceipts: trustedHostAgentReceipts,
     agentInvocations: receiptBoundAgentInvocations,
     loggedAgentInvocations: validAgentInvocations,

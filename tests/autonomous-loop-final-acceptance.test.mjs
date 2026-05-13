@@ -69,6 +69,32 @@ test("final acceptance passes when release evidence is complete", () => {
   assert.equal(result.score, 10);
 });
 
+test("final acceptance requires final reviewer sweep when review policy is final-sweep", () => {
+  const pending = evaluateFinalAcceptance(completeAcceptanceFixture({
+    review_policy: { mode: "final-sweep" },
+    final_reviewer_sweep: { status: "pending", coveredTaskIds: [] },
+  }));
+  assert.equal(pending.pass, false);
+  assert.ok(pending.missing.includes("final reviewer sweep completion"));
+
+  const complete = evaluateFinalAcceptance({
+    ...completeAcceptanceFixture({
+      review_policy: { mode: "final-sweep" },
+      final_reviewer_sweep: { status: "complete", pass: true, coveredTaskIds: ["t1"], receiptIds: ["review-receipt"] },
+    }),
+    trustedFinalReviewReceiptIds: ["review-receipt"],
+  });
+  assert.equal(complete.pass, true);
+  assert.equal(complete.finalReviewerSweepSummary.coveredTasks, 1);
+
+  const untrusted = evaluateFinalAcceptance(completeAcceptanceFixture({
+    review_policy: { mode: "final-sweep" },
+    final_reviewer_sweep: { status: "complete", pass: true, coveredTaskIds: ["t1"], receiptIds: ["review-receipt"] },
+  }));
+  assert.equal(untrusted.pass, false);
+  assert.ok(untrusted.missing.includes("final-review-untrusted-receipt: t1"));
+});
+
 test("final acceptance blocks when user goal acceptance is required and pending", () => {
   const result = evaluateFinalAcceptance(completeAcceptanceFixture({
     user_goal_acceptance: {

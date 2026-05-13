@@ -86,6 +86,7 @@ function findTrustedEpicAgentReceipts({
   const trusted = [];
 
   for (const receipt of readWorkflowReceipts(rootDir)) {
+    if (receipt.recovery) continue;
     const subjectType = String(receipt.subjectType || "").toLowerCase();
     if (!subjectTypes.has(subjectType)) continue;
     const agentId = String(receipt.agentId || receipt.subjectId || "").toLowerCase();

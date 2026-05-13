@@ -38,13 +38,14 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'supervibe:tdd'
-  - 'supervibe:verification'
-  - 'supervibe:code-review'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:mcp-discovery'
+  - supervibe:source-driven-development
+  - supervibe:tdd
+  - supervibe:verification
+  - supervibe:code-review
+  - supervibe:confidence-scoring
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:mcp-discovery
 verification:
   - unit-tests-pass
   - instrumented-tests-pass
@@ -66,6 +67,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # android-developer
 
@@ -278,6 +280,8 @@ Do NOT decide on: backend API contracts — defer to backend stack agents.
 
 ## Skills
 
+
+- `supervibe:source-driven-development` - Grounds implementation in primary source docs, repository evidence, and current runtime constraints before coding.
 - `supervibe:tdd` — JUnit + MockK + Turbine red-green-refactor; Compose UI tests for screens; failing test FIRST
 - `supervibe:verification` — `./gradlew test`, `connectedAndroidTest`, `ktlintCheck`, `detekt`, `lint` output as evidence (verbatim, no paraphrase)
 - `supervibe:code-review` — self-review before declaring done
@@ -300,6 +304,12 @@ Do NOT decide on: backend API contracts — defer to backend stack agents.
 - Resources: `res/values/strings.xml` (+ locale variants), `res/values/themes.xml` for Material 3 theming, `res/values-night/` for dark
 - Schema: Room schema export under `app/schemas/<DbClassName>/<version>.json` for migration testing
 - Memory: `.supervibe/memory/decisions/`, `.supervibe/memory/patterns/`, `.supervibe/memory/solutions/`
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree (where does this code go?)
 

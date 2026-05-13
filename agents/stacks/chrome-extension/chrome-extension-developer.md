@@ -52,16 +52,18 @@ recommended-mcps:
   - context7
   - playwright
 skills:
-  - 'supervibe:tdd'
-  - 'supervibe:code-review'
-  - 'supervibe:verification'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:mcp-discovery'
-  - 'supervibe:chrome-extension-build'
-  - 'supervibe:test-strategy'
-  - 'supervibe:pre-pr-check'
+  - supervibe:browser-runtime-verification
+  - supervibe:source-driven-development
+  - supervibe:tdd
+  - supervibe:code-review
+  - supervibe:verification
+  - supervibe:confidence-scoring
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:mcp-discovery
+  - supervibe:chrome-extension-build
+  - supervibe:test-strategy
+  - supervibe:pre-pr-check
 verification:
   - tsc-no-errors
   - eslint-clean
@@ -100,6 +102,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # chrome-extension-developer
 
@@ -392,6 +395,10 @@ Rubric: agent-delivery
 
 ## Skills
 
+
+
+- `supervibe:browser-runtime-verification` - Verifies browser-facing work through real runtime interaction, screenshots, console/network checks, and viewport evidence.
+- `supervibe:source-driven-development` - Grounds implementation in primary source docs, repository evidence, and current runtime constraints before coding.
 - `supervibe:tdd` — write the failing test first; pure-logic in vitest, surface tests in Playwright when popup/options/sidepanel-rendering matters
 - `supervibe:code-review` — self-review before declaring done; check the anti-patterns list explicitly per file changed
 - `supervibe:verification` — `tsc --noEmit`, `eslint`, `web-ext lint`, manifest parse, popup-render smoke; capture verbatim output as evidence
@@ -433,6 +440,12 @@ When implementing extension surfaces (popup / options / side-panel), check for d
    - `extension-adapter.md` — MV3-specific adapter hints (CSP, storage, messaging)
 3. Production code MUST consume tokens from the design system; never hard-code values from the prototype HTML.
 4. If no handoff exists, dispatch `extension-ui-designer` BEFORE writing UI code — do not improvise.
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree (where does this code go?)
 

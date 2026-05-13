@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
@@ -13,6 +13,7 @@ import {
 } from "../scripts/lib/supervibe-plan-to-work-items.mjs";
 import { runAutonomousLoop } from "../scripts/lib/autonomous-loop-runner.mjs";
 import { createShellStubAdapter } from "../scripts/lib/autonomous-loop-tool-adapters.mjs";
+import { issueWorkflowInvocationReceipt } from "../scripts/lib/supervibe-workflow-receipt-runtime.mjs";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const execFileAsync = promisify(execFile);
@@ -109,6 +110,32 @@ test("loop CLI close records structured verification evidence", async () => {
   } finally {
     await rm(temp, { recursive: true, force: true });
   }
+});
+
+test("atomization mirrors scope and requirement traceability into loop tasks", () => {
+  const graph = atomizePlanToWorkItems(`# Traceability Plan
+
+## Task T1: Traceable implementation
+**Scope IDs:** ASK-AUDIT-001, ASK-AUDIT-002
+**Requirement IDs:** REQ-loop-review
+**Contract rows touched:** final-review-sweep
+**Files:**
+- Modify: \`scripts/supervibe-loop.mjs\`
+**Acceptance Criteria:**
+- Traceability ids are visible to loop workers and reviewers.
+\`\`\`bash
+node --test tests/supervibe-loop-work-items.test.mjs
+\`\`\`
+`, {
+    planPath: ".supervibe/artifacts/plans/traceability.md",
+    epicId: "epic-traceability",
+    planReviewPassed: true,
+  });
+
+  const task = graph.tasks.find((item) => item.id === "epic-traceability-t1");
+  assert.deepEqual(task.scopeIds, ["ASK-AUDIT-001", "ASK-AUDIT-002"]);
+  assert.deepEqual(task.requirementIds, ["REQ-loop-review"]);
+  assert.deepEqual(task.contractRows, ["final-review-sweep"]);
 });
 
 test("autonomous loop writes dry-run task completion back to canonical graph", async () => {
@@ -337,6 +364,49 @@ test("loop CLI status recommends archive for completed epic", async () => {
   }
 });
 
+test("loop CLI archive handles completed work-item graph and clears active registry", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-work-item-archive-"));
+  try {
+    const graph = atomizePlanToWorkItems(PLAN, {
+      planPath: ".supervibe/artifacts/plans/archive-work-item.md",
+      epicId: "epic-archive-work-item",
+      planReviewPassed: true,
+    });
+    const completed = {
+      ...graph,
+      status: "closed",
+      items: graph.items.map((item) => ({
+        ...item,
+        status: "complete",
+        verificationEvidence: [{ taskId: item.itemId, command: "node --check", status: "pass", output: "verified" }],
+      })),
+      tasks: graph.tasks.map((task) => ({
+        ...task,
+        status: "complete",
+        verificationEvidence: [{ taskId: task.id, command: "node --check", status: "pass", output: "verified" }],
+      })),
+    };
+    const { graphPath } = await writeWorkItemGraph(completed, { rootDir: temp });
+
+    const { stdout } = await execFileAsync(process.execPath, [
+      join(ROOT, "scripts", "supervibe-loop.mjs"),
+      "--archive",
+      "--file",
+      graphPath,
+    ], { cwd: temp });
+
+    assert.match(stdout, /SUPERVIBE_WORK_ITEM_ARCHIVE/);
+    assert.match(stdout, /GRAPH_ID: epic-archive-work-item/);
+    assert.match(stdout, /REGISTRY_ACTIVE: none/);
+    await assert.rejects(readFile(graphPath, "utf8"));
+    const registry = JSON.parse(await readFile(join(temp, ".supervibe", "memory", "work-items", "index.json"), "utf8"));
+    assert.equal(registry.activeEpicId, null);
+    assert.equal(registry.activeGraphPath, null);
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
 test("loop CLI status does not report terminal review gates as pending review work", async () => {
   const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-terminal-status-"));
   try {
@@ -462,6 +532,78 @@ test("loop CLI trusted completion mode rejects untrusted graph evidence", async 
     await rm(temp, { recursive: true, force: true });
   }
 });
+
+test("loop CLI close-eligible accepts trusted graph-level release receipt as graph-wide evidence", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-batch-close-completion-"));
+  try {
+    const epicId = "epic-loop-batch-close-completion";
+    const graph = completedGraph(epicId);
+    graph.evidence = [];
+    graph.items = graph.items.map((item) => ({ ...item, verificationEvidence: [] }));
+    graph.tasks = graph.tasks.map((task) => ({ ...task, verificationEvidence: [] }));
+    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: temp });
+    const invocationId = "test-supervibe-orchestrator-release-completion";
+    await writeTestAgentInvocation(temp, {
+      agentId: "supervibe-orchestrator",
+      invocationId,
+      taskSummary: "graph-level release completion evidence",
+    });
+
+    await issueWorkflowInvocationReceipt({
+      rootDir: temp,
+      command: "/supervibe-loop",
+      subjectType: "agent",
+      subjectId: "supervibe-orchestrator",
+      agentId: "supervibe-orchestrator",
+      stage: "release-completion",
+      invocationReason: "graph-level release completion evidence",
+      outputArtifacts: [graphPath],
+      startedAt: "2026-05-10T00:00:00.000Z",
+      completedAt: "2026-05-10T00:01:00.000Z",
+      handoffId: "release-completion-proof",
+      graphId: epicId,
+      hostInvocation: {
+        source: "codex-spawn-agent",
+        invocationId,
+        agentId: "supervibe-orchestrator",
+      },
+    });
+
+    const { stdout } = await execFileAsync(process.execPath, [
+      join(ROOT, "scripts", "supervibe-loop.mjs"),
+      "--close-eligible",
+      "--non-production",
+      "--file",
+      graphPath,
+    ], { cwd: temp });
+
+    assert.match(stdout, /SUPERVIBE_EPIC_COMPLETION/);
+    assert.match(stdout, /PASS: true/);
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+async function writeTestAgentInvocation(root, { agentId, invocationId, taskSummary }) {
+  const outputJson = `.supervibe/artifacts/_agent-outputs/${invocationId}/agent-output.json`;
+  await mkdir(join(root, ".supervibe", "memory"), { recursive: true });
+  await mkdir(dirname(join(root, ...outputJson.split("/"))), { recursive: true });
+  await writeFile(join(root, ...outputJson.split("/")), `${JSON.stringify({
+    schemaVersion: 1,
+    invocationId,
+    agentId,
+    taskSummary,
+  }, null, 2)}\n`, "utf8");
+  await appendFile(join(root, ".supervibe", "memory", "agent-invocations.jsonl"), `${JSON.stringify({
+    schemaVersion: 1,
+    ts: "2026-05-10T00:00:00.000Z",
+    invocation_id: invocationId,
+    agent_id: agentId,
+    task_summary: taskSummary,
+    confidence_score: 10,
+    structured_output: { json: outputJson },
+  })}\n`, "utf8");
+}
 
 function completedGraph(epicId) {
   const graph = atomizePlanToWorkItems(PLAN, {

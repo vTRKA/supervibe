@@ -6,7 +6,7 @@ import { CodeStore } from './lib/code-store.mjs';
 import { MemoryStore } from './lib/memory-store.mjs';
 import { SQLITE_NODE_MIN_VERSION, hasNodeSqliteSupport } from './lib/node-sqlite-runtime.mjs';
 import { getBrokenLanguages } from './lib/grammar-loader.mjs';
-import { existsSync, statSync, readFileSync } from 'node:fs';
+import { existsSync, statSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { detectFrameworkDevServers, listServers as listPreviewServers } from './lib/preview-server-manager.mjs';
@@ -121,7 +121,11 @@ function summarizeStalledItems(stalled = []) {
 }
 
 async function printActiveWorkGraphSummary() {
-  const resolution = await resolveActiveWorkItemGraph({ rootDir: PROJECT_ROOT });
+  const activeResolution = await resolveActiveWorkItemGraph({ rootDir: PROJECT_ROOT });
+  const historicalResolution = activeResolution.status === 'none'
+    ? resolveSingleUnarchivedTerminalWorkGraph(PROJECT_ROOT)
+    : null;
+  const resolution = historicalResolution || activeResolution;
   if (resolution.status === 'none') {
     console.log(color('Work graph: none active', 'dim'));
     console.log(color(`  NEXT_ACTION: ${resolution.nextAction}`, 'dim'));
@@ -244,6 +248,29 @@ function printWorktreeSessionRegistrySummary() {
   } catch (error) {
     console.log(color(`SUPERVIBE_WORKTREE_SESSIONS\nSTATUS: unreadable\nPATH: ${registryPath}\nERROR: ${error.message}`, 'yellow'));
   }
+}
+
+function resolveSingleUnarchivedTerminalWorkGraph(rootDir) {
+  const dir = join(rootDir, '.supervibe', 'memory', 'work-items');
+  if (!existsSync(dir)) return null;
+  const candidates = [];
+  for (const name of readdirSync(dir)) {
+    const graphPath = join(dir, name, 'graph.json');
+    if (!existsSync(graphPath)) continue;
+    try {
+      const graph = JSON.parse(readFileSync(graphPath, 'utf8'));
+      const archivedAt = graph.archivedAt || graph.archived_at || graph.metadata?.archivedAt || null;
+      if (archivedAt || !isOperationallyClosedWorkGraph(graph)) continue;
+      candidates.push({
+        status: 'active',
+        graphPath,
+        epicId: graph.epicId || graph.graph_id || graph.graphId || name,
+      });
+    } catch {
+      continue;
+    }
+  }
+  return candidates.length === 1 ? candidates[0] : null;
 }
 
 function printPlanLifecycleSummary() {

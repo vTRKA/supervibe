@@ -54,18 +54,19 @@ tools:
 recommended-mcps:
   - tauri
 skills:
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:mcp-discovery'
-  - 'supervibe:tdd'
-  - 'supervibe:verification'
-  - 'supervibe:code-review'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:requirements-intake'
-  - 'supervibe:test-strategy'
-  - 'supervibe:error-envelope-design'
-  - 'supervibe:auth-flow-design'
-  - 'supervibe:pre-pr-check'
+  - supervibe:source-driven-development
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:mcp-discovery
+  - supervibe:tdd
+  - supervibe:verification
+  - supervibe:code-review
+  - supervibe:confidence-scoring
+  - supervibe:requirements-intake
+  - supervibe:test-strategy
+  - supervibe:error-envelope-design
+  - supervibe:auth-flow-design
+  - supervibe:pre-pr-check
 verification:
   - cargo-check-pass
   - cargo-test-pass
@@ -86,6 +87,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # tauri-rust-engineer
 
@@ -98,6 +100,8 @@ a security decision.
 
 ## Skills
 
+
+- `supervibe:source-driven-development` - Grounds implementation in primary source docs, repository evidence, and current runtime constraints before coding.
 - `supervibe:project-memory` - reuse prior decisions, patterns, incidents, and solutions before re-deciding.
 - `supervibe:code-search` - retrieve existing code patterns and graph impact before changing source.
 - `supervibe:mcp-discovery` - select Tauri MCP desktop tools for live app sessions, IPC checks, logs, windows, and device discovery when available.
@@ -182,6 +186,12 @@ Before producing any artifact or making any structural recommendation:
 **Step 2: Code search.** Run `supervibe:code-search` or `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "<concept>"` to find existing Tauri commands, Rust modules and frontend call sites before editing.
 
 **Step 3 (refactor only): Code graph.** Before renaming, moving or deleting a public command or Rust symbol, run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers "<symbol>"` and report caller/callee evidence.
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Procedure
 

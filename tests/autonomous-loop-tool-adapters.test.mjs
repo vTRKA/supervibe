@@ -13,6 +13,7 @@ import {
   getLoopProviderCapabilityMatrix,
   normalizeExecutionMode,
   renderFreshContextPrompt,
+  resolveDefaultLoopExecutionMode,
   resolveToolLoopCapabilities,
   summarizeLoopProviderCapabilities,
   summarizeToolAdapterAvailability,
@@ -72,6 +73,14 @@ test("unsafe adapter flags are rejected", () => {
   assert.equal(assertSafeAdapterCommand("codex", ["--model", "x"]), true);
   assert.equal(normalizeExecutionMode("fresh-context"), "fresh-context");
   assert.equal(normalizeExecutionMode("unknown"), "dry-run");
+});
+
+test("default loop execution is real for providers and guided for local fallback", () => {
+  assert.equal(resolveDefaultLoopExecutionMode({ adapterId: "codex" }), "fresh-context");
+  assert.equal(resolveDefaultLoopExecutionMode({ adapterId: "claude" }), "fresh-context");
+  assert.equal(resolveDefaultLoopExecutionMode({ adapterId: "cursor" }), "guided");
+  assert.equal(resolveDefaultLoopExecutionMode({ adapterId: "generic-shell-stub" }), "guided");
+  assert.equal(resolveDefaultLoopExecutionMode({ dryRun: true, adapterId: "codex" }), "dry-run");
 });
 
 test("provider capability matrix captures native continuation and degraded modes", () => {

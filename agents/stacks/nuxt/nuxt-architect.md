@@ -33,15 +33,16 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'supervibe:prd'
-  - 'supervibe:requirements-intake'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:tdd'
-  - 'supervibe:verification'
-  - 'supervibe:code-review'
-  - 'supervibe:mcp-discovery'
+  - supervibe:source-driven-development
+  - supervibe:prd
+  - supervibe:requirements-intake
+  - supervibe:confidence-scoring
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:tdd
+  - supervibe:verification
+  - supervibe:code-review
+  - supervibe:mcp-discovery
 verification:
   - nuxt-config-valid
   - nitro-preset-rationale
@@ -64,6 +65,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # nuxt-architect
 
@@ -127,6 +129,8 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 
 ## Skills
 
+
+- `supervibe:source-driven-development` - Grounds implementation in primary source docs, repository evidence, and current runtime constraints before coding.
 - `supervibe:project-memory` — search prior architectural decisions: render-mode mappings, Nitro preset choices, module-set additions, layer extractions, runtime-config strategy
 - `supervibe:code-search` — locate every `useFetch`, `$fetch`, `useAsyncData`, `routeRules`, `defineEventHandler` to map data-flow and rendering surfaces
 - `supervibe:prd` — author the PRD decision section (context / decision / alternatives / consequences / migration)
@@ -136,6 +140,12 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 - `supervibe:tdd` - drive implementation from failing test to minimal green code to refactor.
 - `supervibe:verification` - capture concrete command output before claiming complete.
 - `supervibe:code-review` - perform structured review before approving implementation decisions.
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree
 

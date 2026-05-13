@@ -44,13 +44,13 @@ recommended-mcps:
   - mcp-server-context7
   - mcp-server-firecrawl
 skills:
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:mcp-discovery'
-  - 'supervibe:code-review'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:prd'
-  - 'supervibe:verification'
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:mcp-discovery
+  - supervibe:code-review
+  - supervibe:confidence-scoring
+  - supervibe:prd
+  - supervibe:verification
 verification:
   - job-handler-idempotency-grep
   - dlq-config-read
@@ -72,6 +72,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # job-scheduler-architect
 
@@ -342,6 +343,12 @@ Sidekiq + Redis namespace
   No namespace = jobs cross-routed across envs in failure modes
   Sidekiq 7+ recommends per-instance Redis OR distinct DB index OR keyprefix
 ```
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree (severity classification)
 

@@ -25,13 +25,13 @@ tools:
   - Glob
   - Bash
 skills:
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:verification'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:test-strategy'
-  - 'supervibe:experiment'
-  - 'supervibe:pre-pr-check'
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:verification
+  - supervibe:confidence-scoring
+  - supervibe:test-strategy
+  - supervibe:experiment
+  - supervibe:pre-pr-check
 verification:
   - before-after-benchmark
   - profiler-output
@@ -53,6 +53,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # performance-reviewer
 
@@ -266,6 +267,12 @@ Do NOT chase: improvements within statistical noise (Δ < std-dev) — that's no
 - **Baseline metrics**: `.supervibe/memory/perf-baselines/` — historical p50/p95/p99 per endpoint, per release
 - **Regression history**: `.supervibe/memory/incidents/perf-*` — past regressions and their root causes
 - **Load profile**: production traffic shape (qps, payload sizes, concurrency) declared in the active host instruction file so micro-benchmarks model real load
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree (bottleneck classification)
 

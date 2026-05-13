@@ -76,21 +76,27 @@ test("Codex provider config doc covers required official configuration surfaces"
   }
 });
 
-test("Codex provider config schema-backed template excludes unlisted features.goals", () => {
+test("Codex provider config template includes documented goals and excludes unsafe plugin boolean", () => {
   const doc = readCodexDoc();
   const template = extractSchemaBackedTemplate(doc);
 
   assert.match(template, /\[features\][\s\S]*multi_agent = true/);
+  assert.match(template, /approval_policy = "never"/);
+  assert.match(template, /web_search = "live"/);
+  assert.match(template, /\[features\][\s\S]*apps = true/);
   assert.match(template, /\[features\][\s\S]*memories = true/);
-  assert.match(template, /\[agents\][\s\S]*max_threads = 6/);
+  assert.match(template, /\[features\][\s\S]*goals = true/);
+  assert.match(template, /\[agents\][\s\S]*max_threads = 8/);
+  assert.match(template, /\[apps\._default\][\s\S]*enabled = true/);
+  assert.match(template, /\[\[tool_suggest\.discoverables\]\][\s\S]*type = "plugin"[\s\S]*supervibe@supervibe-marketplace/);
   assert.match(template, /\[mcp_servers\.openaiDeveloperDocs\]/);
-  assert.doesNotMatch(template, /features\.goals|goals\s*=/);
+  assert.doesNotMatch(template, /plugins\s*=\s*true/);
 
   assert.match(doc, /key: features\.goals/);
-  assert.match(doc, /sourceKind: slash-command-doc/);
-  assert.match(doc, /schemaStatus: experimental\/unlisted/);
-  assert.match(doc, /automaticApply: false/);
-  assert.match(doc, /Schema-backed templates must exclude `features\.goals`/);
+  assert.match(doc, /sourceKind: codex-use-case-doc/);
+  assert.match(doc, /schemaStatus: documented-experimental/);
+  assert.match(doc, /automaticApply: true/);
+  assert.match(doc, /preserving any existing user-owned value/);
 });
 
 test("Claude Code provider config doc covers required official configuration surfaces", () => {
@@ -309,10 +315,16 @@ test("provider config doctor reports redacted preview-only recommendations", () 
     assert.equal(report.providers.length, 1);
     assert.equal(report.providers[0].configPresence.projectConfig.present, true);
     assert.equal(report.providers[0].configPresence.userConfig.present, true);
+    assert.equal(report.providers[0].applyPreview.mode, "dry-run-add-missing-only");
+    assert.equal(report.providers[0].applyPreview.overwriteExistingValues, false);
+    assert.equal(report.providers[0].applyPreview.preserveUserComments, true);
     assert.ok(report.providers[0].recommendations.some((entry) => entry.id === "safe-power-settings-preview"));
     assert.match(output, /SUPERVIBE_PROVIDER_CONFIG_DOCTOR/);
     assert.match(output, /WRITE_MODE: preview-only/);
     assert.match(output, /PROVIDER: codex projectConfig=present userConfig=present/);
+    assert.match(output, /APPLY_PREVIEW: codex changed=true blocked=false mode=dry-run-add-missing-only/);
+    assert.match(output, /SUPERVIBE_PROVIDER_CONFIG_APPLY/);
+    assert.match(output, /OVERWRITE_EXISTING_VALUES: false/);
     assert.match(output, /PATCH_PREVIEW: codex/);
     assert.doesNotMatch(output, /sk-project-secret|abcdefghijklmnopqrstuvwxyz/);
   } finally {
@@ -384,7 +396,12 @@ test("provider power presets cover hidden capabilities with sourced risk labels"
   }
 
   const codex = manifest.providers.find((provider) => provider.id === "codex");
-  assert.ok(codex.powerPresets.some((preset) => preset.setting === "features.goals" && preset.tier === "experimental" && preset.schemaStatus === "experimental/unlisted"));
+  assert.equal(codex.providerLimits.defaultMaxThreads, 8);
+  assert.ok(codex.powerPresets.some((preset) => /\[agents\]\.max_threads=8/.test(preset.preview || "")));
+  assert.ok(codex.powerPresets.some((preset) => preset.setting === "web_search" && /web_search="live"/.test(preset.preview || "")));
+  assert.ok(codex.powerPresets.some((preset) => /approval_policy/.test(preset.setting || "") && /approval_policy="never"/.test(preset.preview || "")));
+  assert.ok(codex.powerPresets.some((preset) => /features\.apps/.test(preset.setting || "") && /tool_suggest\.discoverables/.test(preset.setting || "")));
+  assert.ok(codex.powerPresets.some((preset) => preset.setting === "features.goals" && preset.tier === "experimental" && preset.schemaStatus === "documented-experimental"));
   assert.match(doc, /spawn_agents_on_csv/);
   assert.match(doc, /plan_mode_reasoning_effort/);
   assert.match(doc, /model_context_window/);
@@ -407,6 +424,28 @@ test("provider config doctor labels power recommendations with tier and source",
   const output = formatProviderConfigDoctorReport(report);
 
   try {
+    const staleThreadCapPattern = new RegExp([
+      "max_threads" + "=6",
+      "max_threads" + " = 6",
+      "threads at " + "6",
+    ].join("|"));
+    const stalePromptDefaultPattern = new RegExp([
+      "approval_policy" + "=on-request",
+      "approval_policy" + " = \"on-request\"",
+      "web_search" + "=cached",
+      "web_search" + " = \"cached\"",
+    ].join("|"));
+    assert.match(output, /create-project-config-preview/);
+    assert.match(output, /\[agents\]\.max_threads=8/);
+    assert.match(output, /approval_policy=never/);
+    assert.match(output, /sandbox_mode=workspace-write/);
+    assert.match(output, /default_permissions=:workspace/);
+    assert.match(output, /web_search=live/);
+    assert.match(output, /\[features\]\.apps=true/);
+    assert.match(output, /tool_suggest\.discoverables/);
+    assert.doesNotMatch(output, staleThreadCapPattern);
+    assert.doesNotMatch(output, stalePromptDefaultPattern);
+    assert.doesNotMatch(output, /plugins\s*=\s*true/);
     assert.match(output, /tier=max-power/);
     assert.match(output, /tier=experimental/);
     assert.match(output, /source=https:\/\/developers\.openai\.com\/codex\/config-reference/);

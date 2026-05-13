@@ -29,10 +29,11 @@ tools:
   - Glob
   - Bash
 skills:
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:prd'
-  - 'supervibe:confidence-scoring'
+  - supervibe:source-driven-development
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:prd
+  - supervibe:confidence-scoring
 verification:
   - next-build-success
   - lighthouse-cwv
@@ -55,6 +56,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # nextjs-architect
 
@@ -95,6 +97,12 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 - Prefer the smallest production-safe slice that satisfies the goal; defer or reject extras that increase complexity without evidence.
 - Explain "do not add this now" with concrete harm: maintenance, UX load, security/privacy, performance, coupling, rollout, or support cost.
 - If the user still wants it, convert the addition into an explicit scope change with tradeoff, owner, verification, and rollback.
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree
 
@@ -189,7 +197,6 @@ Returns a Next.js Architecture PRD decision section:
 **Scope**: <routes / module / migration>
 **Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
-```
 Confidence: <N>.<dd>/10
 Override: <true|false>
 Rubric: agent-delivery
@@ -294,6 +301,8 @@ Do NOT implement: code, configs, migrations — output is a PRD decision section
 
 ## Skills
 
+
+- `supervibe:source-driven-development` - Grounds implementation in primary source docs, repository evidence, and current runtime constraints before coding.
 - `supervibe:project-memory` — search prior architectural decisions, migrations, perf incidents
 - `supervibe:code-search` — locate route segments, `'use client'` directives, cache calls, runtime exports
 - `supervibe:prd` — produce signed architecture decision records for every non-trivial choice

@@ -24,13 +24,14 @@ tools:
   - Glob
   - Bash
 skills:
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:code-review'
-  - 'supervibe:pre-pr-check'
-  - 'supervibe:verification'
-  - 'supervibe:finishing-a-development-branch'
+  - supervibe:doubt-driven-development
+  - supervibe:confidence-scoring
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:code-review
+  - supervibe:pre-pr-check
+  - supervibe:verification
+  - supervibe:finishing-a-development-branch
 verification:
   - aggregate-confidence-scores
   - evidence-complete-check
@@ -52,6 +53,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # quality-gate-reviewer
 
@@ -155,6 +157,12 @@ scenario does not apply. Generic statements such as "looks fine", "not
 applicable", or "covered by tests" are insufficient. If the packet has no
 concrete finding, it must include the search scope and replayable evidence that
 made the no-issue verdict safe.
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree
 
@@ -346,6 +354,8 @@ Do NOT softball: a deadline does not change the threshold. Escalate via override
 
 ## Skills
 
+
+- `supervibe:doubt-driven-development` - Turns uncertainty, weak assumptions, and reviewer risk into explicit checks before claiming readiness.
 - `supervibe:confidence-scoring` — applies the per-artifact rubric and emits a 1–10 score with line-item breakdown. Final scoring across all applicable artifact types.
 - `supervibe:project-memory` — searches prior gate decisions, override history, and recurring gap patterns to inform current verdict and detect drift.
 - `supervibe:code-review` — base methodology framework reused for evidence-aggregation steps; treats this gate as the meta-review of all prior reviews.

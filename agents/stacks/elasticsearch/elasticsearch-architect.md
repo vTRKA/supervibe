@@ -35,12 +35,13 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:prd'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:verification'
-  - 'supervibe:mcp-discovery'
+  - supervibe:source-driven-development
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:prd
+  - supervibe:confidence-scoring
+  - supervibe:verification
+  - supervibe:mcp-discovery
 verification:
   - explain-output
   - mapping-validated
@@ -66,6 +67,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # elasticsearch-architect
 
@@ -125,12 +127,20 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 
 ## Skills
 
+
+- `supervibe:source-driven-development` - Grounds implementation in primary source docs, repository evidence, and current runtime constraints before coding.
 - `supervibe:project-memory` — search prior mapping decisions, past mapping explosions, reindex incidents, ILM rollouts, fork migrations
 - `supervibe:code-search` — locate every query/index reference before proposing mapping or analyzer change; find every `match`, `term`, `aggs` call
 - `supervibe:prd` — record the mapping/analyzer/shard/ILM/topology decision with alternatives considered and rollback plan
 - `supervibe:mcp-discovery` — check available MCP servers (context7 for Elasticsearch/OpenSearch release notes, fork-specific feature matrices) before declaring an answer
 - `supervibe:confidence-scoring` — final score; refuse to ship below 9 on safety-critical mapping changes
 - `supervibe:verification` — evidence-before-claim; every recommendation backed by `GET _analyze`, `GET <index>/_search?explain`, `GET _cat/shards?v`, or dry-run output
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree
 

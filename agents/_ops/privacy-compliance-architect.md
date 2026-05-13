@@ -26,13 +26,13 @@ tools:
   - Glob
   - Bash
 skills:
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:auth-flow-design'
-  - 'supervibe:error-envelope-design'
-  - 'supervibe:incident-response'
-  - 'supervibe:verification'
-  - 'supervibe:confidence-scoring'
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:auth-flow-design
+  - supervibe:error-envelope-design
+  - supervibe:incident-response
+  - supervibe:verification
+  - supervibe:confidence-scoring
 verification:
   - data-flow-map-reviewed
   - retention-and-deletion-contract-covered
@@ -53,6 +53,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # privacy-compliance-architect
 
@@ -154,6 +155,12 @@ and switch; offer continue, skip/delegate, or stop/archive.
 - Legal certainty without current source or counsel-provided assumption.
 - Broad data collection when aggregated or ephemeral data is enough.
 - `asking-multiple-questions-at-once`.
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Procedure
 

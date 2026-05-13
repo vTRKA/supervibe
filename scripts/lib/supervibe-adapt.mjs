@@ -25,6 +25,11 @@ import {
 } from "./frontend-target-resolver.mjs";
 import { createAgentProvisioningContextMigration } from "./agent-provisioning.mjs";
 import { writeContextMigrationPlan } from "./supervibe-context-migrator.mjs";
+import { applyProjectProviderConfigDefaults } from "./supervibe-provider-config-applier.mjs";
+import {
+  createProviderConfigDoctorReport,
+  loadProviderCapabilities,
+} from "./supervibe-provider-config-doctor.mjs";
 
 const BASELINE_PATH = [".supervibe", "memory", "adapt", "baseline.json"];
 const STATE_PATH = [".supervibe", "memory", "adapt", "state.json"];
@@ -98,12 +103,19 @@ export async function createAdaptPlan({
     projectArtifacts,
     env,
   });
+  const providerConfig = await buildAdaptProviderConfigPreflight({
+    projectRoot,
+    pluginRoot,
+    host: adapter.id,
+    write: false,
+  });
   const items = dedupePlanItems([
     ...projectItems,
     ...closureItems,
     ...(hostContextItem ? [hostContextItem] : []),
   ]);
   const counts = countPlanItems(items);
+  const providerConfigApplyRequired = providerConfig?.apply?.changed === true && providerConfig?.apply?.blocked !== true;
   const memoryWrites = memoryIndex?.refreshed === true;
   const versionDrift = Boolean(currentVersion && lastSeenVersion !== currentVersion);
   const baselineVersionDrift = Boolean(currentVersion && baseline.pluginVersion !== currentVersion);
@@ -128,11 +140,13 @@ export async function createAdaptPlan({
     metadataUpdateRequired,
     changeDetection,
     frontendTarget,
+    providerConfig,
+    providerConfigApplyRequired,
     memoryWrites,
     memoryIndex,
     approvalRequired: items.some((item) => item.action === "update" || item.action === "add"),
     counts,
-    fastPath: buildAdaptFastPath({ counts, items, memoryWrites }),
+    fastPath: buildAdaptFastPath({ counts, items, memoryWrites, providerConfigApplyRequired }),
     agentPlanCommand: buildAdaptAgentPlanCommand({ counts, memoryWrites }),
     items,
   };
@@ -174,8 +188,21 @@ export async function applyAdaptPlan(plan, {
     candidates.push(item);
   }
 
+  const providerConfigPreview = plan.providerConfig || await buildAdaptProviderConfigPreflight({
+    projectRoot: plan.projectRoot,
+    pluginRoot: plan.pluginRoot,
+    host: plan.host.adapterId,
+    write: false,
+  });
+  if (providerConfigPreview?.apply?.blocked) {
+    blocked.push({
+      type: "provider-config",
+      projectRel: providerConfigPreview.apply.targetPath || "provider-config",
+      reason: providerConfigBlockReason(providerConfigPreview),
+    });
+  }
   if (blocked.length > 0) {
-    return buildBlockedApplyResult(plan, { skipped, blocked });
+    return buildBlockedApplyResult(plan, { skipped, blocked, providerConfig: providerConfigPreview });
   }
 
   const applied = [];
@@ -193,6 +220,13 @@ export async function applyAdaptPlan(plan, {
     applied.push(item);
     mutatedPaths.push(item.projectRel);
   }
+  const providerConfig = await buildAdaptProviderConfigPreflight({
+    projectRoot: plan.projectRoot,
+    pluginRoot: plan.pluginRoot,
+    host: plan.host.adapterId,
+    write: true,
+  });
+  recordAdaptProviderConfigMutation(providerConfig, { mutatedPaths });
 
   const baselineRefreshItems = baselineRefreshCandidates(plan);
   const baselineItems = dedupeBaselineItems([...applied, ...baselineRefreshItems]);
@@ -228,6 +262,7 @@ export async function applyAdaptPlan(plan, {
     applied,
     skipped,
     blocked,
+    providerConfig,
     metadataUpdated,
     baselineRefreshed,
     mutatedPaths: [...new Set(mutatedPaths)],
@@ -236,7 +271,8 @@ export async function applyAdaptPlan(plan, {
       adds: postApplyPlan.counts.add,
       identical: postApplyPlan.counts.identical,
       projectOnly: postApplyPlan.counts.projectOnly,
-      clean: postApplyPlan.counts.update === 0 && postApplyPlan.counts.add === 0,
+      providerConfigApplyRequired: postApplyPlan.providerConfigApplyRequired === true,
+      clean: postApplyPlan.counts.update === 0 && postApplyPlan.counts.add === 0 && postApplyPlan.providerConfigApplyRequired !== true,
     },
     memoryIndex: postApplyPlan.memoryIndex,
     indexGate,
@@ -251,6 +287,60 @@ export async function applyAdaptPlan(plan, {
   if (result.fileManifest?.path) result.mutatedPaths.push(result.fileManifest.path);
   result.mutatedPaths = [...new Set(result.mutatedPaths)];
   return result;
+}
+
+async function buildAdaptProviderConfigPreflight({ projectRoot, pluginRoot, host = "codex", write = false } = {}) {
+  const providerId = providerIdForHost(host);
+  const manifest = loadProviderCapabilities({ rootDir: pluginRoot });
+  const provider = manifest.providers?.find((candidate) => candidate.id === providerId) || null;
+  const doctor = createProviderConfigDoctorReport({
+    rootDir: projectRoot,
+    pluginRoot,
+    provider: providerId,
+    manifest,
+  });
+  const apply = await applyProjectProviderConfigDefaults({
+    provider,
+    providerId,
+    rootDir: projectRoot,
+    manifest,
+    write,
+  });
+  return {
+    schemaVersion: 1,
+    providerId,
+    host,
+    doctor,
+    apply,
+    homeConfigWriteAllowed: false,
+    homeConfigAction: "manual-only",
+  };
+}
+
+function providerIdForHost(host = "codex") {
+  const map = {
+    claude: "claude-code",
+    codex: "codex",
+    cursor: "cursor",
+    gemini: "gemini-cli",
+    opencode: "opencode",
+  };
+  return map[host] || host || "codex";
+}
+
+function providerConfigBlockReason(providerConfig) {
+  const issue = providerConfig?.apply?.report?.issues?.[0];
+  const duplicate = providerConfig?.apply?.report?.duplicateKeys?.[0];
+  if (duplicate) return `provider config duplicate key ${duplicate.path}`;
+  if (issue) return `provider config blocked: ${issue.code || "issue"}`;
+  return "provider config apply blocked";
+}
+
+function recordAdaptProviderConfigMutation(providerConfig, { mutatedPaths } = {}) {
+  const apply = providerConfig?.apply;
+  if (!apply?.written) return;
+  if (apply.targetPath) mutatedPaths.push(apply.targetPath);
+  if (apply.backupPath) mutatedPaths.push(apply.backupPath);
 }
 
 export async function applyAdaptPlanFixedPoint(plan, {
@@ -515,6 +605,13 @@ export function formatAdaptPlan(plan, { diffSummary = false } = {}) {
     `NO_GIT_SNAPSHOT: ${plan.changeDetection?.mode === "snapshot" ? plan.changeDetection.status : "not-needed"}`,
     `FRONTEND_TARGET: ${plan.frontendTarget?.id || "none"}`,
     `FRONTEND_BUNDLER: ${plan.frontendTarget?.bundler || "none"}`,
+    `PROVIDER_CONFIG_PROVIDER: ${plan.providerConfig?.providerId || "unknown"}`,
+    `PROVIDER_CONFIG_TARGET: ${plan.providerConfig?.apply?.targetPath || "none"}`,
+    `PROVIDER_CONFIG_CHANGED: ${plan.providerConfig?.apply?.changed === true}`,
+    `PROVIDER_CONFIG_APPLY_REQUIRED: ${plan.providerConfigApplyRequired === true}`,
+    `PROVIDER_CONFIG_BLOCKED: ${plan.providerConfig?.apply?.blocked === true}`,
+    `PROVIDER_CONFIG_HOME_WRITE: ${plan.providerConfig?.homeConfigAction || "manual-only"}`,
+    `PROVIDER_CONFIG_PRESERVED_EXISTING: ${plan.providerConfig?.apply?.operationCounts?.preserved ?? 0}`,
     `ARTIFACTS: ${plan.items.length}`,
     `ADDS: ${plan.counts.add}`,
     `UPDATES: ${plan.counts.update}`,
@@ -542,6 +639,7 @@ export function formatAdaptPlan(plan, { diffSummary = false } = {}) {
   ];
   appendDirtyStateLines(lines, plan.driftState?.dirtyState);
   appendVerificationHookLines(lines, plan.driftState?.verification);
+  appendProviderConfigIssueLines(lines, plan.providerConfig);
   if (diffSummary) lines.push("", formatAdaptDiffSummary(plan));
   for (const warning of plan.frontendTarget?.driftWarnings || []) {
     lines.push(`FRONTEND_DRIFT: ${warning.code} - ${warning.message}`);
@@ -579,9 +677,12 @@ export function formatAdaptPlan(plan, { diffSummary = false } = {}) {
   }
   if (plan.approvalRequired) {
     const candidates = plan.items.filter((item) => item.action === "update" || item.action === "add").map((item) => item.projectRel).join(",");
-    lines.push(`NEXT_APPLY: node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --apply --include "${candidates}"`);
+    const includeArg = candidates ? ` --include "${candidates}"` : "";
+    lines.push(`NEXT_APPLY: node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --apply${includeArg}`);
   } else if (plan.metadataUpdateRequired) {
     lines.push("NEXT_APPLY_METADATA: node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --apply");
+  } else if (plan.providerConfigApplyRequired) {
+    lines.push("NEXT_APPLY: node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --apply");
   }
   return lines.join("\n");
 }
@@ -630,6 +731,13 @@ export function formatAdaptApply(result, { diffSummary = false } = {}) {
     `BASELINE_REFRESHED: ${result.baselineRefreshed ? "true" : "false"}`,
     `CHANGE_DETECTION: ${result.fileManifest?.mode || "git-or-not-written"}`,
     `FRONTEND_TARGET: ${result.lifecycleState?.frontendTarget?.id || result.frontendTarget?.id || "none"}`,
+    `PROVIDER_CONFIG_PROVIDER: ${result.providerConfig?.providerId || "unknown"}`,
+    `PROVIDER_CONFIG_TARGET: ${result.providerConfig?.apply?.targetPath || "none"}`,
+    `PROVIDER_CONFIG_CHANGED: ${result.providerConfig?.apply?.changed === true}`,
+    `PROVIDER_CONFIG_WRITTEN: ${result.providerConfig?.apply?.written === true}`,
+    `PROVIDER_CONFIG_BLOCKED: ${result.providerConfig?.apply?.blocked === true}`,
+    `PROVIDER_CONFIG_HOME_WRITE: ${result.providerConfig?.homeConfigAction || "manual-only"}`,
+    `PROVIDER_CONFIG_PRESERVED_EXISTING: ${result.providerConfig?.apply?.operationCounts?.preserved ?? 0}`,
     `ADAPT_STATE: ${result.lifecycleState?.path || "not-written"}`,
     `ADAPT_STATE_LIFECYCLE: ${result.lifecycleState?.lifecycle || "unknown"}`,
     `ARTIFACT_VERIFIED: ${result.lifecycleState?.verification?.artifactVerified === true}`,
@@ -647,6 +755,7 @@ export function formatAdaptApply(result, { diffSummary = false } = {}) {
   ];
   appendDirtyStateLines(lines, result.lifecycleState?.validators ? result.lifecycleState?.recovery?.dirtyState || result.lifecycleState?.evidence?.dirtyState : null);
   appendVerificationHookLines(lines, result.lifecycleState?.verification);
+  appendProviderConfigIssueLines(lines, result.providerConfig);
   if (diffSummary) lines.push("", formatAdaptDiffSummary({ items: result.applied }));
   for (const item of result.applied) lines.push(`APPLIED_FILE: ${item.projectRel}`);
   for (const item of result.skipped) lines.push(`SKIPPED_FILE: ${item.projectRel}`);
@@ -664,6 +773,7 @@ export function formatAdaptApply(result, { diffSummary = false } = {}) {
   lines.push(`ARTIFACT_ADAPT_CLEAN: ${result.postApply?.clean ? "true" : "false"}`);
   lines.push(`POST_APPLY_ADDS: ${result.postApply?.adds ?? "unknown"}`);
   lines.push(`POST_APPLY_UPDATES: ${result.postApply?.updates ?? "unknown"}`);
+  lines.push(`POST_APPLY_PROVIDER_CONFIG_REQUIRED: ${result.postApply?.providerConfigApplyRequired === true}`);
   lines.push(`FIXED_POINT: ${result.fixedPoint?.enabled === true}`);
   lines.push(`FIXED_POINT_STATUS: ${result.fixedPoint?.status || "not-run"}`);
   lines.push(`FIXED_POINT_ROUNDS: ${result.fixedPoint?.rounds?.length || 0}`);
@@ -746,8 +856,28 @@ export function filterAdaptPlanItems(plan, { changedOnly = false, quietIdentical
   };
 }
 
+function summarizeProviderConfig(providerConfig) {
+  const apply = providerConfig?.apply || null;
+  if (!providerConfig || !apply) return null;
+  return {
+    providerId: providerConfig.providerId || apply.providerId || "unknown",
+    targetPath: apply.targetPath || null,
+    changed: apply.changed === true,
+    written: apply.written === true,
+    blocked: apply.blocked === true,
+    projectConfigPresent: apply.projectConfigPresent === true,
+    overwriteExistingValues: apply.report?.overwriteExistingValues === true,
+    preserveUserComments: apply.report?.preserveUserComments !== false,
+    preservedExisting: apply.operationCounts?.preserved || 0,
+    addedMissing: apply.operationCounts?.added || 0,
+    homeConfigAction: providerConfig.homeConfigAction || apply.homeConfigAction || "manual-only",
+    backupPath: apply.backupPath || null,
+  };
+}
+
 export function summarizeAdaptPlan(plan) {
   const changed = (plan.items || []).filter((item) => item.action === "add" || item.action === "update" || item.action === "project-only");
+  const applyCandidates = changed.filter((item) => item.action !== "project-only").map((item) => item.projectRel).join(",");
   return {
     kind: "adapt-summary",
     host: plan.host,
@@ -765,6 +895,8 @@ export function summarizeAdaptPlan(plan) {
     commandAgentReadiness: plan.commandAgentReadiness || null,
     changeDetection: plan.changeDetection,
     frontendTarget: plan.frontendTarget,
+    providerConfig: summarizeProviderConfig(plan.providerConfig),
+    providerConfigApplyRequired: plan.providerConfigApplyRequired === true,
     baselineRefreshRequired: plan.baselineRefreshRequired === true,
     approvalRequired: plan.approvalRequired === true,
     memoryIndex: plan.memoryIndex,
@@ -777,10 +909,12 @@ export function summarizeAdaptPlan(plan) {
       diff: item.diff || null,
     })),
     nextApply: plan.approvalRequired
-      ? `node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --apply --include "${changed.filter((item) => item.action !== "project-only").map((item) => item.projectRel).join(",")}"`
+      ? `node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --apply${applyCandidates ? ` --include "${applyCandidates}"` : ""}`
       : plan.metadataUpdateRequired
         ? "node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --apply"
-        : null,
+        : plan.providerConfigApplyRequired
+          ? "node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --apply"
+          : null,
   };
 }
 
@@ -822,6 +956,7 @@ export function summarizeAdaptApply(result) {
     baselineRefreshed: result.baselineRefreshed === true,
     mutatedPaths: result.mutatedPaths || [],
     lifecycleState: result.lifecycleState,
+    providerConfig: summarizeProviderConfig(result.providerConfig),
     postApply: result.postApply,
     memoryIndex: result.memoryIndex,
     indexGate: result.indexGate,
@@ -996,18 +1131,29 @@ function appendDirtyStateLines(lines, dirtyState = null) {
   lines.push(`DIRTY_SAFE: ${dirtyState.safe === true}`);
 }
 
-function buildAdaptFastPath({ counts = {}, items = [], memoryWrites = false } = {}) {
+function appendProviderConfigIssueLines(lines, providerConfig = null) {
+  for (const issue of providerConfig?.apply?.report?.issues || []) {
+    lines.push(`PROVIDER_CONFIG_ISSUE: ${issue.code || "issue"} ${issue.path || "unknown"} ${issue.message || ""}`.trim());
+  }
+  for (const duplicate of providerConfig?.apply?.report?.duplicateKeys || []) {
+    lines.push(`PROVIDER_CONFIG_DUPLICATE: ${duplicate.path} line=${duplicate.line}`);
+  }
+}
+
+function buildAdaptFastPath({ counts = {}, items = [], memoryWrites = false, providerConfigApplyRequired = false } = {}) {
   const changed = items.filter((item) => item.action === "add" || item.action === "update");
   const baselineOnly = Number(counts.add || 0) === 0
     && Number(counts.update || 0) === 0
     && Number(counts.projectOnly || 0) === 0
     && Number(counts.conflicts || 0) === 0
-    && memoryWrites === false;
+    && memoryWrites === false
+    && providerConfigApplyRequired !== true;
   const eligible = Number(counts.add || 0) === 0
     && Number(counts.update || 0) <= 1
     && Number(counts.projectOnly || 0) === 0
     && Number(counts.conflicts || 0) === 0
-    && memoryWrites === false;
+    && memoryWrites === false
+    && providerConfigApplyRequired !== true;
   return {
     eligible,
     baselineOnly,
@@ -1015,13 +1161,14 @@ function buildAdaptFastPath({ counts = {}, items = [], memoryWrites = false } = 
       ? baselineOnly
         ? "baseline-only adapt can use CLI apply plus deterministic validators and quality gate"
         : "low-risk upstream-only adapt can use CLI apply plus quality gate"
-      : "standard adapt workflow required by adds, conflicts, project-only files, memory writes, or multiple updates",
+      : "standard adapt workflow required by adds, conflicts, project-only files, memory writes, provider config apply, or multiple updates",
     criteria: {
       adds: Number(counts.add || 0),
       updates: Number(counts.update || 0),
       projectOnly: Number(counts.projectOnly || 0),
       conflicts: Number(counts.conflicts || 0),
       memoryWrites: memoryWrites === true,
+      providerConfigApplyRequired: providerConfigApplyRequired === true,
     },
     requiredRoles: eligible
       ? baselineOnly
@@ -1544,6 +1691,7 @@ export async function writeAdaptDriftState(plan, { items = null } = {}) {
     currentStage: "drift_reported",
     host: plan.host,
     frontendTarget: plan.frontendTarget || null,
+    providerConfig: summarizeProviderConfig(plan.providerConfig),
     changeDetection: plan.changeDetection || null,
     currentVersion: plan.currentVersion || null,
     previousVersion: plan.lastSeenVersion || null,
@@ -1556,6 +1704,7 @@ export async function writeAdaptDriftState(plan, { items = null } = {}) {
       approvalRequired: plan.approvalRequired === true,
       metadataUpdateRequired: plan.metadataUpdateRequired === true,
       baselineRefreshRequired: plan.baselineRefreshRequired === true,
+      providerConfigApplyRequired: plan.providerConfigApplyRequired === true,
       counts: plan.counts,
       changedItems,
     },
@@ -1580,15 +1729,18 @@ export async function writeAdaptDriftState(plan, { items = null } = {}) {
       dirtyState,
       nextApply: plan.approvalRequired
         ? `node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --apply --include "${changedItems.filter((item) => item.action !== "project-only").map((item) => item.path).join(",")}"`
-        : plan.metadataUpdateRequired
+      : plan.metadataUpdateRequired
           ? "node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --apply"
-          : null,
+          : plan.providerConfigApplyRequired
+            ? "node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --apply"
+            : null,
       nextAppVerification: appVerification.nextCommand,
       nextDeployVerification: deployVerification.nextCommand,
     },
     evidence: {
       fastPath: plan.fastPath || null,
       agentPlanCommand: plan.agentPlanCommand || buildAdaptAgentPlanCommand({ counts: plan.counts, memoryWrites: plan.memoryWrites }),
+      providerConfig: summarizeProviderConfig(plan.providerConfig),
       memoryIndex: plan.memoryIndex,
       dirtyState,
     },
@@ -1599,6 +1751,8 @@ export async function writeAdaptDriftState(plan, { items = null } = {}) {
       appVerified: appVerification.verified === true,
       deployVerified: deployVerification.verified === true,
       dirtyUnexpectedMutations: dirtyState.counts.unexpectedMutations,
+      providerConfigChecked: Boolean(plan.providerConfig),
+      providerConfigBlocked: plan.providerConfig?.apply?.blocked === true,
       blockedCount: 0,
     },
     history: [
@@ -1658,6 +1812,7 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
     currentStage: lifecycle,
     host: result.host,
     frontendTarget: plan.frontendTarget || null,
+    providerConfig: summarizeProviderConfig(result.providerConfig || plan.providerConfig || null),
     changeDetection: plan.changeDetection || null,
     currentVersion: result.currentVersion,
     previousVersion: result.lastSeenVersion || null,
@@ -1691,6 +1846,7 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
       fastPath: plan.fastPath || null,
       agentPlanCommand: plan.agentPlanCommand || buildAdaptAgentPlanCommand({ counts: plan.counts, memoryWrites: plan.memoryWrites }),
       metadataUpdated: result.metadataUpdated === true,
+      providerConfig: summarizeProviderConfig(result.providerConfig || plan.providerConfig || null),
       memoryIndex: result.memoryIndex,
       postApply: result.postApply,
       indexGate: result.indexGate,
@@ -1741,6 +1897,7 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
     lifecycle,
     updatedArtifacts,
     frontendTarget: state.frontendTarget,
+    providerConfig: state.providerConfig,
     verification: state.verification,
     validators: state.validators,
     recovery: state.recovery,
@@ -1998,6 +2155,8 @@ function adaptDriftReported(plan = {}) {
     || Number(counts.update || 0) > 0
     || Number(counts.projectOnly || 0) > 0
     || Number(counts.conflicts || 0) > 0
+    || plan.providerConfigApplyRequired === true
+    || plan.providerConfig?.apply?.blocked === true
     || (plan.frontendTarget?.driftWarnings || []).length > 0;
 }
 
@@ -2466,7 +2625,7 @@ function nextApplyForPostApply(result = {}) {
   return "node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --apply --all --fixed-point";
 }
 
-async function buildBlockedApplyResult(plan, { skipped = [], blocked = [] } = {}) {
+async function buildBlockedApplyResult(plan, { skipped = [], blocked = [], providerConfig = null } = {}) {
   const postApplyPlan = await createAdaptPlan({
     projectRoot: plan.projectRoot,
     pluginRoot: plan.pluginRoot,
@@ -2484,6 +2643,7 @@ async function buildBlockedApplyResult(plan, { skipped = [], blocked = [] } = {}
     applied: [],
     skipped,
     blocked,
+    providerConfig,
     metadataUpdated: false,
     baselineRefreshed: false,
     mutatedPaths: [],
@@ -2492,7 +2652,8 @@ async function buildBlockedApplyResult(plan, { skipped = [], blocked = [] } = {}
       adds: postApplyPlan.counts.add,
       identical: postApplyPlan.counts.identical,
       projectOnly: postApplyPlan.counts.projectOnly,
-      clean: postApplyPlan.counts.update === 0 && postApplyPlan.counts.add === 0,
+      providerConfigApplyRequired: postApplyPlan.providerConfigApplyRequired === true,
+      clean: postApplyPlan.counts.update === 0 && postApplyPlan.counts.add === 0 && postApplyPlan.providerConfigApplyRequired !== true,
     },
     memoryIndex: postApplyPlan.memoryIndex,
     indexGate,

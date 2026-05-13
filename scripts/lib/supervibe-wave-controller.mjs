@@ -8,15 +8,18 @@ export function buildExecutionWaves({
   maxConcurrency = 3,
   maxPolicyRiskLevel = "medium",
   reviewers = ["quality-gate-reviewer"],
+  reviewMode = "final-sweep",
   worktreeSessions = [],
   claims = [],
   requireWriteSet = false,
   writeSetLocks = [],
 } = {}) {
   const blockers = [];
+  const normalizedReviewMode = normalizeReviewMode(reviewMode);
+  const finalSweepReview = normalizedReviewMode === "final-sweep";
   const staleSessions = worktreeSessions.filter((session) => session.status === "stale");
   const lockReport = normalizeWriteSetLocks(writeSetLocks);
-  if (reviewers.length === 0) blockers.push("missing-reviewer");
+  if (!finalSweepReview && reviewers.length === 0) blockers.push("missing-reviewer");
   if (staleSessions.length > 0) blockers.push("stale-worktree-session");
   if (lockReport.stale.length > 0) blockers.push("stale-write-set-lock");
   if (claims.some((claim) => claim.status === "active" && claim.blocked === true)) blockers.push("blocked-worker-claim");
@@ -67,11 +70,15 @@ export function buildExecutionWaves({
     tasks: selected.map((task) => task.id),
     maxConcurrency,
     worktrees: readyWorktrees.slice(0, selected.length).map((session) => session.sessionId),
-    reviewers: reviewers.slice(0, Math.max(1, selected.length)),
+    reviewers: finalSweepReview ? [] : reviewers.slice(0, Math.max(1, selected.length)),
+    reviewerPolicy: {
+      mode: normalizedReviewMode,
+      deferredUntil: finalSweepReview ? "graph-release-gate" : null,
+    },
     verificationPlan: selected.map((task) => ({ taskId: task.id, required: task.verificationCommands || [] })),
     writeSetLocks: selected.map((task) => createReservedWriteSetLock(task)),
     stopConditions: ["policy_stop", "failed_gate", "stale_worker_session", "write_set_conflict"],
-    mergeStrategy: "verify-review-reconcile",
+    mergeStrategy: finalSweepReview ? "verify-reconcile-final-review" : "verify-review-reconcile",
   } : null;
 
   return {
@@ -84,6 +91,10 @@ export function buildExecutionWaves({
     serialized,
     conflicts,
     writeSetLocks: lockReport,
+    reviewPolicy: {
+      mode: normalizedReviewMode,
+      reviewersRequiredAt: finalSweepReview ? "final-graph-sweep" : "per-wave",
+    },
   };
 }
 
@@ -192,4 +203,10 @@ function uniqueNormalizedPaths(paths = []) {
 
 function normalizePath(path = "") {
   return String(path || "").replace(/\\/g, "/").replace(/^\.\//, "");
+}
+
+function normalizeReviewMode(value) {
+  const normalized = String(value || "final-sweep").trim().toLowerCase().replace(/_/g, "-");
+  if (["per-task", "per-wave", "inline", "wave", "stage-2"].includes(normalized)) return "per-wave";
+  return "final-sweep";
 }

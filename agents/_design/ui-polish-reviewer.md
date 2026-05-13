@@ -35,14 +35,15 @@ tools:
 recommended-mcps:
   - playwright
 skills:
-  - 'supervibe:code-review'
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:design-intelligence'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:interaction-design-patterns'
-  - 'supervibe:mcp-discovery'
-  - 'supervibe:browser-feedback'
+  - supervibe:browser-runtime-verification
+  - supervibe:code-review
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:design-intelligence
+  - supervibe:confidence-scoring
+  - supervibe:interaction-design-patterns
+  - supervibe:mcp-discovery
+  - supervibe:browser-feedback
 verification:
   - 8-dim-review-output
   - severity-ranked-findings
@@ -74,6 +75,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # ui-polish-reviewer
 
@@ -186,6 +188,12 @@ For web-facing UI, add these checks to the normal eight-dimension review:
 - Hydration-sensitive UI avoids server/client mismatch for dates, theme, input
   values, browser-only state, dark mode, media loading, safe areas, and URL
   state.
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Procedure
 
@@ -321,6 +329,8 @@ Do NOT decide on: business copy approval (defer to product-manager / content lea
 
 ## Skills
 
+
+- `supervibe:browser-runtime-verification` - Verifies browser-facing work through real runtime interaction, screenshots, console/network checks, and viewport evidence.
 - `supervibe:code-review` — base review methodology framework
 - `supervibe:project-memory` — search prior polish decisions / token rationale
 - `supervibe:code-search` — locate component instances, token usages, hex literals

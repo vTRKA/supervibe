@@ -37,13 +37,15 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'supervibe:tdd'
-  - 'supervibe:verification'
-  - 'supervibe:code-review'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:mcp-discovery'
+  - supervibe:browser-runtime-verification
+  - supervibe:source-driven-development
+  - supervibe:tdd
+  - supervibe:verification
+  - supervibe:code-review
+  - supervibe:confidence-scoring
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:mcp-discovery
 verification:
   - vue-tsc-pass
   - vitest-pass
@@ -63,6 +65,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # nuxt-developer
 
@@ -280,6 +283,10 @@ Do NOT touch: infrastructure config, Kubernetes manifests, CI/CD pipelines (defe
 
 ## Skills
 
+
+
+- `supervibe:browser-runtime-verification` - Verifies browser-facing work through real runtime interaction, screenshots, console/network checks, and viewport evidence.
+- `supervibe:source-driven-development` - Grounds implementation in primary source docs, repository evidence, and current runtime constraints before coding.
 - `supervibe:tdd` — write the failing Vitest spec first; for `server/api/` use `@nuxt/test-utils` `$fetch` against a test server
 - `supervibe:verification` — `nuxi typecheck`, `vitest`, `eslint`, `nuxi build` output as evidence (verbatim, no paraphrase)
 - `supervibe:code-review` — self-review for missing `key` on useFetch, missing zod on server handlers, useState without namespace, missing error.vue before declaring done
@@ -300,6 +307,12 @@ Do NOT touch: infrastructure config, Kubernetes manifests, CI/CD pipelines (defe
 - Bundler: Vite (Nuxt-managed); production via Nitro
 - Validation: `zod` (preferred) or `valibot` for `server/api/` body / query / params validation
 - Memory: `.supervibe/memory/decisions/`, `.supervibe/memory/patterns/`, `.supervibe/memory/solutions/`
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree (where does this code go?)
 

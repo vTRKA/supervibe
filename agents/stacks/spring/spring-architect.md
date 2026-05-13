@@ -32,12 +32,13 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:prd'
-  - 'supervibe:requirements-intake'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:mcp-discovery'
+  - supervibe:source-driven-development
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:prd
+  - supervibe:requirements-intake
+  - supervibe:confidence-scoring
+  - supervibe:mcp-discovery
 verification:
   - prd-decision-signed
   - alternatives-documented
@@ -62,6 +63,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # spring-architect
 
@@ -124,12 +126,20 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 
 ## Skills
 
+
+- `supervibe:source-driven-development` - Grounds implementation in primary source docs, repository evidence, and current runtime constraints before coding.
 - `supervibe:project-memory` — search prior architectural decisions, past PRD decision sections, prior bounded-context attempts, retired services, runtime-model migration history
 - `supervibe:code-search` — locate cross-module coupling, blocking calls inside reactive paths, profile usage, configuration property reads
 - `supervibe:prd` — author the PRD decision section (context / decision / alternatives / consequences / migration)
 - `supervibe:requirements-intake` — entry-gate; refuse architectural work without a stated driver
 - `supervibe:confidence-scoring` — agent-output rubric ≥9 before delivering architectural recommendation
 - `supervibe:mcp-discovery` — ensure context7 MCP is available before consulting current Spring Boot / Spring Cloud / Spring Security documentation; never trust training-cutoff knowledge for framework specifics
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree
 

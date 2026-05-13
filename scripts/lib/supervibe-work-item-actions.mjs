@@ -95,10 +95,16 @@ function updateStatus(graph, action, status, options = {}) {
   }
   const now = action.now || new Date().toISOString();
   let changed = false;
+  let targetChanged = false;
+  const coveredSubstepIds = shouldCloseCoveredSubsteps(status, action, options)
+    ? findCoveredSubstepIds(graph, action.itemId)
+    : new Set();
   const update = (entry) => {
     const id = entry.itemId || entry.id;
-    if (id !== action.itemId) return entry;
+    if (id !== action.itemId && !coveredSubstepIds.has(id)) return entry;
+    if (isTerminalWorkItemStatus(entry.status) && id !== action.itemId) return entry;
     changed = true;
+    if (id === action.itemId) targetChanged = true;
     const next = {
       ...entry,
       status,
@@ -140,8 +146,42 @@ function updateStatus(graph, action, status, options = {}) {
     items: (graph.items || []).map(update),
     tasks: (graph.tasks || []).map(update),
   };
-  if (!changed) throw new Error(`work item not found: ${action.itemId}`);
-  return { graph: nextGraph, itemId: action.itemId, action: status, changed: true };
+  if (!targetChanged) throw new Error(`work item not found: ${action.itemId}`);
+  return {
+    graph: nextGraph,
+    itemId: action.itemId,
+    action: status,
+    changed,
+    autoClosedCoveredItems: [...coveredSubstepIds],
+  };
+}
+
+function shouldCloseCoveredSubsteps(status, action, options) {
+  if (options.clearTerminal) return false;
+  if (!["closed", "complete"].includes(status)) return false;
+  const value = action.closeCoveredSubsteps ?? action.coveredSubsteps;
+  return value !== false && value !== "false" && value !== "0";
+}
+
+function findCoveredSubstepIds(graph, parentId) {
+  const ids = new Set();
+  for (const entry of [...(graph.items || []), ...(graph.tasks || [])]) {
+    const id = entry.itemId || entry.id;
+    if (!id || id === parentId) continue;
+    if (isTerminalWorkItemStatus(entry.status)) continue;
+    if (isCoveredSubstep(entry, parentId)) ids.add(id);
+  }
+  return ids;
+}
+
+function isCoveredSubstep(entry, parentId) {
+  const id = entry.itemId || entry.id || "";
+  const type = String(entry.type || "").toLowerCase();
+  const discoveredFrom = entry.discoveredFrom || {};
+  if (discoveredFrom.type === "plan-step" && discoveredFrom.parentItemId === parentId) return true;
+  if (entry.parentId !== parentId) return false;
+  if (!["subtask", "step", "checklist"].includes(type)) return false;
+  return id.startsWith(`${parentId}-s`) || id.startsWith(`${parentId}.sub`) || discoveredFrom.type === "plan-step";
 }
 
 function blockWorkItem(graph, action) {
@@ -770,6 +810,7 @@ function appendAuditEvent(result, action, requestedType) {
   }
   if (result.tombstone) event.tombstone = { itemId: result.tombstone.itemId, deletedAt: result.tombstone.deletedAt };
   if (result.recoveredClaims?.length) event.recoveredClaims = result.recoveredClaims.map((claim) => claim.claimId);
+  if (result.autoClosedCoveredItems?.length) event.autoClosedCoveredItems = result.autoClosedCoveredItems;
   const verificationEvidence = normalizeVerificationEvidence(action.verificationEvidence || action.evidence, event.itemId || event.taskId, {
     now: event.at,
     reason: event.reason,

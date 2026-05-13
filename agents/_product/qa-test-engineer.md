@@ -63,11 +63,11 @@ recommended-mcps:
   - playwright
   - tauri
 skills:
-  - 'supervibe:tdd'
-  - 'supervibe:verification'
-  - 'supervibe:code-search'
-  - 'supervibe:project-memory'
-  - 'supervibe:mcp-discovery'
+  - supervibe:tdd
+  - supervibe:verification
+  - supervibe:code-search
+  - supervibe:project-memory
+  - supervibe:mcp-discovery
 verification:
   - coverage-metrics
   - test-pyramid-balance
@@ -90,6 +90,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # qa-test-engineer
 
@@ -317,6 +318,12 @@ Do NOT decide on: performance budgets (collaborate with performance-engineer; QA
 - **CI test command**: detected from `.github/workflows/ci.yml`, `.gitlab-ci.yml`, `Makefile` (`make test`)
 - **Flake history**: `.supervibe/memory/flakes/` — quarantined tests with root-cause notes
 - **Test data conventions**: factories vs fixtures vs builders; mother objects; faker seeding strategy
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree (test type selection)
 

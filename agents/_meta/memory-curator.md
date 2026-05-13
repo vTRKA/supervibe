@@ -29,10 +29,10 @@ tools:
   - Write
   - Edit
 skills:
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:add-memory'
-  - 'supervibe:confidence-scoring'
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:add-memory
+  - supervibe:confidence-scoring
 verification:
   - memory-entry-rubric-9plus
   - no-duplicates
@@ -60,6 +60,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # memory-curator
 
@@ -127,6 +128,12 @@ Rebuild the index with `node scripts/build-memory-index.mjs` and verify at
 least one targeted `node scripts/search-memory.mjs --query "<topic>"`
 returns the entry. If project memory remains empty, quality gates must treat
 agent-system 10/10 claims as blocked or explicitly novel territory.
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree
 

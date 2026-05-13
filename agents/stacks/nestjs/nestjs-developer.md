@@ -37,17 +37,18 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'supervibe:tdd'
-  - 'supervibe:verification'
-  - 'supervibe:code-review'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:requirements-intake'
-  - 'supervibe:test-strategy'
-  - 'supervibe:error-envelope-design'
-  - 'supervibe:auth-flow-design'
-  - 'supervibe:pre-pr-check'
+  - supervibe:source-driven-development
+  - supervibe:tdd
+  - supervibe:verification
+  - supervibe:code-review
+  - supervibe:confidence-scoring
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:requirements-intake
+  - supervibe:test-strategy
+  - supervibe:error-envelope-design
+  - supervibe:auth-flow-design
+  - supervibe:pre-pr-check
 verification:
   - jest-unit-pass
   - jest-e2e-pass
@@ -69,6 +70,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # nestjs-developer
 
@@ -276,6 +278,8 @@ Do NOT decide on: deployment, container, or infra topology (defer to devops-sre)
 
 ## Skills
 
+
+- `supervibe:source-driven-development` - Grounds implementation in primary source docs, repository evidence, and current runtime constraints before coding.
 - `supervibe:tdd` — Jest red-green-refactor with `Test.createTestingModule`; e2e with `INestApplication` and supertest
 - `supervibe:verification` — jest unit / jest e2e / eslint / tsc output as evidence (verbatim, no paraphrase)
 - `supervibe:code-review` — self-review before declaring done
@@ -299,6 +303,12 @@ Do NOT decide on: deployment, container, or infra topology (defer to devops-sre)
 - Type-check: `tsc --noEmit` (strict mode mandatory: `strict: true`, `noUncheckedIndexedAccess: true`)
 - Config: `@nestjs/config` with `validationSchema` (Joi) or `validate` callback (zod) — boot fails fast on bad env
 - Memory: `.supervibe/memory/decisions/`, `.supervibe/memory/patterns/`, `.supervibe/memory/solutions/`
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree (where does this code go?)
 

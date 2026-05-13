@@ -15,10 +15,13 @@ const DEFAULT_CHAINS = {
   verification: ["qa-test-engineer", "quality-gate-reviewer"],
   documentation: ["stack-developer", "quality-gate-reviewer"],
 };
+const DEFAULT_REVIEW_MODE = "final-sweep";
 
 export function dispatchTask(task, options = {}) {
   const category = task.category || "implementation";
   const chain = DEFAULT_CHAINS[category] || DEFAULT_CHAINS.implementation;
+  const reviewMode = normalizeReviewMode(options.reviewMode ?? options.reviewerMode ?? task.reviewMode ?? task.review_mode);
+  const finalSweepReview = reviewMode === "final-sweep";
   const underperformers = new Set(options.underperformers || []);
   const anchorOwner = selectAnchorOwner(task, options.anchorOwnership || {});
   const registry = options.capabilityRegistry || createAgentCapabilityRegistry();
@@ -28,11 +31,16 @@ export function dispatchTask(task, options = {}) {
   const primaryCandidate = anchorOwner || (capabilityMatch?.status === "matched" ? capabilityMatch.agent.agentId : chain[0]);
   const preferredChain = primaryCandidate ? [primaryCandidate, ...chain.filter((agent) => agent !== primaryCandidate)] : chain;
   const primary = preferredChain.find((agent) => !underperformers.has(agent)) || preferredChain[0];
-  const reviewerPreset = selectReviewerPreset({ task, workerAgentId: primary });
-  const reviewer = reviewerPreset.agentId || chain.find((agent) => agent !== primary && /reviewer|auditor|engineer|gate/.test(agent))
+  const reviewerPreset = finalSweepReview
+    ? { name: "final-sweep-reviewer", requiredEvidence: ["final reviewer sweep after graph closure"] }
+    : selectReviewerPreset({ task, workerAgentId: primary });
+  const reviewer = finalSweepReview ? null : reviewerPreset.agentId || chain.find((agent) => agent !== primary && /reviewer|auditor|engineer|gate/.test(agent))
     || "quality-gate-reviewer";
   const availability = checkAvailabilitySync(primary, reviewer, options.availableAgents);
   const capabilityGaps = availability.available ? [] : availability.missing;
+  const requiredEvidence = finalSweepReview
+    ? [...(workerPreset.requiredEvidence || []), "final reviewer sweep evidence at graph/release gate"]
+    : [...(workerPreset.requiredEvidence || []), ...(reviewerPreset.requiredEvidence || [])];
 
   return {
     taskId: task.id,
@@ -51,24 +59,34 @@ export function dispatchTask(task, options = {}) {
       policyRisk: task.policyRiskLevel || "low",
       workerPreset: workerPreset.name,
       reviewerPreset: reviewerPreset.name,
+      reviewMode,
+    },
+    reviewPolicy: {
+      mode: reviewMode,
+      reviewersRequiredAt: finalSweepReview ? "final-graph-sweep" : "per-task",
     },
     assignmentExplanation: explainAssignment({
       task,
       worker: { agentId: primary, reasons: capabilityMatch?.reasons || [`preset=${workerPreset.name}`], requiredEvidence: workerPreset.requiredEvidence },
-      reviewer: { agentId: reviewer, preset: reviewerPreset.name, requiredEvidence: reviewerPreset.requiredEvidence },
+      reviewer: finalSweepReview
+        ? { agentId: null, preset: reviewerPreset.name, requiredEvidence: ["final reviewer sweep after graph closure"] }
+        : { agentId: reviewer, preset: reviewerPreset.name, requiredEvidence: reviewerPreset.requiredEvidence },
       alternatives: capabilityMatch?.alternatives || [],
-      requiredEvidence: [...(workerPreset.requiredEvidence || []), ...(reviewerPreset.requiredEvidence || [])],
+      requiredEvidence,
     }),
     availabilityStatus: availability.available ? "available" : "missing",
     availabilityChecks: {
       primary: !availability.missing.includes(primary),
-      reviewer: !availability.missing.includes(reviewer),
+      reviewer: finalSweepReview ? true : !availability.missing.includes(reviewer),
+      reviewerDeferred: finalSweepReview,
       fallback: chain.some((agent) => agent !== primary && !availability.missing.includes(agent)),
       skills: true,
       mcp: true,
     },
     capabilityGaps,
-    requiredHandoffContract: ["summary", "decisions", "filesTouched", "openRisks", "verificationEvidence", "confidenceScore"],
+    requiredHandoffContract: finalSweepReview
+      ? ["summary", "decisions", "filesTouched", "openRisks", "verificationEvidence", "confidenceScore", "finalReviewerSweepEvidence"]
+      : ["summary", "decisions", "filesTouched", "openRisks", "verificationEvidence", "confidenceScore"],
   };
 }
 
@@ -111,10 +129,16 @@ async function addLegacyAvailabilityAliases(rootDir, available) {
 
 function checkAvailabilitySync(primary, reviewer, availableAgents) {
   if (!availableAgents) return { available: true, missing: [] };
-  const missing = [primary, reviewer].filter((agent) => !(agent in availableAgents));
+  const missing = [primary, reviewer].filter((agent) => agent && !(agent in availableAgents));
   return { available: missing.length === 0, missing };
 }
 
 function normalizeRel(value) {
   return String(value || "").replace(/\\/g, "/");
+}
+
+function normalizeReviewMode(value) {
+  const normalized = String(value || DEFAULT_REVIEW_MODE).trim().toLowerCase().replace(/_/g, "-");
+  if (["per-task", "inline", "wave", "stage-2"].includes(normalized)) return "per-task";
+  return DEFAULT_REVIEW_MODE;
 }

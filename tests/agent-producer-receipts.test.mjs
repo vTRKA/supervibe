@@ -375,8 +375,9 @@ test("reissued recovery receipts do not count as producer proof", async () => {
     const result = validateAgentProducerReceipts(root);
 
     assert.equal(result.pass, false);
-    assert.ok(result.issues.some((issue) => issue.code === "recovery-receipt-not-producer-proof"));
+    assert.equal(result.issues.some((issue) => issue.code === "recovery-receipt-not-producer-proof"), false);
     assert.ok(result.issues.some((issue) => issue.code === "missing-agent-producer-receipt"));
+    assert.equal(result.producerReceipts, 0);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

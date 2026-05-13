@@ -32,18 +32,18 @@
         },
         "permissions": {
           "support": "native",
-          "surfaces": ["approval_policy", "sandbox_mode", "default_permissions", "permissions.<name>.filesystem", "permissions.<name>.network"]
+          "surfaces": ["approval_policy", "sandbox_mode", "default_permissions", "web_search", "permissions.<name>.filesystem", "permissions.<name>.network"]
         },
         "schema": {
           "support": "native",
-          "surfaces": ["config-schema.json", "TOML config reference"]
+          "surfaces": ["config-schema.json", "TOML config reference", "features.apps", "features.goals", "apps._default", "tool_suggest.discoverables", "tool_suggest.disabled_tools"]
         }
       },
       "providerLimits": {
         "maxThreadsKey": "agents.max_threads",
         "maxDepthKey": "agents.max_depth",
         "jobRuntimeKey": "agents.job_max_runtime_seconds",
-        "defaultMaxThreads": 6,
+        "defaultMaxThreads": 8,
         "defaultMaxDepth": 1,
         "defaultJobRuntimeSeconds": 1800
       },
@@ -53,7 +53,16 @@
           "setting": "features.multi_agent + agents.max_threads + agents.max_depth + agents.job_max_runtime_seconds",
           "tier": "max-power",
           "previewOnly": true,
-          "preview": "[features].multi_agent=true; [agents].max_threads=6; [agents].max_depth=1; [agents].job_max_runtime_seconds=1800",
+          "preview": "[features].multi_agent=true; [agents].max_threads=8; [agents].max_depth=1; [agents].job_max_runtime_seconds=1800",
+          "sourceUrl": "https://developers.openai.com/codex/config-reference",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "outcome": "live provider evidence",
+          "setting": "web_search",
+          "tier": "max-power",
+          "previewOnly": true,
+          "preview": "web_search=\"live\"",
           "sourceUrl": "https://developers.openai.com/codex/config-reference",
           "checkedAt": "2026-05-13"
         },
@@ -89,7 +98,17 @@
           "setting": "approval_policy + sandbox_mode + default_permissions + mcp scopes/timeouts",
           "tier": "safe-default",
           "previewOnly": true,
-          "preview": "workspace sandbox, scoped permissions, and MCP timeouts",
+          "preview": "approval_policy=\"never\"; sandbox_mode=\"workspace-write\"; default_permissions=\":workspace\"; mcp timeouts",
+          "sourceUrl": "https://developers.openai.com/codex/config-reference",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "outcome": "plugin and app discovery",
+          "setting": "features.apps + apps._default + tool_suggest.discoverables",
+          "tier": "experimental",
+          "schemaStatus": "schema-backed/experimental-feature",
+          "previewOnly": true,
+          "preview": "[features].apps=true; [apps._default].enabled=true; [[tool_suggest.discoverables]] type=\"plugin\" id=\"supervibe@supervibe-marketplace\"",
           "sourceUrl": "https://developers.openai.com/codex/config-reference",
           "checkedAt": "2026-05-13"
         },
@@ -103,14 +122,14 @@
           "checkedAt": "2026-05-13"
         },
         {
-          "outcome": "hidden capability",
+          "outcome": "durable goals",
           "setting": "features.goals",
           "tier": "experimental",
-          "schemaStatus": "experimental/unlisted",
-          "sourceKind": "slash-command-doc",
+          "schemaStatus": "documented-experimental",
+          "sourceKind": "codex-use-case-doc",
           "previewOnly": true,
-          "preview": "record as non-schema metadata only; do not auto-apply",
-          "sourceUrl": "https://developers.openai.com/codex/config-reference",
+          "preview": "[features].goals=true enables the experimental /goal workflow for durable long-running objectives",
+          "sourceUrl": "https://developers.openai.com/codex/use-cases/follow-goals",
           "checkedAt": "2026-05-13"
         },
         {
@@ -130,6 +149,10 @@
         },
         {
           "url": "https://developers.openai.com/codex/subagents",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "url": "https://developers.openai.com/codex/use-cases/follow-goals",
           "checkedAt": "2026-05-13"
         }
       ]

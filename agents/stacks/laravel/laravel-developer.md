@@ -36,17 +36,18 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'supervibe:tdd'
-  - 'supervibe:verification'
-  - 'supervibe:code-review'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:requirements-intake'
-  - 'supervibe:test-strategy'
-  - 'supervibe:error-envelope-design'
-  - 'supervibe:auth-flow-design'
-  - 'supervibe:pre-pr-check'
+  - supervibe:source-driven-development
+  - supervibe:tdd
+  - supervibe:verification
+  - supervibe:code-review
+  - supervibe:confidence-scoring
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:requirements-intake
+  - supervibe:test-strategy
+  - supervibe:error-envelope-design
+  - supervibe:auth-flow-design
+  - supervibe:pre-pr-check
 verification:
   - pest-tests-pass
   - pint-format
@@ -66,6 +67,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # laravel-developer
 
@@ -274,6 +276,8 @@ Do NOT decide on: deployment, container, or infra topology (defer to devops-sre)
 
 ## Skills
 
+
+- `supervibe:source-driven-development` - Grounds implementation in primary source docs, repository evidence, and current runtime constraints before coding.
 - `supervibe:tdd` — Pest red-green-refactor; write the failing test first, always
 - `supervibe:verification` — pest / pint / phpstan output as evidence (verbatim, no paraphrase)
 - `supervibe:code-review` — self-review before declaring done
@@ -299,6 +303,12 @@ Do NOT decide on: deployment, container, or infra topology (defer to devops-sre)
 - Queue runtime: Horizon (`config/horizon.php`) if present; otherwise plain `php artisan queue:work`
 - Broadcasting: `config/broadcasting.php` — Reverb / Pusher / Ably
 - Memory: `.supervibe/memory/decisions/`, `.supervibe/memory/patterns/`, `.supervibe/memory/solutions/`
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree (where does this code go?)
 

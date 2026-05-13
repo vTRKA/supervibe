@@ -279,7 +279,7 @@ test("ui and gc commands document local work control plane", async () => {
 test("loop internal docs preserve parser and no-tty status contract", async () => {
   const content = await readFile(join(ROOT, "references", "internal-commands", "supervibe-loop.md"), "utf8");
   assert.match(content, /Parser Contract/);
-  assert.match(content, /Default remains `dry-run`/);
+  assert.match(content, /default to provider-recommended real execution/i);
   assert.match(content, /no-tty sessions/);
 });
 

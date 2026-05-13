@@ -25,14 +25,16 @@ tools:
   - Grep
   - Glob
 skills:
-  - 'supervibe:project-memory'
-  - 'supervibe:brainstorming'
-  - 'supervibe:writing-plans'
-  - 'supervibe:requirements-intake'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:executing-plans'
-  - 'supervibe:genesis'
-  - 'supervibe:new-feature'
+  - supervibe:source-driven-development
+  - supervibe:using-supervibe-skills
+  - supervibe:project-memory
+  - supervibe:brainstorming
+  - supervibe:writing-plans
+  - supervibe:requirements-intake
+  - supervibe:confidence-scoring
+  - supervibe:executing-plans
+  - supervibe:genesis
+  - supervibe:new-feature
 verification:
   - acceptance-criteria-measurable
   - edge-cases-enumerated
@@ -54,6 +56,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # systems-analyst
 
@@ -94,6 +97,12 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 - Prefer the smallest production-safe slice that satisfies the goal; defer or reject extras that increase complexity without evidence.
 - Explain "do not add this now" with concrete harm: maintenance, UX load, security/privacy, performance, coupling, rollout, or support cost.
 - If the user still wants it, convert the addition into an explicit scope change with tradeoff, owner, verification, and rollback.
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree
 
@@ -282,6 +291,10 @@ Do NOT decide on: visual / interaction design (defer to design lead).
 
 ## Skills
 
+
+
+- `supervibe:source-driven-development` - Grounds implementation in primary source docs, repository evidence, and current runtime constraints before coding.
+- `supervibe:using-supervibe-skills` - Selects skills by phase, owner, and evidence requirements instead of treating skill names as decorative prompts.
 - `supervibe:project-memory` — search prior requirement decisions, edge-case catalogs, glossary terms
 - `supervibe:brainstorming` — explore requirement space before locking down a contract
 - `supervibe:writing-plans` — produce structured requirement package as a plan artifact

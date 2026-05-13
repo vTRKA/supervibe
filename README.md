@@ -9,7 +9,7 @@ Runs locally. No Docker. Windows, macOS, and Linux.
 
 Supervibe commands are agent-gated by default: every `/supervibe-*` workflow has required specialist agents, active durable work is blocked until scoped runtime receipts exist, and inline/controller-only output stays diagnostic. Design and prototype flows additionally require their producer and reviewer agents before completion can be claimed.
 
-**v2.1** - current plugin `v2.1.29` - MIT - 1980 tests
+**v2.1** - current plugin `v2.1.30` - MIT - 1980 tests
 
 > **Compliance notice:** This tool is designed exclusively for development assistance. By using it, you agree to comply with the Terms of Service (ToS) and Acceptable Use Policy (AUP) of all involved services, including Anthropic. Unauthorized automated usage, OAuth token abuse, or violation of third-party policies is the sole responsibility of the end user.
 
@@ -97,7 +97,7 @@ The installer:
 After restart, you should see something like:
 
 ```text
-[supervibe] welcome  plugin v2.1.29 initialized for this project
+[supervibe] welcome  plugin v2.1.30 initialized for this project
 [supervibe] code RAG  N files / M chunks (fresh)
 [supervibe] code graph  N symbols / M edges (X% resolved)
 ```
@@ -231,7 +231,7 @@ Supervibe is built to show work before it changes project files.
 | Local memory | Project decisions are stored under `.supervibe/memory/` |
 | Provider boundaries | Provider prompts, rate limits, network/MCP approvals, secrets, billing, production mutations, and credential changes are never bypassed |
 
-Autonomous execution is opt-in, not the default. The default path is planning, review, status, diagnostics, and dry-run artifacts.
+Autonomous execution is opt-in by invoking the loop and is not the default for ordinary status, planning, or audit summaries. Once invoked, bare `/supervibe-loop` uses the provider-recommended real execution mode; pass `--dry-run` when you explicitly want preview artifacts without mutation.
 
 Unreleased capability label: durable autonomous loop features are implemented in this workspace and remain opt-in until the release gate publishes them.
 

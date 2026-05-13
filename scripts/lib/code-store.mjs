@@ -16,13 +16,14 @@ import { applyCodeDbMigrations } from './supervibe-db-migrations.mjs';
 
 export const CODE_GRAPH_EXTRACTOR_VERSION = 3;
 export const CODE_RAG_CHUNK_METADATA_VERSION = 1;
-const DEFAULT_LARGE_FILE_CHAR_THRESHOLD = 150_000;
+const DEFAULT_LARGE_FILE_CHAR_THRESHOLD = 100_000;
 const DEFAULT_CHUNK_TIMEOUT_MS = 30_000;
-const DEFAULT_LARGE_FILE_THRESHOLD_BYTES = 512 * 1024;
-const DEFAULT_LARGE_FILE_THRESHOLD_LINES = 10_000;
+const DEFAULT_LARGE_FILE_THRESHOLD_BYTES = 128 * 1024;
+const DEFAULT_LARGE_FILE_THRESHOLD_LINES = 2_500;
 const DEFAULT_LARGE_FILE_CHUNK_LINES = 240;
 const DEFAULT_LARGE_FILE_CHUNK_BYTES = 64 * 1024;
 const DEFAULT_LARGE_FILE_MAX_SECONDS = 30;
+const DEFAULT_GRAPH_EXTRACTION_LARGE_FILE_MODE = 'skip';
 const DEFAULT_LARGE_FILE_FALLBACK_MODE = 'structural';
 const DEFAULT_KNOWN_FAILED_TTL_SECONDS = 24 * 60 * 60;
 
@@ -565,6 +566,11 @@ export class CodeStore {
     this.largeFileFallbackMode = String(
       opts.largeFileFallbackMode ?? process.env.SUPERVIBE_INDEX_LARGE_FILE_FALLBACK_MODE ?? DEFAULT_LARGE_FILE_FALLBACK_MODE,
     ).trim() || DEFAULT_LARGE_FILE_FALLBACK_MODE;
+    this.graphExtractionLargeFileMode = String(
+      opts.graphExtractionLargeFileMode
+        ?? process.env.SUPERVIBE_INDEX_GRAPH_LARGE_FILE_MODE
+        ?? DEFAULT_GRAPH_EXTRACTION_LARGE_FILE_MODE,
+    ).trim().toLowerCase() || DEFAULT_GRAPH_EXTRACTION_LARGE_FILE_MODE;
     this.knownFailedTtlSeconds = nonNegativeNumber(
       opts.knownFailedTtl ?? opts.knownFailedTtlSeconds ?? process.env.SUPERVIBE_INDEX_KNOWN_FAILED_TTL_SECONDS,
       DEFAULT_KNOWN_FAILED_TTL_SECONDS,
@@ -746,7 +752,7 @@ export class CodeStore {
       let lines = 0;
       let largeByLines = false;
 
-      if (!largeByBytes || (existing && existing.content_hash === hash && !force && graphStale)) {
+      if (!largeByBytes) {
         try { content = await readFile(absPath, 'utf8'); }
         catch (err) {
           if (err.code === 'ENOENT') {
@@ -763,6 +769,9 @@ export class CodeStore {
         // Hash unchanged, but extractor/query semantics may have changed across
         // plugin versions. Rebuild only graph rows while preserving RAG chunks.
         if (graphStale) {
+          if (this.shouldSkipLargeFileGraphExtraction({ fileSizeBytes: Number(fileStats?.size || 0), lineCount: lines })) {
+            return { skipped: 'unchanged-graph-skipped-large-file', ...this.skipLargeFileGraphExtraction(relPath) };
+          }
           try {
             await enter('graph-extraction');
             const result = await this.indexGraphFor(absPath, content ?? await readFile(absPath, 'utf8'));
@@ -791,13 +800,20 @@ export class CodeStore {
         });
 
         if (this.useGraph && !result.partial) {
-          try {
-            await enter('graph-extraction');
-            await this.indexGraphFor(absPath, content ?? await readFile(absPath, 'utf8'));
-            this.markGraphCurrent(relPath);
-          } catch (err) {
-            if (process.env.SUPERVIBE_VERBOSE === '1') {
-              console.warn(`[code-graph] failed for ${relPath}: ${err.message}`);
+          if (this.shouldSkipLargeFileGraphExtraction({
+            fileSizeBytes: Number(fileStats?.size || 0),
+            lineCount: result.lineCount || lines,
+          })) {
+            this.skipLargeFileGraphExtraction(relPath);
+          } else {
+            try {
+              await enter('graph-extraction');
+              await this.indexGraphFor(absPath, content ?? await readFile(absPath, 'utf8'));
+              this.markGraphCurrent(relPath);
+            } catch (err) {
+              if (process.env.SUPERVIBE_VERBOSE === '1') {
+                console.warn(`[code-graph] failed for ${relPath}: ${err.message}`);
+              }
             }
           }
         } else if (!this.useGraph) {
@@ -1166,6 +1182,24 @@ export class CodeStore {
     `).run(relPath, relPath);
     this.db.prepare('DELETE FROM code_symbols WHERE path = ?').run(relPath);
     this.db.prepare('DELETE FROM code_semantic_anchors WHERE path = ?').run(relPath);
+  }
+
+  shouldSkipLargeFileGraphExtraction({ fileSizeBytes = 0, lineCount = 0 } = {}) {
+    if (!this.useGraph) return false;
+    if (this.graphExtractionLargeFileMode !== 'skip') return false;
+    return Number(fileSizeBytes || 0) >= this.largeFileThresholdBytes
+      || Number(lineCount || 0) >= this.largeFileThresholdLines;
+  }
+
+  skipLargeFileGraphExtraction(relPath) {
+    this.clearGraphFor(relPath);
+    this.markGraphCurrent(relPath);
+    return {
+      symbolsAdded: 0,
+      edgesAdded: 0,
+      anchorsAdded: 0,
+      graphSkipped: 'large-file',
+    };
   }
 
   /**

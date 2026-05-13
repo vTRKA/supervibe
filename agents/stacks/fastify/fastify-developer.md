@@ -39,17 +39,18 @@ tools:
 recommended-mcps:
   - context7
 skills:
-  - 'supervibe:requirements-intake'
-  - 'supervibe:tdd'
-  - 'supervibe:test-strategy'
-  - 'supervibe:error-envelope-design'
-  - 'supervibe:auth-flow-design'
-  - 'supervibe:verification'
-  - 'supervibe:code-review'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:pre-pr-check'
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
+  - supervibe:source-driven-development
+  - supervibe:requirements-intake
+  - supervibe:tdd
+  - supervibe:test-strategy
+  - supervibe:error-envelope-design
+  - supervibe:auth-flow-design
+  - supervibe:verification
+  - supervibe:code-review
+  - supervibe:confidence-scoring
+  - supervibe:pre-pr-check
+  - supervibe:project-memory
+  - supervibe:code-search
 verification:
   - fastify-inject-pass
   - eslint-clean
@@ -75,6 +76,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # fastify-developer
 
@@ -418,6 +420,8 @@ as appropriate.
 
 ## Skills
 
+
+- `supervibe:source-driven-development` - Grounds implementation in primary source docs, repository evidence, and current runtime constraints before coding.
 - `supervibe:requirements-intake` - clarify route contract, plugin scope,
   auth/error semantics, and verification before implementation.
 - `supervibe:tdd` - `fastify.inject()` red-green-refactor.
@@ -450,6 +454,12 @@ project)
 - Tests: `tests/**/*.test.ts` or `src/**/*.test.ts` using `fastify.inject()`.
 - Memory: `.supervibe/memory/decisions/`, `.supervibe/memory/patterns/`,
   `.supervibe/memory/solutions/`.
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree (where does this code go?)
 

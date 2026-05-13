@@ -28,13 +28,13 @@ tools:
   - Glob
   - Bash
 skills:
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:verification'
-  - 'supervibe:confidence-scoring'
-  - 'supervibe:error-envelope-design'
-  - 'supervibe:auth-flow-design'
-  - 'supervibe:requirements-intake'
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:verification
+  - supervibe:confidence-scoring
+  - supervibe:error-envelope-design
+  - supervibe:auth-flow-design
+  - supervibe:requirements-intake
 verification:
   - openapi-diff
   - graphql-inspector-diff
@@ -57,6 +57,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # api-contract-reviewer
 
@@ -278,6 +279,12 @@ Do NOT decide on: SDK code generation tooling choice (defer to stack agents).
 - Consumer registry: SDKs, mobile clients with min-version, internal services with explicit contract dependencies, public partners under SLA
 - Tooling on hand: `openapi-diff`, `oasdiff`, `graphql-inspector diff`, `buf breaking`, `protolock`, `swagger-cli validate`
 - Conventions doc: `docs/api-conventions.md` (pagination, error envelope, auth scheme, naming)
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree (change classification)
 

@@ -16,7 +16,7 @@ test("server deploy request requires full preflight and safe access references",
   assert.equal(preflight.secret_handling_policy, "references-only-no-raw-secret-logging");
   assert.equal(preflight.async_gates_supported, true);
   assert.equal(preflight.contract_policy.block_readiness_below, 9);
-  assert.equal(preflight.execution_policy.mode, "dry-run");
+  assert.equal(preflight.execution_policy.mode, "guided");
   assert.equal(preflight.execution_policy.default_spawns_external_tools, false);
   assert.equal(preflight.execution_policy.provider.context_forking, "deterministic-test-packet");
   assert.equal(preflight.execution_policy.provider.permission_prompt_bridge_required, false);
@@ -33,6 +33,66 @@ test("server deploy request requires full preflight and safe access references",
   assert.ok(serverAccess);
   assert.match(serverAccess.prompt, /production run/);
   assert.deepEqual(validateAgenticQuestion(serverAccess, { surface: "server access preflight", minChoices: 4 }), []);
+});
+
+test("preflight keeps dry-run explicit and defaults configured providers to real execution", () => {
+  const dryRun = buildPreflight({ request: "validate integrations", options: { dryRun: true } });
+  assert.equal(dryRun.execution_policy.mode, "dry-run");
+
+  const codex = buildPreflight({
+    request: "finish epic",
+    options: {
+      tool: "codex",
+      availableCommands: { codex: true },
+      allowSpawn: true,
+      permissionPromptBridge: true,
+    },
+  });
+  assert.equal(codex.execution_policy.mode, "fresh-context");
+  assert.equal(codex.execution_policy.provider.selected_tool, "codex");
+  assert.equal(codex.max_concurrent_agents, 8);
+  assert.equal(codex.provider_limit_policy.providerMaxThreads, 8);
+  assert.equal(codex.provider_limit_policy.effectiveMaxConcurrentAgents, 8);
+  assert.equal(codex.approval_lease.budget.max_concurrent_agents, 8);
+  assert.equal(codex.execution_policy.provider.provider_limits.providerMaxThreads, 8);
+  assert.equal(codex.provider_permission_audit.pass, true);
+});
+
+test("preflight caps requested concurrency to provider max threads", () => {
+  const preflight = buildPreflight({
+    request: "finish epic",
+    options: {
+      tool: "codex",
+      availableCommands: { codex: true },
+      maxConcurrentAgents: 10,
+      allowSpawn: true,
+      permissionPromptBridge: true,
+    },
+  });
+
+  assert.equal(preflight.max_concurrent_agents, 8);
+  assert.equal(preflight.provider_limit_policy.requestedMaxConcurrentAgents, 10);
+  assert.equal(preflight.provider_limit_policy.effectiveMaxConcurrentAgents, 8);
+  assert.equal(preflight.provider_limit_policy.capped, true);
+});
+
+test("preflight blocks fresh-context execution when provider adapter is unavailable", () => {
+  const preflight = buildPreflight({
+    request: "finish epic",
+    options: {
+      tool: "codex",
+      availableCommands: {},
+      allowSpawn: true,
+      permissionPromptBridge: true,
+    },
+  });
+
+  assert.equal(preflight.execution_policy.mode, "fresh-context");
+  assert.equal(preflight.execution_policy.provider.selected_tool, "codex");
+  assert.equal(preflight.execution_policy.provider.selected_adapter, "codex");
+  assert.ok(preflight.missing_data.includes("codex provider adapter unavailable"));
+  assert.ok(preflight.blocked_actions.includes("provider adapter unavailable"));
+  assert.equal(preflight.confidence_score, 6);
 });
 
 test("explicit loop budgets remain opt-in stop gates", () => {
@@ -83,6 +143,7 @@ test("preflight accepts explicit external fresh-context spawn with prompt bridge
     options: {
       executionMode: "fresh-context",
       tool: "codex",
+      availableCommands: { codex: true },
       allowSpawn: true,
       permissionPromptBridge: true,
     },

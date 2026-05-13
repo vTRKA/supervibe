@@ -8,13 +8,16 @@ import { join } from 'node:path';
 
 const ROOT = process.cwd();
 const STATUS_SCRIPT = join(ROOT, 'scripts', 'supervibe-status.mjs');
+let cachedDefaultStatus = null;
 
 function runStatus() {
-  return execSync('node scripts/supervibe-status.mjs --no-color', {
+  if (cachedDefaultStatus !== null) return cachedDefaultStatus;
+  cachedDefaultStatus = execSync('node scripts/supervibe-status.mjs --no-color', {
     cwd: process.cwd(),
     encoding: 'utf8',
     stdio: ['pipe', 'pipe', 'pipe']
   });
+  return cachedDefaultStatus;
 }
 
 test('supervibe-status: prints index health summary header', () => {

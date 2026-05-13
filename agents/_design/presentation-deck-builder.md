@@ -29,13 +29,13 @@ tools:
 recommended-mcps:
   - figma
 skills:
-  - 'supervibe:presentation-deck'
-  - 'supervibe:prototype'
-  - 'supervibe:preview-server'
-  - 'supervibe:project-memory'
-  - 'supervibe:code-search'
-  - 'supervibe:design-intelligence'
-  - 'supervibe:confidence-scoring'
+  - supervibe:presentation-deck
+  - supervibe:prototype
+  - supervibe:preview-server
+  - supervibe:project-memory
+  - supervibe:code-search
+  - supervibe:design-intelligence
+  - supervibe:confidence-scoring
 verification:
   - deck-json-valid
   - html-preview-loads
@@ -58,6 +58,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # presentation-deck-builder
 
@@ -111,6 +112,12 @@ Before producing design-facing output, read `docs/references/design-expert-knowl
 Query local design intelligence through `designContextPreflight()` or `searchDesignIntelligence()` for the relevant local domains: `product`, `style`, `color`, `typography`, `ux`, `landing`, `app-interface`, `charts`, `icons`, `google-fonts`, `react-performance`, `ui-reasoning`, `stack`, `slides`, and `collateral`. External references are supplemental: use the internet only for current references, market examples, official platform docs, live competitor pages, or fresh visual evidence that local data cannot contain.
 
 Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/design-intelligence/data/*.csv`, `skills/design-intelligence/data/stacks/`, `skills/design-intelligence/data/slides/`, `skills/design-intelligence/data/collateral/`, `skills/design-intelligence/references/`, and `references/design-intelligence-source-coverage.md`.
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Procedure
 

@@ -1,4 +1,8 @@
 import { approvalReceiptSummaryForSideEffect } from "./supervibe-approval-receipt-ledger.mjs";
+import {
+  createFinalReviewerSweep,
+  evaluateFinalReviewerSweep,
+} from "./supervibe-final-review-sweep.mjs";
 
 export function evaluateFinalAcceptance({
   state = {},
@@ -18,6 +22,9 @@ export function evaluateFinalAcceptance({
   releaseSecurityAudit = null,
   evalReport = null,
   approvalReceipts = [],
+  finalReviewerSweep = null,
+  trustedFinalReviewReceiptIds = [],
+  requireTrustedFinalReviewReceipts = true,
 } = {}) {
   const missing = [];
   const scoreByTask = new Map(scores.map((score) => [score.taskId, score]));
@@ -25,6 +32,12 @@ export function evaluateFinalAcceptance({
   const completeTasks = tasks.filter((task) => task.status === "complete");
   const blockedTasks = tasks.filter((task) => isBlockedStatus(task.status));
   const openTasks = tasks.filter((task) => ["open", "ready", "claimed", "in_progress", "failed"].includes(task.status));
+  const reviewPolicy = normalizeReviewPolicy(state.review_policy || state.reviewPolicy);
+  const dryRunPreview = String(state.execution_mode || state.executionMode || "").toLowerCase() === "dry-run";
+  const finalSweep = normalizeFinalReviewerSweep(finalReviewerSweep || state.final_reviewer_sweep || state.finalReviewerSweep, {
+    state,
+    tasks,
+  });
 
   requireField(state, "schema_version", missing, "state schema version");
   requireField(state, "command_version", missing, "state command version");
@@ -90,9 +103,35 @@ export function evaluateFinalAcceptance({
       if (!handoff.contextPack?.workflowSignal?.phase || handoff.contextPack.workflowSignal.taskId !== task.id) {
         missing.push(`handoff ${task.id} workflow signal`);
       }
-      if (requiresIndependentReview(task) && !handoff.reviewerEvidence?.independent) {
+      if (reviewPolicy.mode !== "final-sweep" && requiresIndependentReview(task) && !handoff.reviewerEvidence?.independent) {
         missing.push(`task ${task.id} independent reviewer evidence`);
       }
+    }
+  }
+
+  const requireFinalSweep = !dryRunPreview
+    && reviewPolicy.mode === "final-sweep"
+    && completeTasks.length > 0
+    && openTasks.length === 0
+    && blockedTasks.length === 0
+    && requireTrustedFinalReviewReceipts !== false;
+  if (requireFinalSweep) {
+    const sweepEvaluation = evaluateFinalReviewerSweep({ ...state, tasks, final_reviewer_sweep: finalSweep }, {
+      sweep: finalSweep,
+      requireReceipt: requireTrustedFinalReviewReceipts !== false,
+      trustedReceiptIds: trustedFinalReviewReceiptIds,
+    });
+    if (!sweepEvaluation.pass) {
+      missing.push("final reviewer sweep completion");
+      for (const issue of sweepEvaluation.issues || []) {
+        missing.push(`${issue.code}: ${issue.itemId || "graph"}`);
+      }
+    } else {
+      const uncovered = completeTasks
+        .filter((task) => requiresIndependentReview(task) || reviewPolicy.requireAllTasks)
+        .filter((task) => !finalReviewerCoversTask(task, finalSweep))
+        .map((task) => task.id);
+      if (uncovered.length > 0) missing.push(`final reviewer sweep coverage for tasks: ${uncovered.join(", ")}`);
     }
   }
 
@@ -169,6 +208,7 @@ export function evaluateFinalAcceptance({
     assignmentExplanationSummary: summarizeAssignmentExplanations(dispatches),
     approvalReceiptSummary: sideEffects.map((sideEffect) => approvalReceiptSummaryForSideEffect(sideEffect, approvalReceipts)),
     userGoalAcceptanceSummary: summarizeUserGoalAcceptance(userGoalAcceptance),
+    finalReviewerSweepSummary: summarizeFinalReviewerSweep(finalSweep),
   };
 }
 
@@ -187,6 +227,57 @@ function requiresIndependentReview(task = {}) {
   const text = `${task.goal || ""} ${task.category || ""}`.toLowerCase();
   return task.policyRiskLevel === "high"
     || /security|production|shared contract|broad refactor|architecture/.test(text);
+}
+
+function normalizeReviewPolicy(value = {}) {
+  const normalizedMode = String(value?.mode || "per-task").trim().toLowerCase().replace(/_/g, "-");
+  return {
+    mode: ["per-task", "per-wave", "inline", "wave", "stage-2"].includes(normalizedMode) ? "per-task" : "final-sweep",
+    requireAllTasks: value?.requireAllTasks !== false,
+  };
+}
+
+function normalizeFinalReviewerSweep(value = {}, { state = {}, tasks = [] } = {}) {
+  const sweep = createFinalReviewerSweep({ ...state, tasks, final_reviewer_sweep: value });
+  const taskIds = uniqueStrings([
+    ...(Array.isArray(value?.taskIds) ? value.taskIds : []),
+    ...(Array.isArray(value?.coveredTaskIds) ? value.coveredTaskIds : []),
+    ...(Array.isArray(value?.covered_task_ids) ? value.covered_task_ids : []),
+    ...(sweep.taskReviews || []).filter((review) => review.productionReady === true).map((review) => review.taskId),
+  ]);
+  return {
+    ...sweep,
+    complete: sweep.pass === true,
+    reviewerAgentId: sweep.reviewerAgentId || value?.reviewerAgentId || value?.reviewer_agent_id || null,
+    receiptIds: uniqueStrings([...(sweep.receiptIds || []), ...(value?.receiptIds || value?.receipt_ids || [])]),
+    taskIds,
+    coversAll: Boolean(value?.coversAll || value?.covers_all || taskIds.includes("*") || taskIds.includes("all")),
+  };
+}
+
+function uniqueStrings(values = []) {
+  return [...new Set((values || []).map((value) => String(value || "").trim()).filter(Boolean))];
+}
+
+function finalReviewerCoversTask(task, finalSweep) {
+  return finalSweep.coversAll
+    || finalSweep.taskIds.includes(String(task.id))
+    || (finalSweep.taskReviews || []).some((review) => review.taskId === task.id && review.productionReady === true);
+}
+
+function summarizeFinalReviewerSweep(finalSweep) {
+  return {
+    complete: finalSweep.complete || finalSweep.pass === true,
+    status: finalSweep.status,
+    reviewerAgentId: finalSweep.reviewerAgentId,
+    coveredTasks: finalSweep.coversAll ? "all" : finalSweep.taskIds.length,
+    taskLedger: finalSweep.taskReviews?.length || 0,
+    productionReady: finalSweep.summary?.productionReady || 0,
+    pending: finalSweep.summary?.pending || 0,
+    failed: finalSweep.summary?.failed || 0,
+    blockers: finalSweep.summary?.blockers || 0,
+    receipts: finalSweep.receiptIds.length,
+  };
 }
 
 function summarizeAssignmentExplanations(dispatches = []) {

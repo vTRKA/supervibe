@@ -7,13 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.1.29] - 2026-05-13
+## [2.1.30] - 2026-05-13
 
 ### Changed
 
 - Hardened the runtime UI, memory health, RAG/CodeGraph readiness, provider config diagnostics, work-item lifecycle, and strict release close flow from the active Supervibe 10/10 hardening loop.
 - Closed the runtime UI/memory/RAG/CodeGraph epic with final release-check evidence and repaired post-close graph, registry, and receipt reconciliation.
-- Updated release-facing host manifests and documentation to the 2.1.29 package version.
+- Updated release-facing host manifests and documentation to the 2.1.30 package version.
 
 ### Validation
 

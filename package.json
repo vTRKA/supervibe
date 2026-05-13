@@ -1,6 +1,6 @@
 {
   "name": "supervibe-framework",
-  "version": "2.1.29",
+  "version": "2.1.30",
   "description": "Dev tooling for the Supervibe Claude Code plugin",
   "private": true,
   "type": "module",
@@ -73,6 +73,7 @@
     "supervibe:agent-retrieval-health": "node scripts/supervibe-agent-retrieval-health.mjs",
     "supervibe:agent-tech-readiness": "node scripts/supervibe-agent-tech-readiness.mjs",
     "supervibe:provider-config-doctor": "node scripts/supervibe-provider-config-doctor.mjs",
+    "supervibe:operator-safety": "node scripts/supervibe-operator-safety.mjs",
     "supervibe:agent-heatmap": "node scripts/agent-capability-heatmap.mjs",
     "supervibe:agent-trend-logs": "node scripts/rebuild-agent-trend-logs.mjs",
     "supervibe:context-pack": "node scripts/supervibe-context-pack.mjs",

@@ -46,7 +46,7 @@ test("parallel front respects priority, source order, and max concurrency", () =
   assert.deepEqual(result.parallel.map((task) => task.id), ["critical", "medium"]);
 });
 
-test("parallel front respects risk and reviewer availability", () => {
+test("parallel front respects risk and defers reviewers to final sweep by default", () => {
   const highRisk = calculateReadyFront({
     tasks: [
       { id: "safe", goal: "Safe", policyRiskLevel: "low" },
@@ -56,7 +56,17 @@ test("parallel front respects risk and reviewer availability", () => {
   assert.deepEqual(highRisk.parallel.map((task) => task.id), ["safe"]);
 
   const noReviewer = calculateReadyFront({ tasks: [{ id: "t1", goal: "Ready" }] }, { reviewersAvailable: false });
+  assert.deepEqual(noReviewer.parallel.map((task) => task.id), ["t1"]);
+  assert.equal(noReviewer.reviewPolicy.reviewersRequiredAt, "final-graph-sweep");
+});
+
+test("parallel front can still enforce per-task reviewer availability", () => {
+  const noReviewer = calculateReadyFront(
+    { tasks: [{ id: "t1", goal: "Ready" }] },
+    { reviewersAvailable: false, reviewMode: "per-task" }
+  );
   assert.deepEqual(noReviewer.parallel, []);
+  assert.deepEqual(noReviewer.parallelizationBlockedBy, ["missing-reviewer"]);
 });
 
 test("invalid graph returns issues instead of a ready front", () => {

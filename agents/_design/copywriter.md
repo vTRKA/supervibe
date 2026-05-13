@@ -28,10 +28,10 @@ tools:
   - Write
   - Edit
 skills:
-  - 'supervibe:project-memory'
-  - 'supervibe:design-intelligence'
-  - 'supervibe:adapt'
-  - 'supervibe:confidence-scoring'
+  - supervibe:project-memory
+  - supervibe:design-intelligence
+  - supervibe:adapt
+  - supervibe:confidence-scoring
 verification:
   - voice-consistency-check
   - no-lorem-ipsum
@@ -58,6 +58,7 @@ effectiveness:
   last-task: null
   outcome: null
   iterations: 0
+
 ---
 # copywriter
 
@@ -283,6 +284,12 @@ Do NOT decide on: pricing/plan-name strategy (defer to product-manager + marketi
 - UI surfaces: scan `frontend/`/`templates/`/`components/` for current vocabulary, current tone, repeated phrases
 - A/B test history: `.supervibe/memory/copy-experiments/` — past CTA variants and their lift
 - Past copy reviews: `.supervibe/memory/copy-reviews/` — recurring issues, decisions, exceptions
+
+## Invocation Boundary
+
+Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
+Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
+Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
 ## Decision tree (copy type → pattern)
 
