@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,6 +11,9 @@ import {
   formatEpicCompletionReport,
   validateEpicCompletion,
 } from "../scripts/lib/supervibe-epic-completion-validator.mjs";
+import {
+  validateEpicCompletionFiles,
+} from "../scripts/validate-epic-completion.mjs";
 import {
   issueWorkflowInvocationReceipt,
 } from "../scripts/lib/supervibe-workflow-receipt-runtime.mjs";
@@ -166,6 +169,30 @@ test("validateEpicCompletion can require trusted receipt evidence", () => {
   assert.equal(trusted.pass, true);
 });
 
+test("validateEpicCompletion accepts trusted graph-level completion receipt for closed tasks", () => {
+  const graph = completedGraph();
+  graph.evidence = [];
+  graph.items = graph.items.map((item) => ({
+    ...item,
+    verificationEvidence: item.type === "epic" ? item.verificationEvidence : [],
+  }));
+  graph.tasks = graph.tasks.map((task) => ({ ...task, verificationEvidence: [] }));
+
+  const blocked = validateEpicCompletion(graph, {
+    requireTrustedEvidence: true,
+    trustedReceiptIds: ["graph-release-receipt"],
+  });
+  const trusted = validateEpicCompletion(graph, {
+    requireTrustedEvidence: true,
+    trustedReceiptIds: ["graph-release-receipt"],
+    trustedGraphReceiptIds: ["graph-release-receipt"],
+  });
+
+  assert.equal(blocked.pass, false);
+  assert.ok(blocked.issues.some((issue) => issue.code === "missing-evidence"));
+  assert.equal(trusted.pass, true);
+});
+
 test("validateEpicCompletion blocks legacy migrated evidence in strict production mode", () => {
   const graph = completedGraph();
   const task = graph.items.find((item) => item.itemId === "epic-completion-t1");
@@ -263,6 +290,78 @@ test("validate-epic-completion CLI requires runtime-trusted receipt evidence in 
   }), /epic completion artifact\(s\) failed/);
 });
 
+test("validate-epic-completion CLI accepts graph-bound release receipt in trusted mode", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-graph-trusted-epic-completion-"));
+  const evidenceFile = join(root, "final-audit.md");
+  await writeFile(evidenceFile, "final audit evidence\n", "utf8");
+  const graph = completedGraph();
+  graph.evidence = [];
+  graph.items = graph.items.map((item) => ({
+    ...item,
+    verificationEvidence: item.type === "epic" ? item.verificationEvidence : [],
+  }));
+  graph.tasks = graph.tasks.map((task) => ({ ...task, verificationEvidence: [] }));
+  const graphFile = join(root, "graph.json");
+  await writeFile(graphFile, `${JSON.stringify(graph, null, 2)}\n`, "utf8");
+  const { receipt } = await issueWorkflowInvocationReceipt({
+    rootDir: root,
+    command: "/supervibe-loop",
+    subjectType: "validator",
+    subjectId: "completion-validator",
+    stage: "release-completion-proof",
+    invocationReason: "trusted graph-level completion verification",
+    outputArtifacts: ["final-audit.md"],
+    startedAt: "2026-05-10T00:00:00.000Z",
+    completedAt: "2026-05-10T00:01:00.000Z",
+    handoffId: "epic-completion",
+    graphId: "epic-completion",
+  });
+
+  const passStdout = execFileSync(process.execPath, [
+    join(ROOT, "scripts/validate-epic-completion.mjs"),
+    "--file",
+    graphFile,
+    "--require-trusted-evidence",
+    "--disallow-legacy-evidence",
+    "--trusted-receipts",
+    receipt.receiptId,
+  ], {
+    cwd: root,
+    encoding: "utf8",
+  });
+  assert.match(passStdout, /REQUIRE_TRUSTED_EVIDENCE: true/);
+  assert.match(passStdout, /PASS: true/);
+});
+
+test("validateEpicCompletionFiles allows active pre-close epic only with graph-level trusted receipt", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-active-preclose-epic-completion-"));
+  const graph = completedGraph();
+  const epic = graph.items.find((item) => item.itemId === "epic-completion");
+  epic.status = "active";
+  delete epic.closedAt;
+  delete epic.closeReason;
+  const graphFile = join(root, "graph.json");
+  await writeFile(graphFile, `${JSON.stringify(graph, null, 2)}\n`, "utf8");
+
+  const blocked = await validateEpicCompletionFiles({
+    rootDir: root,
+    files: [graphFile],
+    requireEpicClosed: true,
+  });
+  const preClose = await validateEpicCompletionFiles({
+    rootDir: root,
+    files: [graphFile],
+    requireEpicClosed: true,
+    trustedGraphReceiptIdsByGraphId: { "epic-completion": ["trusted-graph-receipt"] },
+    activePreCloseGraphIds: ["epic-completion"],
+  });
+
+  assert.equal(blocked.pass, false);
+  assert.ok(blocked.results[0].report.issues.some((issue) => issue.code === "epic-not-closed"));
+  assert.equal(preClose.pass, true);
+  assert.ok(preClose.results[0].report.warnings.some((warning) => warning.code === "active-preclose-epic"));
+});
+
 test("validate-epic-completion --all reports no graph coverage explicitly", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-no-completion-graphs-"));
   const stdout = execFileSync(process.execPath, [
@@ -318,6 +417,40 @@ test("supervibe-loop exposes completion validation for current commands", async 
   assert.match(stdout, /SUPERVIBE_EPIC_COMPLETION/);
   assert.match(stdout, /PASS: true/);
   assert.match(stdout, /GRAPH:/);
+});
+
+test("supervibe-loop closes epic when final full-check evidence is supplied on close", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-loop-close-release-evidence-"));
+  const graph = completedGraph();
+  const epic = graph.items.find((item) => item.itemId === "epic-completion");
+  epic.status = "active";
+  delete epic.closedAt;
+  delete epic.closeReason;
+  const graphFile = join(root, "graph.json");
+  await writeFile(graphFile, `${JSON.stringify(graph, null, 2)}\n`, "utf8");
+
+  const stdout = execFileSync(process.execPath, [
+    "scripts/supervibe-loop.mjs",
+    "--close",
+    "epic-completion",
+    "--file",
+    graphFile,
+    "--verification-command",
+    "npm run check:release",
+    "--verification-status",
+    "pass",
+    "--evidence",
+    "release full check passed",
+  ], {
+    cwd: new URL("../", import.meta.url),
+    encoding: "utf8",
+  });
+
+  assert.match(stdout, /ACTION: close/);
+  const closedGraph = JSON.parse(await readFile(graphFile, "utf8"));
+  const closedEpic = closedGraph.items.find((item) => item.itemId === "epic-completion");
+  assert.equal(closedEpic.status, "closed");
+  assert.ok((closedEpic.verificationEvidence || []).some((entry) => entry.command === "npm run check:release"));
 });
 
 function completedGraph() {

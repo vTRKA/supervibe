@@ -484,7 +484,16 @@ function hasExplicitSourcePolicy(policy = {}) {
 function sourceSatisfactionRate(entries = [], source) {
   const evaluated = entries.filter((entry) => shouldEvaluateSource(entry, source));
   if (!evaluated.length) return 1;
-  return rate(evaluated, (entry) => normalizeSubtoolUsage(entry.subtool_usage)[source] > 0);
+  return rate(evaluated, (entry) => sourceSatisfied(entry, source));
+}
+
+function sourceSatisfied(entry = {}, source) {
+  if (normalizeSubtoolUsage(entry.subtool_usage)[source] > 0) return true;
+  const evidence = entry.evidence || {};
+  if (source === "memory" && evidence.memoryIds?.length) return true;
+  if (source === "rag" && evidence.ragChunkIds?.length) return true;
+  if (source === "codegraph" && evidence.graphSymbols?.length) return true;
+  return false;
 }
 
 function shouldEvaluateSource(entry = {}, source) {

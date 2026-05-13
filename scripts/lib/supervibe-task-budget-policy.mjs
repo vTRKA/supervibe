@@ -137,6 +137,61 @@ export function assertTaskBudgetAllowsGraphWrite(graph = {}, options = {}) {
   };
 }
 
+export function summarizeTaskBudgetPolicy(taskBudgetPolicy = {}) {
+  if (!taskBudgetPolicy || typeof taskBudgetPolicy !== "object") {
+    return { recorded: false, status: "not-recorded" };
+  }
+  if (Object.hasOwn(taskBudgetPolicy, "recorded") && Object.hasOwn(taskBudgetPolicy, "status")) {
+    return taskBudgetPolicy;
+  }
+  const report = taskBudgetPolicy.report && typeof taskBudgetPolicy.report === "object"
+    ? taskBudgetPolicy.report
+    : taskBudgetPolicy;
+  const policy = report.policy || taskBudgetPolicy.policy || null;
+  if (!policy) return { recorded: false, status: "not-recorded" };
+  const totals = report.totals || {};
+  const largestPhase = totals.largestPhase || {};
+  return {
+    recorded: true,
+    status: report.pass === false ? "exceeded" : report.pass === true ? "pass" : "recorded",
+    maxTasksPerPhase: policy.maxTasksPerPhase ?? null,
+    maxChildItemsPerAtomizationRun: policy.maxChildItemsPerAtomizationRun ?? null,
+    requirePhaseSplitDecision: policy.requirePhaseSplitDecision !== false,
+    hasExplicitPolicy: Boolean(policy.hasExplicitPolicy),
+    childItems: totals.childItems ?? null,
+    implementationItems: totals.implementationItems ?? null,
+    largestPhase: {
+      phaseId: largestPhase.phaseId ?? null,
+      count: largestPhase.count ?? null,
+    },
+    decisionStatus: report.decision?.status || taskBudgetPolicy.decision?.status || "missing",
+    violations: Array.isArray(report.violations) ? report.violations : [],
+    splitRecommendation: report.prompt || null,
+  };
+}
+
+export function formatTaskBudgetPolicySummary(taskBudgetPolicy = {}) {
+  const summary = summarizeTaskBudgetPolicy(taskBudgetPolicy);
+  if (!summary.recorded) return "TASK_BUDGET_POLICY: not-recorded";
+  const largestPhase = summary.largestPhase || {};
+  const lines = [
+    `TASK_BUDGET_POLICY: ${summary.status}`,
+    `MAX_TASKS_PER_PHASE: ${summary.maxTasksPerPhase ?? "unknown"}`,
+    `MAX_CHILD_ITEMS_PER_ATOMIZATION_RUN: ${summary.maxChildItemsPerAtomizationRun ?? "unknown"}`,
+    `PHASE_SPLIT_REQUIRED: ${summary.requirePhaseSplitDecision}`,
+    `TASK_BUDGET_CHILD_ITEMS: ${summary.childItems ?? "unknown"}`,
+    `TASK_BUDGET_LARGEST_PHASE: ${largestPhase.count ?? "unknown"}/${summary.maxTasksPerPhase ?? "unknown"} phase=${largestPhase.phaseId || "none"}`,
+    `TASK_BUDGET_DECISION: ${summary.decisionStatus || "missing"}`,
+  ];
+  if (summary.violations.length > 0) {
+    lines.push(`TASK_BUDGET_VIOLATIONS: ${summary.violations.map((violation) => violation.code).join(",")}`);
+  }
+  if (summary.splitRecommendation) {
+    lines.push(`TASK_BUDGET_SPLIT_RECOMMENDATION: ${safeInline(summary.splitRecommendation, 220)}`);
+  }
+  return lines.join("\n");
+}
+
 function formatTaskBudgetPhaseSplitPrompt(report = {}) {
   const violations = Array.isArray(report.violations) ? report.violations : [];
   const lines = [
@@ -179,4 +234,10 @@ function matchPositiveInteger(source, patterns) {
 function positiveIntegerOrDefault(value, fallback) {
   const number = Number(value);
   return Number.isInteger(number) && number > 0 ? number : fallback;
+}
+
+function safeInline(value, maxLength) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, Math.max(0, maxLength - 3))}...`;
 }

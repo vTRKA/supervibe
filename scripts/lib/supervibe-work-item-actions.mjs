@@ -108,6 +108,13 @@ function updateStatus(graph, action, status, options = {}) {
     if (status === "closed" || status === "complete") {
       next.closedAt = now;
       next.closeReason = action.reason || (status === "complete" ? "completed by user" : "closed by user");
+      const verificationEvidence = normalizeVerificationEvidence(action.verificationEvidence || action.evidence, id, {
+        now,
+        reason: next.closeReason,
+      });
+      if (verificationEvidence.length > 0) {
+        next.verificationEvidence = uniqueEvidence([...(next.verificationEvidence || []), ...verificationEvidence]);
+      }
     }
     if (status === "skipped") {
       next.skipReason = action.reason || "skipped by user";
@@ -763,6 +770,11 @@ function appendAuditEvent(result, action, requestedType) {
   }
   if (result.tombstone) event.tombstone = { itemId: result.tombstone.itemId, deletedAt: result.tombstone.deletedAt };
   if (result.recoveredClaims?.length) event.recoveredClaims = result.recoveredClaims.map((claim) => claim.claimId);
+  const verificationEvidence = normalizeVerificationEvidence(action.verificationEvidence || action.evidence, event.itemId || event.taskId, {
+    now: event.at,
+    reason: event.reason,
+  });
+  if (verificationEvidence.length > 0) event.verificationEvidence = verificationEvidence;
   return {
     ...result,
     graph: {
@@ -825,6 +837,47 @@ function normalizePatchValue(key, value) {
     return String(value).split(/\s*(?:,|\n)\s*/).map((item) => item.trim()).filter(Boolean);
   }
   return value;
+}
+
+function normalizeVerificationEvidence(value, itemId, { now, reason } = {}) {
+  const entries = Array.isArray(value) ? value : value ? [value] : [];
+  return entries
+    .map((entry) => {
+      if (entry && typeof entry === "object" && !Array.isArray(entry)) {
+        return {
+          taskId: entry.taskId || entry.itemId || itemId,
+          status: entry.status || entry.verdict || entry.result || "pass",
+          source: entry.source || "work-item-action",
+          recordedAt: entry.recordedAt || now,
+          ...entry,
+        };
+      }
+      const text = String(entry || "").trim();
+      if (!text) return null;
+      const looksLikeCommand = /^(?:node|npm|npx|pnpm|yarn|bun)\b/i.test(text);
+      return {
+        taskId: itemId,
+        status: "pass",
+        source: "work-item-action",
+        recordedAt: now,
+        command: looksLikeCommand ? text : undefined,
+        outputSummary: looksLikeCommand ? `verified with ${text}` : text,
+        reason: reason || undefined,
+      };
+    })
+    .filter(Boolean);
+}
+
+function uniqueEvidence(entries = []) {
+  const seen = new Set();
+  const result = [];
+  for (const entry of entries) {
+    const key = JSON.stringify(entry);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(entry);
+  }
+  return result;
 }
 
 function applyPatchToEntry(entry, patch, now, action) {

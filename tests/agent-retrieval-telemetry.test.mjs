@@ -83,7 +83,11 @@ test("agent retrieval telemetry does not report 10/10 when samples are too thin"
 
   const report = buildAgentRetrievalTelemetryReport({
     invocations,
-    evidenceEntries: [],
+    evidenceEntries: invocations.map((entry) => ({
+      taskId: entry.task_summary,
+      agentId: entry.agent_id,
+      gate: { pass: true, score: 10 },
+    })),
     thresholds: { minSample: 5 },
   });
 
@@ -102,7 +106,11 @@ test("agent retrieval telemetry caps maturity for legacy-only invocations", () =
 
   const report = buildAgentRetrievalTelemetryReport({
     invocations,
-    evidenceEntries: [],
+    evidenceEntries: invocations.map((entry) => ({
+      taskId: entry.task_summary,
+      agentId: entry.agent_id,
+      gate: { pass: true, score: 10 },
+    })),
     thresholds: { minSample: 5 },
   });
 
@@ -163,6 +171,42 @@ test("agent retrieval telemetry does not penalize sources marked optional by ret
   assert.equal(report.maturityScore, 10);
   assert.equal(report.agents[0].memoryRate, 1);
   assert.equal(report.agents[0].ragRate, 1);
+});
+
+test("agent retrieval telemetry counts explicit evidence ids as source satisfaction", () => {
+  const invocations = Array.from({ length: 6 }, (_, index) => ({
+    ts: `2026-05-02T00:00:${String(index).padStart(2, "0")}.000Z`,
+    agent_id: "stack-developer",
+    task_summary: "strict release gate with cited retrieval evidence",
+    confidence_score: 9,
+    retrieval_enforcement: { schemaVersion: 1, evidenceLedger: "written", evidencePass: true },
+    retrieval_policy: { memory: "mandatory", rag: "mandatory", codegraph: "mandatory" },
+    subtool_usage: { memory: 0, rag: 0, codegraph: 0 },
+    evidence: {
+      memoryIds: ["rag-codegraph-preflight-policy"],
+      ragChunkIds: [`scripts/lib/supervibe-strict-release-gate.mjs:${index + 1}`],
+      graphSymbols: ["buildStrictReleaseGateReport"],
+      verificationCommands: ["npm run validate:strict-release-gate"],
+      redactionStatus: "not-needed",
+    },
+    evidence_gate: { pass: true, score: 10 },
+  }));
+
+  const report = buildAgentRetrievalTelemetryReport({
+    invocations,
+    evidenceEntries: invocations.map((entry) => ({
+      taskId: entry.task_summary,
+      agentId: entry.agent_id,
+      gate: { pass: true, score: 10 },
+    })),
+    thresholds: { minSample: 5 },
+  });
+
+  assert.equal(report.pass, true);
+  assert.equal(report.maturityScore, 10);
+  assert.equal(report.agents[0].memoryRate, 1);
+  assert.equal(report.agents[0].ragRate, 1);
+  assert.equal(report.agents[0].codegraphRate, 1);
 });
 
 test("agent retrieval telemetry treats explicit not-needed source policy as provided", () => {

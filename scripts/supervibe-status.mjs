@@ -44,11 +44,21 @@ import { buildOrchestratedContextPackFromProject } from './lib/supervibe-context
 import { buildUserOutcomeReportFromContextPack, formatUserOutcomeReport } from './lib/supervibe-user-outcome-metrics.mjs';
 import { buildPerformanceSloReport, formatPerformanceSloReport } from './lib/supervibe-performance-slo.mjs';
 import { buildWorkspaceIsolationReport, formatWorkspaceIsolationReport } from './lib/supervibe-workspace-isolation.mjs';
+import { defaultWorktreeRegistryPath, formatWorktreeSessionStatus } from './lib/supervibe-worktree-session-manager.mjs';
 import { formatIndexConfigStatus, loadIndexConfig } from './lib/supervibe-index-config.mjs';
 import { resolveSupervibePluginRoot, resolveSupervibeProjectRoot } from './lib/supervibe-plugin-root.mjs';
 import { CODEGRAPH_INDEX_COMMAND, MEMORY_WATCH_COMMAND, SOURCE_RAG_INDEX_COMMAND } from './lib/supervibe-command-catalog.mjs';
 import { diagnoseGraphExtractor } from './lib/code-graph.mjs';
 import { validateEpicCompletion } from './lib/supervibe-epic-completion-validator.mjs';
+import {
+  buildCodeGraphReadinessUi,
+  buildUnresolvedEdgeDiagnosticsFromStore,
+  formatCodeGraphReadinessUi,
+  formatUnresolvedEdgeDiagnostics,
+} from './lib/supervibe-codegraph-ui-map.mjs';
+import { buildArtifactSnapshotStatus, formatArtifactSnapshotStatus } from './supervibe-artifact-snapshot.mjs';
+import { createPlanLifecycleReport, formatPlanLifecycleReport } from './supervibe-plan-lifecycle.mjs';
+import { readWorkflowReceipts, validateWorkflowReceiptTrust } from './lib/supervibe-workflow-receipt-runtime.mjs';
 
 const args = parseArgs(process.argv.slice(2));
 const SCRIPT_PLUGIN_ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -69,6 +79,45 @@ function ageStr(ms) {
   if (sec < 3600) return `${Math.floor(sec / 60)}m ago`;
   if (sec < 86400) return `${Math.floor(sec / 3600)}h ago`;
   return `${Math.floor(sec / 86400)}d ago`;
+}
+
+function graphEntryId(entry = {}) {
+  return entry.itemId || entry.id || entry.taskId || null;
+}
+
+function entryStallState(entry = {}) {
+  return entry.stall || entry.agentStall || null;
+}
+
+function isStalledEntry(entry = {}) {
+  return String(entryStallState(entry)?.status || '').toLowerCase() === 'stalled';
+}
+
+function collectStalledItemsFromGraph(graph = {}) {
+  const seen = new Set();
+  const stalled = [];
+  for (const entry of [...(graph.items || []), ...(graph.tasks || [])]) {
+    const itemId = graphEntryId(entry);
+    if (!itemId || seen.has(itemId) || !isStalledEntry(entry)) continue;
+    seen.add(itemId);
+    const stall = entryStallState(entry) || {};
+    stalled.push({
+      itemId,
+      owner: entry.heartbeatOwner || entry.owner || entry.claimOwner || stall.owner || null,
+      retryable: stall.retryable !== false,
+      manualIntervention: stall.manualIntervention === true,
+      recoveryAction: stall.recoveryAction || null,
+      reason: stall.reason || entry.blockerReason || 'no-progress-timeout',
+    });
+  }
+  return stalled;
+}
+
+function summarizeStalledItems(stalled = []) {
+  return {
+    retryable: stalled.filter((item) => item.retryable && !item.manualIntervention).length,
+    manualIntervention: stalled.filter((item) => item.manualIntervention || !item.retryable).length,
+  };
 }
 
 async function printActiveWorkGraphSummary() {
@@ -111,6 +160,8 @@ async function printActiveWorkGraphSummary() {
   const grouped = groupWorkItemsByStatus(index);
   const stale = detectStaleWorkItems(index);
   const orphans = detectOrphanWorkItems(index, graph);
+  const stalled = collectStalledItemsFromGraph(graph);
+  const stalledSummary = summarizeStalledItems(stalled);
   const epicId = graph.epicId || graph.graph_id || graph.graphId || resolution.epicId || 'unknown';
   const nextReady = grouped.ready[0]?.itemId || grouped.ready[0]?.id || 'none';
   const terminalCount = (grouped.done?.length || 0) + (grouped.skipped?.length || 0) + (grouped.cancelled?.length || 0);
@@ -144,9 +195,22 @@ async function printActiveWorkGraphSummary() {
   console.log(color(`  ARCHIVE_CANDIDATE: ${archiveCandidate}`, archiveCandidate ? 'green' : 'dim'));
   console.log(color(`  LIFECYCLE: ${lifecycle}`, archiveCandidate ? 'green' : 'dim'));
   console.log(color(`  STALE_CLAIMS: ${stale.length}`, stale.length > 0 ? 'yellow' : 'dim'));
+  console.log(color(`  STALLED: ${stalled.length}`, stalled.length > 0 ? 'yellow' : 'dim'));
+  console.log(color(`  RETRYABLE_STALLED: ${stalledSummary.retryable}`, stalledSummary.retryable > 0 ? 'yellow' : 'dim'));
+  console.log(color(`  MANUAL_INTERVENTION: ${stalledSummary.manualIntervention}`, stalledSummary.manualIntervention > 0 ? 'red' : 'dim'));
   console.log(color(`  ORPHANS: ${orphans.length}`, orphans.length > 0 ? 'yellow' : 'dim'));
   console.log(color(`  NEXT_READY: ${nextReady}`, nextReady === 'none' ? 'dim' : 'green'));
   console.log(color(`  NEXT_ACTION: ${nextAction}`, driftCount > 0 ? 'yellow' : archiveCandidate ? 'green' : 'dim'));
+  if (archiveCandidate) {
+    console.log(color(`  ARCHIVE_COMMAND: /supervibe-loop --archive --file ${resolution.graphPath}`, 'green'));
+    console.log(color('  ARCHIVE_MODE: manual; no passive auto-archive will run', 'dim'));
+  }
+  if (stale.length > 0) {
+    console.log(color(`  STALE_REPAIR_COMMAND: /supervibe-loop --recover-stale <item-id> --file ${resolution.graphPath}`, 'yellow'));
+  }
+  if (stalled.length > 0) {
+    console.log(color(`  STALL_RECOVERY_COMMAND: /supervibe-loop --recover-stalled <item-id> --file ${resolution.graphPath}`, 'yellow'));
+  }
 
   if (args.ready) {
     for (const item of grouped.ready) console.log(color(`  READY_ITEM: ${item.itemId || item.id} ${item.title || ''}`.trimEnd(), 'dim'));
@@ -170,6 +234,75 @@ async function printActiveWorkGraphSummary() {
   }
 }
 
+function printWorktreeSessionRegistrySummary() {
+  const registryPath = defaultWorktreeRegistryPath(PROJECT_ROOT);
+  if (!existsSync(registryPath)) return;
+  try {
+    const registry = JSON.parse(readFileSync(registryPath, 'utf8'));
+    const needsAttention = (registry.sessions || []).some((session) => ['stale', 'blocked', 'cleanup_blocked'].includes(session.status));
+    console.log(color(formatWorktreeSessionStatus(registry), needsAttention ? 'yellow' : 'green'));
+  } catch (error) {
+    console.log(color(`SUPERVIBE_WORKTREE_SESSIONS\nSTATUS: unreadable\nPATH: ${registryPath}\nERROR: ${error.message}`, 'yellow'));
+  }
+}
+
+function printPlanLifecycleSummary() {
+  try {
+    const report = createPlanLifecycleReport({ rootDir: PROJECT_ROOT });
+    console.log(color(formatPlanLifecycleReport(report), report.staleActiveSource || report.archiveAction !== 'none' ? 'yellow' : 'green'));
+  } catch (error) {
+    console.log(color(`SUPERVIBE_PLAN_LIFECYCLE\nSTATUS: unreadable\nERROR: ${error.message}\nNEXT_ACTION: run node scripts/supervibe-plan-lifecycle.mjs --status`, 'yellow'));
+  }
+}
+
+function printWorkflowReceiptRecoverySummary() {
+  try {
+    const receipts = readWorkflowReceipts(PROJECT_ROOT).filter((receipt) => !receipt.__invalidJson);
+    const stale = [];
+    for (const receipt of receipts) {
+      const trust = validateWorkflowReceiptTrust(PROJECT_ROOT, receipt);
+      const issues = trust.issues.filter(isReceiptDriftIssue);
+      if (issues.length === 0) continue;
+      stale.push({
+        receiptId: receipt.receiptId || 'unknown',
+        receiptPath: receipt.__file || 'unknown',
+        driftSources: uniqueStrings(issues.map(extractReceiptDriftSource)),
+        issues,
+      });
+    }
+    const lines = [
+      'SUPERVIBE_WORKFLOW_RECEIPT_RECOVERY',
+      `  CHECKED: ${receipts.length}`,
+      `  STALE: ${stale.length}`,
+    ];
+    for (const item of stale.slice(0, 5)) {
+      lines.push(`  STALE_RECEIPT: ${item.receiptId}`);
+      lines.push(`  RECEIPT_PATH: ${item.receiptPath}`);
+      lines.push(`  DRIFT_SOURCE: ${item.driftSources.join(',') || 'unknown'}`);
+      lines.push(`  REPAIR_COMMAND: node scripts/workflow-receipt.mjs reissue --receipt ${item.receiptPath}`);
+      lines.push('  PRUNE_COMMAND: node scripts/workflow-receipt.mjs prune-stale --apply');
+    }
+    lines.push(`  NEXT_SAFE_ACTION: ${stale.length ? 'inspect with node scripts/workflow-receipt.mjs inspect; mutate only with explicit reissue/prune-stale --apply/rebuild-ledger' : 'receipt drift clean'}`);
+    console.log(color(lines.join('\n'), stale.length ? 'yellow' : 'green'));
+  } catch (error) {
+    console.log(color(`SUPERVIBE_WORKFLOW_RECEIPT_RECOVERY\n  STATUS: unreadable\n  ERROR: ${error.message}\n  NEXT_SAFE_ACTION: run node scripts/workflow-receipt.mjs recovery-status`, 'yellow'));
+  }
+}
+
+function isReceiptDriftIssue(issue = '') {
+  return /output artifact (?:missing|hash mismatch)|artifact link .*missing|artifact link .*hash mismatch/i.test(String(issue || ''));
+}
+
+function extractReceiptDriftSource(issue = '') {
+  const text = String(issue || '');
+  const match = /:\s*(.+)$/.exec(text);
+  return (match ? match[1] : text).trim();
+}
+
+function uniqueStrings(values = []) {
+  return [...new Set(values.map((value) => String(value || '').trim()).filter(Boolean))];
+}
+
 function isOperationallyClosedWorkGraph(graph = {}) {
   const items = Array.isArray(graph.items) ? graph.items : [];
   const epic = items.find((item) => item.type === 'epic') || null;
@@ -181,6 +314,16 @@ function isOperationallyClosedWorkGraph(graph = {}) {
 
 function isTerminalWorkStatus(status) {
   return ['done', 'complete', 'completed', 'closed', 'skipped', 'skip', 'cancelled', 'canceled'].includes(String(status || '').trim().toLowerCase());
+}
+
+function formatInlineCounts(counts = {}) {
+  const entries = Object.entries(counts || {});
+  return entries.length ? entries.map(([key, value]) => `${key}=${value}`).join(', ') : 'none';
+}
+
+function formatInlineSubsystemCoverage(coverage = {}) {
+  const entries = Object.entries(coverage || {});
+  return entries.length ? entries.map(([key, value]) => `${key}=${value.entries || 0}`).join(', ') : 'none';
 }
 
 async function main() {
@@ -540,6 +683,14 @@ async function main() {
     const health = store.getGrammarHealth();
     const indexHealth = await collectIndexHealthFromStore(store, { rootDir: PROJECT_ROOT });
     const indexGate = evaluateIndexHealthGate(indexHealth, { strictGraph: args['strict-index-health'] });
+    const unresolvedDiagnostics = buildUnresolvedEdgeDiagnosticsFromStore(store);
+    const watcherDiagnostics = readWatcherDiagnostics({ rootDir: PROJECT_ROOT });
+    const graphReadinessUi = buildCodeGraphReadinessUi({
+      indexGate,
+      unresolvedDiagnostics,
+      watcherDiagnostics,
+      graphStats: s,
+    });
     const graphBuildState = store.db.prepare(`
       SELECT COUNT(*) AS total,
              SUM(CASE WHEN graph_version > 0 THEN 1 ELSE 0 END) AS current
@@ -604,6 +755,10 @@ async function main() {
     }
     console.log();
     console.log(color(formatIndexHealthGate(indexGate), indexGate.ready ? 'green' : 'yellow'));
+    console.log();
+    console.log(color(formatCodeGraphReadinessUi(graphReadinessUi), graphReadinessUi.ready ? 'green' : 'yellow'));
+    console.log();
+    console.log(color(formatUnresolvedEdgeDiagnostics(unresolvedDiagnostics), unresolvedDiagnostics.total > 0 ? 'yellow' : 'green'));
     if (args['index-health']) {
       console.log();
       console.log(color(formatIndexHealth(indexHealth), indexHealth.ok ? 'green' : 'yellow'));
@@ -630,6 +785,15 @@ async function main() {
     const memAge = Date.now() - statSync(memDbPath).mtimeMs;
     console.log(color(`✓ Memory: ${ms.totalEntries} entries, ${ms.uniqueTags} tags`, 'green'));
     console.log(color(`  Last update: ${ageStr(memAge)}`, 'dim'));
+    const memoryHealth = await buildMemoryHealthReport({ rootDir: PROJECT_ROOT, now: args.now || new Date().toISOString() });
+    const quality = memoryHealth.qualityGate || {};
+    const qualityColor = quality.pass ? 'green' : 'yellow';
+    console.log(color(`  Quality gate: ${quality.status || 'unknown'} (${memoryHealth.maturityScore}/10)`, qualityColor));
+    console.log(color(`  Freshness: ${formatInlineCounts(quality.freshness)}`, qualityColor));
+    console.log(color(`  Subsystem coverage: ${formatInlineSubsystemCoverage(quality.subsystemCoverage)}`, qualityColor));
+    console.log(color(`  Missing subsystems: ${(quality.missingSubsystems || []).join(', ') || 'none'}`, qualityColor));
+    console.log(color(`  Backfill candidates: ${quality.backfillCandidateCount ?? 'unknown'}`, qualityColor));
+    console.log(color(`  Repair: ${quality.repairCommand || 'none'}`, 'dim'));
   }
 
   console.log();
@@ -640,19 +804,20 @@ async function main() {
   console.log();
 
   // Watcher status (heartbeat-based)
-  const heartbeatPath = join(PROJECT_ROOT, '.supervibe', 'memory', '.watcher-heartbeat');
-  if (existsSync(heartbeatPath)) {
-    let ts;
-    try { ts = parseInt(readFileSync(heartbeatPath, 'utf8'), 10); } catch { ts = 0; }
-    const age = Date.now() - ts;
-    if (age < 15000) {
-      console.log(color(`✓ File watcher: running (heartbeat ${ageStr(age)})`, 'green'));
-    } else {
-      console.log(color(`⚠  File watcher: stale heartbeat (${ageStr(age)}); may have crashed`, 'yellow'));
-      console.log(color(`   Run \`${MEMORY_WATCH_COMMAND}\` to restart`, 'dim'));
-    }
+  const watcherDiagnostics = readWatcherDiagnostics({ rootDir: PROJECT_ROOT });
+  const heartbeat = watcherDiagnostics.heartbeat || {};
+  if (heartbeat.status === 'running') {
+    console.log(color(`✓ File watcher: running (heartbeat ${ageStr(heartbeat.ageMs || 0)})`, 'green'));
+  } else if (heartbeat.status === 'stale') {
+    console.log(color(`⚠  File watcher: stale heartbeat (${ageStr(heartbeat.ageMs || 0)}); freshness-sensitive readiness is blocked until restart or rebuild`, 'yellow'));
+    console.log(color(`   Run \`${MEMORY_WATCH_COMMAND}\` to restart`, 'dim'));
+    console.log(color(`   Rebuild stale indexes with \`${SOURCE_RAG_INDEX_COMMAND}\``, 'dim'));
+  } else if (heartbeat.status === 'corrupt') {
+    console.log(color(`! File watcher: corrupt heartbeat (${heartbeat.error || 'unknown error'}); restart watcher or rebuild indexes`, 'yellow'));
+    console.log(color(`   Run \`${MEMORY_WATCH_COMMAND}\` to restart`, 'dim'));
   } else {
     console.log(color(`○ File watcher: not running. Run \`${MEMORY_WATCH_COMMAND}\` for auto-reindex`, 'dim'));
+    console.log(color(`   Manual rebuild: \`${SOURCE_RAG_INDEX_COMMAND}\``, 'dim'));
   }
 
   // Preview servers
@@ -716,6 +881,13 @@ async function main() {
 
   console.log();
   await printActiveWorkGraphSummary();
+  printPlanLifecycleSummary();
+  printWorkflowReceiptRecoverySummary();
+  printWorktreeSessionRegistrySummary();
+
+  console.log();
+  const artifactSnapshotStatus = await buildArtifactSnapshotStatus({ rootDir: PROJECT_ROOT });
+  console.log(color(formatArtifactSnapshotStatus(artifactSnapshotStatus), artifactSnapshotStatus.mutationBlocked ? 'yellow' : 'green'));
 
   console.log();
   const watchState = await readWorkItemDaemonState(defaultWorkItemDaemonPath(PROJECT_ROOT));

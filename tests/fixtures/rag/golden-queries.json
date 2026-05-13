@@ -1,0 +1,178 @@
+{
+  "schemaVersion": 1,
+  "kind": "supervibe-retrieval-golden-query-set",
+  "description": "Golden retrieval cases for runtime gates, UI, memory, RAG, CodeGraph, atomizer, scheduler, receipts, and provider configs.",
+  "cases": [
+    {
+      "id": "user-gates-runtime-questions",
+      "area": "user-gates",
+      "query": "NEXT_STEP_HANDOFF questions must be runtime state, not doc-only text",
+      "actual": {
+        "memoryIds": ["active-workflow-user-gate-contract"],
+        "ragPaths": ["scripts/lib/supervibe-active-workflow-state.mjs"],
+        "graphSymbols": ["readActiveWorkflowState"],
+        "retrievalStages": ["memory", "rag", "codegraph", "rerank", "token-budget"],
+        "tokenBudget": { "estimatedTokens": 520 }
+      },
+      "expected": {
+        "memoryIds": ["active-workflow-user-gate-contract"],
+        "ragPaths": ["scripts/lib/supervibe-active-workflow-state.mjs"],
+        "graphSymbols": ["readActiveWorkflowState"],
+        "requiredStages": ["memory", "rag", "codegraph", "token-budget"],
+        "maxEstimatedTokens": 1200
+      }
+    },
+    {
+      "id": "ui-board-compact-kanban",
+      "area": "ui-board",
+      "query": "Supervibe UI work items and kanban should show compact epic task names",
+      "actual": {
+        "memoryIds": ["ui-kanban-compact-projection"],
+        "ragPaths": ["scripts/lib/supervibe-ui-server.mjs"],
+        "graphSymbols": ["buildWorkItemsProjection"],
+        "retrievalStages": ["memory", "rag", "codegraph", "rerank", "token-budget"],
+        "tokenBudget": { "estimatedTokens": 610 }
+      },
+      "expected": {
+        "memoryIds": ["ui-kanban-compact-projection"],
+        "ragPaths": ["scripts/lib/supervibe-ui-server.mjs"],
+        "graphSymbols": ["buildWorkItemsProjection"],
+        "requiredStages": ["memory", "rag", "codegraph", "token-budget"],
+        "maxEstimatedTokens": 1200
+      }
+    },
+    {
+      "id": "memory-quality-relationship-map",
+      "area": "memory",
+      "query": "project memory must expose source backed relationships freshness and backfill candidates",
+      "actual": {
+        "memoryIds": ["memory-relationship-quality-gate"],
+        "ragPaths": ["scripts/lib/supervibe-memory-backfill.mjs"],
+        "graphSymbols": ["buildMemoryRelationshipGraph"],
+        "retrievalStages": ["memory", "rag", "codegraph", "rerank", "token-budget"],
+        "tokenBudget": { "estimatedTokens": 640 }
+      },
+      "expected": {
+        "memoryIds": ["memory-relationship-quality-gate"],
+        "ragPaths": ["scripts/lib/supervibe-memory-backfill.mjs"],
+        "graphSymbols": ["buildMemoryRelationshipGraph"],
+        "requiredStages": ["memory", "rag", "codegraph", "token-budget"],
+        "maxEstimatedTokens": 1200
+      }
+    },
+    {
+      "id": "rag-chunk-metadata-contract",
+      "area": "rag",
+      "query": "RAG chunks need file role heading symbol hints artifact type and freshness",
+      "actual": {
+        "memoryIds": ["rag-chunk-metadata-contract"],
+        "ragPaths": ["scripts/lib/code-store.mjs"],
+        "graphSymbols": ["getChunkMetadataHealth"],
+        "retrievalStages": ["memory", "rag", "codegraph", "rerank", "token-budget"],
+        "tokenBudget": { "estimatedTokens": 700 }
+      },
+      "expected": {
+        "memoryIds": ["rag-chunk-metadata-contract"],
+        "ragPaths": ["scripts/lib/code-store.mjs"],
+        "graphSymbols": ["getChunkMetadataHealth"],
+        "requiredStages": ["memory", "rag", "codegraph", "token-budget"],
+        "maxEstimatedTokens": 1200
+      }
+    },
+    {
+      "id": "codegraph-query-centered-map",
+      "area": "codegraph",
+      "query": "CodeGraph tab should show selected query centered neighborhood and unresolved hotspots",
+      "actual": {
+        "memoryIds": ["codegraph-query-centered-map"],
+        "ragPaths": ["scripts/lib/supervibe-codegraph-ui-map.mjs"],
+        "graphSymbols": ["buildLinkedEvidencePacket"],
+        "retrievalStages": ["memory", "rag", "codegraph", "rerank", "token-budget"],
+        "tokenBudget": { "estimatedTokens": 690 }
+      },
+      "expected": {
+        "memoryIds": ["codegraph-query-centered-map"],
+        "ragPaths": ["scripts/lib/supervibe-codegraph-ui-map.mjs"],
+        "graphSymbols": ["buildLinkedEvidencePacket"],
+        "requiredStages": ["memory", "rag", "codegraph", "token-budget"],
+        "maxEstimatedTokens": 1200
+      }
+    },
+    {
+      "id": "atomizer-epic-task-grouping",
+      "area": "atomizer",
+      "query": "atomizer must preserve T55A suffixes group tasks into epics and avoid child explosion",
+      "actual": {
+        "memoryIds": ["atomizer-task-id-suffix-contract"],
+        "ragPaths": ["scripts/supervibe-loop.mjs"],
+        "graphSymbols": ["atomizePlan"],
+        "retrievalStages": ["memory", "rag", "codegraph", "rerank", "token-budget"],
+        "tokenBudget": { "estimatedTokens": 760 }
+      },
+      "expected": {
+        "memoryIds": ["atomizer-task-id-suffix-contract"],
+        "ragPaths": ["scripts/supervibe-loop.mjs"],
+        "graphSymbols": ["atomizePlan"],
+        "requiredStages": ["memory", "rag", "codegraph", "token-budget"],
+        "maxEstimatedTokens": 1200
+      }
+    },
+    {
+      "id": "scheduler-targeted-tests-parallelism",
+      "area": "scheduler",
+      "query": "loop scheduler should run targeted tests per task and full check only after all epics",
+      "actual": {
+        "memoryIds": ["loop-targeted-test-policy"],
+        "ragPaths": ["scripts/lib/autonomous-loop-scheduler.mjs"],
+        "graphSymbols": ["planExecutionWaves"],
+        "retrievalStages": ["memory", "rag", "codegraph", "rerank", "token-budget"],
+        "tokenBudget": { "estimatedTokens": 820 }
+      },
+      "expected": {
+        "memoryIds": ["loop-targeted-test-policy"],
+        "ragPaths": ["scripts/lib/autonomous-loop-scheduler.mjs"],
+        "graphSymbols": ["planExecutionWaves"],
+        "requiredStages": ["memory", "rag", "codegraph", "token-budget"],
+        "maxEstimatedTokens": 1200
+      }
+    },
+    {
+      "id": "receipt-recovery-runtime-proof",
+      "area": "receipts",
+      "query": "workflow receipt recovery should use runtime reissue prune stale and rebuild ledger",
+      "actual": {
+        "memoryIds": ["receipt-recovery-runtime-proof"],
+        "ragPaths": ["scripts/workflow-receipt.mjs"],
+        "graphSymbols": ["recoveryStatus"],
+        "retrievalStages": ["memory", "rag", "codegraph", "rerank", "token-budget"],
+        "tokenBudget": { "estimatedTokens": 710 }
+      },
+      "expected": {
+        "memoryIds": ["receipt-recovery-runtime-proof"],
+        "ragPaths": ["scripts/workflow-receipt.mjs"],
+        "graphSymbols": ["recoveryStatus"],
+        "requiredStages": ["memory", "rag", "codegraph", "token-budget"],
+        "maxEstimatedTokens": 1200
+      }
+    },
+    {
+      "id": "provider-config-power-presets",
+      "area": "provider-configs",
+      "query": "provider config doctor should expose Codex Claude Gemini Cursor OpenCode power presets safely",
+      "actual": {
+        "memoryIds": ["provider-config-power-presets"],
+        "ragPaths": ["scripts/lib/supervibe-provider-config-doctor.mjs"],
+        "graphSymbols": ["buildProviderConfigDoctorReport"],
+        "retrievalStages": ["memory", "rag", "codegraph", "rerank", "token-budget"],
+        "tokenBudget": { "estimatedTokens": 780 }
+      },
+      "expected": {
+        "memoryIds": ["provider-config-power-presets"],
+        "ragPaths": ["scripts/lib/supervibe-provider-config-doctor.mjs"],
+        "graphSymbols": ["buildProviderConfigDoctorReport"],
+        "requiredStages": ["memory", "rag", "codegraph", "token-budget"],
+        "maxEstimatedTokens": 1200
+      }
+    }
+  ]
+}

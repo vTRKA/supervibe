@@ -28,16 +28,23 @@ const ACTIVE_PROOF_GATE_IDS = Object.freeze([
   "task-graph-runtime-maturity",
 ]);
 
+const ACTIVE_GRAPH_EPIC_STATUSES = new Set(["open", "active", "ready", "claimed", "blocked", "deferred", "review"]);
+const TERMINAL_GRAPH_EPIC_STATUSES = new Set(["closed", "complete", "completed", "done", "skipped", "cancelled"]);
+
 export async function buildStrictReleaseGateReport(rootDir = process.cwd(), options = {}) {
   const resolvedRoot = resolve(rootDir);
-  const requireActiveProof = options.requireActiveProof !== false;
+  const activeWorkflowResult = validateActiveWorkflows(resolvedRoot, {
+    strict: true,
+    pluginRoot: options.pluginRoot,
+  });
+  const requireActiveProof = resolveActiveProofRequirement(options.requireActiveProof, activeWorkflowResult);
   const maturityScope = requireActiveProof ? "active-workflow-readiness" : "global-capability";
   const gates = [];
 
-  gates.push(activeWorkflowGate(resolvedRoot, { requireActiveProof, pluginRoot: options.pluginRoot }));
+  gates.push(activeWorkflowGate(resolvedRoot, { requireActiveProof, result: activeWorkflowResult }));
   gates.push(await strictPlanGate(resolvedRoot, { requireActiveProof }));
   gates.push(await strictPlanReviewGate(resolvedRoot, { requireActiveProof }));
-  gates.push(await trustedEpicCompletionGate(resolvedRoot));
+  gates.push(await trustedEpicCompletionGate(resolvedRoot, { requireActiveProof }));
   gates.push(taskGraphRuntimeMaturityGate(resolvedRoot, { requireActiveProof }));
   gates.push(designWorkflowReportGate(resolvedRoot, { requireActiveProof, maturityScope }));
   gates.push(await tokenStrictGate(resolvedRoot, { workflowRunId: options.workflowRunId }));
@@ -67,6 +74,15 @@ export async function buildStrictReleaseGateReport(rootDir = process.cwd(), opti
   };
 }
 
+function resolveActiveProofRequirement(value, activeWorkflowResult = {}) {
+  if (value === true) return true;
+  if (value === false) return false;
+  return Boolean(
+    Number(activeWorkflowResult.activeWorkflows || 0) > 0
+      || activeWorkflowResult.resume?.canResume === true,
+  );
+}
+
 export function formatStrictReleaseGateReport(report = {}) {
   const lines = [
     "SUPERVIBE_STRICT_RELEASE_GATE",
@@ -90,11 +106,8 @@ export function formatStrictReleaseGateReport(report = {}) {
   return lines.join("\n");
 }
 
-function activeWorkflowGate(rootDir, { requireActiveProof, pluginRoot } = {}) {
-  const result = validateActiveWorkflows(rootDir, {
-    strict: true,
-    pluginRoot,
-  });
+function activeWorkflowGate(rootDir, { requireActiveProof, result } = {}) {
+  result ||= validateActiveWorkflows(rootDir, { strict: true });
   const stage = result.resume?.stage || "none";
   const releaseReady = !requireActiveProof || stage === "release-ready";
   const pass = requireActiveProof
@@ -171,10 +184,24 @@ async function strictPlanReviewGate(rootDir, { requireActiveProof } = {}) {
   };
 }
 
-async function trustedEpicCompletionGate(rootDir) {
-  const files = walkFiles(join(rootDir, ".supervibe", "memory", "work-items"))
-    .filter((file) => file.endsWith("graph.json") || file.endsWith(".work-item-graph.json"));
+async function trustedEpicCompletionGate(rootDir, { requireActiveProof } = {}) {
+  if (!requireActiveProof) {
+    return {
+      id: "trusted-epic-completion",
+      title: "Trusted active epic completion",
+      pass: true,
+      required: false,
+      scope: "global-capability",
+      summary: "active workflow completion proof is not required when no workflow is active or resumable",
+      blockers: [],
+      evidence: [],
+      repairCommand: "npm run validate:epic-completion:trusted",
+      result: { pass: true, results: [] },
+    };
+  }
+  const files = discoverActiveWorkItemGraphFiles(rootDir);
   const trustedReceiptIds = trustedReceiptIdsForStrictGate(rootDir);
+  const trustedGraphReceiptIdsByGraphId = trustedGraphReceiptIdsByGraphForStrictGate(rootDir);
   if (files.length === 0) {
     return {
       id: "trusted-epic-completion",
@@ -198,8 +225,9 @@ async function trustedEpicCompletionGate(rootDir) {
     allowDryRunEvidence: false,
     requireTrustedEvidence: true,
     trustedReceiptIds,
+    trustedGraphReceiptIdsByGraphId,
     disallowLegacyEvidence: true,
-    requireEpicClosed: true,
+    requireEpicClosed: false,
   });
   const failing = result.results.filter((item) => item.report.pass !== true);
   return {
@@ -215,6 +243,30 @@ async function trustedEpicCompletionGate(rootDir) {
     repairCommand: "npm run validate:epic-completion:trusted",
     result,
   };
+}
+
+function discoverActiveWorkItemGraphFiles(rootDir) {
+  return walkFiles(join(rootDir, ".supervibe", "memory", "work-items"))
+    .filter((file) => file.endsWith("graph.json") || file.endsWith(".work-item-graph.json"))
+    .filter((file) => isActiveWorkItemGraphFile(file));
+}
+
+function isActiveWorkItemGraphFile(file) {
+  let graph = null;
+  try {
+    graph = JSON.parse(readFileSync(file, "utf8"));
+  } catch {
+    return true;
+  }
+  const epic = (graph.items || []).find((item) => item.type === "epic")
+    || (graph.items || []).find((item) => item.itemId === graph.epicId || item.itemId === graph.graph_id);
+  const status = String(epic?.status || graph.status || "").toLowerCase();
+  if (TERMINAL_GRAPH_EPIC_STATUSES.has(status)) return false;
+  if (ACTIVE_GRAPH_EPIC_STATUSES.has(status)) return true;
+  return [...(graph.items || []), ...(graph.tasks || [])].some((item) => {
+    if (item.type === "epic") return false;
+    return ACTIVE_GRAPH_EPIC_STATUSES.has(String(item.status || item.effectiveStatus || "").toLowerCase());
+  });
 }
 
 function taskGraphRuntimeMaturityGate(rootDir, { requireActiveProof } = {}) {
@@ -329,6 +381,22 @@ function trustedReceiptIdsForStrictGate(rootDir) {
     if (trust.pass) trusted.push(String(receipt.receiptId));
   }
   return trusted;
+}
+
+function trustedGraphReceiptIdsByGraphForStrictGate(rootDir) {
+  const out = {};
+  for (const receipt of readWorkflowReceipts(rootDir)) {
+    if (!receipt?.receiptId) continue;
+    const graphId = receipt.graphId || receipt.workItemBinding?.graphId || null;
+    if (!graphId) continue;
+    const taskId = receipt.taskId || receipt.workItemId || receipt.graphTaskId || receipt.workItemBinding?.taskId || null;
+    if (taskId) continue;
+    const trust = validateWorkflowReceiptTrust(rootDir, receipt);
+    if (!trust.pass) continue;
+    if (!out[graphId]) out[graphId] = [];
+    out[graphId].push(String(receipt.receiptId));
+  }
+  return out;
 }
 
 function walkFiles(dir) {

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { access, mkdir, readFile, readdir } from "node:fs/promises";
+import { access, copyFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -46,10 +46,20 @@ import { formatAssignmentExplanation } from "./lib/supervibe-assignment-explaine
 import { buildExecutionWaves, formatWaveStatus } from "./lib/supervibe-wave-controller.mjs";
 import { createHappyPathPlan, formatHappyPathPlan } from "./lib/supervibe-happy-path.mjs";
 import { formatEpicCompletionReport, validateEpicCompletion } from "./lib/supervibe-epic-completion-validator.mjs";
+import { createPreLoopSummaryModel } from "./lib/supervibe-ui-server.mjs";
 import {
   readWorkflowReceipts,
   validateWorkflowReceiptTrust,
 } from "./lib/supervibe-workflow-receipt-runtime.mjs";
+import {
+  buildEvidencePacket,
+  formatEvidencePacketSummary,
+  hasEvidencePacket,
+} from "./lib/supervibe-evidence-packet.mjs";
+import {
+  formatTaskBudgetPolicySummary,
+  summarizeTaskBudgetPolicy,
+} from "./lib/supervibe-task-budget-policy.mjs";
 import { PRESET_NAMES, formatPresetSummary, selectWorkerPreset } from "./lib/supervibe-worker-reviewer-presets.mjs";
 import { checkpointDiagnostics, formatCheckpointDiagnostics, readAgentCheckpoint, resumeAgentCheckpoint } from "./lib/supervibe-agent-checkpoints.mjs";
 import {
@@ -61,13 +71,67 @@ import {
   upsertWorktreeSession,
   upsertWorktreeSessionFile,
   validateExistingWorktree,
+  writeWorktreeSessionRegistry,
 } from "./lib/supervibe-worktree-session-manager.mjs";
 import {
   formatLoopProviderCapabilityMatrix,
   getLoopProviderCapabilityMatrix,
 } from "./lib/autonomous-loop-tool-adapters.mjs";
+import { loadProviderCapabilities } from "./lib/supervibe-provider-config-doctor.mjs";
 import { startBackgroundNodeScript } from "./lib/supervibe-process-manager.mjs";
 import { validatePlanReviewGateForPlan } from "./validate-plan-review-artifacts.mjs";
+
+const SEMANTIC_EPIC_GROUPING_VERSION = 1;
+const DEFAULT_SEMANTIC_EPIC_MAX_TASKS = 25;
+const DEFAULT_AGENT_STALL_TIMEOUT_MINUTES = 20;
+const DEFAULT_AGENT_STALL_MAX_RETRIES = 2;
+const SEMANTIC_EPIC_BUCKETS = Object.freeze([
+  {
+    key: "ui",
+    title: "Supervibe UI",
+    keywords: ["ui", "interface", "screen", "tab", "dashboard", "work item", "work items", "kanban", "loop run", "browser", "design", "drawer"],
+  },
+  {
+    key: "memory",
+    title: "Project Memory",
+    keywords: ["memory", "decision", "learning", "recall", "context pack", "project memory", "linked evidence", "knowledge"],
+  },
+  {
+    key: "rag",
+    title: "Code RAG",
+    keywords: ["rag", "retrieval", "chunk", "metadata", "embedding", "fts", "golden query", "golden queries", "code-store", "code store", "search-code"],
+  },
+  {
+    key: "codegraph",
+    title: "CodeGraph",
+    keywords: ["codegraph", "code graph", "symbol", "symbols", "edge", "edges", "graph coverage", "relationship map", "graph map"],
+  },
+  {
+    key: "loop",
+    title: "Loop Runtime And Scheduler",
+    keywords: ["loop", "scheduler", "execution wave", "wave", "claim", "lease", "heartbeat", "concurrency", "parallel", "agent", "subagent", "worktree"],
+  },
+  {
+    key: "receipts",
+    title: "Receipts And Runtime Proof",
+    keywords: ["receipt", "receipts", "workflow-receipt", "ledger", "trusted evidence", "proof", "reissue", "rebuild"],
+  },
+  {
+    key: "providers",
+    title: "Provider Configs",
+    keywords: ["provider", "provider preset", "codex config", "subagent limit", "codex", "claude", "gemini", "cursor", "opencode", "config", "preset", "toml", "agents.md", "subagents", "hooks", "goals"],
+  },
+  {
+    key: "plan-lifecycle",
+    title: "Plan Lifecycle",
+    keywords: ["plan", "archive", "stale plan", "current plan", "artifact", "lifecycle", "atomize", "atomization", "handoff"],
+  },
+  {
+    key: "tests",
+    title: "Verification And Tests",
+    keywords: ["test", "tests", "verification", "smoke", "golden", "fixture", "validate", "npm run", "node --test"],
+  },
+]);
 
 function parseArgs(argv) {
   const args = { _: [] };
@@ -140,18 +204,22 @@ function parseArgs(argv) {
     "validate-completion",
     "completion-status",
     "close-eligible",
+    "require-release-full-check",
+    "allow-missing-release-full-check",
     "allow-dry-run-evidence",
     "require-trusted-evidence",
     "disallow-legacy-evidence",
     "allow-legacy-evidence",
     "allow-open-epic",
     "no-evidence-required",
+    "stall-check",
     "non-production",
     "indefinite",
     "auto-ui",
     "auto-ui-dry-run",
     "no-auto-ui",
     "allow-unverified-plan-review",
+    "pre-loop-summary",
   ]);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -175,6 +243,229 @@ function parseArgs(argv) {
     }
   }
   return args;
+}
+
+function isTenOfTenWaveRequest({ tasks = [], source = {}, planPath = "" } = {}) {
+  const text = [
+    planPath,
+    source.planPath,
+    source.sourcePath,
+    source.content,
+    ...(tasks || []).map((task) => `${task.id || ""} ${task.title || ""} ${task.goal || ""} ${task.acceptance || ""} ${(task.acceptanceCriteria || []).join(" ")}`),
+  ].join(" ").toLowerCase();
+  return /\b10\s*\/\s*10\b|\bten\s*of\s*ten\b/.test(text);
+}
+
+function applySemanticEpicGroupingToGraph(graph = {}, options = {}) {
+  const items = Array.isArray(graph.items) ? graph.items : [];
+  const candidates = items.filter((item) => isSemanticEpicCandidate(item));
+  const maxTasksPerEpic = positiveInteger(options.maxTasksPerEpic, DEFAULT_SEMANTIC_EPIC_MAX_TASKS);
+  const semanticEpics = groupTasksIntoSemanticEpics(candidates, {
+    idPrefix: "semantic-epic",
+    maxTasksPerEpic,
+  });
+  const groupByTaskId = new Map();
+  for (const epic of semanticEpics) {
+    for (const taskId of epic.taskIds) groupByTaskId.set(taskId, epic.id);
+  }
+  for (const item of candidates) {
+    const taskId = semanticTaskId(item);
+    if (!taskId || !groupByTaskId.has(taskId)) continue;
+    item.executionHints = {
+      ...(item.executionHints || {}),
+      semanticEpicId: groupByTaskId.get(taskId),
+    };
+  }
+  const averageConfidence = semanticEpics.length
+    ? Number((semanticEpics.reduce((sum, epic) => sum + epic.confidence, 0) / semanticEpics.length).toFixed(2))
+    : 0;
+  graph.metadata = {
+    ...(graph.metadata || {}),
+    semanticEpicGrouping: {
+      version: SEMANTIC_EPIC_GROUPING_VERSION,
+      strategy: "supervibe-keyword-semantic-buckets",
+      maxTasksPerEpic,
+      taskCount: candidates.length,
+      epicCount: semanticEpics.length,
+      averageConfidence,
+    },
+    semanticEpics,
+  };
+  return graph;
+}
+
+function groupTasksIntoSemanticEpics(tasks = [], options = {}) {
+  const maxTasksPerEpic = positiveInteger(options.maxTasksPerEpic, DEFAULT_SEMANTIC_EPIC_MAX_TASKS);
+  const idPrefix = options.idPrefix || "semantic-epic";
+  const grouped = new Map();
+
+  for (const [index, task] of tasks.entries()) {
+    const classification = classifySemanticTask(task);
+    const key = classification.bucket.key;
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        bucket: classification.bucket,
+        tasks: [],
+        keywordCounts: new Map(),
+      });
+    }
+    const group = grouped.get(key);
+    const taskId = semanticTaskId(task) || `${key}-task-${index + 1}`;
+    group.tasks.push({ task, taskId, classification, sourceOrder: index });
+    for (const keyword of classification.matchedKeywords) {
+      group.keywordCounts.set(keyword, (group.keywordCounts.get(keyword) || 0) + 1);
+    }
+  }
+
+  const epics = [];
+  const orderedGroups = [...grouped.values()].sort((a, b) => {
+    const orderA = SEMANTIC_EPIC_BUCKETS.findIndex((bucket) => bucket.key === a.bucket.key);
+    const orderB = SEMANTIC_EPIC_BUCKETS.findIndex((bucket) => bucket.key === b.bucket.key);
+    return orderA - orderB || a.bucket.title.localeCompare(b.bucket.title);
+  });
+
+  for (const group of orderedGroups) {
+    const chunks = chunkArray(group.tasks.sort((a, b) => a.sourceOrder - b.sourceOrder), maxTasksPerEpic);
+    for (const [chunkIndex, chunk] of chunks.entries()) {
+      const topKeywords = [...group.keywordCounts.entries()]
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .slice(0, 4)
+        .map(([keyword]) => keyword);
+      const suffix = chunks.length > 1 ? `-${chunkIndex + 1}` : "";
+      const confidenceBase = chunk.reduce((sum, entry) => sum + entry.classification.confidence, 0) / Math.max(1, chunk.length);
+      const sizeBonus = chunk.length >= 3 ? 0.04 : 0;
+      const confidence = Number(clamp(confidenceBase + sizeBonus, 0.5, 0.95).toFixed(2));
+      epics.push({
+        id: `${idPrefix}-${group.bucket.key}${suffix}`,
+        type: "epic",
+        semanticKey: group.bucket.key,
+        title: chunks.length > 1 ? `${group.bucket.title} ${chunkIndex + 1}` : group.bucket.title,
+        taskIds: chunk.map((entry) => entry.taskId),
+        taskCount: chunk.length,
+        groupingReason: topKeywords.length
+          ? `Matched semantic signals: ${topKeywords.join(", ")}.`
+          : `Grouped by fallback ${group.bucket.title} bucket because task text lacked stronger domain markers.`,
+        confidence,
+      });
+    }
+  }
+
+  return epics;
+}
+
+function classifySemanticTask(task = {}) {
+  const text = semanticTaskText(task);
+  let best = null;
+  for (const bucket of SEMANTIC_EPIC_BUCKETS) {
+    const matchedKeywords = bucket.keywords.filter((keyword) => semanticKeywordMatches(text, keyword));
+    const score = matchedKeywords.reduce((sum, keyword) => sum + (keyword.includes(" ") ? 3 : 1), 0);
+    if (!best || score > best.score) best = { bucket, score, matchedKeywords };
+  }
+  if (!best || best.score === 0) {
+    best = {
+      bucket: { key: "implementation", title: "Implementation", keywords: [] },
+      score: 0,
+      matchedKeywords: [],
+    };
+  }
+  const confidence = best.score > 0
+    ? clamp(0.65 + (best.score * 0.04), 0.65, 0.91)
+    : 0.56;
+  return { ...best, confidence };
+}
+
+function semanticTaskText(task = {}) {
+  const writeScope = Array.isArray(task.writeScope)
+    ? task.writeScope.map((entry) => typeof entry === "string" ? entry : [entry.action, entry.path].filter(Boolean).join(" ")).join(" ")
+    : "";
+  return normalizeSemanticText([
+    task.itemId,
+    task.id,
+    task.title,
+    task.goal,
+    task.category,
+    task.component,
+    task.owner,
+    task.requiredAgentCapability,
+    task.labels?.join?.(" "),
+    task.targetFiles?.join?.(" "),
+    task.filesTouched?.join?.(" "),
+    task.fileImpact?.join?.(" "),
+    writeScope,
+    task.acceptanceCriteria?.join?.(" "),
+    task.contractChecklist?.join?.(" "),
+    task.executionHints?.sourceTaskRef,
+    task.executionHints?.requiredAgentCapability,
+    task.executionHints?.contractRows?.join?.(" "),
+    task.executionHints?.scopeIds?.join?.(" "),
+  ].filter(Boolean).join(" "));
+}
+
+function semanticKeywordMatches(text, keyword) {
+  return text.includes(normalizeSemanticText(keyword));
+}
+
+function normalizeSemanticText(value = "") {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[\\/_.:-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isSemanticEpicCandidate(item = {}) {
+  if (["epic", "gate", "followup"].includes(item.type)) return false;
+  return Boolean(semanticTaskId(item));
+}
+
+function taskDeclaredWriteSet(task = {}) {
+  return [...new Set([
+    ...(task.targetFiles || []),
+    ...(task.filesTouched || []),
+    ...(task.fileImpact || []),
+    ...(task.writeScope || []).map((entry) => entry.path || entry),
+  ].map(normalizeTaskPath).filter(Boolean))].sort();
+}
+
+function createAssignmentWriteSetLock(task = {}, writeSet = taskDeclaredWriteSet(task)) {
+  const taskId = task.id || task.taskId || task.itemId || "unknown-task";
+  const lockId = `write-set-${String(taskId).replace(/[^A-Za-z0-9_-]+/g, "-")}`;
+  return {
+    lockId,
+    taskId,
+    status: "reserved",
+    owner: "supervibe-loop",
+    writeSet,
+    recoverCommand: `/supervibe-loop --recover-stale-lock ${lockId}`,
+  };
+}
+
+function loadWriteSetLocksFromArgs(args = {}) {
+  if (Array.isArray(args.writeSetLocks)) return args.writeSetLocks;
+  return [];
+}
+
+function semanticTaskId(task = {}) {
+  return String(task.itemId || task.id || task.ref || "").trim();
+}
+
+function positiveInteger(value, fallback) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : fallback;
+}
+
+function chunkArray(items = [], size = DEFAULT_SEMANTIC_EPIC_MAX_TASKS) {
+  const chunks = [];
+  for (let index = 0; index < items.length; index += size) chunks.push(items.slice(index, index + size));
+  return chunks;
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function normalizeTaskPath(path = "") {
+  return String(path || "").replace(/\\/g, "/").replace(/^\.\//, "").trim();
 }
 
 function planReviewLookupPath(rootDir, planPath) {
@@ -355,22 +646,190 @@ async function main() {
   if (args["plan-waves"]) {
     const { tasks, source } = await loadPlanTasksWithSource(resolve(rootDir, args["plan-waves"]), { rootDir });
     for (const warning of source.warnings || []) console.log(warning);
-    const plan = buildExecutionWaves({ tasks, maxConcurrency: args["max-concurrency"] || 3 });
+    const schedulerPolicy = resolveSchedulerPolicy({ args, rootDir });
+    const plan = buildExecutionWaves({
+      tasks,
+      maxConcurrency: schedulerPolicy.effectiveMaxConcurrency,
+      requireWriteSet: true,
+      writeSetLocks: loadWriteSetLocksFromArgs(args, { rootDir }),
+    });
+    plan.schedulerPolicy = schedulerPolicy;
+    plan.semanticEpics = groupTasksIntoSemanticEpics(tasks, {
+      maxTasksPerEpic: args["semantic-epic-max-tasks"] || DEFAULT_SEMANTIC_EPIC_MAX_TASKS,
+    });
+    const wavePacket = buildEvidencePacket({
+      rootDir,
+      task: {
+        id: source.planPath || args["plan-waves"],
+        goal: tasks.map((task) => task.goal || task.title || task.id).join(" "),
+      },
+      commandId: "supervibe-loop-plan-waves",
+    });
+    plan.evidencePacket = wavePacket;
+    if (!hasEvidencePacket(wavePacket) && isTenOfTenWaveRequest({ tasks, source, planPath: args["plan-waves"] })) {
+      plan.status = "paused";
+      plan.blockers = [...(plan.blockers || []), "missing-evidence-packet"];
+      if (plan.currentWave) plan.currentWave.status = "paused";
+    }
     console.log(formatWaveStatus(plan));
+    console.log(formatSchedulerPolicy(schedulerPolicy));
+    console.log(formatSchedulerDecisions(plan));
+    console.log(formatEvidencePacketSummary(wavePacket));
     return;
   }
 
   if (args["assign-ready"]) {
     const state = args.file ? JSON.parse(await readFile(resolve(rootDir, args.file), "utf8")) : { tasks: [] };
     const tasks = (state.tasks || []).filter((task) => ["open", "ready", "pending"].includes(task.status || "open"));
-    const dispatches = tasks.map((task) => dispatchTask(task, { useCapabilityRegistry: true }));
+    const dispatches = tasks.map((task) => {
+      const evidencePacket = buildEvidencePacket({ rootDir, task, commandId: "supervibe-loop-assign-ready" });
+      const writeSet = taskDeclaredWriteSet(task);
+      const verificationPolicy = createTaskLocalVerificationPolicy(task);
+      if (writeSet.length === 0) {
+        return {
+          taskId: task.id,
+          status: "blocked",
+          assignmentBlocked: true,
+          blockedReason: "missing write-set declaration before worker assignment",
+          writeSet,
+          writeSetLock: null,
+          evidencePacket,
+          verificationPolicy,
+          workerAssignmentPayload: null,
+          reviewerAssignmentPayload: null,
+          assignmentExplanation: null,
+        };
+      }
+      const writeSetLock = createAssignmentWriteSetLock(task, writeSet);
+      const dispatch = dispatchTask(task, { useCapabilityRegistry: true });
+      const assignmentExplanation = attachVerificationPolicyToExplanation(dispatch.assignmentExplanation, verificationPolicy);
+      return {
+        ...dispatch,
+        status: "assigned",
+        writeSet,
+        writeSetLock,
+        evidencePacket,
+        verificationPolicy,
+        assignmentExplanation,
+        workerAssignmentPayload: {
+          agentId: dispatch.primaryAgentId,
+          taskId: dispatch.taskId,
+          writeSet,
+          writeSetLock,
+          evidencePacket,
+          verificationPolicy,
+          verificationCommands: verificationPolicy.targetedCommands,
+          deferredFullVerificationCommands: verificationPolicy.deferredFullCommands,
+        },
+        reviewerAssignmentPayload: {
+          agentId: dispatch.reviewerAgentId,
+          taskId: dispatch.taskId,
+          writeSet,
+          writeSetLock,
+          evidencePacket,
+          verificationPolicy,
+          verificationCommands: verificationPolicy.targetedCommands,
+          deferredFullVerificationCommands: verificationPolicy.deferredFullCommands,
+        },
+      };
+    });
     if (args.json) console.log(JSON.stringify(dispatches, null, 2));
     else {
       console.log("SUPERVIBE_ASSIGN_READY");
       for (const dispatch of dispatches) {
-        console.log(args.explain ? formatAssignmentExplanation(dispatch.assignmentExplanation) : `${dispatch.taskId}: ${dispatch.primaryAgentId} -> ${dispatch.reviewerAgentId}`);
+        if (dispatch.assignmentBlocked) {
+          console.log(`${dispatch.taskId}: blocked -> ${dispatch.blockedReason}`);
+        } else {
+          console.log(args.explain
+            ? [formatAssignmentExplanation(dispatch.assignmentExplanation), formatTaskLocalVerificationPolicy(dispatch.verificationPolicy)].join("\n")
+            : `${dispatch.taskId}: ${dispatch.primaryAgentId} -> ${dispatch.reviewerAgentId}`);
+        }
+        console.log(formatEvidencePacketSummary(dispatch.evidencePacket));
       }
     }
+    return;
+  }
+
+  if (args.heartbeat) {
+    if (!args.file) throw new Error("--heartbeat requires --file <graph.json>");
+    const graphPath = resolve(rootDir, args.file);
+    const result = await updateAgentHeartbeatFile(graphPath, {
+      itemId: args.heartbeat,
+      owner: args.owner || args.actor || "agent",
+      hostInvocationId: runtimeInvocationIdFromArgs(args),
+      now: args.now || new Date().toISOString(),
+      progressSignature: args["progress-signature"] || args.progress || null,
+      status: args.status || null,
+    });
+    console.log("SUPERVIBE_AGENT_HEARTBEAT");
+    console.log(`ITEM: ${result.itemId}`);
+    console.log(`OWNER: ${result.owner}`);
+    console.log(`HOST_INVOCATION_ID: ${result.hostInvocationId}`);
+    console.log(`HEARTBEAT_AT: ${result.heartbeatAt}`);
+    if (result.progressSignature) console.log(`PROGRESS_SIGNATURE: ${result.progressSignature}`);
+    console.log(`GRAPH: ${graphPath}`);
+    if (result.backupPath) console.log(`BACKUP: ${result.backupPath}`);
+    return;
+  }
+
+  if (args["stall-check"]) {
+    if (!args.file) throw new Error("--stall-check requires --file <graph.json>");
+    const graphPath = resolve(rootDir, args.file);
+    const result = await markStalledAgentsFile(graphPath, {
+      now: args.now || new Date().toISOString(),
+      staleAfterMinutes: args["stale-after-minutes"] || args["stall-timeout-minutes"],
+      maxRetries: args["max-stall-retries"],
+      owner: args.owner || args.actor || "loop",
+    });
+    console.log("SUPERVIBE_AGENT_STALL_CHECK");
+    console.log(`STALLED: ${result.stalled.length}`);
+    console.log(`RETRYABLE: ${result.retryable}`);
+    console.log(`MANUAL_INTERVENTION: ${result.manualIntervention}`);
+    for (const stalled of result.stalled) {
+      console.log(`TASK: ${stalled.itemId} OWNER: ${stalled.owner || "unknown"} AGE_MINUTES: ${stalled.heartbeatAgeMinutes} RECOVERY: ${stalled.recoveryAction}`);
+    }
+    console.log(`GRAPH: ${graphPath}`);
+    if (result.backupPath) console.log(`BACKUP: ${result.backupPath}`);
+    return;
+  }
+
+  if (args["recover-stalled"]) {
+    if (!args.file) throw new Error("--recover-stalled requires --file <graph.json>");
+    const itemId = String(args["recover-stalled"] || "").trim();
+    if (!itemId) throw new Error("--recover-stalled requires an item id");
+    const graphPath = resolve(rootDir, args.file);
+    const result = await recoverStalledAgentFile(graphPath, {
+      itemId,
+      now: args.now || new Date().toISOString(),
+      owner: args.owner || args.actor || "loop",
+    });
+    console.log("SUPERVIBE_AGENT_STALL_RECOVERY");
+    console.log(`ITEM: ${result.itemId}`);
+    console.log(`RECOVERED: ${result.recovered}`);
+    console.log(`RETRY_COUNT: ${result.retryCount}`);
+    console.log(`STATUS: ${result.status}`);
+    console.log(`GRAPH: ${graphPath}`);
+    if (result.backupPath) console.log(`BACKUP: ${result.backupPath}`);
+    return;
+  }
+
+  if (args["recover-stale-lock"]) {
+    const lockId = String(args["recover-stale-lock"] || "").trim();
+    if (!lockId) throw new Error("--recover-stale-lock requires a lock id");
+    if (!args.file) throw new Error("--recover-stale-lock requires --file <state.json>");
+    const filePath = resolve(rootDir, args.file);
+    const state = JSON.parse(await readFile(filePath, "utf8"));
+    const before = Array.isArray(state.writeSetLocks) ? state.writeSetLocks : [];
+    const after = before.filter((lock) => {
+      const candidateId = lock.lockId || lock.id;
+      return !(candidateId === lockId && String(lock.status || "").toLowerCase() === "stale");
+    });
+    state.writeSetLocks = after;
+    await writeFile(filePath, JSON.stringify(state, null, 2), "utf8");
+    console.log("SUPERVIBE_WRITE_SET_LOCK_RECOVERY");
+    console.log(`LOCK: ${lockId}`);
+    console.log(`REMOVED: ${before.length - after.length}`);
+    console.log(`FILE: ${filePath}`);
     return;
   }
 
@@ -441,6 +900,22 @@ async function main() {
     const ordered = orderReadyWorkItems(ready, { graph });
     console.log("SUPERVIBE_WORK_ITEM_PRIORITY");
     for (const item of ordered) console.log(formatPriorityExplanation(item));
+    return;
+  }
+
+  if (args["pre-loop-summary"]) {
+    const graphPath = args.file
+      ? resolve(rootDir, args.file)
+      : await resolveActiveWorkItemGraphPath({ rootDir });
+    if (!graphPath) throw new Error("pre-loop-summary requires --file <graph.json> or an active work graph");
+    const graph = JSON.parse(await readFile(graphPath, "utf8"));
+    const index = createWorkItemIndex({ graph, claims: graph.claims || [], gates: graph.gates || [], evidence: graph.evidence || [] });
+    const summary = withTaskBudgetPolicySummary(createPreLoopSummaryModel({ graph, index }), graph);
+    if (args.json) {
+      console.log(JSON.stringify({ graphPath, ...summary }, null, 2));
+    } else {
+      console.log(formatPreLoopSummary(summary, graphPath));
+    }
     return;
   }
 
@@ -544,6 +1019,9 @@ async function main() {
           trustedReceiptIds: trustedReceiptIdsForValidation(rootDir, {
             explicitReceiptIds: splitCsv(args["trusted-receipts"]),
           }),
+          trustedGraphReceiptIds: trustedGraphReceiptIdsForValidation(rootDir, graph, {
+            explicitReceiptIds: splitCsv(args["trusted-receipts"]),
+          }),
           disallowLegacyEvidence: Boolean(args["disallow-legacy-evidence"]),
           allowLegacyEvidence: Boolean(args["allow-legacy-evidence"]),
           requireEpicClosed: false,
@@ -552,6 +1030,14 @@ async function main() {
           console.log(formatEpicCompletionReport(report));
           console.log(`GRAPH: ${graphPath}`);
           console.log("NEXT_ACTION: fix completion blockers or rerun with --force after explicit user override");
+          process.exitCode = 1;
+          return;
+        }
+        const releaseFullCheckGate = createReleaseFullCheckGate(graph, workItemAction.verificationEvidence);
+        if (!args["non-production"] && !args["allow-missing-release-full-check"] && !releaseFullCheckGate.pass) {
+          console.log(formatReleaseFullCheckGate(releaseFullCheckGate));
+          console.log(`GRAPH: ${graphPath}`);
+          console.log("NEXT_ACTION: run npm run check at the final release gate, record verification evidence, then close/archive the epic");
           process.exitCode = 1;
           return;
         }
@@ -857,12 +1343,21 @@ async function main() {
       trustedReceiptIds: trustedReceiptIdsForValidation(rootDir, {
         explicitReceiptIds: splitCsv(args["trusted-receipts"]),
       }),
+      trustedGraphReceiptIds: trustedGraphReceiptIdsForValidation(rootDir, graph, {
+        explicitReceiptIds: splitCsv(args["trusted-receipts"]),
+      }),
       disallowLegacyEvidence: Boolean(args["disallow-legacy-evidence"]),
       allowLegacyEvidence: Boolean(args["allow-legacy-evidence"]),
       requireEpicClosed: args["close-eligible"] ? false : !args["allow-open-epic"],
     });
     console.log(formatEpicCompletionReport(report));
+    const releaseFullCheckGate = createReleaseFullCheckGate(graph);
+    console.log(formatReleaseFullCheckGate(releaseFullCheckGate));
     console.log(`GRAPH: ${graphPath}`);
+    if (args["require-release-full-check"] && !releaseFullCheckGate.pass) {
+      process.exitCode = 1;
+      return;
+    }
     if (!report.pass) process.exitCode = 1;
     return;
   }
@@ -894,6 +1389,9 @@ async function main() {
       epicId: args.epic,
       dryRun: dryRunAtomization,
       planReviewPassed: Boolean(args["plan-review-passed"]),
+    });
+    applySemanticEpicGroupingToGraph(graph, {
+      maxTasksPerEpic: args["semantic-epic-max-tasks"] || DEFAULT_SEMANTIC_EPIC_MAX_TASKS,
     });
     if (args.json) {
       console.log(JSON.stringify(graph, null, 2));
@@ -1188,6 +1686,290 @@ async function pathExists(filePath) {
   }
 }
 
+function runtimeInvocationIdFromArgs(args = {}) {
+  return String(args["host-invocation-id"] || args["invocation-id"] || args["runtime-id"] || args["codex-spawn-id"] || args["spawn-id"] || "").trim();
+}
+
+function parsePositiveInteger(value, fallback) {
+  const parsed = Number.parseInt(String(value ?? ""), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function parseIsoTime(value, label) {
+  const text = String(value || "").trim();
+  const ms = Date.parse(text);
+  if (!Number.isFinite(ms)) throw new Error(`${label} must be an ISO timestamp`);
+  return { text: new Date(ms).toISOString(), ms };
+}
+
+function graphEntryId(entry = {}) {
+  return entry.itemId || entry.id || entry.taskId || null;
+}
+
+function isAgentActiveStatus(status) {
+  return ["claimed", "in_progress", "running"].includes(String(status || "").trim().toLowerCase());
+}
+
+function entryHeartbeatAt(entry = {}) {
+  return entry.heartbeatAt || entry.agentHeartbeat?.heartbeatAt || entry.stall?.heartbeatAt || entry.claimedAt || null;
+}
+
+function entryStallState(entry = {}) {
+  return entry.stall || entry.agentStall || null;
+}
+
+function isStalledEntry(entry = {}) {
+  return String(entryStallState(entry)?.status || "").toLowerCase() === "stalled";
+}
+
+function stallRecoveryAction(itemId, graphPath) {
+  return `/supervibe-loop --recover-stalled ${itemId} --file ${graphPath}`;
+}
+
+function collectStalledItemsFromGraph(graph = {}) {
+  const seen = new Set();
+  const stalled = [];
+  for (const entry of [...(graph.items || []), ...(graph.tasks || [])]) {
+    const itemId = graphEntryId(entry);
+    if (!itemId || seen.has(itemId) || !isStalledEntry(entry)) continue;
+    seen.add(itemId);
+    const stall = entryStallState(entry) || {};
+    stalled.push({
+      itemId,
+      title: entry.title || "",
+      owner: entry.heartbeatOwner || entry.owner || entry.claimOwner || stall.owner || null,
+      retryable: stall.retryable !== false,
+      manualIntervention: stall.manualIntervention === true,
+      recoveryAction: stall.recoveryAction || null,
+      stalledAt: stall.stalledAt || null,
+      heartbeatAt: stall.heartbeatAt || entryHeartbeatAt(entry) || null,
+      heartbeatAgeMinutes: stall.heartbeatAgeMinutes ?? null,
+      reason: stall.reason || entry.blockerReason || "no-progress-timeout",
+    });
+  }
+  return stalled;
+}
+
+function summarizeStalledItems(stalled = []) {
+  return {
+    retryable: stalled.filter((item) => item.retryable && !item.manualIntervention).length,
+    manualIntervention: stalled.filter((item) => item.manualIntervention || !item.retryable).length,
+  };
+}
+
+async function writeGraphFileWithBackup(graphPath, graph) {
+  const backupPath = `${graphPath}.bak`;
+  try {
+    await copyFile(graphPath, backupPath);
+  } catch {
+    // Missing backup source is surfaced by the write below if the path is invalid.
+  }
+  await writeFile(graphPath, `${JSON.stringify(graph, null, 2)}\n`, "utf8");
+  return backupPath;
+}
+
+async function updateAgentHeartbeatFile(graphPath, {
+  itemId,
+  owner,
+  hostInvocationId,
+  now,
+  progressSignature = null,
+  status = null,
+} = {}) {
+  const normalizedItemId = String(itemId || "").trim();
+  if (!normalizedItemId) throw new Error("--heartbeat requires an item id");
+  if (!hostInvocationId) {
+    throw new Error("--heartbeat requires --host-invocation-id, --invocation-id, or --runtime-id; do not write heartbeat state without runtime invocation proof");
+  }
+  const heartbeatAt = parseIsoTime(now, "--now").text;
+  const graph = JSON.parse(String(await readFile(graphPath, "utf8")).replace(/^\uFEFF/, ""));
+  let changed = false;
+  const update = (entry) => {
+    if (graphEntryId(entry) !== normalizedItemId) return entry;
+    changed = true;
+    const nextStatus = status || (["open", "ready", "pending"].includes(String(entry.status || "").toLowerCase()) ? "claimed" : entry.status);
+    const next = {
+      ...entry,
+      status: nextStatus || "claimed",
+      heartbeatAt,
+      heartbeatOwner: owner,
+      hostInvocationId,
+      progressSignature,
+      updatedAt: heartbeatAt,
+      updatedBy: owner,
+    };
+    delete next.stall;
+    delete next.agentStall;
+    delete next.blockerReason;
+    delete next.blockerNextAction;
+    return next;
+  };
+  const heartbeats = Array.isArray(graph.agentHeartbeats) ? graph.agentHeartbeats : [];
+  const heartbeatRecord = {
+    itemId: normalizedItemId,
+    owner,
+    hostInvocationId,
+    heartbeatAt,
+    progressSignature,
+  };
+  let heartbeatUpdated = false;
+  const nextHeartbeats = heartbeats.map((record) => {
+    if (record.itemId === normalizedItemId && record.hostInvocationId === hostInvocationId) {
+      heartbeatUpdated = true;
+      return { ...record, ...heartbeatRecord };
+    }
+    return record;
+  });
+  if (!heartbeatUpdated) nextHeartbeats.push(heartbeatRecord);
+  const nextGraph = {
+    ...graph,
+    updatedAt: heartbeatAt,
+    agentHeartbeats: nextHeartbeats,
+    items: (graph.items || []).map(update),
+    tasks: (graph.tasks || []).map(update),
+  };
+  if (!changed) throw new Error(`work item not found: ${normalizedItemId}`);
+  const backupPath = await writeGraphFileWithBackup(graphPath, nextGraph);
+  return {
+    itemId: normalizedItemId,
+    owner,
+    hostInvocationId,
+    heartbeatAt,
+    progressSignature,
+    backupPath,
+  };
+}
+
+async function markStalledAgentsFile(graphPath, {
+  now,
+  staleAfterMinutes,
+  maxRetries,
+  owner,
+} = {}) {
+  const nowTime = parseIsoTime(now, "--now");
+  const timeoutMinutes = parsePositiveInteger(staleAfterMinutes, DEFAULT_AGENT_STALL_TIMEOUT_MINUTES);
+  const retryLimit = parsePositiveInteger(maxRetries, DEFAULT_AGENT_STALL_MAX_RETRIES);
+  const graph = JSON.parse(String(await readFile(graphPath, "utf8")).replace(/^\uFEFF/, ""));
+  const stalledById = new Map();
+  const mark = (entry) => {
+    const itemId = graphEntryId(entry);
+    if (!itemId || !isAgentActiveStatus(entry.status)) return entry;
+    const heartbeatAt = entryHeartbeatAt(entry);
+    if (!heartbeatAt) return entry;
+    const heartbeatTime = parseIsoTime(heartbeatAt, `${itemId} heartbeatAt`);
+    const heartbeatAgeMinutes = Math.floor((nowTime.ms - heartbeatTime.ms) / 60_000);
+    if (heartbeatAgeMinutes < timeoutMinutes) return entry;
+    const previousStall = entryStallState(entry) || {};
+    const retryCount = Number.parseInt(String(previousStall.retryCount || 0), 10) || 0;
+    const retryable = retryCount < retryLimit;
+    const recoveryAction = retryable
+      ? stallRecoveryAction(itemId, graphPath)
+      : "manual intervention required before retry";
+    const stall = {
+      status: "stalled",
+      reason: "no-progress-timeout",
+      stalledAt: nowTime.text,
+      heartbeatAt: heartbeatTime.text,
+      heartbeatAgeMinutes,
+      timeoutMinutes,
+      retryCount,
+      maxRetries: retryLimit,
+      retryable,
+      manualIntervention: !retryable,
+      recoveryAction,
+      owner: entry.heartbeatOwner || entry.owner || entry.claimOwner || owner || null,
+      hostInvocationId: entry.hostInvocationId || null,
+    };
+    stalledById.set(itemId, {
+      itemId,
+      owner: stall.owner,
+      heartbeatAgeMinutes,
+      retryable,
+      manualIntervention: !retryable,
+      recoveryAction,
+    });
+    return {
+      ...entry,
+      status: "blocked",
+      stall,
+      blockerReason: "stalled:no-progress-timeout",
+      blockerNextAction: recoveryAction,
+      updatedAt: nowTime.text,
+      updatedBy: owner || "loop",
+    };
+  };
+  const nextGraph = {
+    ...graph,
+    updatedAt: nowTime.text,
+    items: (graph.items || []).map(mark),
+    tasks: (graph.tasks || []).map(mark),
+  };
+  const stalled = [...stalledById.values()];
+  const backupPath = stalled.length > 0 ? await writeGraphFileWithBackup(graphPath, nextGraph) : null;
+  const summary = summarizeStalledItems(stalled);
+  return {
+    stalled,
+    retryable: summary.retryable,
+    manualIntervention: summary.manualIntervention,
+    backupPath,
+  };
+}
+
+async function recoverStalledAgentFile(graphPath, {
+  itemId,
+  now,
+  owner,
+} = {}) {
+  const normalizedItemId = String(itemId || "").trim();
+  if (!normalizedItemId) throw new Error("--recover-stalled requires an item id");
+  const recoveredAt = parseIsoTime(now, "--now").text;
+  const graph = JSON.parse(String(await readFile(graphPath, "utf8")).replace(/^\uFEFF/, ""));
+  let changed = false;
+  let retryCount = 0;
+  let status = "ready";
+  const update = (entry) => {
+    if (graphEntryId(entry) !== normalizedItemId) return entry;
+    const stall = entryStallState(entry);
+    if (!stall || String(stall.status || "").toLowerCase() !== "stalled") return entry;
+    changed = true;
+    retryCount = (Number.parseInt(String(stall.retryCount || 0), 10) || 0) + 1;
+    const next = {
+      ...entry,
+      status,
+      stall: {
+        ...stall,
+        status: "recovered",
+        recoveredAt,
+        recoveredBy: owner || "loop",
+        retryCount,
+      },
+      recoveredAt,
+      recoveredBy: owner || "loop",
+      updatedAt: recoveredAt,
+      updatedBy: owner || "loop",
+    };
+    delete next.agentStall;
+    delete next.blockerReason;
+    delete next.blockerNextAction;
+    return next;
+  };
+  const nextGraph = {
+    ...graph,
+    updatedAt: recoveredAt,
+    items: (graph.items || []).map(update),
+    tasks: (graph.tasks || []).map(update),
+  };
+  if (!changed) throw new Error(`stalled work item not found: ${normalizedItemId}`);
+  const backupPath = await writeGraphFileWithBackup(graphPath, nextGraph);
+  return {
+    itemId: normalizedItemId,
+    recovered: true,
+    retryCount,
+    status,
+    backupPath,
+  };
+}
+
 async function resolveCompletionGraphPath({ rootDir, args } = {}) {
   if (args.file || args["work-item-graph"]) return resolve(rootDir, args.file || args["work-item-graph"]);
   if (args.epic) return join(rootDir, ".supervibe", "memory", "work-items", args.epic, "graph.json");
@@ -1200,9 +1982,22 @@ function printEpicStatus({ graph, graphPath, epicId = null, source = "explicit" 
   const index = createWorkItemIndex({ graph });
   const grouped = groupWorkItemsByStatus(index);
   const taskItems = index.filter((item) => item.type !== "epic");
+  const stale = taskItems.filter((item) => item.effectiveStatus === "stale");
+  const stalled = collectStalledItemsFromGraph(graph);
+  const stalledSummary = summarizeStalledItems(stalled);
+  let completionPass = false;
+  try {
+    completionPass = validateEpicCompletion(graph).pass === true;
+  } catch {
+    completionPass = false;
+  }
+  const archivedAt = graph.archivedAt || graph.archived_at || graph.metadata?.archivedAt || null;
+  const archiveCandidate = !archivedAt && (completionPass || isOperationallyClosedWorkGraph(graph));
+  const lifecycle = archivedAt ? "archived" : archiveCandidate ? "completed-awaiting-archive" : "active";
   console.log("SUPERVIBE_EPIC_STATUS");
   console.log(`EPIC: ${epicId || graph.epicId || graph.graph_id || "unknown"}`);
   console.log(`SOURCE: ${source}`);
+  console.log(`LIFECYCLE: ${lifecycle}`);
   console.log(`TASKS: ${taskItems.length}`);
   console.log(`READY: ${grouped.ready.length}`);
   console.log(`BLOCKED: ${grouped.blocked.length}`);
@@ -1210,12 +2005,53 @@ function printEpicStatus({ graph, graphPath, epicId = null, source = "explicit" 
   console.log(`DEFERRED: ${grouped.deferred.length}`);
   console.log(`REVIEW: ${grouped.review.length}`);
   console.log(`DONE: ${grouped.done.length}`);
+  console.log(`STALLED: ${stalled.length}`);
+  console.log(`RETRYABLE_STALLED: ${stalledSummary.retryable}`);
+  console.log(`MANUAL_INTERVENTION: ${stalledSummary.manualIntervention}`);
+  console.log(formatReleaseFullCheckGate(createReleaseFullCheckGate(graph)));
   console.log(`NEXT_READY: ${grouped.ready[0]?.itemId || grouped.ready[0]?.id || "none"}`);
   console.log(`NEXT_ACTION: ${nextActionForEpicStatus(grouped, graph)}`);
   for (const item of taskItems) {
     console.log(formatEpicTaskStatusLine(item));
   }
+  if (archiveCandidate) {
+    console.log(`ARCHIVE_COMMAND: /supervibe-loop --archive --file ${graphPath}`);
+    console.log("ARCHIVE_MODE: manual; no passive auto-archive will run");
+  }
+  if (stale.length > 0) {
+    console.log(`STALE_REPAIR_COMMAND: /supervibe-loop --recover-stale <item-id> --file ${graphPath}`);
+  }
+  if (stalled.length > 0) {
+    console.log(`STALL_RECOVERY_COMMAND: /supervibe-loop --recover-stalled <item-id> --file ${graphPath}`);
+  }
   console.log(`GRAPH: ${graphPath}`);
+}
+
+function withTaskBudgetPolicySummary(summary = {}, graph = {}) {
+  return {
+    ...summary,
+    taskBudgetPolicy: summarizeTaskBudgetPolicy(graph.metadata?.taskBudgetPolicy),
+  };
+}
+
+function formatPreLoopSummary(summary, graphPath) {
+  const lines = [
+    "SUPERVIBE_PRE_LOOP_SUMMARY",
+    `GRAPH: ${graphPath}`,
+    `STARTS_EXECUTION: ${summary.startsExecution === true}`,
+    `EPICS: ${summary.epicCount}`,
+    `TASKS: ${summary.taskCount}`,
+  ];
+  for (const epic of summary.epics || []) {
+    lines.push(`EPIC: ${epic.id} TASKS: ${epic.taskCount} READY: ${epic.counts.ready} BLOCKED: ${epic.counts.blocked} DONE: ${epic.counts.done} STALE: ${epic.counts.stale}`);
+  }
+  if (summary.orphanBucket?.taskCount) {
+    const counts = summary.orphanBucket.counts || {};
+    lines.push(`ORPHANS: ${summary.orphanBucket.taskCount} READY: ${counts.ready || 0} BLOCKED: ${counts.blocked || 0} DONE: ${counts.done || 0} STALE: ${counts.stale || 0}`);
+  }
+  lines.push(...formatTaskBudgetPolicySummary(summary.taskBudgetPolicy).split("\n"));
+  lines.push(`NEXT_ACTION: ${summary.nextAction}`);
+  return lines.join("\n");
 }
 
 function formatEpicTaskStatusLine(item = {}) {
@@ -1224,7 +2060,11 @@ function formatEpicTaskStatusLine(item = {}) {
   const blocks = Array.isArray(item.blocks) && item.blocks.length ? item.blocks.join(",") : "none";
   const blockedBy = Array.isArray(item.blockedBy) && item.blockedBy.length ? item.blockedBy.join(",") : "none";
   const claim = item.claims?.[0]?.agentId || item.claimOwner || item.owner || "none";
-  const next = status === "ready"
+  const stall = entryStallState(item) || entryStallState(item.task || {});
+  const stalled = String(stall?.status || "").toLowerCase() === "stalled";
+  const next = stalled
+    ? (stall.recoveryAction || "manual intervention required before retry")
+    : status === "ready"
     ? "claim"
     : status === "blocked"
       ? (item.blockerNextAction || item.blockerReason || "inspect blockers")
@@ -1234,6 +2074,19 @@ function formatEpicTaskStatusLine(item = {}) {
           ? "verified"
           : "wait";
   return `TASK: ${id} STATUS: ${status} BLOCKS: ${blocks} BLOCKED_BY: ${blockedBy} CLAIM: ${claim} NEXT: ${next}`;
+}
+
+function isOperationallyClosedWorkGraph(graph = {}) {
+  const items = Array.isArray(graph.items) ? graph.items : [];
+  const epic = items.find((item) => item.type === "epic") || null;
+  const required = items.filter((item) => item.type !== "epic" && item.type !== "followup");
+  if (epic && !isTerminalWorkStatus(epic.status)) return false;
+  if (required.length === 0) return false;
+  return required.every((item) => isTerminalWorkStatus(item.status));
+}
+
+function isTerminalWorkStatus(status) {
+  return ["done", "complete", "completed", "closed", "skipped", "skip", "cancelled", "canceled"].includes(String(status || "").trim().toLowerCase());
 }
 
 function printAutoUiStatus({ rootDir, args, graphPath }) {
@@ -1329,6 +2182,24 @@ function trustedReceiptIdsForValidation(rootDir, { explicitReceiptIds = [] } = {
   return trusted;
 }
 
+function trustedGraphReceiptIdsForValidation(rootDir, graph = {}, { explicitReceiptIds = [] } = {}) {
+  const graphId = graph.epicId || graph.graph_id || (graph.items || []).find((item) => item.type === "epic")?.itemId || null;
+  if (!graphId) return [];
+  const explicit = new Set((explicitReceiptIds || []).map(String).filter(Boolean));
+  const trusted = [];
+  for (const receipt of readWorkflowReceipts(rootDir)) {
+    if (!receipt?.receiptId) continue;
+    if (explicit.size > 0 && !explicit.has(String(receipt.receiptId))) continue;
+    const receiptGraphId = receipt.graphId || receipt.workItemBinding?.graphId || null;
+    if (receiptGraphId !== graphId) continue;
+    const taskId = receipt.taskId || receipt.workItemId || receipt.graphTaskId || receipt.workItemBinding?.taskId || null;
+    if (taskId) continue;
+    const trust = validateWorkflowReceiptTrust(rootDir, receipt);
+    if (trust.pass) trusted.push(String(receipt.receiptId));
+  }
+  return trusted;
+}
+
 function splitCsv(value = "") {
   return String(value || "")
     .split(",")
@@ -1336,9 +2207,177 @@ function splitCsv(value = "") {
     .filter(Boolean);
 }
 
+function normalizeCommandList(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.map((item) => String(item || "").trim()).filter(Boolean);
+  return String(value)
+    .split(/\r?\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function isFullVerificationCommand(command = "") {
+  const text = String(command || "").trim();
+  return [
+    /^npm\s+run\s+check\b/i,
+    /^npm\s+(run\s+)?test\b/i,
+    /^pnpm\s+(run\s+)?test\b/i,
+    /^yarn\s+(run\s+)?test\b/i,
+    /^bun\s+test\b/i,
+    /^node\s+--test\s*$/i,
+    /^vitest\s*$/i,
+    /^npx\s+vitest\s*$/i,
+  ].some((pattern) => pattern.test(text));
+}
+
+function taskAllowsFullVerification(task = {}) {
+  const labels = normalizeCommandList(task.labels || task.label).map((label) => label.toLowerCase());
+  const category = String(task.category || task.type || "").toLowerCase();
+  const title = String(task.title || task.goal || "").toLowerCase();
+  return task.releaseGate === true
+    || task.phaseGate === true
+    || task.fullVerificationGate === true
+    || labels.some((label) => ["release-gate", "phase-gate", "full-verification"].includes(label))
+    || ["release", "phase-gate", "final-verification"].includes(category)
+    || /\b(final|release|phase)\s+(verification|gate|proof)\b/.test(title);
+}
+
+function createTaskLocalVerificationPolicy(task = {}) {
+  const declaredCommands = normalizeCommandList(task.verificationCommands || task.verificationCommand || task.verification || task.tests);
+  const fullCommands = declaredCommands.filter(isFullVerificationCommand);
+  const targetedCommands = declaredCommands.filter((command) => !isFullVerificationCommand(command));
+  const fullSuiteAllowed = taskAllowsFullVerification(task);
+  const deferredFullCommands = fullSuiteAllowed ? [] : fullCommands;
+  const allowedFullCommands = fullSuiteAllowed ? fullCommands : [];
+  return {
+    schemaVersion: 1,
+    scope: fullSuiteAllowed ? "phase-or-release-gate" : "task-local",
+    targetedOnly: !fullSuiteAllowed,
+    fullSuiteAllowed,
+    fullSuitePolicy: "Full verification commands are reserved for phase or release gates; ordinary task/epic workers must run targeted commands only.",
+    targetedCommands,
+    fullVerificationCommands: allowedFullCommands,
+    deferredFullCommands,
+    workerInstruction: targetedCommands.length > 0
+      ? "Run only the targeted verification commands listed for this task; do not run npm run check from a normal task/epic worker assignment."
+      : "No targeted verification command is available; do not run full checks, and request a testable owner path before claiming completion.",
+  };
+}
+
+function attachVerificationPolicyToExplanation(explanation = {}, verificationPolicy = {}) {
+  return {
+    ...(explanation || {}),
+    verificationScope: verificationPolicy.scope,
+    targetedVerificationCommands: verificationPolicy.targetedCommands || [],
+    deferredFullVerificationCommands: verificationPolicy.deferredFullCommands || [],
+    policyConstraints: [
+      ...(explanation?.policyConstraints || []),
+      verificationPolicy.fullSuitePolicy,
+    ].filter(Boolean),
+  };
+}
+
+function formatTaskLocalVerificationPolicy(policy = {}) {
+  return [
+    "SUPERVIBE_TASK_VERIFICATION_POLICY",
+    `VERIFICATION_SCOPE: ${policy.scope || "task-local"}`,
+    `TARGETED_ONLY: ${policy.targetedOnly !== false}`,
+    `TARGETED_COMMANDS: ${(policy.targetedCommands || []).join(" && ") || "none"}`,
+    `DEFERRED_FULL_COMMANDS: ${(policy.deferredFullCommands || []).join(" && ") || "none"}`,
+    `FULL_VERIFICATION_POLICY: ${policy.fullSuitePolicy || "full checks reserved for phase or release gates"}`,
+  ].join("\n");
+}
+
+function collectGraphVerificationEvidence(graph = {}) {
+  const out = [];
+  const addEvidence = (entry, scope) => {
+    if (!entry) return;
+    if (typeof entry === "string") {
+      out.push({ command: entry, status: "unknown", scope });
+      return;
+    }
+    if (Array.isArray(entry)) {
+      for (const item of entry) addEvidence(item, scope);
+      return;
+    }
+    if (typeof entry !== "object") return;
+    const commands = normalizeCommandList(entry.command || entry.verificationCommand || entry.verificationCommands || entry.commandLine || entry.cmd);
+    if (commands.length === 0 && entry.receiptId) {
+      out.push({ ...entry, command: "", status: entry.status || entry.verdict || "unknown", scope });
+      return;
+    }
+    for (const command of commands) {
+      out.push({
+        ...entry,
+        command,
+        status: entry.status || entry.verdict || entry.result || "unknown",
+        scope,
+      });
+    }
+  };
+  addEvidence(graph.verificationEvidence, "graph");
+  addEvidence(graph.evidence, "graph");
+  for (const item of graph.items || []) {
+    const scope = item.type === "epic" ? "epic" : "task";
+    addEvidence(item.verificationEvidence, scope);
+    addEvidence(item.evidence, scope);
+  }
+  for (const task of graph.tasks || []) {
+    addEvidence(task.verificationEvidence, "task");
+    addEvidence(task.evidence, "task");
+  }
+  return out;
+}
+
+function isPassingVerificationEvidence(evidence = {}) {
+  return /^(pass|passed|ok|success|succeeded|true)$/i.test(String(evidence.status || evidence.verdict || evidence.result || ""));
+}
+
+function createReleaseFullCheckGate(graph = {}, additionalEvidence = []) {
+  const evidence = collectGraphVerificationEvidence(graph);
+  const addAdditionalEvidence = (entry) => {
+    if (!entry) return;
+    if (Array.isArray(entry)) {
+      for (const item of entry) addAdditionalEvidence(item);
+      return;
+    }
+    evidence.push({ ...entry, scope: entry.scope || "pending-close" });
+  };
+  addAdditionalEvidence(additionalEvidence);
+  const passed = evidence.find((entry) => isFullVerificationCommand(entry.command) && isPassingVerificationEvidence(entry));
+  return {
+    schemaVersion: 1,
+    pass: Boolean(passed),
+    status: passed ? "passed" : "pending",
+    requiredAt: "release-handoff",
+    requiredForChildTasks: false,
+    command: "npm run check",
+    equivalentCommands: ["npm run check", "npm run check:release", "npm run check:release-strict"],
+    evidenceCommand: passed?.command || null,
+    evidenceScope: passed?.scope || null,
+    evidenceStatus: passed?.status || null,
+    policy: "Full checks run once at final phase/release handoff, not inside every child task or epic worker assignment.",
+  };
+}
+
+function formatReleaseFullCheckGate(gate = {}) {
+  return [
+    "SUPERVIBE_RELEASE_FULL_CHECK_GATE",
+    `RELEASE_FULL_CHECK_GATE: ${gate.status || "pending"}`,
+    `FULL_CHECK_REQUIRED_AT: ${gate.requiredAt || "release-handoff"}`,
+    `CHILD_TASK_REQUIRES_FULL_CHECK: ${gate.requiredForChildTasks === true}`,
+    `FULL_CHECK_COMMAND: ${gate.command || "npm run check"}`,
+    `FULL_CHECK_EQUIVALENTS: ${(gate.equivalentCommands || []).join(",") || "none"}`,
+    `FULL_CHECK_EVIDENCE: ${gate.evidenceCommand || "none"}`,
+    `FULL_CHECK_POLICY: ${gate.policy || "full checks are release-only"}`,
+  ].join("\n");
+}
+
 function nextActionForEpicStatus(grouped = {}, graph = {}) {
   const nextReady = grouped.ready?.[0]?.itemId || grouped.ready?.[0]?.id || null;
   if (nextReady) return `claim ${nextReady} or run /supervibe-loop --claim-ready`;
+  const stalled = collectStalledItemsFromGraph(graph);
+  if (stalled.length > 0) return `recover stalled work: ${stalled.map((item) => item.itemId).join(", ")}`;
   if ((grouped.blocked || []).length > 0) return "inspect blockers, unblock tasks, or validate dependency completion";
   if ((grouped.review || []).length > 0) return "complete required review and gate work items";
   try {
@@ -1406,7 +2445,12 @@ function resolveWorkItemAction(args) {
         summary: args.summary || args.reason,
       };
     }
-    return { type: key, itemId, status: args["set-status"] };
+    const action = { type: key, itemId, status: args["set-status"] };
+    const verificationEvidence = verificationEvidenceFromArgs(args, itemId);
+    if (["close", "complete"].includes(key) && verificationEvidence.length > 0) {
+      action.verificationEvidence = verificationEvidence;
+    }
+    return action;
   }
   if (args["dep-add"] || args["dependency-add"]) {
     return {
@@ -1432,6 +2476,23 @@ function resolveWorkItemAction(args) {
     };
   }
   return null;
+}
+
+function verificationEvidenceFromArgs(args, itemId) {
+  const command = args.verification || args["verification-command"] || args["verification-commands"];
+  const outputSummary = args.evidence || args["output-summary"] || args.summary;
+  const receiptId = args.receipt || args.receiptId || args["receipt-id"];
+  const reviewerStatus = args["reviewer-status"] || args.reviewerStatus;
+  if (!command && !outputSummary && !receiptId && !reviewerStatus) return [];
+  return [{
+    taskId: itemId,
+    status: args["verification-status"] || args.verdict || "pass",
+    source: "supervibe-loop",
+    command: command || undefined,
+    outputSummary: outputSummary || (receiptId ? "runtime receipt evidence" : "verification evidence recorded"),
+    receiptId: receiptId || undefined,
+    reviewerStatus: reviewerStatus || undefined,
+  }];
 }
 
 async function findGraphContainingItem(rootDir, itemId) {
@@ -1470,9 +2531,30 @@ async function maybePrepareWorktreeSession(args, rootDir) {
 
   if (args["resume-session"]) {
     const registry = await readWorktreeSessionRegistry(registryPath);
-    const session = registry.sessions.find((candidate) => candidate.sessionId === args["resume-session"]);
+    const sessionId = args["resume-session"];
+    const session = registry.sessions.find((candidate) => candidate.sessionId === sessionId);
     if (!session) throw new Error(`Unknown worktree session: ${args["resume-session"]}`);
-    return session;
+    const owner = resolveWorktreeSessionOwner(args, session.owner);
+    if (session.owner && owner && session.owner !== owner && !args["allow-session-conflict"]) {
+      throw new Error(`Worktree session owner mismatch: ${session.sessionId} is owned by ${session.owner}; pass --owner ${session.owner} or --allow-session-conflict with --override-reason`);
+    }
+    if (["closed", "archived", "cleanup_blocked"].includes(session.status) && !args.force) {
+      throw new Error(`Worktree session ${session.sessionId} is ${session.status}; pass --force only after reviewing cleanup state`);
+    }
+    const now = new Date().toISOString();
+    const resumedSession = createWorktreeSessionRecord({
+      ...session,
+      owner: owner || session.owner,
+      status: "active",
+      heartbeatAt: now,
+      updatedAt: now,
+      resumedAt: now,
+    });
+    await writeWorktreeSessionRegistry(registryPath, {
+      ...registry,
+      sessions: registry.sessions.map((candidate) => candidate.sessionId === sessionId ? resumedSession : candidate),
+    });
+    return resumedSession;
   }
 
   const epicId = args.epic || args.plan || args.request || "epic-unassigned";
@@ -1517,13 +2599,31 @@ async function maybePrepareWorktreeSession(args, rootDir) {
     assignedTaskIds,
     assignedWriteSet,
     maxRuntimeMinutes: args["max-runtime-minutes"] || parseDurationToMinutes(args["max-duration"]),
+    owner: resolveWorktreeSessionOwner(args),
+    conflictOverride: args["allow-session-conflict"] ? {
+      allowed: true,
+      reason: args["override-reason"] || "explicit --allow-session-conflict",
+      by: resolveWorktreeSessionOwner(args),
+    } : null,
     status: "ready",
   });
   const upsert = args["dry-run"]
-    ? upsertWorktreeSession(await readWorktreeSessionRegistry(registryPath), session, { allowConflict: Boolean(args["allow-session-conflict"]) })
-    : await upsertWorktreeSessionFile(registryPath, session, { allowConflict: Boolean(args["allow-session-conflict"]) });
+    ? upsertWorktreeSession(await readWorktreeSessionRegistry(registryPath), session, {
+        allowConflict: Boolean(args["allow-session-conflict"]),
+        overrideReason: args["override-reason"],
+        overrideOwner: resolveWorktreeSessionOwner(args),
+      })
+    : await upsertWorktreeSessionFile(registryPath, session, {
+        allowConflict: Boolean(args["allow-session-conflict"]),
+        overrideReason: args["override-reason"],
+        overrideOwner: resolveWorktreeSessionOwner(args),
+      });
   if (!upsert.ok) throw new Error(`Worktree session conflict: ${upsert.conflicts.map((item) => item.sessionId).join(", ")}`);
   return upsert.session;
+}
+
+function resolveWorktreeSessionOwner(args = {}, fallback = "supervibe-loop") {
+  return args.owner || args["session-owner"] || args.agent || args["agent-id"] || fallback || "supervibe-loop";
 }
 
 function parseCsvArg(value) {
@@ -1537,6 +2637,65 @@ function buildAdapterConfig(args) {
   const adapterArgs = parseCsvArg(args["adapter-args"] || args["provider-args"]);
   if (adapterArgs.length > 0) config.args = adapterArgs;
   return Object.keys(config).length > 0 ? config : undefined;
+}
+
+function resolveSchedulerPolicy({ args = {}, rootDir = process.cwd() } = {}) {
+  const requestedMaxConcurrency = positiveInt(args["max-concurrency"], 3);
+  const providerId = String(args.provider || args.tool || process.env.SUPERVIBE_PROVIDER || "codex").toLowerCase();
+  const manifest = loadProviderCapabilities({ rootDir: args["plugin-root"] || rootDir });
+  const provider = (manifest.providers || []).find((entry) => String(entry.id || "").toLowerCase() === providerId) || null;
+  const providerLimits = provider?.providerLimits || {};
+  const providerMaxThreads = positiveInt(args["provider-max-threads"], positiveInt(providerLimits.defaultMaxThreads, requestedMaxConcurrency));
+  const providerTimeoutSeconds = positiveInt(args["provider-timeout-seconds"], positiveInt(providerLimits.defaultJobRuntimeSeconds, null));
+  const effectiveMaxConcurrency = Math.max(1, Math.min(requestedMaxConcurrency, providerMaxThreads || requestedMaxConcurrency));
+  return {
+    providerId: provider?.id || providerId,
+    providerName: provider?.name || providerId,
+    requestedMaxConcurrency,
+    providerMaxThreads: providerMaxThreads || null,
+    providerTimeoutSeconds: providerTimeoutSeconds || null,
+    effectiveMaxConcurrency,
+    source: provider ? "provider-capabilities-manifest" : "cli-default",
+    reason: providerMaxThreads && providerMaxThreads < requestedMaxConcurrency
+      ? `provider max threads ${providerMaxThreads} caps requested concurrency ${requestedMaxConcurrency}`
+      : "requested concurrency is within provider limits",
+  };
+}
+
+function formatSchedulerPolicy(policy = {}) {
+  return [
+    "SUPERVIBE_SCHEDULER_POLICY",
+    `PROVIDER: ${policy.providerId || "unknown"}`,
+    `PROVIDER_NAME: ${policy.providerName || "unknown"}`,
+    `REQUESTED_MAX_CONCURRENCY: ${policy.requestedMaxConcurrency || 0}`,
+    `PROVIDER_MAX_THREADS: ${policy.providerMaxThreads ?? "unknown"}`,
+    `PROVIDER_TIMEOUT_SECONDS: ${policy.providerTimeoutSeconds ?? "unknown"}`,
+    `EFFECTIVE_MAX_CONCURRENCY: ${policy.effectiveMaxConcurrency || 0}`,
+    `SOURCE: ${policy.source || "unknown"}`,
+    `REASON: ${policy.reason || "not evaluated"}`,
+  ].join("\n");
+}
+
+function formatSchedulerDecisions(plan = {}) {
+  const selected = new Set(plan.currentWave?.tasks || []);
+  const lines = ["SUPERVIBE_SCHEDULER_DECISIONS"];
+  for (const taskId of selected) {
+    lines.push(`TASK: ${taskId} DECISION: parallel REASON: ready, provider slot available, write-set lock reserved`);
+  }
+  for (const item of plan.serialized || []) {
+    lines.push(`TASK: ${item.taskId} DECISION: serialized REASON: ${item.reason}`);
+  }
+  for (const item of plan.blocked || []) {
+    lines.push(`TASK: ${item.taskId} DECISION: blocked REASON: ${item.reason}`);
+  }
+  if (lines.length === 1) lines.push("TASKS: none");
+  return lines.join("\n");
+}
+
+function positiveInt(value, fallback = null) {
+  if (value === null || value === undefined || value === "") return fallback;
+  const parsed = Number.parseInt(String(value), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 function shouldUseTaskTrackerAdapter(args) {

@@ -5,6 +5,7 @@ import { createWorkItemIndex, groupWorkItemsByStatus } from "./supervibe-work-it
 
 const REGISTRY_SCHEMA_VERSION = 1;
 const ACTIVE_STATUSES = new Set(["open", "ready", "claimed", "blocked", "deferred", "review"]);
+const TERMINAL_EPIC_STATUSES = new Set(["closed", "complete", "completed", "done", "skipped", "cancelled"]);
 
 export function defaultWorkItemRegistryPath(rootDir = process.cwd()) {
   return join(rootDir, ".supervibe", "memory", "work-items", "index.json");
@@ -301,13 +302,19 @@ function summarizeGraphForRegistry({ graph = {}, graphPath, rootDir = process.cw
   const epicId = graph.epicId || graph.graph_id || graph.graphId || epic?.itemId || epic?.id || "unknown-epic";
   const taskCount = index.filter((item) => item.type !== "epic").length;
   const activeCount = index.filter((item) => item.type !== "epic" && ACTIVE_STATUSES.has(String(item.effectiveStatus || item.status || "").toLowerCase())).length;
+  const epicStatus = String(epic?.status || graph.status || "").toLowerCase();
+  const registryStatus = TERMINAL_EPIC_STATUSES.has(epicStatus)
+    ? "closed"
+    : epicStatus
+      ? "active"
+      : activeCount > 0 ? "active" : "closed";
   return {
     epicId,
     graphId: graph.graph_id || graph.graphId || graph.epicId || epicId,
     title: graph.title || epic?.title || epic?.goal || epicId,
     graphPath: toProjectRelativePath(rootDir, graphPath),
     sourcePlanPath: graph.source?.path || graph.planPath || null,
-    status: activeCount > 0 ? "active" : "closed",
+    status: registryStatus,
     totalTasks: taskCount,
     ready: grouped.ready.length,
     blocked: grouped.blocked.length,

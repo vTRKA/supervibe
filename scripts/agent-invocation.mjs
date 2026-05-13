@@ -232,6 +232,8 @@ async function maybeIssueWorkflowReceipt({ options, rootDir, agentId, source, in
       traceId: traceId || options["trace-id"] || null,
       spanId: spanId || options["span-id"] || null,
     },
+    graphId: options["graph-id"] || options["work-graph-id"] || null,
+    taskId: options["task-id"] || options["work-item-id"] || null,
   });
 }
 

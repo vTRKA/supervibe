@@ -1,3 +1,5 @@
+import { recordActiveWorkflowQuestion } from "./supervibe-active-workflow-state.mjs";
+
 export const WORKFLOW_PHASES = Object.freeze([
   "intake",
   "brainstorm",
@@ -224,6 +226,73 @@ export function formatNextStepBlock(options = {}) {
     }),
     "END_NEXT_STEP_HANDOFF",
   ].join("\n");
+}
+
+function buildNextStepHandoff(options = {}) {
+  const phase = normalizeWorkflowPhase(options.phase);
+  const baseEdge = options.edge ?? getNextWorkflowStep(phase);
+  const edge = {
+    ...baseEdge,
+    nextPhase: options.nextPhase ?? baseEdge.nextPhase,
+    command: options.nextCommand ?? options.command ?? baseEdge.command,
+    skill: options.nextSkill ?? options.skill ?? baseEdge.skill,
+    stopCondition: options.stopCondition ?? baseEdge.stopCondition,
+  };
+  const locale = options.locale === "ru" ? "ru" : "en";
+  const question = locale === "ru" ? edge.questionRu : edge.questionEn;
+  const artifact = options.artifactPath ?? edge.artifactKind;
+  const nextCommand = resolveWorkflowCommand(options.command ?? edge.command, artifact);
+  const choices = options.questionChoices ?? buildNextStepChoices({
+    locale,
+    artifact,
+    command: nextCommand,
+    skill: options.skill ?? edge.skill,
+  });
+
+  return {
+    title: options.title ?? nextStepTitle(edge.nextPhase, artifact),
+    phase: edge.phase,
+    artifact,
+    nextPhase: edge.nextPhase,
+    nextCommand,
+    skill: options.skill ?? edge.skill,
+    stopCondition: edge.stopCondition,
+    why: options.why ?? edge.why,
+    reason: options.reason ?? options.why ?? edge.why,
+    question: options.question ?? question,
+    choices: normalizeHandoffChoices(choices),
+    locale,
+  };
+}
+
+export function recordNextStepHandoffQuestion(rootDir = process.cwd(), options = {}, stateOptions = {}) {
+  const handoff = buildNextStepHandoff(options);
+  const handoffId = String(options.handoffId || createNextStepHandoffId(handoff)).trim();
+  const activeStage = workflowPhaseToActiveWorkflowStage(handoff.nextPhase);
+  const choices = normalizeHandoffChoices(handoff.choices);
+  const artifacts = normalizeHandoffArtifacts(handoff.artifact, options.artifacts);
+  const question = {
+    id: handoffId,
+    title: handoff.title,
+    prompt: handoff.question,
+    reason: handoff.reason,
+    handoffId,
+    stage: activeStage,
+    nextCommand: handoff.nextCommand,
+    choices,
+  };
+
+  return recordActiveWorkflowQuestion(rootDir, question, {
+    command: options.activeCommand ?? handoff.nextCommand,
+    stage: activeStage,
+    handoffId,
+    nextCommand: handoff.nextCommand,
+    nextAction: "answer active workflow question",
+    artifacts,
+    receipts: options.receipts ?? [],
+    choices,
+    acceptedAnswer: null,
+  }, stateOptions);
 }
 
 export function parseNextStepBlock(output) {
@@ -644,6 +713,111 @@ function buildNextStepChoices({ locale = "en", artifact = "", command = "", skil
       tradeoff: "Records the handoff and does not continue the workflow silently.",
     },
   ];
+}
+
+function workflowPhaseToActiveWorkflowStage(phase) {
+  switch (normalizeWorkflowPhase(phase)) {
+    case "brainstorm":
+      return "plan-scope-question";
+    case "plan":
+      return "plan-draft";
+    case "plan-review":
+      return "plan-review";
+    case "work-item-atomization":
+      return "work-item-atomization";
+    case "execution":
+      return "execution-ready";
+    case "wave-review":
+      return "verification";
+    case "finish":
+      return "release-ready";
+    default:
+      return "resume";
+  }
+}
+
+function nextStepTitle(nextPhase = "", artifact = "") {
+  const subject = String(artifact || nextPhase || "workflow").trim();
+  switch (normalizeWorkflowPhase(nextPhase)) {
+    case "plan-review":
+      return `Review ${subject}`;
+    case "work-item-atomization":
+      return `Atomize ${subject}`;
+    case "execution":
+      return `Start execution for ${subject}`;
+    case "wave-review":
+      return `Review execution wave for ${subject}`;
+    case "finish":
+      return `Finish ${subject}`;
+    default:
+      return `Continue ${subject}`;
+  }
+}
+
+function normalizeHandoffChoices(choices = []) {
+  if (!Array.isArray(choices)) return [];
+  return choices.map((choice, index) => {
+    const source = isPlainObject(choice) ? choice : { label: String(choice ?? "") };
+    const label = String(source.label || `Choice ${index + 1}`).trim();
+    const id = String(source.id || slugify(label) || `choice-${index + 1}`).trim();
+    return {
+      ...source,
+      id,
+      label,
+      description: String(source.description ?? source.tradeoff ?? "").trim(),
+      recommended: source.recommended === true,
+    };
+  });
+}
+
+function normalizeHandoffArtifacts(primaryArtifact = "", artifacts = []) {
+  const normalized = [];
+  for (const artifact of Array.isArray(artifacts) ? artifacts : []) {
+    if (!isPlainObject(artifact)) continue;
+    const path = String(artifact.path || artifact.file || "").trim();
+    if (!path) continue;
+    normalized.push({
+      ...artifact,
+      id: String(artifact.id || artifact.kind || artifact.type || slugify(path)).trim(),
+      path,
+    });
+  }
+  const path = String(primaryArtifact || "").trim();
+  if (path && !normalized.some((artifact) => artifact.path === path)) {
+    normalized.push({
+      id: artifactIdForPath(path),
+      path,
+    });
+  }
+  return normalized;
+}
+
+function createNextStepHandoffId(handoff = {}) {
+  return [
+    "next-step",
+    slugify(handoff.phase),
+    slugify(handoff.nextPhase),
+    slugify(handoff.artifact),
+  ].filter(Boolean).join("-");
+}
+
+function artifactIdForPath(path) {
+  const text = String(path || "").toLowerCase();
+  if (text.includes("/plans/") || text.includes("\\plans\\") || text.endsWith(".md")) return "plan";
+  return slugify(path) || "artifact";
+}
+
+function slugify(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+}
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 function toCamelCase(value) {

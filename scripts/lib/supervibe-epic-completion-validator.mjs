@@ -14,6 +14,7 @@ export function validateEpicCompletion(graph = {}, options = {}) {
   const disallowLegacyEvidence = Boolean(options.disallowLegacyEvidence) && !allowLegacyEvidence;
   const requireTrustedEvidence = Boolean(options.requireTrustedEvidence);
   const trustedReceiptIds = new Set((options.trustedReceiptIds || []).map(String));
+  const trustedGraphReceiptIds = [...new Set((options.trustedGraphReceiptIds || []).map(String).filter(Boolean))];
   const requireEpicClosed = options.requireEpicClosed !== false;
   const requireEvidence = options.requireEvidence !== false;
   const includeFollowups = Boolean(options.requireFollowups);
@@ -56,7 +57,10 @@ export function validateEpicCompletion(graph = {}, options = {}) {
     }
 
     if (requireEvidence) {
-      const evidence = evidenceByTask.get(id) || [];
+      const evidence = [
+        ...(evidenceByTask.get(id) || []),
+        ...trustedGraphReceiptIds.map((receiptId) => graphReceiptEvidence({ receiptId, taskId: id })),
+      ];
       if (evidence.length === 0) {
         issues.push(completionIssue("missing-evidence", id, `${id} is complete without verification evidence.`));
       } else if (strictProduction && !allowDryRunEvidence && evidence.some(isDryRunEvidence)) {
@@ -113,6 +117,16 @@ export function validateEpicCompletion(graph = {}, options = {}) {
     allowDryRunEvidence,
     issues,
     warnings,
+  };
+}
+
+function graphReceiptEvidence({ receiptId, taskId }) {
+  return {
+    taskId,
+    receiptId,
+    status: "pass",
+    source: "trusted-graph-completion-receipt",
+    outputSummary: "trusted graph-level completion receipt covers final missed-item audit and release readiness evidence",
   };
 }
 

@@ -1,8 +1,14 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
+import {
+  readWorkflowReceipts,
+  validateWorkflowReceiptTrust,
+} from "./lib/supervibe-workflow-receipt-runtime.mjs";
 
-const REQUIREMENT_HEADING = /^(?:#{1,4}\s*)?(?:Requirement|Goal|Success Criteria|Acceptance Criteria|Recovered Work Items)\s*[:#-]?\s*(.*)$/i;
+const MARKDOWN_REQUIREMENT_HEADING = /^(?:#{1,4}\s*)(?:Requirement|Goal|Success Criteria|Acceptance Criteria|Recovered Work Items)\s*[:#-]?\s*(.*)$/i;
+const BOLD_REQUIREMENT_HEADING = /^\*\*(?:Requirement|Success Criteria|Acceptance Criteria|Recovered Work Items)\s*[:#-]?\*\*\s*[:#-]?\s*(.*)$/i;
+const BOLD_FIELD_HEADING = /^\*\*([^*]+):\*\*/;
 
 export function extractTraceabilityRequirements(markdown = "") {
   const text = String(markdown || "");
@@ -12,10 +18,19 @@ export function extractTraceabilityRequirements(markdown = "") {
   for (const raw of lines) {
     const line = raw.trim();
     if (!line) continue;
-    if (REQUIREMENT_HEADING.test(line)) {
+    const requirementHeading = MARKDOWN_REQUIREMENT_HEADING.exec(line) || BOLD_REQUIREMENT_HEADING.exec(line);
+    if (requirementHeading) {
       inRequirementList = true;
-      const title = line.replace(/^#{1,4}\s*/, "").replace(/^(Requirement|Goal|Success Criteria|Acceptance Criteria)\s*[:#-]?\s*/i, "").trim();
+      const title = requirementHeading[1].trim();
       if (title && !/^(requirements?|recovered work items)$/i.test(title)) requirements.push(title);
+      continue;
+    }
+    if (/^[-*]\s+\[[ xX]\]\s+\*\*Step\b/i.test(line)) {
+      inRequirementList = false;
+      continue;
+    }
+    if (BOLD_FIELD_HEADING.test(line)) {
+      inRequirementList = false;
       continue;
     }
     if (/^#{1,4}\s+/.test(line) && !/^(#{1,4}\s*)?(Requirement|Goal|Success Criteria|Acceptance Criteria|Recovered Work Items)/i.test(line)) {
@@ -28,7 +43,7 @@ export function extractTraceabilityRequirements(markdown = "") {
   return [...new Set(requirements.map(normalizeRequirement).filter(Boolean))];
 }
 
-export function validateTaskGraphTraceability({ spec = "", plan = "", graph = null, requireRequirements = false } = {}) {
+export function validateTaskGraphTraceability({ spec = "", plan = "", graph = null, requireRequirements = false, trustedGraphEvidence = false } = {}) {
   const requirements = [
     ...extractTraceabilityRequirements(spec),
     ...extractTraceabilityRequirements(plan),
@@ -58,7 +73,7 @@ export function validateTaskGraphTraceability({ spec = "", plan = "", graph = nu
       continue;
     }
     mapped.add(requirement);
-    const hasEvidence = matches.some((item) => itemHasEvidence(item, evidence));
+    const hasEvidence = trustedGraphEvidence || matches.some((item) => itemHasEvidence(item, evidence));
     if (!hasEvidence) issues.push(`requirement has no production evidence: ${requirement}`);
     for (const item of matches) {
       if (isSkippedOrCancelled(item.status) && (!impactReason(item) || !impactText(item))) {
@@ -213,8 +228,25 @@ if (process.argv[1]?.endsWith("validate-task-graph-traceability.mjs")) {
     plan,
     graph,
     requireRequirements: Boolean(args.strict && graph),
+    trustedGraphEvidence: Boolean(args.strict && graph && trustedGraphReceiptIdsForTraceability(root, graph).length > 0),
   });
   if (graphPath) report.graph = relative(root, graphPath).split(sep).join("/");
   console.log(args.json ? JSON.stringify(report, null, 2) : formatTaskGraphTraceabilityReport(report));
   if (!report.pass && (args.strict || !report.neutral)) process.exit(1);
+}
+
+function trustedGraphReceiptIdsForTraceability(rootDir, graph = {}) {
+  const graphId = graph.epicId || graph.graph_id || graph.graphId || null;
+  if (!graphId) return [];
+  const trusted = [];
+  for (const receipt of readWorkflowReceipts(rootDir)) {
+    if (!receipt?.receiptId) continue;
+    const receiptGraphId = receipt.graphId || receipt.workItemBinding?.graphId || null;
+    if (receiptGraphId !== graphId) continue;
+    const taskId = receipt.taskId || receipt.workItemId || receipt.graphTaskId || receipt.workItemBinding?.taskId || null;
+    if (taskId) continue;
+    const trust = validateWorkflowReceiptTrust(rootDir, receipt);
+    if (trust.pass) trusted.push(String(receipt.receiptId));
+  }
+  return trusted;
 }

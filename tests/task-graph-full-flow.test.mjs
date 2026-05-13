@@ -176,6 +176,22 @@ test("task graph full flow: reviewed plan atomizes, loop syncs graph, UI applies
     ], { cwd: root });
     assert.match(eligible.stdout, /PASS: true/);
 
+    let closeWithoutReleaseEvidence = null;
+    try {
+      await execFileAsync(process.execPath, [
+        LOOP,
+        "--close",
+        "epic-full-flow",
+        "--file",
+        graphPath,
+        "--reason",
+        "production evidence verified",
+      ], { cwd: root });
+    } catch (error) {
+      closeWithoutReleaseEvidence = `${error.stdout || ""}\n${error.stderr || ""}\n${error.message || ""}`;
+    }
+    assert.match(closeWithoutReleaseEvidence || "", /RELEASE_FULL_CHECK_GATE|final release gate/i);
+
     const closed = await execFileAsync(process.execPath, [
       LOOP,
       "--close",
@@ -184,6 +200,12 @@ test("task graph full flow: reviewed plan atomizes, loop syncs graph, UI applies
       graphPath,
       "--reason",
       "production evidence verified",
+      "--verification-command",
+      "npm run check:release",
+      "--verification-status",
+      "pass",
+      "--evidence",
+      "release full check passed",
     ], { cwd: root });
     assert.match(closed.stdout, /ACTION: closed/);
 

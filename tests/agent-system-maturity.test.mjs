@@ -10,6 +10,9 @@ import {
   formatAgentSystemMaturityReport,
   scoreAgentSystemMaturity,
 } from "../scripts/lib/agent-system-maturity.mjs";
+import {
+  formatRuntimeTenOfTenProofGate,
+} from "../scripts/supervibe-agent-maturity.mjs";
 
 const ROOT = process.cwd();
 
@@ -60,6 +63,28 @@ test("agent-system maturity score reaches 10 only with telemetry, graph, evals, 
   assert.equal(report.blockers.length, 0);
 });
 
+test("runtime 10 of 10 proof gate prints blockers and release-check mode", () => {
+  const blocked = formatRuntimeTenOfTenProofGate({
+    pass: false,
+    blockers: [{
+      id: "code-graph-readiness",
+      nextAction: "refresh CodeGraph and rerun retrieval health",
+    }],
+  }, { skipReleaseCheck: true });
+
+  assert.match(blocked, /SUPERVIBE_RUNTIME_10_OF_10_PROOF/);
+  assert.match(blocked, /STRICT_10_OF_10_READY: false/);
+  assert.match(blocked, /REFUSES_10_OF_10_WHEN_MISSING: true/);
+  assert.match(blocked, /RELEASE_CHECK_REQUIRED: deferred-to-release-gate/);
+  assert.match(blocked, /RELEASE_CHECK_COMMAND: npm run check:release/);
+  assert.match(blocked, /OPEN_BLOCKERS: code-graph-readiness:refresh CodeGraph and rerun retrieval health/);
+
+  const release = formatRuntimeTenOfTenProofGate({ pass: true, blockers: [] }, { skipReleaseCheck: false });
+  assert.match(release, /STRICT_10_OF_10_READY: true/);
+  assert.match(release, /RELEASE_CHECK_REQUIRED: true/);
+  assert.match(release, /OPEN_BLOCKERS: none/);
+});
+
 test("agent-system maturity blocks active 10/10 when command readiness is blocked", () => {
   const report = scoreAgentSystemMaturity({
     roster: {
@@ -98,13 +123,15 @@ test("agent-system maturity blocks active 10/10 when command readiness is blocke
 
   assert.equal(report.pass, false);
   assert.ok(report.score < 10);
-  assert.equal(report.globalMaturity.score, 10);
+  assert.equal(report.globalMaturity.score, 9);
+  assert.equal(report.globalMaturity.pass, false);
+  assert.equal(report.globalMaturity.status, "global-hardening-required");
   assert.equal(report.activeWorkflowMaturity.pass, false);
   assert.equal(report.activeWorkflowMaturity.score, 9);
   assert.ok(report.blockers.some((blocker) => blocker.id === "command-orchestration"));
   assert.match(formatAgentSystemMaturityReport(report), /activeCommand=\/supervibe-design/);
   assert.match(formatAgentSystemMaturityReport(report), /missingCallable=creative-director\|prototype-builder/);
-  assert.match(formatAgentSystemMaturityReport(report), /GLOBAL_MATURITY_SCORE: 10\/10/);
+  assert.match(formatAgentSystemMaturityReport(report), /GLOBAL_MATURITY_SCORE: 9\/10/);
   assert.match(formatAgentSystemMaturityReport(report), /ACTIVE_WORKFLOW_MATURITY_SCORE: 9\/10/);
 });
 

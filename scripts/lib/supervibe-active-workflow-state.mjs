@@ -144,7 +144,29 @@ export function recordActiveWorkflowQuestion(rootDir = process.cwd(), question =
 }
 
 export function recordActiveWorkflowAcceptedAnswer(rootDir = process.cwd(), acceptedAnswer = null, updates = {}, options = {}) {
-  return upsertActiveWorkflowState(rootDir, mergeDefined(updates, { acceptedAnswer }), options);
+  const current = readCurrentActiveWorkflowState(rootDir);
+  if (current.exists && current.issues.length > 0 && current.states.length === 0 && options.allowInvalidBase !== true) {
+    throw activeWorkflowStateValidationError("cannot update unreadable active workflow state", current.issues);
+  }
+  const existingAnswer = current.state?.acceptedAnswer ?? null;
+  if (existingAnswer !== null && options.supersede !== true) {
+    throw activeWorkflowStateValidationError("active workflow question is already answered", [
+      issue(
+        "active-workflow-state-answer-already-accepted",
+        current.file || ACTIVE_WORKFLOW_STATE_FILE,
+        "acceptedAnswer already exists; pass { supersede: true } to replace it explicitly",
+      ),
+    ]);
+  }
+  const normalizedAnswer = materializeAcceptedWorkflowAnswer(acceptedAnswer, updates, options);
+  if (existingAnswer !== null && options.supersede === true) {
+    normalizedAnswer.supersedes = existingAnswer;
+  }
+  const nextReceipts = addAcceptedAnswerReceipt(current.state?.receipts, normalizedAnswer, updates);
+  return upsertActiveWorkflowState(rootDir, mergeDefined(updates, {
+    acceptedAnswer: normalizedAnswer,
+    receipts: nextReceipts,
+  }), options);
 }
 
 export function clearActiveWorkflowState(rootDir = process.cwd()) {
@@ -441,6 +463,9 @@ function validateActiveWorkflowState(state = {}, { file = "active-workflow-state
     issues.push(issue("active-workflow-state-accepted-answer-invalid", file, "acceptedAnswer must be null or an object"));
   } else if (isPlainObject(normalized.acceptedAnswer)) {
     validateOptionalString(normalized.acceptedAnswer.choiceId, "active-workflow-state-accepted-answer-invalid", "acceptedAnswer.choiceId", file, issues);
+    validateOptionalString(normalized.acceptedAnswer.actor, "active-workflow-state-accepted-answer-invalid", "acceptedAnswer.actor", file, issues);
+    validateOptionalString(normalized.acceptedAnswer.answeredAt, "active-workflow-state-accepted-answer-invalid", "acceptedAnswer.answeredAt", file, issues);
+    validateOptionalString(normalized.acceptedAnswer.receiptId, "active-workflow-state-accepted-answer-invalid", "acceptedAnswer.receiptId", file, issues);
     if (nonEmptyString(normalized.acceptedAnswer.choiceId) && Array.isArray(normalized.choices) && normalized.choices.length > 0) {
       const choiceIds = new Set(normalized.choices
         .filter(isPlainObject)
@@ -656,8 +681,53 @@ function normalizeChoices(value) {
 function normalizeAcceptedAnswer(value) {
   if (value === undefined) return undefined;
   if (value === null) return null;
-  if (isPlainObject(value)) return { ...value };
+  if (isPlainObject(value)) {
+    const answer = { ...value };
+    if (answer.receipt_id !== undefined && answer.receiptId === undefined) answer.receiptId = answer.receipt_id;
+    if (answer.answered_at !== undefined && answer.answeredAt === undefined) answer.answeredAt = answer.answered_at;
+    return answer;
+  }
   return value;
+}
+
+function materializeAcceptedWorkflowAnswer(acceptedAnswer = null, updates = {}, options = {}) {
+  const source = isPlainObject(acceptedAnswer)
+    ? { ...acceptedAnswer }
+    : acceptedAnswer === null || acceptedAnswer === undefined
+      ? {}
+      : { choiceId: String(acceptedAnswer).trim() };
+  const choiceId = firstNonEmpty(source.choiceId, source.choice_id, updates.choiceId, updates.choice_id, options.choiceId, options.choice_id);
+  const actor = firstNonEmpty(source.actor, updates.actor, options.actor, "user");
+  const answeredAt = firstNonEmpty(source.answeredAt, source.answered_at, updates.answeredAt, updates.answered_at, options.answeredAt, options.answered_at, new Date().toISOString());
+  const receiptId = firstNonEmpty(source.receiptId, source.receipt_id, updates.receiptId, updates.receipt_id, options.receiptId, options.receipt_id);
+  if (!choiceId) {
+    throw activeWorkflowStateValidationError("acceptedAnswer.choiceId required", [
+      issue("active-workflow-state-accepted-answer-choice-missing", ACTIVE_WORKFLOW_STATE_FILE, "acceptedAnswer.choiceId is required"),
+    ]);
+  }
+  if (options.requireReceipt === true && !receiptId) {
+    throw activeWorkflowStateValidationError("acceptedAnswer.receiptId required", [
+      issue("active-workflow-state-accepted-answer-receipt-missing", ACTIVE_WORKFLOW_STATE_FILE, "acceptedAnswer.receiptId is required for this user gate"),
+    ]);
+  }
+  const answer = {
+    ...source,
+    choiceId,
+    actor,
+    answeredAt,
+  };
+  if (receiptId) answer.receiptId = receiptId;
+  return answer;
+}
+
+function addAcceptedAnswerReceipt(receipts = [], acceptedAnswer = {}, updates = {}) {
+  const normalizedReceipts = normalizeReceipts(Array.isArray(receipts) ? receipts : []) || [];
+  const receiptId = String(firstNonEmpty(acceptedAnswer.receiptId, updates.receiptId, updates.receipt_id) || "").trim();
+  if (!receiptId || normalizedReceipts.some((receipt) => receipt.id === receiptId)) return normalizedReceipts;
+  const receipt = { id: receiptId };
+  const receiptPath = firstNonEmpty(updates.receiptPath, updates.receipt_path, acceptedAnswer.receiptPath, acceptedAnswer.receipt_path);
+  if (receiptPath) receipt.path = receiptPath;
+  return [...normalizedReceipts, receipt];
 }
 
 function normalizeArtifacts(value) {
@@ -719,7 +789,7 @@ function nonEmptyString(value) {
 }
 
 function isCommandLike(value) {
-  return /^\/[^\s/][^\s]*$/.test(String(value || "").trim());
+  return /^\/[^\s/][^\r\n]*$/.test(String(value || "").trim());
 }
 
 function isPlainObject(value) {

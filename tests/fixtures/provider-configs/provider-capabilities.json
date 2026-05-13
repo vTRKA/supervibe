@@ -1,0 +1,551 @@
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-05-13",
+  "providers": [
+    {
+      "id": "codex",
+      "name": "Codex",
+      "paths": {
+        "config": ["~/.codex/config.toml", ".codex/config.toml"],
+        "project": [".codex/agents/", ".codex/config.toml", "AGENTS.md"]
+      },
+      "capabilities": {
+        "agents": {
+          "support": "native",
+          "surfaces": ["features.multi_agent", "agents.max_threads", "agents.max_depth", "agents.job_max_runtime_seconds", "~/.codex/agents/", ".codex/agents/"]
+        },
+        "memory": {
+          "support": "native",
+          "surfaces": ["features.memories", "memories.generate_memories", "memories.use_memories", "sqlite_home", "CODEX_HOME"]
+        },
+        "mcp": {
+          "support": "native",
+          "surfaces": ["mcp_servers.<id>", "enabled_tools", "disabled_tools", "startup_timeout_sec", "tool_timeout_sec", "scopes"]
+        },
+        "hooks": {
+          "support": "native",
+          "surfaces": ["features.codex_hooks", "hooks", "requirements.toml managed hooks"]
+        },
+        "backgroundExecution": {
+          "support": "local-agent-jobs",
+          "surfaces": ["spawn_agent", "send_input", "wait_agent", "close_agent", "agent jobs in sqlite_home"]
+        },
+        "permissions": {
+          "support": "native",
+          "surfaces": ["approval_policy", "sandbox_mode", "default_permissions", "permissions.<name>.filesystem", "permissions.<name>.network"]
+        },
+        "schema": {
+          "support": "native",
+          "surfaces": ["config-schema.json", "TOML config reference"]
+        }
+      },
+      "providerLimits": {
+        "maxThreadsKey": "agents.max_threads",
+        "maxDepthKey": "agents.max_depth",
+        "jobRuntimeKey": "agents.job_max_runtime_seconds",
+        "defaultMaxThreads": 6,
+        "defaultMaxDepth": 1,
+        "defaultJobRuntimeSeconds": 1800
+      },
+      "powerPresets": [
+        {
+          "outcome": "more parallelism",
+          "setting": "features.multi_agent + agents.max_threads + agents.max_depth + agents.job_max_runtime_seconds",
+          "tier": "max-power",
+          "previewOnly": true,
+          "preview": "[features].multi_agent=true; [agents].max_threads=6; [agents].max_depth=1; [agents].job_max_runtime_seconds=1800",
+          "sourceUrl": "https://developers.openai.com/codex/config-reference",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "outcome": "stronger reasoning",
+          "setting": "review_model + plan_mode_reasoning_effort + model_context_window + model_auto_compact_token_limit",
+          "tier": "balanced",
+          "previewOnly": true,
+          "preview": "set reviewer/model/context values only after model and budget review",
+          "sourceUrl": "https://developers.openai.com/codex/config-reference",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "outcome": "smarter context",
+          "setting": "tool_output_token_limit + project_doc_max_bytes + project_doc_fallback_filenames",
+          "tier": "balanced",
+          "previewOnly": true,
+          "preview": "bound tool output and keep project docs explicit",
+          "sourceUrl": "https://developers.openai.com/codex/config-reference",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "outcome": "better memory",
+          "setting": "features.memories + memories.* + sqlite_home + history.persistence",
+          "tier": "balanced",
+          "previewOnly": true,
+          "preview": "enable memories with bounded local sqlite/history state",
+          "sourceUrl": "https://developers.openai.com/codex/config-reference",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "outcome": "safer tools",
+          "setting": "approval_policy + sandbox_mode + default_permissions + mcp scopes/timeouts",
+          "tier": "safe-default",
+          "previewOnly": true,
+          "preview": "workspace sandbox, scoped permissions, and MCP timeouts",
+          "sourceUrl": "https://developers.openai.com/codex/config-reference",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "outcome": "clearer observability",
+          "setting": "telemetry + notifications + hooks + history persistence",
+          "tier": "safe-default",
+          "previewOnly": true,
+          "preview": "local logs/history/notifications without raw prompt export",
+          "sourceUrl": "https://developers.openai.com/codex/config-reference",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "outcome": "hidden capability",
+          "setting": "features.goals",
+          "tier": "experimental",
+          "schemaStatus": "experimental/unlisted",
+          "sourceKind": "slash-command-doc",
+          "previewOnly": true,
+          "preview": "record as non-schema metadata only; do not auto-apply",
+          "sourceUrl": "https://developers.openai.com/codex/config-reference",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "outcome": "built-in agents",
+          "setting": "worker/explorer roles + spawn_agents_on_csv",
+          "tier": "manual-only",
+          "previewOnly": true,
+          "preview": "use only through real Codex spawn ids and receipts",
+          "sourceUrl": "https://developers.openai.com/codex/subagents",
+          "checkedAt": "2026-05-13"
+        }
+      ],
+      "sources": [
+        {
+          "url": "https://developers.openai.com/codex/config-reference",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "url": "https://developers.openai.com/codex/subagents",
+          "checkedAt": "2026-05-13"
+        }
+      ]
+    },
+    {
+      "id": "claude-code",
+      "name": "Claude Code",
+      "paths": {
+        "config": ["~/.claude/settings.json", ".claude/settings.json", ".claude/settings.local.json"],
+        "project": [".claude/agents/", ".mcp.json", "CLAUDE.md", ".claude/CLAUDE.md"]
+      },
+      "capabilities": {
+        "agents": {
+          "support": "native",
+          "surfaces": ["~/.claude/agents/", ".claude/agents/", "subagent frontmatter", "tool narrowing"]
+        },
+        "memory": {
+          "support": "native",
+          "surfaces": ["CLAUDE.md", ".claude/CLAUDE.md", "CLAUDE.local.md", "memory hierarchy"]
+        },
+        "mcp": {
+          "support": "native",
+          "surfaces": [".mcp.json", "enabledMcpjsonServers", "managed MCP allow/deny"]
+        },
+        "hooks": {
+          "support": "native",
+          "surfaces": ["PreToolUse", "PostToolUse", "SubagentStop", "SessionStart", "SessionEnd"]
+        },
+        "backgroundExecution": {
+          "support": "local-runtime",
+          "surfaces": ["subagents", "Claude Code on the web as separate surface"]
+        },
+        "permissions": {
+          "support": "native",
+          "surfaces": ["permissions.allow", "permissions.ask", "permissions.deny", "managed settings", "sandbox settings"]
+        },
+        "schema": {
+          "support": "native",
+          "surfaces": ["JSON settings schema", "managed settings JSON"]
+        }
+      },
+      "providerLimits": {
+        "maxThreadsKey": null,
+        "maxDepthKey": null,
+        "jobRuntimeKey": null,
+        "notes": "No documented shared numeric subagent thread cap in project settings; constrain via Supervibe wave policy and tool permissions."
+      },
+      "powerPresets": [
+        {
+          "outcome": "smarter context",
+          "setting": "CLAUDE.md + imports + memory hierarchy",
+          "tier": "safe-default",
+          "previewOnly": true,
+          "preview": "preserve user-owned instructions and update managed blocks only",
+          "sourceUrl": "https://code.claude.com/docs/en/settings",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "outcome": "more parallelism",
+          "setting": ".claude/agents project/user subagents",
+          "tier": "balanced",
+          "previewOnly": true,
+          "preview": "create narrow project subagents with explicit tools",
+          "sourceUrl": "https://docs.anthropic.com/en/docs/claude-code/sub-agents",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "outcome": "safer tools",
+          "setting": "permissions allow/ask/deny + MCP approval + managed settings",
+          "tier": "safe-default",
+          "previewOnly": true,
+          "preview": "deny secrets and do not weaken managed policy",
+          "sourceUrl": "https://code.claude.com/docs/en/settings",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "outcome": "clearer observability",
+          "setting": "SubagentStart + SubagentStop + PreToolUse + PostToolUse",
+          "tier": "balanced",
+          "previewOnly": true,
+          "preview": "use hooks for status and policy, not broad automation",
+          "sourceUrl": "https://code.claude.com/docs/en/settings",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "outcome": "manual boundary",
+          "setting": "managed settings",
+          "tier": "manual-only",
+          "previewOnly": true,
+          "preview": "document precedence; never overwrite admin/user config",
+          "sourceUrl": "https://code.claude.com/docs/en/settings",
+          "checkedAt": "2026-05-13"
+        }
+      ],
+      "sources": [
+        {
+          "url": "https://code.claude.com/docs/en/settings",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "url": "https://docs.anthropic.com/en/docs/claude-code/sub-agents",
+          "checkedAt": "2026-05-13"
+        }
+      ]
+    },
+    {
+      "id": "gemini-cli",
+      "name": "Gemini CLI",
+      "paths": {
+        "config": ["~/.gemini/settings.json", ".gemini/settings.json"],
+        "project": [".gemini/settings.json", "GEMINI.md", ".gemini/extensions/"]
+      },
+      "capabilities": {
+        "agents": {
+          "support": "preview/provider-specific",
+          "surfaces": ["preview sub-agents", "agent skills", "extensions"]
+        },
+        "memory": {
+          "support": "native",
+          "surfaces": ["GEMINI.md", "context.fileName", "/memory show", "/memory refresh"]
+        },
+        "mcp": {
+          "support": "native",
+          "surfaces": ["mcpServers", "includeTools", "excludeTools", "timeout", "gemini mcp"]
+        },
+        "hooks": {
+          "support": "extension-hooks",
+          "surfaces": ["extensions", "extension hooks"]
+        },
+        "backgroundExecution": {
+          "support": "local-session",
+          "surfaces": ["checkpointing", "/restore", "--resume", "--list-sessions"]
+        },
+        "permissions": {
+          "support": "native",
+          "surfaces": ["general.defaultApprovalMode", "--approval-mode", "trust", "sandbox", "respectGitIgnore", "respectGeminiIgnore"]
+        },
+        "schema": {
+          "support": "native",
+          "surfaces": ["settings.schema.json"]
+        }
+      },
+      "providerLimits": {
+        "maxThreadsKey": null,
+        "maxDepthKey": null,
+        "jobRuntimeKey": null,
+        "notes": "Use Supervibe wave caps; provider docs expose approval, checkpointing, output and session controls rather than a shared multi-agent thread cap."
+      },
+      "powerPresets": [
+        {
+          "outcome": "smarter context",
+          "setting": "GEMINI.md + AGENTS.md + context.fileName + include directories",
+          "tier": "safe-default",
+          "previewOnly": true,
+          "preview": "load hierarchical memory deliberately",
+          "sourceUrl": "https://github.com/google-gemini/gemini-cli/blob/main/docs/reference/configuration.md",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "outcome": "better memory",
+          "setting": "/memory show + /memory refresh",
+          "tier": "balanced",
+          "previewOnly": true,
+          "preview": "refresh memory before long loop sessions",
+          "sourceUrl": "https://github.com/google-gemini/gemini-cli/blob/main/docs/reference/commands.md",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "outcome": "safer tools",
+          "setting": "approval modes + sandbox + policy engine + env exclusion",
+          "tier": "safe-default",
+          "previewOnly": true,
+          "preview": "keep persisted approval conservative and yolo manual-only",
+          "sourceUrl": "https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/settings.md",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "outcome": "clearer observability",
+          "setting": "checkpointing + telemetry + output-format + tool output summarization",
+          "tier": "balanced",
+          "previewOnly": true,
+          "preview": "enable checkpointing and machine-readable output for recovery",
+          "sourceUrl": "https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/cli-reference.md",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "outcome": "hidden capability",
+          "setting": "preview sub-agents + agent skills + extension hooks + max session turns",
+          "tier": "experimental",
+          "previewOnly": true,
+          "preview": "treat preview agents and extension hooks as provider-specific",
+          "sourceUrl": "https://github.com/google-gemini/gemini-cli/blob/main/docs/index.md",
+          "checkedAt": "2026-05-13"
+        }
+      ],
+      "sources": [
+        {
+          "url": "https://github.com/google-gemini/gemini-cli/blob/main/docs/reference/configuration.md",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "url": "https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/settings.md",
+          "checkedAt": "2026-05-13"
+        }
+      ]
+    },
+    {
+      "id": "cursor",
+      "name": "Cursor",
+      "paths": {
+        "config": [".cursor/rules", ".cursor/mcp.json", ".cursor/environment.json"],
+        "project": [".cursor/rules", ".cursor/mcp.json", ".cursor/environment.json", "AGENTS.md", "CLAUDE.md"]
+      },
+      "capabilities": {
+        "agents": {
+          "support": "native",
+          "surfaces": ["cursor-agent", "background agents", "project rules", "Agent Requested rules"]
+        },
+        "memory": {
+          "support": "context-rules",
+          "surfaces": [".cursor/rules", "AGENTS.md", "CLAUDE.md", "codebase indexing"]
+        },
+        "mcp": {
+          "support": "native",
+          "surfaces": [".cursor/mcp.json", "~/.cursor/mcp.json", "stdio", "SSE", "Streamable HTTP"]
+        },
+        "hooks": {
+          "support": "rule-attachment",
+          "surfaces": ["Always", "Auto Attached", "Agent Requested", "Manual"]
+        },
+        "backgroundExecution": {
+          "support": "remote-background-agents",
+          "surfaces": [".cursor/environment.json", "GitHub branch handoff", "remote Ubuntu environment"]
+        },
+        "permissions": {
+          "support": "mixed",
+          "surfaces": ["interactive CLI approval", "cursor-agent --print full write access", "GitHub read-write for background agents"]
+        },
+        "schema": {
+          "support": "partial",
+          "surfaces": ["MDC rules", "mcp.json", "environment.json"]
+        }
+      },
+      "providerLimits": {
+        "maxThreadsKey": null,
+        "maxDepthKey": null,
+        "jobRuntimeKey": null,
+        "notes": "Remote background-agent concurrency is provider/account controlled; Supervibe must enforce local write-set/session caps."
+      },
+      "powerPresets": [
+        {
+          "outcome": "smarter context",
+          "setting": ".cursor/rules + user rules + AGENTS.md",
+          "tier": "safe-default",
+          "previewOnly": true,
+          "preview": "prefer scoped Cursor rules over one always-on rule",
+          "sourceUrl": "https://docs.cursor.com/en/context",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "outcome": "more parallelism",
+          "setting": "background agents + .cursor/environment.json + GitHub branch handoff",
+          "tier": "manual-only",
+          "previewOnly": true,
+          "preview": "remote background execution requires explicit GitHub/privacy review",
+          "sourceUrl": "https://docs.cursor.com/en/background-agents",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "outcome": "faster startup",
+          "setting": ".cursor/environment.json install/start/terminal commands",
+          "tier": "balanced",
+          "previewOnly": true,
+          "preview": "keep background setup repeatable without auto-creating remote env",
+          "sourceUrl": "https://docs.cursor.com/en/background-agents",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "outcome": "safer tools",
+          "setting": "MCP + privacy mode + cursor-agent --print risk",
+          "tier": "safe-default",
+          "previewOnly": true,
+          "preview": "treat print mode as full-write automation",
+          "sourceUrl": "https://docs.cursor.com/advanced/model-context-protocol",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "outcome": "model power",
+          "setting": "Max Mode model constraint",
+          "tier": "manual-only",
+          "previewOnly": true,
+          "preview": "surface as user choice because it changes model/cost behavior",
+          "sourceUrl": "https://docs.cursor.com/en/context",
+          "checkedAt": "2026-05-13"
+        }
+      ],
+      "sources": [
+        {
+          "url": "https://docs.cursor.com/en/context",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "url": "https://docs.cursor.com/en/background-agents",
+          "checkedAt": "2026-05-13"
+        }
+      ]
+    },
+    {
+      "id": "opencode",
+      "name": "OpenCode",
+      "paths": {
+        "config": ["opencode.json", "~/.config/opencode/opencode.json", "OPENCODE_CONFIG"],
+        "project": ["opencode.json", ".opencode/agents/", ".opencode/plugins/", "AGENTS.md"]
+      },
+      "capabilities": {
+        "agents": {
+          "support": "native",
+          "surfaces": ["agent config", ".opencode/agents/", "mode=subagent", "per-agent model", "per-agent permission"]
+        },
+        "memory": {
+          "support": "instructions-compaction",
+          "surfaces": ["instructions", "compaction", "AGENTS.md", "CLAUDE.md"]
+        },
+        "mcp": {
+          "support": "native",
+          "surfaces": ["mcp local", "mcp remote", "timeout", "oauth", "headers"]
+        },
+        "hooks": {
+          "support": "plugin-hooks",
+          "surfaces": ["tool.execute.before", "tool.execute.after", "permission.asked", "session.*", "file.watcher.updated"]
+        },
+        "backgroundExecution": {
+          "support": "local-server-watcher",
+          "surfaces": ["opencode serve", "opencode web", "watcher.ignore"]
+        },
+        "permissions": {
+          "support": "native",
+          "surfaces": ["permission.ask", "permission.allow", "permission.deny", "bash", "edit", "task", "webfetch", "websearch"]
+        },
+        "schema": {
+          "support": "native",
+          "surfaces": ["https://opencode.ai/config.json", "JSON", "JSONC"]
+        }
+      },
+      "providerLimits": {
+        "maxThreadsKey": null,
+        "maxDepthKey": null,
+        "jobRuntimeKey": "agent.<name>.steps",
+        "notes": "Use per-agent steps and Supervibe wave caps; no shared documented max_threads key."
+      },
+      "powerPresets": [
+        {
+          "outcome": "more parallelism",
+          "setting": "agent.<name> + mode=subagent + per-agent model + agent.<name>.steps",
+          "tier": "balanced",
+          "previewOnly": true,
+          "preview": "use per-agent steps and Supervibe wave caps",
+          "sourceUrl": "https://opencode.ai/docs/agents/",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "outcome": "stronger reasoning",
+          "setting": "model + small_model + temperature + provider options",
+          "tier": "balanced",
+          "previewOnly": true,
+          "preview": "route review/build agents to appropriate models",
+          "sourceUrl": "https://opencode.ai/docs/providers/",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "outcome": "smarter context",
+          "setting": "instructions + compaction + LSP + watcher",
+          "tier": "safe-default",
+          "previewOnly": true,
+          "preview": "load instruction globs and keep compaction/watchers explicit",
+          "sourceUrl": "https://opencode.ai/docs/config/",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "outcome": "safer tools",
+          "setting": "permission + MCP per-agent enablement + enabled/disabled providers",
+          "tier": "safe-default",
+          "previewOnly": true,
+          "preview": "deny edits for reviewers and ask for bash/task/web tools",
+          "sourceUrl": "https://opencode.ai/docs/config/",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "outcome": "clearer observability",
+          "setting": "plugins + plugin hooks + watcher events + server settings",
+          "tier": "balanced",
+          "previewOnly": true,
+          "preview": "use plugin hooks for status and permission events after approval",
+          "sourceUrl": "https://opencode.ai/docs/plugins/",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "outcome": "manual boundary",
+          "setting": "project/global config merge + auth provider setup",
+          "tier": "manual-only",
+          "previewOnly": true,
+          "preview": "never overwrite global config or provider auth automatically",
+          "sourceUrl": "https://opencode.ai/docs/config/",
+          "checkedAt": "2026-05-13"
+        }
+      ],
+      "sources": [
+        {
+          "url": "https://opencode.ai/docs/config/",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "url": "https://opencode.ai/docs/agents/",
+          "checkedAt": "2026-05-13"
+        }
+      ]
+    }
+  ]
+}

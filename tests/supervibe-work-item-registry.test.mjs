@@ -114,6 +114,28 @@ test("active graph resolver reports none, active, closed summaries, and ambiguit
   }
 });
 
+test("registry keeps release-ready graph active until the epic itself is closed", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-release-ready-registry-"));
+  try {
+    const graph = atomizePlanToWorkItems(PLAN, {
+      planPath: ".supervibe/artifacts/plans/registry-release.md",
+      epicId: "epic-release",
+      planReviewPassed: true,
+    });
+    graph.items = graph.items.map((item) => item.type === "epic"
+      ? { ...item, status: "open" }
+      : { ...item, status: "complete" });
+    graph.tasks = graph.tasks.map((task) => ({ ...task, status: "complete" }));
+    await writeWorkItemGraph(graph, { rootDir: root });
+
+    const registry = await readWorkItemRegistry(defaultWorkItemRegistryPath(root));
+    assert.equal(registry.activeEpicId, "epic-release");
+    assert.equal(registry.epics["epic-release"].status, "active");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("loop CLI dependency and reparent actions mutate canonical graph", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-cli-actions-"));
   try {

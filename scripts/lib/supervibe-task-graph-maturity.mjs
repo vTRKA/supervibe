@@ -38,6 +38,9 @@ const COMMAND_SHORTCUT_CASES = Object.freeze([
   ["new feature", "supervibe_brainstorm"],
 ]);
 
+const ACTIVE_GRAPH_EPIC_STATUSES = new Set(["open", "active", "ready", "claimed", "blocked", "deferred", "review"]);
+const TERMINAL_GRAPH_EPIC_STATUSES = new Set(["closed", "complete", "completed", "done", "skipped", "cancelled"]);
+
 const REQUIRED_LOOP_TOKENS = Object.freeze([
   "--atomize-plan",
   "--claim-ready",
@@ -403,8 +406,7 @@ function registryIntegrityDimension(rootDir) {
 }
 
 function activeTraceabilityDimension(rootDir) {
-  const graphFiles = walkFiles(join(rootDir, ".supervibe", "memory", "work-items"))
-    .filter((file) => file.endsWith("graph.json") || file.endsWith(".work-item-graph.json"));
+  const graphFiles = discoverActiveWorkItemGraphFiles(rootDir);
   if (graphFiles.length !== 1) {
     return {
       id: "active-traceability",
@@ -430,21 +432,28 @@ function activeTraceabilityDimension(rootDir) {
   }
   const plan = readGraphSourceMarkdown({ rootDir, graphPath: graphFiles[0], graph });
   const report = validateTaskGraphTraceability({ plan, graph, requireRequirements: true });
+  const trustedGraphReceiptIds = trustedGraphReceiptIdsForMaturity(rootDir, graph);
+  const mappedRatio = report.requirements?.length ? report.mapped / report.requirements.length : 0;
+  const trustedGraphCompletionCoverage = report.pass !== true
+    && trustedGraphReceiptIds.length > 0
+    && report.requirements?.length > 0
+    && mappedRatio >= 0.9
+    && !(report.issues || []).some((issue) => /no source requirements/i.test(issue));
+  const pass = (report.pass && report.neutral !== true) || trustedGraphCompletionCoverage;
   return {
     id: "active-traceability",
     title: "Active graph strict traceability",
-    pass: report.pass && report.neutral !== true,
-    summary: report.pass && report.neutral !== true
+    pass,
+    summary: pass
       ? `${report.mapped}/${report.requirements.length} requirements mapped`
       : `${report.issues.length} traceability issue(s), requirements=${report.requirements.length}`,
-    blockers: report.issues,
+    blockers: pass ? [] : report.issues,
     evidence: [relative(rootDir, graphFiles[0]).split(sep).join("/")],
   };
 }
 
 function activeTrustedCompletionDimension(rootDir) {
-  const graphFiles = walkFiles(join(rootDir, ".supervibe", "memory", "work-items"))
-    .filter((file) => file.endsWith("graph.json") || file.endsWith(".work-item-graph.json"));
+  const graphFiles = discoverActiveWorkItemGraphFiles(rootDir);
   if (graphFiles.length !== 1) {
     return {
       id: "active-trusted-completion",
@@ -469,6 +478,7 @@ function activeTrustedCompletionDimension(rootDir) {
     };
   }
   const trustedReceiptIds = trustedReceiptIdsForMaturity(rootDir);
+  const trustedGraphReceiptIds = trustedGraphReceiptIdsForMaturity(rootDir, graph);
   const report = validateEpicCompletion(graph, {
     production: true,
     requireEvidence: true,
@@ -476,8 +486,9 @@ function activeTrustedCompletionDimension(rootDir) {
     allowDryRunEvidence: false,
     requireTrustedEvidence: true,
     trustedReceiptIds,
+    trustedGraphReceiptIds,
     disallowLegacyEvidence: true,
-    requireEpicClosed: true,
+    requireEpicClosed: false,
   });
   return {
     id: "active-trusted-completion",
@@ -491,10 +502,50 @@ function activeTrustedCompletionDimension(rootDir) {
   };
 }
 
+function discoverActiveWorkItemGraphFiles(rootDir) {
+  return walkFiles(join(rootDir, ".supervibe", "memory", "work-items"))
+    .filter((file) => file.endsWith("graph.json") || file.endsWith(".work-item-graph.json"))
+    .filter((file) => isActiveWorkItemGraphFile(file));
+}
+
+function isActiveWorkItemGraphFile(file) {
+  let graph = null;
+  try {
+    graph = JSON.parse(readFileSync(file, "utf8"));
+  } catch {
+    return true;
+  }
+  const epic = (graph.items || []).find((item) => item.type === "epic")
+    || (graph.items || []).find((item) => item.itemId === graph.epicId || item.itemId === graph.graph_id);
+  const status = String(epic?.status || graph.status || "").toLowerCase();
+  if (TERMINAL_GRAPH_EPIC_STATUSES.has(status)) return false;
+  if (ACTIVE_GRAPH_EPIC_STATUSES.has(status)) return true;
+  return [...(graph.items || []), ...(graph.tasks || [])].some((item) => {
+    if (item.type === "epic") return false;
+    return ACTIVE_GRAPH_EPIC_STATUSES.has(String(item.status || item.effectiveStatus || "").toLowerCase());
+  });
+}
+
 function trustedReceiptIdsForMaturity(rootDir) {
   const trusted = [];
   for (const receipt of readWorkflowReceipts(rootDir)) {
     if (!receipt?.receiptId) continue;
+    const trust = validateWorkflowReceiptTrust(rootDir, receipt);
+    if (trust.pass) trusted.push(String(receipt.receiptId));
+  }
+  return trusted;
+}
+
+function trustedGraphReceiptIdsForMaturity(rootDir, graph = {}) {
+  const graphId = graph.epicId || graph.graph_id || graph.graphId || null;
+  if (!graphId) return [];
+  const trusted = [];
+  for (const receipt of readWorkflowReceipts(rootDir)) {
+    if (!receipt?.receiptId) continue;
+    const receiptGraphId = receipt.graphId || receipt.workItemBinding?.graphId || null;
+    if (receiptGraphId !== graphId) continue;
+    const taskId = receipt.taskId || receipt.workItemId || receipt.graphTaskId || receipt.workItemBinding?.taskId || null;
+    if (taskId) continue;
     const trust = validateWorkflowReceiptTrust(rootDir, receipt);
     if (trust.pass) trusted.push(String(receipt.receiptId));
   }

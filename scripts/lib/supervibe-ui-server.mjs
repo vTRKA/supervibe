@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
 import { createHash, randomUUID } from "node:crypto";
-import { appendFile, mkdir, readFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, readdir } from "node:fs/promises";
 import { existsSync, statSync } from "node:fs";
 import { dirname, relative, resolve, sep } from "node:path";
 import { CodeStore } from "./code-store.mjs";
@@ -14,12 +14,71 @@ import { scanWorkItemGc } from "./supervibe-work-item-gc.mjs";
 import { buildExecutionWaves } from "./supervibe-wave-controller.mjs";
 import { buildRunDashboardModel } from "./supervibe-run-dashboard.mjs";
 import { createRecurringWorkReport, createSlaReport, renderWorkReportMarkdown } from "./supervibe-work-item-sla-reports.mjs";
-import { CODEGRAPH_INDEX_COMMAND, SOURCE_RAG_INDEX_COMMAND } from "./supervibe-command-catalog.mjs";
+import { CODEGRAPH_INDEX_COMMAND, MEMORY_WATCH_COMMAND, SOURCE_RAG_INDEX_COMMAND } from "./supervibe-command-catalog.mjs";
 import { resolveActiveWorkItemGraphPath } from "./supervibe-work-item-registry.mjs";
 import { formatEpicCompletionReport, validateEpicCompletion } from "./supervibe-epic-completion-validator.mjs";
 import { defaultTrackerMappingPath, readTrackerMapping, summarizeTrackerMappingForBundle } from "./supervibe-task-tracker-sync.mjs";
+import { buildQueryCenteredCodeGraphMapFromStore } from "./supervibe-codegraph-ui-map.mjs";
 
 export { createWorkflowFlowModel } from "./supervibe-workflow-flow-model.mjs";
+
+export const UI_API_SCHEMA_VERSION = 1;
+export const UI_API_PROJECTION_VERSION = "supervibe-ui-api/v1";
+const UI_INDEX_MAP_CONTRACT_VERSION = 1;
+const UI_INDEX_MAP_MAX_NODES = 32;
+const UI_INDEX_MAP_MAX_EDGES = 48;
+
+const UI_API_PROJECTION_ENDPOINTS = Object.freeze([
+  {
+    name: "run",
+    path: "/api/run",
+    purpose: "Loop run tab state",
+    responseKind: "loop-run",
+    minimalFields: ["uiApi", "status", "runId", "runPathRelative", "nextAction", "waves", "tasks"],
+    staleStateShape: ["status", "message", "nextAction", "inspectionCommand"],
+    errorShape: ["uiApi", "error.code", "error.message", "error.repairCommand"],
+  },
+  {
+    name: "graph",
+    path: "/api/graph",
+    purpose: "Work items, Kanban, epic groups, and drawer details",
+    responseKind: "work-graph",
+    minimalFields: ["uiApi", "graphId", "items", "itemDetails", "epicGroups", "kanban", "panels"],
+    staleStateShape: ["status", "graphId", "items", "kanban", "nextAction"],
+    errorShape: ["uiApi", "error.code", "error.message", "error.repairCommand"],
+  },
+  {
+    name: "index-status",
+    path: "/api/index-status",
+    purpose: "RAG, Memory, and CodeGraph health",
+    responseKind: "index-health",
+    minimalFields: ["uiApi", "overall", "indexMapContract", "indexMaps", "codeRag.health", "memory.health", "codeGraph.status"],
+    staleStateShape: ["overall.status", "indexMaps.codeRag.health.status", "indexMaps.memory.health.status", "indexMaps.codeGraph.health.status", "codeRag.status", "memory.status", "codeGraph.status"],
+    errorShape: ["uiApi", "error.code", "error.message", "error.repairCommand"],
+  },
+  {
+    name: "pre-loop-summary",
+    path: "/api/pre-loop-summary",
+    purpose: "Pre-execution epic and task counts",
+    responseKind: "pre-loop-summary",
+    minimalFields: ["uiApi", "startsExecution", "epicCount", "taskCount", "epics", "orphanBucket"],
+    staleStateShape: ["status", "startsExecution", "nextAction"],
+    errorShape: ["uiApi", "error.code", "error.message", "error.repairCommand"],
+  },
+]);
+
+export function buildUiApiProjectionContract() {
+  return {
+    schemaVersion: UI_API_SCHEMA_VERSION,
+    projectionVersion: UI_API_PROJECTION_VERSION,
+    endpoints: UI_API_PROJECTION_ENDPOINTS.map((endpoint) => ({
+      ...endpoint,
+      minimalFields: [...endpoint.minimalFields],
+      staleStateShape: [...endpoint.staleStateShape],
+      errorShape: [...endpoint.errorShape],
+    })),
+  };
+}
 
 export function createSupervibeUiServer({
   rootDir = process.cwd(),
@@ -35,7 +94,10 @@ export function createSupervibeUiServer({
       }
       if (url.pathname === "/") return sendHtml(res, renderSupervibeUiHtml({ graphPath }));
       if (url.pathname === "/api/index-status") {
-        return sendJson(res, await buildIndexStatus({ rootDir }));
+        return sendJson(res, withUiApiProjection("index-status", await buildIndexStatus({
+          rootDir,
+          query: url.searchParams.get("query") || "",
+        })));
       }
       if (url.pathname === "/api/graph") {
         const requestedGraph = url.searchParams.get("file") || graphPath;
@@ -43,7 +105,7 @@ export function createSupervibeUiServer({
           ? await resolveGraphPath({ rootDir, requested: requestedGraph })
           : await resolveActiveWorkItemGraphPath({ rootDir });
         if (!file) {
-          return sendJson(res, createNoActiveGraphModel({ rootDir }));
+          return sendJson(res, withUiApiProjection("graph", createNoActiveGraphModel({ rootDir })));
         }
         const graph = await readJsonFile(file);
         const mapping = await readOptionalTrackerMapping(rootDir);
@@ -57,22 +119,27 @@ export function createSupervibeUiServer({
         });
         const lifecycle = createGraphLifecycleModel({ graph, completion });
         const kanban = createKanbanModel({ graph, index, lifecycle });
+        const itemDetails = createWorkItemDetailModel({ graph, index });
+        const epicGroups = groupWorkItemsByEpic({ graph, index });
         const flow = createWorkflowFlowModel({ graph, index, grouped });
         const tracker = await buildTrackerPanelModel({ rootDir });
         const savedViews = createSavedViewsModel({ index, completion });
-        return sendJson(res, {
+        return sendJson(res, withUiApiProjection("graph", {
           graphPath: file,
           graphId: graph.graph_id || graph.graphId || graph.epicId,
           title: graph.title,
           grouped,
-          items: index,
+          items: index.map(compactWorkItem),
+          itemDetails,
+          epicGroups,
+          preLoopSummary: createPreLoopSummaryModel({ graph, index }),
           graphTree: createGraphTreeModel({ graph, index }),
           panels: createWorkItemPanelModel({ graph, index, grouped, completion, lifecycle }),
           tracker,
           savedViews,
           kanban,
           flow,
-        });
+        }));
       }
       if (url.pathname === "/api/context-pack") {
         const file = await resolveGraphPath({ rootDir, requested: url.searchParams.get("file") || graphPath });
@@ -80,44 +147,34 @@ export function createSupervibeUiServer({
         return sendJson(res, pack);
       }
       if (url.pathname === "/api/run") {
-        const file = resolveSafe(rootDir, url.searchParams.get("file"));
-        const state = await readJsonFile(file);
-        const graph = normalizeStateGraph(state);
-        const index = createWorkItemIndex({
-          graph,
-          claims: state.claims || [],
-          gates: state.gates || [],
-          evidence: state.evidence || [],
-          delegatedMessages: state.delegatedMessages || state.delegated_messages || [],
-        });
-        const waves = buildExecutionWaves({
-          tasks: state.tasks || graph.tasks || [],
-          worktreeSessions: state.worktree_sessions || state.worktreeSessions || [],
-          claims: state.claims || [],
-        });
-        const dashboard = buildRunDashboardModel({
-          state,
-          workItemIndex: index,
-          delegatedMessages: state.delegatedMessages || state.delegated_messages || [],
-          evidence: state.evidence || [],
-          generatedAt: new Date().toISOString(),
-        });
-        const flow = createWorkflowFlowModel({ run: state, index, waves, dashboard });
-        return sendJson(res, {
-          runPath: file,
-          runId: state.run_id || state.runId || "unknown",
-          status: state.status || "unknown",
-          confidence: state.run_score ?? state.finalScore ?? state.confidence ?? null,
-          activeTask: state.active_task || state.activeTask || null,
-          nextAction: state.next_action || state.nextAction || null,
-          stopReason: state.stop_reason || state.stopReason || null,
-          waves,
-          dashboard,
-          tasks: state.tasks || [],
-          gates: state.gates || [],
-          reports: dashboard.reports || [],
-          flow,
-        });
+        const requestedState = url.searchParams.get("file");
+        const file = requestedState
+          ? resolveSafe(rootDir, requestedState)
+          : await resolveActiveLoopStatePath({ rootDir });
+        if (!file) return sendJson(res, withUiApiProjection("run", createNoActiveLoopRunModel({ rootDir })));
+        try {
+          return sendJson(res, withUiApiProjection("run", await buildLoopRunModel({
+            rootDir,
+            file,
+            discoveryMode: requestedState ? "manual-path" : "auto-latest",
+          })));
+        } catch (error) {
+          return sendJson(res, withUiApiProjection("run", createLoopRunErrorModel({ rootDir, file, error })));
+        }
+      }
+      if (url.pathname === "/api/pre-loop-summary") {
+        const requestedGraph = url.searchParams.get("file") || graphPath;
+        const file = requestedGraph
+          ? await resolveGraphPath({ rootDir, requested: requestedGraph })
+          : await resolveActiveWorkItemGraphPath({ rootDir });
+        if (!file) return sendJson(res, withUiApiProjection("pre-loop-summary", createPreLoopSummaryModel({ graph: {}, index: [], status: "no-active-graph" })));
+        const graph = await readJsonFile(file);
+        const index = createWorkItemIndex({ graph, claims: graph.claims || [], gates: graph.gates || [], evidence: graph.evidence || [] });
+        return sendJson(res, withUiApiProjection("pre-loop-summary", {
+          graphPath: file,
+          graphPathRelative: relative(rootDir, file).split(sep).join("/"),
+          ...createPreLoopSummaryModel({ graph, index }),
+        }));
       }
       if (url.pathname === "/api/report") {
         const file = await resolveGraphPath({ rootDir, requested: url.searchParams.get("file") || graphPath });
@@ -183,12 +240,47 @@ export function createSupervibeUiServer({
           applyRequires: "confirm=apply-local and matching previewToken",
         });
       }
-      return sendJson(res, { error: "not found" }, 404);
+      return sendJson(res, withUiApiProjection("error", createUiApiError("not-found", "not found")), 404);
     } catch (err) {
-      return sendJson(res, { error: err.message }, 400);
+      return sendJson(res, withUiApiProjection("error", createUiApiError("bad-request", err.message)), 400);
     }
   });
   return { server };
+}
+
+function withUiApiProjection(endpointName, data = {}) {
+  const endpoint = UI_API_PROJECTION_ENDPOINTS.find((item) => item.name === endpointName) || {
+    name: endpointName || "unknown",
+    path: null,
+    responseKind: "error",
+    minimalFields: ["uiApi", "error.code", "error.message"],
+    staleStateShape: [],
+    errorShape: ["uiApi", "error.code", "error.message", "error.repairCommand"],
+  };
+  return {
+    ...data,
+    uiApi: {
+      schemaVersion: UI_API_SCHEMA_VERSION,
+      projectionVersion: UI_API_PROJECTION_VERSION,
+      endpoint: endpoint.name,
+      path: endpoint.path,
+      responseKind: endpoint.responseKind,
+      minimalFields: [...(endpoint.minimalFields || [])],
+      staleStateShape: [...(endpoint.staleStateShape || [])],
+      errorShape: [...(endpoint.errorShape || [])],
+    },
+  };
+}
+
+function createUiApiError(code, message, repairCommand = "Inspect the requested API route and retry with a valid file path.") {
+  return {
+    status: "error",
+    error: {
+      code,
+      message,
+      repairCommand,
+    },
+  };
 }
 
 function createNoActiveGraphModel({ rootDir = process.cwd() } = {}) {
@@ -261,6 +353,126 @@ function createNoActiveGraphModel({ rootDir = process.cwd() } = {}) {
       runtimeMaturity: "node scripts/supervibe-task-graph-maturity.mjs --require-active-graph",
       inspectPlans: `dir ${planGlob}`,
     },
+  };
+}
+
+function createNoActiveLoopRunModel({ rootDir = process.cwd() } = {}) {
+  return {
+    status: "no-loop",
+    runPath: null,
+    runPathRelative: null,
+    runId: null,
+    confidence: null,
+    activeTask: null,
+    message: "No loop state found under .supervibe/memory/loops.",
+    nextAction: "Inspect with /supervibe-loop --status --loop <run-id> or enter a loop state manual path.",
+    inspectionCommand: "/supervibe-loop --status --loop <run-id>",
+    stopReason: null,
+    waves: { status: "no-loop", columns: [], currentWave: null },
+    dashboard: { rootDir, reports: [] },
+    tasks: [],
+    gates: [],
+    reports: [],
+    flow: createWorkflowFlowModel(),
+  };
+}
+
+function createLoopRunErrorModel({ rootDir = process.cwd(), file, error }) {
+  const code = error?.code || "";
+  const message = error?.message || "Unable to read loop state.";
+  const status = code === "EACCES" || code === "EPERM"
+    ? "permission-error"
+    : error instanceof SyntaxError
+      ? "parse-error"
+      : code === "ENOENT"
+        ? "stale"
+        : "error";
+  const nextAction = status === "permission-error"
+    ? `Inspect permissions, then run /supervibe-loop --status --file ${relative(rootDir, file).split(sep).join("/")}`
+    : status === "parse-error"
+      ? `Inspect JSON with /supervibe-loop --doctor --file ${relative(rootDir, file).split(sep).join("/")}`
+      : status === "stale"
+        ? "Inspect with /supervibe-loop --status --loop <run-id> or enter a loop state manual path."
+        : `Inspect with /supervibe-loop --status --file ${relative(rootDir, file).split(sep).join("/")}`;
+  return {
+    status,
+    runPath: file || null,
+    runPathRelative: file ? relative(rootDir, file).split(sep).join("/") : null,
+    runId: null,
+    confidence: null,
+    activeTask: null,
+    message,
+    nextAction,
+    inspectionCommand: nextAction.replace(/^Inspect (JSON with |permissions, then run |with )/i, ""),
+    stopReason: null,
+    waves: { status, columns: [], currentWave: null },
+    dashboard: { rootDir, reports: [] },
+    tasks: [],
+    gates: [],
+    reports: [],
+    flow: createWorkflowFlowModel(),
+  };
+}
+
+async function buildLoopRunModel({ rootDir = process.cwd(), file, discoveryMode = "manual-path" }) {
+  const state = await readJsonFile(file);
+  const graph = normalizeStateGraph(state);
+  const index = createWorkItemIndex({
+    graph,
+    claims: state.claims || [],
+    gates: state.gates || [],
+    evidence: state.evidence || [],
+    delegatedMessages: state.delegatedMessages || state.delegated_messages || [],
+  });
+  const waves = buildExecutionWaves({
+    tasks: state.tasks || graph.tasks || [],
+    worktreeSessions: state.worktree_sessions || state.worktreeSessions || [],
+    claims: state.claims || [],
+  });
+  const dashboard = buildRunDashboardModel({
+    state,
+    workItemIndex: index,
+    delegatedMessages: state.delegatedMessages || state.delegated_messages || [],
+    evidence: state.evidence || [],
+    generatedAt: new Date().toISOString(),
+  });
+  const flow = createWorkflowFlowModel({ run: state, index, waves, dashboard });
+  return {
+    runPath: file,
+    runPathRelative: relative(rootDir, file).split(sep).join("/"),
+    runId: state.run_id || state.runId || "unknown",
+    status: state.status || "unknown",
+    source: createLoopStateSourceModel({ rootDir, file, discoveryMode }),
+    confidence: state.run_score ?? state.finalScore ?? state.confidence ?? null,
+    activeTask: state.active_task || state.activeTask || null,
+    nextAction: state.next_action || state.nextAction || null,
+    stopReason: state.stop_reason || state.stopReason || null,
+    waves,
+    dashboard,
+    tasks: state.tasks || [],
+    gates: state.gates || [],
+    reports: dashboard.reports || [],
+    flow,
+  };
+}
+
+function createLoopStateSourceModel({ rootDir = process.cwd(), file, discoveryMode = "manual-path" } = {}) {
+  const modifiedMs = stateMtimeMs(file);
+  const modifiedAt = modifiedMs > 0 ? new Date(modifiedMs).toISOString() : null;
+  const ageSeconds = modifiedMs > 0 ? Math.max(0, Math.round((Date.now() - modifiedMs) / 1000)) : null;
+  return {
+    path: file || null,
+    pathRelative: file ? relative(rootDir, file).split(sep).join("/") : null,
+    discoveryMode,
+    modifiedAt,
+    ageSeconds,
+    freshness: ageSeconds === null
+      ? "unknown"
+      : ageSeconds <= 300
+        ? "fresh"
+        : ageSeconds <= 3600
+          ? "warm"
+          : "stale",
   };
 }
 
@@ -381,6 +593,12 @@ export function renderSupervibeUiHtml({ graphPath = "" } = {}) {
     .metric.error{border-left:4px solid var(--red)}
     .metric.info{border-left:4px solid var(--blue)}
     .metric.claimed{border-left:4px solid var(--blue)}
+    .run-state{margin-bottom:10px;display:grid;gap:6px}
+    .run-state h3{font-size:15px;margin:3px 0 0}
+    .run-state.loading{border-left:4px solid var(--blue)}
+    .run-state.success{border-left:4px solid var(--green);background:#fbfffc}
+    .run-state.stale{border-left:4px solid var(--amber);background:#fffdf7}
+    .run-state.error{border-left:4px solid var(--red);background:#fffafa}
     .flow{display:grid;grid-template-columns:repeat(6,minmax(118px,1fr));gap:6px;margin:14px 14px 0}
     .flow-step{border:1px solid var(--line);border-radius:6px;padding:8px;background:#f8fafb;color:#51606c;min-width:0}
     .flow-step strong{display:block;font-size:12px;line-height:1.2;text-transform:uppercase;color:#3f4c58}
@@ -444,6 +662,11 @@ export function renderSupervibeUiHtml({ graphPath = "" } = {}) {
     .legend-dot{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#53616f}
     .legend-dot::before{content:"";width:9px;height:9px;border-radius:50%;background:#8a98a8}
     .legend-dot.system::before{background:#17615d}.legend-dot.language::before,.legend-dot.type::before{background:#2457a6}.legend-dot.file::before,.legend-dot.entry::before{background:#7b5e1f}.legend-dot.symbol::before{background:#8b3d67}.legend-dot.tag::before{background:#60713c}
+    .detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-top:8px}
+    .detail-list{margin:6px 0 0;padding-left:18px;color:#44525f;font-size:12px}
+    .health-panel{display:grid;gap:10px;margin-bottom:14px}
+    .epic-group{border:1px solid var(--line);border-radius:8px;background:#fbfcfd;padding:10px}
+    .epic-group + .epic-group{margin-top:10px}
     .section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 0 8px}
     .section-title h3{margin:0}
     @media (max-width:900px){main{grid-template-columns:1fr}.topbar{align-items:flex-start;flex-direction:column}.topbar-meta{justify-content:flex-start}.flow{grid-template-columns:repeat(2,1fr)}.split,.index-layout{grid-template-columns:1fr}.kanban-toolbar{grid-template-columns:1fr}.kanban-board{grid-template-columns:repeat(7,230px)}.kanban-column{max-height:none}}
@@ -508,7 +731,7 @@ export function renderSupervibeUiHtml({ graphPath = "" } = {}) {
       </div>
       <div class="tab" id="tab-kanban"><div id="kanban"></div></div>
       <div class="tab" id="tab-items"><div id="items"></div></div>
-      <div class="tab" id="tab-run"><div id="runCards" class="grid"></div><div id="runDetails" class="list" style="margin-top:10px"></div></div>
+      <div class="tab" id="tab-run"><div id="runState" class="item run-state loading" data-run-state="loading"><div class="item-head"><div><span class="tag claimed">loading</span><h3>Loading loop run</h3></div></div><p class="muted">Looking for an active loop state. Manual path entry remains available.</p></div><div id="runCards" class="grid"></div><div id="runDetails" class="list" style="margin-top:10px"></div></div>
       <div class="tab" id="tab-rag"><div id="ragPanel"></div></div>
       <div class="tab" id="tab-memory"><div id="memoryPanel"></div></div>
       <div class="tab" id="tab-codegraph"><div id="codeGraphPanel"></div></div>
@@ -521,7 +744,7 @@ const statusOrder = ['ready','claimed','blocked','delegated','deferred','review'
 document.querySelectorAll('.tab-button').forEach(function(btn){ btn.addEventListener('click', function(){ setTab(btn.dataset.tab); }); });
 document.getElementById('loadGraphBtn').addEventListener('click', loadGraph);
 document.getElementById('refreshStatusBtn').addEventListener('click', loadIndexStatus);
-document.getElementById('loadRunBtn').addEventListener('click', loadRun);
+document.getElementById('loadRunBtn').addEventListener('click', function(){ loadRun(); });
 document.getElementById('loadReportBtn').addEventListener('click', loadReport);
 document.getElementById('loadCompletionBtn').addEventListener('click', loadCompletion);
 document.getElementById('loadGcBtn').addEventListener('click', loadGc);
@@ -529,6 +752,8 @@ document.getElementById('loadContextBtn').addEventListener('click', loadContext)
 document.getElementById('previewActionBtn').addEventListener('click', function(){ sendAction(false); });
 document.getElementById('applyActionBtn').addEventListener('click', function(){ sendAction(true); });
 setFlow(defaultFlowModel());
+renderRunState('loading', 'Loading loop run', 'Looking for an active loop state. Manual path entry remains available.');
+autoloadRun();
 loadIndexStatus().then(function(){ loadGraph(); });
 
 function graphFile(){ return document.getElementById('graphPath').value.trim(); }
@@ -541,12 +766,19 @@ async function requestJson(url, options){
   const res = await fetch(url, options);
   const data = await res.json().catch(function(){ return { error: 'Invalid JSON response' }; });
   if (!res.ok || data.error) {
-    const message = data.error || ('HTTP ' + res.status);
+    const message = apiErrorMessage(data.error, res.status);
     setBanner('error', message);
     throw new Error(message);
   }
   setBanner('ok', 'Ready');
   return data;
+}
+function apiErrorMessage(error, status){
+  if (!error) return 'HTTP ' + status;
+  if (typeof error === 'string') return error;
+  if (error.message) return error.message;
+  if (error.code) return error.code;
+  try { return JSON.stringify(error); } catch (_) { return 'HTTP ' + status; }
 }
 async function loadIndexStatus(){
   try {
@@ -585,17 +817,38 @@ async function loadGc(){
     setTab('raw');
   } catch (err) { setRaw({ error: err.message }); }
 }
-async function loadRun(){
+async function autoloadRun(){
+  return loadRun({ auto: true });
+}
+async function loadRun(options){
+  const auto = options && options.auto === true;
+  renderRunState('loading', auto ? 'Loading loop run' : 'Loading requested run', auto ? 'Looking for an active loop state. Manual path entry remains available.' : 'Reading loop state from the manual path or active run.');
   try {
     const file = document.getElementById('statePath').value.trim();
-    if (!file) throw new Error('Loop state file is required');
-    const data = await requestJson('/api/run?file=' + encodeURIComponent(file));
+    const data = await requestJson(file ? '/api/run?file=' + encodeURIComponent(file) : '/api/run');
     state.run = data;
     setRaw(data);
+    if (data.runPathRelative || data.runPath) document.getElementById('statePath').value = data.runPathRelative || data.runPath;
+    const runStatus = String(data.status || '').toLowerCase();
+    if (['stale','no-loop','parse-error','permission-error','error'].includes(runStatus)) {
+      const stateKind = runStatus === 'parse-error' || runStatus === 'permission-error' || runStatus === 'error' ? 'error' : 'stale';
+      const title = runStatus === 'parse-error' ? 'Loop state JSON parse error' : runStatus === 'permission-error' ? 'Loop state permission error' : 'No loop run found';
+      renderRunState(stateKind, title, data.message || data.nextAction || 'Enter a loop state manual path and load it.');
+      document.getElementById('runCards').innerHTML = '';
+      document.getElementById('runDetails').innerHTML = empty(data.nextAction || 'Enter a loop state manual path and load it.');
+      if (!auto) setTab('run');
+      return;
+    }
     setFlow(data.flow);
     renderRun(data);
-    setTab('run');
-  } catch (err) { setRaw({ error: err.message }); }
+    if (!auto) setTab('run');
+  } catch (err) {
+    renderRunState('error', 'Loop run error', err.message || 'Unable to load loop state.');
+    document.getElementById('runCards').innerHTML = '';
+    document.getElementById('runDetails').innerHTML = empty('Enter a loop state manual path and retry.');
+    setRaw({ error: err.message });
+    if (!auto) setTab('run');
+  }
 }
 async function loadReport(){
   try {
@@ -674,8 +927,7 @@ function renderGraph(data){
     return metric(k, count, 'work items', count > 0 ? (k === 'blocked' ? 'error' : k === 'deferred' ? 'warn' : 'ready') : 'info');
   }).join('');
   renderKanban(data.kanban);
-  const items = data.items || [];
-  document.getElementById('items').innerHTML = items.length ? '<div class="list">' + items.map(renderItem).join('') + '</div>' : empty('No work items loaded');
+  renderWorkItems(data);
 }
 function renderKanban(model){
   const el = document.getElementById('kanban');
@@ -695,28 +947,61 @@ function renderKanban(model){
   el.innerHTML = '<div class="kanban-shell"><div class="kanban-toolbar"><div><div class="kanban-title"><strong>'+escapeHtmlJs(graphSummary.title || 'Work board')+'</strong><span class="pill">'+escapeHtmlJs(graphSummary.graphId || 'graph')+'</span><span class="pill">'+escapeHtmlJs(graphSummary.totalTasks || 0)+' task(s)</span></div><div class="kanban-meta" style="margin-top:8px">'+(epicChips || '<span class="tag">no epic</span>')+'</div></div><div class="kanban-meta">'+(agentChips || '<span class="tag">unassigned</span>')+'</div></div><div class="kanban-board">'+columns+'</div></div>';
 }
 function renderKanbanCard(card){
-  const blockerLabels = card.blockedByLabels || card.blockedBy || [];
-  const blocker = blockerLabels.length ? '<span class="tag blocked">blocked by '+escapeHtmlJs(blockerLabels.join(', '))+'</span>' : '';
-  const verification = card.verificationCount ? '<span class="tag ready">'+escapeHtmlJs(card.verificationCount)+' check(s)</span>' : '';
-  const scope = card.writeScopeCount ? '<span class="tag">'+escapeHtmlJs(card.writeScopeCount)+' file(s)</span>' : '';
+  const dependencies = card.dependencyCount ? '<span class="tag blocked">'+escapeHtmlJs(card.dependencyCount)+' dep(s)</span>' : '<span class="tag">0 dep(s)</span>';
   const title = displayWorkTitle(card.title, card.id);
-  const technicalId = card.id && title !== card.id ? '<span class="muted">ID '+escapeHtmlJs(card.id)+'</span>' : '';
-  return '<article class="kanban-card '+toneClass(card.status)+'"><div><div class="kanban-card-title">'+escapeHtmlJs(title)+'</div><div class="kanban-card-subrow">'+technicalId+'</div></div><div class="kanban-meta"><span class="tag">'+escapeHtmlJs(card.epicTitle || card.epicId || 'epic')+'</span><span class="tag claimed">'+escapeHtmlJs(card.agent || 'unassigned')+'</span><span class="tag">'+escapeHtmlJs(card.priority || 'normal')+'</span>'+blocker+verification+scope+'</div><div class="kanban-card-foot"><span class="muted">'+escapeHtmlJs(card.type || 'task')+'</span><button data-id="'+escapeHtmlJs(card.id)+'" onclick="selectItem(this.dataset.id)">Select</button></div></article>';
+  return '<article class="kanban-card '+toneClass(card.status)+'"><div><div class="kanban-card-title">'+escapeHtmlJs(title)+'</div><div class="kanban-card-subrow"><span class="muted">'+escapeHtmlJs(card.shortId || card.id)+'</span></div></div><div class="kanban-meta"><span class="tag">'+escapeHtmlJs(card.epicTitle || card.epicId || 'epic')+'</span><span class="tag '+toneClass(card.status)+'">'+escapeHtmlJs(card.status || 'ready')+'</span>'+dependencies+'</div><div class="kanban-card-foot"><span class="muted">'+escapeHtmlJs(card.type || 'task')+'</span><button data-id="'+escapeHtmlJs(card.id)+'" onclick="selectItem(this.dataset.id)">Details</button></div></article>';
+}
+function renderWorkItems(data){
+  const el = document.getElementById('items');
+  const groups = data.epicGroups || {};
+  const sections = [];
+  (groups.epics || []).forEach(function(epic){
+    const body = epic.items && epic.items.length ? '<div class="list">' + epic.items.map(renderItem).join('') + '</div>' : empty('No tasks in this epic');
+    sections.push('<section class="epic-group"><div class="section-title"><h3>'+escapeHtmlJs(epic.title || epic.id)+'</h3><span class="tag">'+escapeHtmlJs(epic.items ? epic.items.length : 0)+' task(s)</span></div>'+body+'</section>');
+  });
+  if (groups.orphans && groups.orphans.items && groups.orphans.items.length) {
+    sections.push('<section class="epic-group"><div class="section-title"><h3>Orphan work items</h3><span class="tag warn">'+escapeHtmlJs(groups.orphans.items.length)+' item(s)</span></div><div class="list">'+groups.orphans.items.map(renderItem).join('')+'</div></section>');
+  }
+  el.innerHTML = sections.length ? sections.join('') + '<div id="itemDetailDrawer" class="item" style="margin-top:10px">'+empty('Select a work item for details')+'</div>' : empty('No work items loaded');
 }
 function renderItem(item){
   const id = item.itemId || item.id || 'unknown';
   const status = item.effectiveStatus || item.status || 'unknown';
   const title = displayWorkTitle(item.title || item.goal, id);
-  const technicalId = title !== id ? '<span class="tag">ID '+escapeHtmlJs(id)+'</span>' : '';
-  return '<article class="item"><div class="item-head"><div><span class="tag '+toneClass(status)+'">'+escapeHtmlJs(status)+'</span><strong>'+escapeHtmlJs(title)+'</strong> '+technicalId+'</div><button data-id="'+escapeHtmlJs(id)+'" onclick="selectItem(this.dataset.id)">Select</button></div><div class="muted">'+escapeHtmlJs((item.type || 'task') + formatOwner(item))+'</div></article>';
+  return '<article class="item"><div class="item-head"><div><span class="tag '+toneClass(status)+'">'+escapeHtmlJs(status)+'</span><strong>'+escapeHtmlJs(title)+'</strong> <span class="tag">ID '+escapeHtmlJs(item.shortId || id)+'</span></div><button data-id="'+escapeHtmlJs(id)+'" onclick="selectItem(this.dataset.id)">Details</button></div><div class="muted">'+escapeHtmlJs(item.type || 'task')+'</div></article>';
 }
 function selectItem(id){
   state.selectedItem = id;
   document.getElementById('contextItem').value = id;
   document.getElementById('actionItem').value = id;
+  renderItemDetails(id);
   setBanner('ok', 'Selected ' + id);
 }
+function renderItemDetails(id){
+  const el = document.getElementById('itemDetailDrawer');
+  if (!el || !state.graph || !state.graph.itemDetails) return;
+  const detail = state.graph.itemDetails[id];
+  if (!detail) { el.innerHTML = empty('No detail data for ' + id); return; }
+  const chips = [
+    '<span class="tag">'+escapeHtmlJs(detail.type || 'task')+'</span>',
+    '<span class="tag '+toneClass(detail.status)+'">'+escapeHtmlJs(detail.status || 'ready')+'</span>',
+    '<span class="tag claimed">'+escapeHtmlJs(detail.owner || 'unassigned')+'</span>'
+  ].join('');
+  el.innerHTML = '<div class="item-head"><div><h3>'+escapeHtmlJs(detail.title || id)+'</h3>'+chips+'</div><span class="tag">ID '+escapeHtmlJs(detail.shortId || id)+'</span></div><div class="detail-grid">'+
+    detailMetric('Files', detail.files)+detailMetric('Checks', detail.checks)+detailMetric('Receipts', detail.receipts)+detailMetric('Blockers', detail.blockers)+detailMetric('Verification', detail.verification)+
+    '</div>';
+}
+function detailMetric(label, value){
+  const count = Array.isArray(value) ? value.length : value ? 1 : 0;
+  const list = Array.isArray(value) && value.length ? '<ul class="detail-list">'+value.slice(0,5).map(function(item){ return '<li>'+escapeHtmlJs(typeof item === 'string' ? item : item.command || item.receiptId || item.taskId || item.id || JSON.stringify(item))+'</li>'; }).join('')+'</ul>' : '';
+  return '<div><div class="status">'+escapeHtmlJs(label)+'</div><strong>'+escapeHtmlJs(count)+'</strong>'+list+'</div>';
+}
 function renderRun(data){
+  if (String(data.status || '').toLowerCase() === 'stale') {
+    renderRunState('stale', 'No loop run found', data.message || data.nextAction || 'Enter a loop state manual path and load it.');
+    return;
+  }
+  renderRunState('success', 'Loop run loaded', data.runPathRelative || data.runPath || data.runId || 'Active loop state loaded.');
   const waves = data.waves || {};
   document.getElementById('runCards').innerHTML = [
     metric('Status', data.status || 'unknown', 'loop state', toneClass(data.status)),
@@ -730,6 +1015,15 @@ function renderRun(data){
     metric('Gates', (data.gates || []).length, 'release checks', (data.gates || []).length ? 'warn' : 'ready')
   ].join('') + '</div>';
 }
+function renderRunState(kind, title, message){
+  const el = document.getElementById('runState');
+  if (!el) return;
+  const normalized = ['loading','success','stale','error'].includes(kind) ? kind : 'loading';
+  const tagTone = normalized === 'success' ? 'ready' : normalized === 'error' ? 'error' : normalized === 'stale' ? 'warn' : 'claimed';
+  el.className = 'item run-state ' + normalized;
+  el.setAttribute('data-run-state', normalized);
+  el.innerHTML = '<div class="item-head"><div><span class="tag '+tagTone+'">'+escapeHtmlJs(normalized)+'</span><h3>'+escapeHtmlJs(title || labelize(normalized))+'</h3></div></div><p class="muted">'+escapeHtmlJs(message || '')+'</p>';
+}
 function renderIndexStatus(){
   const index = state.index || {};
   const cards = [index.codeRag, index.memory, index.codeGraph].filter(Boolean).map(function(item){
@@ -738,9 +1032,48 @@ function renderIndexStatus(){
   document.getElementById('indexCards').innerHTML = cards || empty('Index status unavailable');
   const overall = index.overall || {};
   document.getElementById('overallPill').textContent = 'Index status: ' + (overall.status || 'unknown');
-  renderIndexPanel('ragPanel', index.codeRag, ['files','chunks','languages','lastUpdate']);
-  renderIndexPanel('memoryPanel', index.memory, ['entries','tags','types','lastUpdate']);
+  renderRagHealthPanel('ragPanel', index.codeRag);
+  renderMemoryHealthPanel('memoryPanel', index.memory);
   renderIndexPanel('codeGraphPanel', index.codeGraph, ['symbols','edges','resolvedEdges','resolutionRate','lastUpdate']);
+}
+function renderRagHealthPanel(id, data){
+  const el = document.getElementById(id);
+  if (!data) { el.innerHTML = empty('No RAG data'); return; }
+  const health = data.health || {};
+  const coverage = health.chunkCoverage || {};
+  const evalScore = health.evalScore || {};
+  const metrics = [
+    metric('Chunk coverage', coverage.chunks ?? data.chunks ?? 0, (coverage.files ?? data.files ?? 0) + ' file(s); ' + (coverage.chunksPerFile ?? 0) + ' chunks/file', health.status || data.status),
+    metric('Freshness', statusLabel(health.freshness && health.freshness.status), health.freshness && health.freshness.lastUpdate ? health.freshness.lastUpdate : data.lastUpdate || 'unknown', health.freshness && health.freshness.status),
+    metric('Eval score', evalScore.label || 'no eval report', 'Useful retrieval requires passing recall and precision, not just many chunks.', evalScore.status),
+    metric('Repair command', 'available', health.repairCommand || data.nextAction || '', 'info')
+  ].join('');
+  el.innerHTML = '<section class="health-panel"><div class="section-title"><h3>Actionable RAG health</h3><span class="tag '+toneClass(health.status || data.status)+'">'+escapeHtmlJs(statusLabel(health.status || data.status))+'</span></div><div class="grid">'+metrics+'</div><div class="item"><div class="status">Why chunk count is not enough</div><p>'+escapeHtmlJs(health.usefulnessNote || 'Many chunks can still be low usefulness if retrieval eval fails.')+'</p></div>'+renderGapList('Top gaps', health.topGaps || [])+'</section><div class="section-title"><h3>Secondary relationship mini-map</h3><span class="muted">Sparse mini-map is not the primary signal</span></div>'+renderNetworkGraph(id, data.map, data.label);
+}
+function renderMemoryHealthPanel(id, data){
+  const el = document.getElementById(id);
+  if (!data) { el.innerHTML = empty('No memory data'); return; }
+  const health = data.health || {};
+  const coverage = health.coverage || {};
+  const metrics = [
+    metric('Coverage', coverage.entries ?? data.entries ?? 0, (coverage.tags ?? data.tags ?? 0) + ' tag(s), ' + ((coverage.types || data.byType || []).length) + ' type(s)', health.status || data.status),
+    metric('Freshness', statusLabel(health.freshness && health.freshness.status), health.freshness && health.freshness.lastUpdate ? health.freshness.lastUpdate : data.lastUpdate || 'unknown', health.freshness && health.freshness.status),
+    metric('Top decisions', (health.topDecisions || []).length, 'recent durable decision entries', (health.topDecisions || []).length ? 'ready' : 'warn'),
+    metric('Repair actions', (health.repairActions || []).length, 'commands and memory-writing actions', 'info')
+  ].join('');
+  el.innerHTML = '<section class="health-panel"><div class="section-title"><h3>Actionable memory health</h3><span class="tag '+toneClass(health.status || data.status)+'">'+escapeHtmlJs(statusLabel(health.status || data.status))+'</span></div><div class="grid">'+metrics+'</div>'+renderGapList('Coverage gaps', health.gaps || [])+renderDecisionList(health.topDecisions || [])+renderActionList('Repair actions', health.repairActions || [])+'</section><div class="section-title"><h3>Secondary relationship mini-map</h3><span class="muted">Relationship graph is secondary to actionable health</span></div>'+renderNetworkGraph(id, data.map, data.label);
+}
+function renderGapList(title, gaps){
+  if (!gaps.length) return '<div class="item"><div class="status">'+escapeHtmlJs(title)+'</div><p>No actionable gaps detected.</p></div>';
+  return '<div class="item"><div class="status">'+escapeHtmlJs(title)+'</div><ul class="detail-list">'+gaps.map(function(gap){ return '<li><strong>'+escapeHtmlJs(gap.code || 'gap')+'</strong>: '+escapeHtmlJs(gap.message || '')+' <span class="muted">'+escapeHtmlJs(gap.action || '')+'</span></li>'; }).join('')+'</ul></div>';
+}
+function renderDecisionList(decisions){
+  if (!decisions.length) return '<div class="item"><div class="status">Top decisions</div><p>No decision entries found.</p></div>';
+  return '<div class="item"><div class="status">Top decisions</div><ul class="detail-list">'+decisions.map(function(row){ return '<li><strong>'+escapeHtmlJs(row.id)+'</strong> <span class="muted">'+escapeHtmlJs((row.date || 'undated') + ', confidence ' + (row.confidence ?? 'unknown'))+'</span><br>'+escapeHtmlJs(row.summary || row.file || '')+'</li>'; }).join('')+'</ul></div>';
+}
+function renderActionList(title, actions){
+  if (!actions.length) return '';
+  return '<div class="item"><div class="status">'+escapeHtmlJs(title)+'</div><ul class="detail-list">'+actions.map(function(action){ return '<li><strong>'+escapeHtmlJs(action.label || 'Action')+'</strong>: <code>'+escapeHtmlJs(action.command || '')+'</code></li>'; }).join('')+'</ul></div>';
 }
 function renderIndexPanel(id, data, fields){
   const el = document.getElementById(id);
@@ -841,13 +1174,22 @@ function statusLabel(status){
   if (status === 'unavailable') return 'Unavailable';
   if (status === 'empty') return 'Empty';
   if (status === 'error') return 'Error';
+  if (status === 'stale') return 'Stale';
+  if (status === 'no-loop') return 'No loop';
+  if (status === 'parse-error') return 'Parse error';
+  if (status === 'permission-error') return 'Permission error';
+  if (status === 'needs_attention') return 'Needs attention';
+  if (status === 'pass') return 'Pass';
+  if (status === 'fail') return 'Fail';
+  if (status === 'fresh') return 'Fresh';
+  if (status === 'aging') return 'Aging';
   return status || 'unknown';
 }
 function toneClass(value){
   const v = String(value || '').toLowerCase();
   if (v.includes('ready') || v.includes('done') || v.includes('complete') || v.includes('closed')) return 'ready';
   if (v.includes('blocked') || v.includes('error') || v.includes('fail')) return 'error';
-  if (v.includes('defer') || v.includes('warn') || v.includes('unavailable') || v.includes('not_initialized')) return 'warn';
+  if (v.includes('defer') || v.includes('warn') || v.includes('unavailable') || v.includes('not_initialized') || v.includes('stale') || v.includes('attention') || v.includes('aging')) return 'warn';
   if (v.includes('claim')) return 'claimed';
   return 'info';
 }
@@ -939,6 +1281,8 @@ export function createKanbanModel({ graph = {}, index = [], lifecycle = null } =
     title: graph.title || graphId,
   };
   const epicById = new Map(epicItems.map((item) => [item.itemId || item.id, item]));
+  const itemById = new Map(index.map((item) => [item.itemId || item.id, item]));
+  const epicForItem = createEpicResolver({ graph, index });
   const titleById = new Map(index.map((item) => {
     const id = item.itemId || item.id;
     return [id, workItemDisplayTitle(item, id)];
@@ -946,7 +1290,7 @@ export function createKanbanModel({ graph = {}, index = [], lifecycle = null } =
   if (!epicById.has(fallbackEpic.itemId)) epicById.set(fallbackEpic.itemId, fallbackEpic);
   const taskCards = index
     .filter((item) => item.type !== "epic")
-    .map((item) => workItemToKanbanCard(item, graph, fallbackEpic, epicById, titleById));
+    .map((item) => workItemToKanbanCard(item, graph, fallbackEpic, epicById, titleById, epicForItem, itemById));
   const columns = KANBAN_COLUMNS.map((column) => ({
     ...column,
     items: taskCards.filter((card) => card.column === column.id),
@@ -976,6 +1320,38 @@ export function createKanbanModel({ graph = {}, index = [], lifecycle = null } =
     })),
     agents,
     columns,
+  };
+}
+
+export function createPreLoopSummaryModel({ graph = {}, index = [], status = "ready" } = {}) {
+  const groups = groupWorkItemsByEpic({ graph, index });
+  const epics = groups.epics.map((epic) => {
+    const counts = countEpicStatuses(epic.items || []);
+    return {
+      id: epic.id,
+      shortId: shortWorkItemId(epic.id),
+      title: epic.title,
+      status: epic.status,
+      taskCount: epic.items.length,
+      counts,
+    };
+  });
+  const orphanCounts = countEpicStatuses(groups.orphans.items || []);
+  return {
+    status,
+    startsExecution: false,
+    graphId: graph.graph_id || graph.graphId || graph.epicId || null,
+    epicCount: epics.length,
+    taskCount: index.filter((item) => item.type !== "epic").length,
+    epics,
+    orphanBucket: {
+      id: "orphans",
+      title: "Orphan work items",
+      taskCount: groups.orphans.items.length,
+      counts: orphanCounts,
+      items: groups.orphans.items.map(compactWorkItem),
+    },
+    nextAction: "Inspect with /supervibe-loop --status --file <graph.json>; execution starts only with an explicit run or claim command.",
   };
 }
 
@@ -1012,6 +1388,43 @@ function createGraphTreeModel({ graph = {}, index = [] } = {}) {
       followups: index.filter((item) => item.type === "followup").length,
       orphanItems: detectOrphanWorkItems(index, graph).length,
       total: byId.size,
+    },
+  };
+}
+
+export function groupWorkItemsByEpic({ graph = {}, index = [] } = {}) {
+  const epicForItem = createEpicResolver({ graph, index });
+  const epicById = new Map(index.filter((item) => item.type === "epic").map((item) => [item.itemId || item.id, item]));
+  const groupByEpic = new Map();
+  const orphans = [];
+  for (const item of index.filter((candidate) => candidate.type !== "epic")) {
+    const id = item.itemId || item.id;
+    const epicId = epicForItem(item);
+    if (epicId && epicById.has(epicId)) {
+      const group = groupByEpic.get(epicId) || [];
+      group.push(compactWorkItem(item));
+      groupByEpic.set(epicId, group);
+    } else {
+      orphans.push(compactWorkItem({ ...item, orphanReason: item.parentId ? `missing parent ${item.parentId}` : "no epic relationship" }));
+    }
+  }
+  const epics = [...epicById.entries()].map(([id, epic]) => ({
+    id,
+    shortId: shortWorkItemId(id),
+    title: workItemDisplayTitle(epic, id),
+    type: "epic",
+    status: epic.effectiveStatus || epic.status || "summary",
+    items: groupByEpic.get(id) || [],
+  }));
+  return {
+    epics,
+    orphans: {
+      id: "orphans",
+      shortId: "orphans",
+      title: "Orphan work items",
+      type: "orphan-bucket",
+      status: orphans.length ? "needs-attention" : "empty",
+      items: orphans,
     },
   };
 }
@@ -1119,6 +1532,122 @@ function compactPanelItem(item = {}) {
   };
 }
 
+function compactWorkItem(item = {}) {
+  const id = item.itemId || item.id || "unknown";
+  return {
+    id,
+    shortId: shortWorkItemId(id),
+    title: workItemDisplayTitle(item, id),
+    type: item.type || "task",
+    status: item.effectiveStatus || item.status || "ready",
+  };
+}
+
+function shortWorkItemId(id) {
+  const value = String(id || "item");
+  const tail = value.match(/(?:^|[-_])([a-z]?\d+(?:\.\d+)?|t\d+|g\d+|r\d+)$/i);
+  if (tail) return tail[1].toUpperCase();
+  const parts = value.split(/[-_]/).filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : value;
+}
+
+function createWorkItemDetailModel({ graph = {}, index = [] } = {}) {
+  const byId = new Map(index.map((item) => [item.itemId || item.id, item]));
+  return Object.fromEntries(index.map((item) => {
+    const id = item.itemId || item.id;
+    const task = item.task || {};
+    const files = normalizeFiles(item.writeScope || task.writeScope || item.files || task.files || []);
+    const checks = normalizeChecks(item.verificationCommands || task.verificationCommands || item.checks || []);
+    const receipts = normalizeReceipts(item.receipts || task.receipts || item.workflowReceipts || task.workflowReceipts || item.evidence || []);
+    const blockerState = splitActiveAndResolvedBlockers(item.blockedBy || item.blocked_by || task.dependencies || item.dependencies || item.dependencyBlockers || [], byId);
+    const verification = item.verificationEvidence || task.verificationEvidence || item.evidence || [];
+    return [id, {
+      ...compactWorkItem(item),
+      owner: item.owner || item.assignee || item.claims?.[0]?.agentId || task.owner || null,
+      epicId: createEpicResolver({ graph, index })(item),
+      parentId: item.parentId || task.parentId || null,
+      files,
+      checks,
+      receipts,
+      blockers: blockerState.active,
+      resolvedBlockers: blockerState.resolved,
+      blockerReason: item.blockerReason || task.blockerReason || null,
+      blockerNextAction: item.blockerNextAction || task.blockerNextAction || null,
+      verification,
+      diagnostics: {
+        claims: item.claims || [],
+        gates: item.gates || [],
+        delegatedMessages: item.delegatedMessages || [],
+        comments: item.comments || [],
+        mapping: item.mapping || null,
+      },
+    }];
+  }).filter(([id]) => id));
+}
+
+function normalizeFiles(value) {
+  const items = Array.isArray(value) ? value : value ? [value] : [];
+  return items.map((entry) => typeof entry === "string" ? entry : entry.path || entry.file || entry.name).filter(Boolean);
+}
+
+function normalizeChecks(value) {
+  const items = Array.isArray(value) ? value : value ? [value] : [];
+  return items.map((entry) => typeof entry === "string" ? { command: entry } : entry).filter(Boolean);
+}
+
+function normalizeReceipts(value) {
+  const items = Array.isArray(value) ? value : value ? [value] : [];
+  return items.map((entry) => typeof entry === "string" ? { receiptId: entry } : entry).filter(Boolean);
+}
+
+function countEpicStatuses(items = []) {
+  const counts = { ready: 0, blocked: 0, done: 0, stale: 0 };
+  for (const item of items) {
+    const status = String(item.status || item.effectiveStatus || "").toLowerCase();
+    if (status === "stale") counts.stale += 1;
+    else if (["blocked", "gate"].includes(status)) counts.blocked += 1;
+    else if (["done", "complete", "completed", "closed", "skipped", "cancelled", "canceled"].includes(status)) counts.done += 1;
+    else if (["ready", "open", "todo", "pending"].includes(status)) counts.ready += 1;
+  }
+  return counts;
+}
+
+function createEpicResolver({ graph = {}, index = [] } = {}) {
+  const byId = new Map(index.map((item) => [item.itemId || item.id, item]));
+  const relationParentByChild = createRelationParentMap(graph);
+  return (item = {}) => {
+    const id = item.itemId || item.id;
+    let parentId = item.epicId || item.parentEpicId || item.parentId || relationParentByChild.get(id) || null;
+    const seen = new Set([id]);
+    while (parentId) {
+      if (seen.has(parentId)) return null;
+      seen.add(parentId);
+      const parent = byId.get(parentId);
+      if (!parent) return null;
+      if (parent.type === "epic") return parent.itemId || parent.id;
+      parentId = parent.epicId || parent.parentEpicId || parent.parentId || relationParentByChild.get(parent.itemId || parent.id) || null;
+    }
+    return item.type === "epic" ? id : null;
+  };
+}
+
+function createRelationParentMap(graph = {}) {
+  const rows = [
+    ...(Array.isArray(graph.relationships) ? graph.relationships : []),
+    ...(Array.isArray(graph.edges) ? graph.edges : []),
+  ];
+  const parentByChild = new Map();
+  for (const edge of rows) {
+    const type = String(edge.type || edge.kind || edge.rel || "").toLowerCase();
+    const from = edge.from || edge.fromId || edge.parent || edge.source;
+    const to = edge.to || edge.toId || edge.child || edge.target;
+    if (!from || !to) continue;
+    if (edge.parent || edge.child || ["parent", "contains", "has-child", "child", "epic-task"].includes(type)) parentByChild.set(String(to), String(from));
+    if (["depends-on", "blocks", "blocked-by"].includes(type)) continue;
+  }
+  return parentByChild;
+}
+
 const KANBAN_COLUMNS = Object.freeze([
   { id: "ready", label: "Ready" },
   { id: "claimed", label: "In progress" },
@@ -1129,26 +1658,26 @@ const KANBAN_COLUMNS = Object.freeze([
   { id: "done", label: "Done" },
 ]);
 
-function workItemToKanbanCard(item, graph, fallbackEpic, epicById, titleById) {
+function workItemToKanbanCard(item, graph, fallbackEpic, epicById, titleById, epicForItem = null, itemById = new Map()) {
   const id = item.itemId || item.id || "unknown";
-  const epicId = item.epicId || item.parentEpicId || graph.epicId || graph.graph_id || graph.graphId || fallbackEpic.itemId;
+  const epicId = (typeof epicForItem === "function" ? epicForItem(item) : null) || item.epicId || item.parentEpicId || fallbackEpic.itemId;
   const epic = epicById.get(epicId) || fallbackEpic;
   const status = item.effectiveStatus || item.status || "ready";
-  const blockedBy = normalizeBlockers(item.blockedBy || item.blocked_by || item.task?.dependencies || item.dependencies || []);
+  const blockerState = splitActiveAndResolvedBlockers(item.blockedBy || item.blocked_by || item.task?.dependencies || item.dependencies || [], itemById);
   return {
     id,
+    shortId: shortWorkItemId(id),
     title: workItemDisplayTitle(item, id),
     type: item.type || "task",
     status,
     column: kanbanColumnFor(item, status),
     epicId,
     epicTitle: epic?.title || epic?.goal || epicId,
-    agent: item.owner || item.assignee || item.claims?.[0]?.agentId || item.task?.owner || null,
-    priority: item.priority || item.severity || item.risk || "normal",
-    blockedBy,
-    blockedByLabels: blockedBy.map((blockedId) => titleById.get(blockedId) || humanizeWorkId(blockedId)),
-    verificationCount: (item.verificationCommands || item.task?.verificationCommands || []).length,
-    writeScopeCount: (item.writeScope || item.task?.writeScope || []).length,
+    agent: item.owner || item.assignee || item.claims?.[0]?.agentId || item.task?.owner || item.task?.agentId || null,
+    blockedBy: blockerState.active.map((entry) => entry.id),
+    resolvedBlockedBy: blockerState.resolved.map((entry) => entry.id),
+    dependencyCount: blockerState.active.length,
+    resolvedDependencyCount: blockerState.resolved.length,
   };
 }
 
@@ -1159,6 +1688,22 @@ function workItemDisplayTitle(item, id) {
 function normalizeBlockers(value) {
   if (!value) return [];
   return Array.isArray(value) ? value.map(String) : [String(value)];
+}
+
+function splitActiveAndResolvedBlockers(value, itemById = new Map()) {
+  const active = [];
+  const resolved = [];
+  for (const id of normalizeBlockers(value)) {
+    const dependency = itemById.get(id);
+    const record = {
+      id,
+      title: dependency ? workItemDisplayTitle(dependency, id) : id,
+      status: dependency?.effectiveStatus || dependency?.status || "unknown",
+    };
+    if (dependency && isTerminalWorkStatus(record.status)) resolved.push(record);
+    else active.push(record);
+  }
+  return { active, resolved };
 }
 
 function humanizeWorkId(id) {
@@ -1177,7 +1722,11 @@ function kanbanColumnFor(item, status) {
   return "ready";
 }
 
-async function buildIndexStatus({ rootDir = process.cwd() } = {}) {
+const MEMORY_INDEX_COMMAND = "node <resolved-supervibe-plugin-root>/scripts/build-memory-index.mjs";
+const MEMORY_HEALTH_COMMAND = "npm run supervibe:memory-health";
+const RETRIEVAL_EVAL_COMMAND = "node <resolved-supervibe-plugin-root>/scripts/supervibe-retrieval-eval.mjs";
+
+export async function buildIndexStatus({ rootDir = process.cwd(), query = "" } = {}) {
   const codeDbPath = resolve(rootDir, ".supervibe", "memory", "code.db");
   const memoryDbPath = resolve(rootDir, ".supervibe", "memory", "memory.db");
   const sqliteAvailable = hasNodeSqliteSupport();
@@ -1195,7 +1744,7 @@ async function buildIndexStatus({ rootDir = process.cwd() } = {}) {
     result.codeGraph = { ...result.codeGraph, status: "unavailable", message, nextAction: `Upgrade Node.js and run ${CODEGRAPH_INDEX_COMMAND}.` };
     result.memory = { ...result.memory, status: "unavailable", message, nextAction: "Upgrade Node.js and rebuild memory." };
     result.overall.status = "unavailable";
-    return result;
+    return attachIndexMapProjections(result);
   }
 
   if (!existsSync(codeDbPath)) {
@@ -1217,8 +1766,9 @@ async function buildIndexStatus({ rootDir = process.cwd() } = {}) {
       await store.init();
       const stats = store.stats();
       const grammarHealth = store.getGrammarHealth();
-      const maps = buildCodeIndexMaps(store, stats, grammarHealth);
+      const maps = buildCodeIndexMaps(store, stats, grammarHealth, { query });
       const lastUpdate = statSync(codeDbPath).mtime.toISOString();
+      const evalReport = await readLatestRetrievalEvalReport(rootDir);
       result.codeRag = {
         ...result.codeRag,
         status: stats.totalChunks > 0 ? "ready" : "empty",
@@ -1229,6 +1779,7 @@ async function buildIndexStatus({ rootDir = process.cwd() } = {}) {
         languages: stats.byLang.map((row) => ({ language: row.language, files: row.n })),
         lastUpdate,
         map: maps.rag,
+        health: buildRagHealthProjection({ store, stats, lastUpdate, evalReport }),
       };
       result.codeGraph = {
         ...result.codeGraph,
@@ -1242,6 +1793,7 @@ async function buildIndexStatus({ rootDir = process.cwd() } = {}) {
         languages: grammarHealth,
         lastUpdate,
         map: maps.codeGraph,
+        health: maps.codeGraph.health,
       };
     } catch (error) {
       result.codeRag = { ...result.codeRag, status: "error", message: error.message, nextAction: `Run ${SOURCE_RAG_INDEX_COMMAND} or inspect code.db.` };
@@ -1263,6 +1815,7 @@ async function buildIndexStatus({ rootDir = process.cwd() } = {}) {
     try {
       await store.init();
       const stats = store.stats();
+      const lastUpdate = statSync(memoryDbPath).mtime.toISOString();
       result.memory = {
         ...result.memory,
         status: stats.totalEntries > 0 ? "ready" : "empty",
@@ -1271,8 +1824,9 @@ async function buildIndexStatus({ rootDir = process.cwd() } = {}) {
         entries: stats.totalEntries,
         tags: stats.uniqueTags,
         byType: stats.byType,
-        lastUpdate: statSync(memoryDbPath).mtime.toISOString(),
+        lastUpdate,
         map: buildMemoryIndexMap(store, stats),
+        health: buildMemoryHealthProjection({ store, stats, lastUpdate }),
       };
     } catch (error) {
       result.memory = { ...result.memory, status: "error", message: error.message, nextAction: "Inspect memory.db or rebuild memory." };
@@ -1288,7 +1842,135 @@ async function buildIndexStatus({ rootDir = process.cwd() } = {}) {
     : states.some((item) => item.status === "error" || item.status === "unavailable")
       ? "needs_attention"
       : "partial";
+  return attachIndexMapProjections(result);
+}
+
+function attachIndexMapProjections(result) {
+  result.indexMapContract = buildIndexMapContract();
+  result.indexMaps = {
+    codeRag: buildHealthFirstIndexMap("codeRag", result.codeRag),
+    memory: buildHealthFirstIndexMap("memory", result.memory),
+    codeGraph: buildHealthFirstIndexMap("codeGraph", result.codeGraph),
+  };
+  result.codeRag.indexMap = result.indexMaps.codeRag;
+  result.memory.indexMap = result.indexMaps.memory;
+  result.codeGraph.indexMap = result.indexMaps.codeGraph;
   return result;
+}
+
+function buildIndexMapContract() {
+  return {
+    schemaVersion: UI_INDEX_MAP_CONTRACT_VERSION,
+    kind: "supervibe-ui-index-map-contract",
+    surfaces: ["codeRag", "memory", "codeGraph"],
+    requiredFields: [
+      "kind",
+      "surface",
+      "status",
+      "health.status",
+      "coverage.sourceCount",
+      "freshness.status",
+      "relationshipMapRole",
+      "projectionLimit",
+      "repairAction.command",
+      "map",
+    ],
+    relationshipMapRole: "secondary",
+    projectionLimit: {
+      maxNodes: UI_INDEX_MAP_MAX_NODES,
+      maxEdges: UI_INDEX_MAP_MAX_EDGES,
+    },
+    states: ["ready", "empty", "stale", "degraded"],
+  };
+}
+
+function buildHealthFirstIndexMap(surface, state = {}) {
+  const map = state.map || createRelationshipMap(surface, [], []);
+  const freshness = state.health?.freshness || freshnessModel(state.lastUpdate || null);
+  const health = normalizeIndexMapHealth(surface, state);
+  const coverage = normalizeIndexMapCoverage(surface, state);
+  const repairAction = normalizeIndexMapRepairAction(surface, state);
+  return {
+    schemaVersion: UI_INDEX_MAP_CONTRACT_VERSION,
+    kind: "supervibe-ui-health-first-index-map",
+    surface,
+    status: indexMapStatus({ state, health, freshness, coverage }),
+    health,
+    coverage,
+    freshness,
+    relationshipMapRole: "secondary",
+    projectionLimit: map.projectionLimit || {
+      maxNodes: UI_INDEX_MAP_MAX_NODES,
+      maxEdges: UI_INDEX_MAP_MAX_EDGES,
+      nodeCount: map.nodes?.length || 0,
+      edgeCount: map.edges?.length || 0,
+      truncated: false,
+    },
+    repairAction,
+    map,
+  };
+}
+
+function normalizeIndexMapHealth(surface, state = {}) {
+  if (state.health) {
+    return {
+      status: state.health.status || state.status || "unknown",
+      summary: state.message || state.health.usefulnessNote || state.nextAction || "",
+      gaps: state.health.topGaps || state.health.gaps || [],
+    };
+  }
+  const empty = ["not_initialized", "empty", "unknown"].includes(state.status);
+  return {
+    status: empty ? "empty" : state.status === "ready" ? "ready" : "degraded",
+    summary: state.message || state.nextAction || "",
+    gaps: empty ? [gap(`${surface}-empty`, state.message || `${surface} is empty`, state.nextAction || "Refresh index status.")] : [],
+  };
+}
+
+function normalizeIndexMapCoverage(surface, state = {}) {
+  if (surface === "codeRag") {
+    const files = Number(state.files || state.health?.chunkCoverage?.files || 0);
+    const chunks = Number(state.chunks || state.health?.chunkCoverage?.chunks || 0);
+    return {
+      sourceCount: files,
+      files,
+      chunks,
+      languages: Number(state.health?.chunkCoverage?.languages || state.languages?.length || 0),
+    };
+  }
+  if (surface === "memory") {
+    const entries = Number(state.entries || state.health?.coverage?.entries || 0);
+    return {
+      sourceCount: entries,
+      entries,
+      tags: Number(state.tags || state.health?.coverage?.tags || 0),
+      types: Array.isArray(state.health?.coverage?.types) ? state.health.coverage.types.length : Array.isArray(state.byType) ? state.byType.length : 0,
+    };
+  }
+  const symbols = Number(state.symbols || 0);
+  return {
+    sourceCount: symbols,
+    symbols,
+    edges: Number(state.edges || 0),
+    resolvedEdges: Number(state.resolvedEdges || 0),
+    resolutionRate: Number(state.resolutionRate || 0),
+  };
+}
+
+function normalizeIndexMapRepairAction(surface, state = {}) {
+  if (surface === "codeRag") return { label: "Repair RAG index", command: state.health?.repairCommand || state.nextAction || SOURCE_RAG_INDEX_COMMAND };
+  if (surface === "memory") {
+    const action = state.health?.repairActions?.[0];
+    return { label: action?.label || "Repair memory index", command: action?.command || state.nextAction || MEMORY_INDEX_COMMAND };
+  }
+  return { label: "Repair CodeGraph index", command: state.nextAction || CODEGRAPH_INDEX_COMMAND };
+}
+
+function indexMapStatus({ state = {}, health = {}, freshness = {}, coverage = {} } = {}) {
+  if (["error", "unavailable"].includes(state.status) || health.status === "needs_attention") return "degraded";
+  if (coverage.sourceCount === 0 || ["not_initialized", "empty"].includes(state.status) || health.status === "empty") return "empty";
+  if (freshness.status === "stale") return "stale";
+  return "ready";
 }
 
 function baseIndexState(label, path) {
@@ -1304,7 +1986,7 @@ function baseIndexState(label, path) {
   };
 }
 
-function buildCodeIndexMaps(store, stats, grammarHealth = []) {
+function buildCodeIndexMaps(store, stats, grammarHealth = [], { query = "" } = {}) {
   const languageRows = stats.byLang || [];
   const fileRows = safeAll(store, `
     SELECT cf.path AS path, cf.language AS language, COUNT(cc.chunk_idx) AS chunks
@@ -1368,7 +2050,52 @@ function buildCodeIndexMaps(store, stats, grammarHealth = []) {
 
   return {
     rag: createRelationshipMap("Code RAG map", ragNodes, ragEdges),
-    codeGraph: createRelationshipMap("CodeGraph map", graphNodes, graphEdges),
+    codeGraph: buildQueryCenteredCodeGraphMapFromStore(store, {
+      query: query || "supervibe runtime ui memory rag codegraph",
+      maxNodes: UI_INDEX_MAP_MAX_NODES,
+      maxEdges: UI_INDEX_MAP_MAX_EDGES,
+    }),
+  };
+}
+
+function buildRagHealthProjection({ store = null, stats = {}, lastUpdate = null, evalReport = null } = {}) {
+  const chunks = Number(stats.totalChunks || 0);
+  const files = Number(stats.totalFiles || 0);
+  const languages = Array.isArray(stats.byLang) ? stats.byLang.length : 0;
+  const chunksPerFile = files > 0 ? Number((chunks / files).toFixed(2)) : 0;
+  const partialRows = store ? safeAll(store, `
+    SELECT path, language, index_status AS status, chunk_count AS chunks
+    FROM code_files
+    WHERE index_status != 'full'
+    ORDER BY path
+    LIMIT 5
+  `) : [];
+  const zeroChunkRows = store ? safeAll(store, `
+    SELECT cf.path AS path, cf.language AS language, COUNT(cc.chunk_idx) AS chunks
+    FROM code_files cf
+    LEFT JOIN code_chunks cc ON cc.path = cf.path
+    GROUP BY cf.path, cf.language
+    HAVING chunks = 0
+    ORDER BY cf.path
+    LIMIT 5
+  `) : [];
+  const evalScore = normalizeRetrievalEvalScore(evalReport);
+  const gaps = [];
+  if (chunks === 0) gaps.push(gap("no-chunks", "No RAG chunks are indexed.", SOURCE_RAG_INDEX_COMMAND));
+  if (files > 0 && chunksPerFile < 1.5) gaps.push(gap("sparse-chunks", "Chunk coverage is sparse; large files may not produce enough retrievable anchors.", SOURCE_RAG_INDEX_COMMAND));
+  for (const row of partialRows) gaps.push(gap("partial-index", `${row.path} is ${row.status || "partial"} with ${row.chunks || 0} chunk(s).`, SOURCE_RAG_INDEX_COMMAND));
+  for (const row of zeroChunkRows) gaps.push(gap("zero-chunks", `${row.path} has no indexed chunks.`, SOURCE_RAG_INDEX_COMMAND));
+  if (evalScore.status === "missing") gaps.push(gap("missing-eval", "No retrieval eval report was found; chunk volume has not been proven useful.", RETRIEVAL_EVAL_COMMAND));
+  if (evalScore.status === "fail") gaps.push(gap("failing-eval", `Retrieval eval is failing at ${evalScore.label}; many chunks can still be low usefulness when recall or precision fails.`, RETRIEVAL_EVAL_COMMAND));
+  return {
+    status: gaps.some((item) => ["no-chunks", "failing-eval"].includes(item.code)) ? "needs_attention" : "ready",
+    chunkCoverage: { files, chunks, languages, chunksPerFile },
+    freshness: freshnessModel(lastUpdate),
+    evalScore,
+    topGaps: gaps.slice(0, 6),
+    repairCommand: SOURCE_RAG_INDEX_COMMAND,
+    relationshipMapRole: "secondary",
+    usefulnessNote: "Many chunks can still be low usefulness if retrieval eval fails on recall or precision; use eval score before trusting chunk volume.",
   };
 }
 
@@ -1410,13 +2137,134 @@ function buildMemoryIndexMap(store, stats) {
   return createRelationshipMap("Memory map", nodes, edges);
 }
 
+function buildMemoryHealthProjection({ store = null, stats = {}, lastUpdate = null } = {}) {
+  const byType = Array.isArray(stats.byType) ? stats.byType : [];
+  const types = new Set(byType.map((row) => String(row.type || "")));
+  const entries = Number(stats.totalEntries || 0);
+  const tags = Number(stats.uniqueTags || 0);
+  const topDecisions = store ? safeAll(store, `
+    SELECT id, date, confidence, file, summary
+    FROM entries
+    WHERE type = 'decision'
+    ORDER BY date DESC, confidence DESC, id
+    LIMIT 5
+  `) : [];
+  const lowConfidence = store ? safeAll(store, `
+    SELECT id, type, confidence, file
+    FROM entries
+    WHERE confidence < 9
+    ORDER BY confidence ASC, date DESC, id
+    LIMIT 5
+  `) : [];
+  const staleEntries = store ? safeAll(store, `
+    SELECT id, type, date, confidence, file
+    FROM entries
+    WHERE date IS NOT NULL AND date < date('now', '-180 days')
+    ORDER BY date ASC
+    LIMIT 5
+  `) : [];
+  const requiredTypes = ["decision", "pattern", "learning", "solution", "incident"];
+  const missingTypes = requiredTypes.filter((type) => !types.has(type));
+  const gaps = [];
+  if (entries < 20) gaps.push(gap("thin-memory", "Thin memory is insufficient for large plugin context; add more durable decisions, patterns, learnings, incidents, and solutions.", "Use supervibe:add-memory after significant work."));
+  if (tags < 8) gaps.push(gap("low-tag-coverage", "Tag coverage is too narrow for reliable project-memory retrieval.", "Add specific tags when writing memory entries."));
+  if (missingTypes.length) gaps.push(gap("missing-memory-types", `Missing memory types: ${missingTypes.join(", ")}.`, "Backfill project memory categories with supervibe:add-memory."));
+  for (const row of lowConfidence) gaps.push(gap("low-confidence-memory", `${row.id} has confidence ${row.confidence}; only confidence >=9 should guide durable decisions.`, "Review or replace the memory entry."));
+  for (const row of staleEntries) gaps.push(gap("stale-memory", `${row.id} is dated ${row.date}; verify whether it still applies.`, MEMORY_HEALTH_COMMAND));
+  return {
+    status: gaps.some((item) => item.code === "thin-memory" || item.code === "missing-memory-types") ? "needs_attention" : "ready",
+    coverage: { entries, tags, types: byType },
+    freshness: freshnessModel(lastUpdate),
+    gaps: gaps.slice(0, 8),
+    topDecisions,
+    repairActions: [
+      { label: "Add durable memory", command: "Use supervibe:add-memory after feature, bugfix, incident, or decision work." },
+      { label: "Rebuild memory index", command: MEMORY_INDEX_COMMAND },
+      { label: "Run memory health", command: MEMORY_HEALTH_COMMAND },
+      { label: "Start memory watcher", command: MEMORY_WATCH_COMMAND },
+    ],
+    relationshipMapRole: "secondary",
+  };
+}
+
+function gap(code, message, action) {
+  return { code, message, action };
+}
+
+function normalizeRetrievalEvalScore(report = null) {
+  if (!report) return { status: "missing", score: null, label: "no eval report", pass: false };
+  const rawScore = firstNumber(
+    report.summary?.averageScore,
+    report.summary?.score,
+    report.averageScore,
+    report.score,
+    report.maturityScore,
+  );
+  const score = rawScore === null ? null : Number(rawScore.toFixed(2));
+  const pass = report.pass === true || report.summary?.pass === true;
+  return {
+    status: pass ? "pass" : "fail",
+    score,
+    label: score === null ? (pass ? "pass" : "fail") : `${score}/10`,
+    pass,
+    source: report.outPath || report.path || null,
+  };
+}
+
+function firstNumber(...values) {
+  for (const value of values) {
+    const number = Number(value);
+    if (Number.isFinite(number)) return number;
+  }
+  return null;
+}
+
+function freshnessModel(lastUpdate) {
+  const timestamp = lastUpdate || null;
+  const ageMs = timestamp ? Date.now() - Date.parse(timestamp) : Number.POSITIVE_INFINITY;
+  const ageHours = Number.isFinite(ageMs) ? Number(Math.max(0, ageMs / 36e5).toFixed(1)) : null;
+  return {
+    lastUpdate: timestamp,
+    ageHours,
+    status: ageHours === null ? "unknown" : ageHours <= 24 ? "fresh" : ageHours <= 168 ? "aging" : "stale",
+  };
+}
+
+async function readLatestRetrievalEvalReport(rootDir) {
+  const candidates = [
+    ".supervibe/memory/retrieval-golden-eval.json",
+    ".supervibe/memory/retrieval-eval.json",
+    ".supervibe/artifacts/retrieval-golden-eval.json",
+    ".supervibe/artifacts/retrieval-eval.json",
+    ".supervibe/artifacts/context-quality-eval.json",
+  ];
+  for (const rel of candidates) {
+    const file = resolve(rootDir, rel);
+    if (!existsSync(file)) continue;
+    try {
+      return { ...JSON.parse(await readFile(file, "utf8")), path: rel };
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 function createRelationshipMap(label, nodes, edges) {
-  const limitedNodes = nodes.slice(0, 32);
+  const limitedNodes = nodes.slice(0, UI_INDEX_MAP_MAX_NODES);
   const known = new Set(limitedNodes.map((node) => node.id));
+  const filteredEdges = edges.filter((edge) => known.has(edge.from) && known.has(edge.to));
   return {
     label,
     nodes: limitedNodes,
-    edges: edges.filter((edge) => known.has(edge.from) && known.has(edge.to)).slice(0, 48),
+    edges: filteredEdges.slice(0, UI_INDEX_MAP_MAX_EDGES),
+    projectionLimit: {
+      maxNodes: UI_INDEX_MAP_MAX_NODES,
+      maxEdges: UI_INDEX_MAP_MAX_EDGES,
+      nodeCount: nodes.length,
+      edgeCount: filteredEdges.length,
+      truncated: nodes.length > UI_INDEX_MAP_MAX_NODES || filteredEdges.length > UI_INDEX_MAP_MAX_EDGES,
+    },
   };
 }
 
@@ -1516,6 +2364,36 @@ async function resolveGraphPath({ rootDir, requested }) {
   const active = await resolveActiveWorkItemGraphPath({ rootDir });
   if (!active) throw new Error("graph file is required; no active work graph found");
   return active;
+}
+
+async function resolveActiveLoopStatePath({ rootDir = process.cwd() } = {}) {
+  const loopsDir = resolve(rootDir, ".supervibe", "memory", "loops");
+  const candidates = [];
+  const directState = resolve(loopsDir, "state.json");
+  if (existsSync(directState)) candidates.push(directState);
+  let entries = [];
+  try {
+    entries = await readdir(loopsDir, { withFileTypes: true });
+  } catch (err) {
+    if (err && err.code === "ENOENT") return candidates[0] || null;
+    throw err;
+  }
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const statePath = resolve(loopsDir, entry.name, "state.json");
+    if (existsSync(statePath)) candidates.push(statePath);
+  }
+  if (!candidates.length) return null;
+  candidates.sort((a, b) => stateMtimeMs(b) - stateMtimeMs(a) || b.localeCompare(a));
+  return candidates[0];
+}
+
+function stateMtimeMs(file) {
+  try {
+    return statSync(file).mtimeMs;
+  } catch {
+    return 0;
+  }
 }
 
 function normalizeStateGraph(state = {}) {

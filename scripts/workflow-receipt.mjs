@@ -48,6 +48,7 @@ USAGE:
   node scripts/workflow-receipt.mjs issue --command /supervibe-design --agent creative-director --host-invocation-id <id> --stage <stage> --reason <text> --input <path> --output <path> --slug <prototype-slug>
   node scripts/workflow-receipt.mjs issue --command /supervibe-design --skill supervibe:brandbook --stage <stage> --reason <text> --output <path> --handoff <id>
   node scripts/workflow-receipt.mjs issue --command /supervibe-loop --stage <stage> --reason <text> --output <path> --handoff <id> --graph-id <epic-id> --task-id <work-item-id>
+  node scripts/workflow-receipt.mjs inspect
   node scripts/workflow-receipt.mjs reissue --receipt <receipt-json> [--reason <text>]
   node scripts/workflow-receipt.mjs prune-stale [--apply]
   node scripts/workflow-receipt.mjs rebuild-ledger [--prune-stale]
@@ -161,6 +162,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     process.exit(0);
   }
 
+  if (options.operation === "inspect" || options.operation === "inspect-drift") {
+    const result = inspectWorkflowReceiptDrift(rootDir, { secret: options.secret || null });
+    console.log(formatWorkflowReceiptDriftInspection(result));
+    process.exit(result.stale > 0 ? 1 : 0);
+  }
+
   if (options.operation === "prune-stale") {
     const result = await pruneStaleWorkflowReceipts({
       rootDir,
@@ -222,12 +229,80 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   process.exit(options.operation === "help" ? 0 : 1);
 }
 
+function inspectWorkflowReceiptDrift(rootDir, options = {}) {
+  const receipts = readWorkflowReceipts(rootDir).filter((receipt) => !receipt.__invalidJson);
+  const staleItems = [];
+  for (const receipt of receipts) {
+    const trust = validateWorkflowReceiptTrust(rootDir, receipt, { secret: options.secret || null });
+    const driftIssues = trust.issues.filter(isReceiptDriftIssue);
+    if (driftIssues.length === 0) continue;
+    staleItems.push({
+      receiptId: receipt.receiptId || "unknown",
+      receiptPath: receipt.__file || "unknown",
+      driftSources: driftIssues.map(extractReceiptDriftSource),
+      issues: driftIssues,
+      inspectCommand: `node scripts/workflow-receipt.mjs inspect --receipt ${receipt.__file || "<receipt-json>"}`,
+      reissueCommand: `node scripts/workflow-receipt.mjs reissue --receipt ${receipt.__file || "<receipt-json>"}`,
+      pruneCommand: "node scripts/workflow-receipt.mjs prune-stale --apply",
+      rebuildCommand: "node scripts/workflow-receipt.mjs rebuild-ledger --prune-stale",
+      recoveryStatusCommand: "node scripts/workflow-receipt.mjs recovery-status",
+    });
+  }
+  return {
+    checked: receipts.length,
+    stale: staleItems.length,
+    items: staleItems,
+    mutates: false,
+  };
+}
+
+function formatWorkflowReceiptDriftInspection(result = {}) {
+  const lines = [
+    "SUPERVIBE_WORKFLOW_RECEIPT_INSPECT",
+    "APPLY: false",
+    "MUTATION: none",
+    `CHECKED: ${result.checked || 0}`,
+    `STALE: ${result.stale || 0}`,
+  ];
+  for (const item of result.items || []) {
+    lines.push(`STALE_RECEIPT: ${item.receiptId}`);
+    lines.push(`RECEIPT_PATH: ${item.receiptPath}`);
+    lines.push(`DRIFT_SOURCE: ${uniqueStrings(item.driftSources).join(",") || "unknown"}`);
+    for (const issue of item.issues || []) lines.push(`DRIFT_ISSUE: ${issue}`);
+    lines.push(`REPAIR_INSPECT: ${item.inspectCommand}`);
+    lines.push(`REPAIR_REISSUE: ${item.reissueCommand}`);
+    lines.push(`REPAIR_PRUNE_STALE: ${item.pruneCommand}`);
+    lines.push(`REPAIR_REBUILD_LEDGER: ${item.rebuildCommand}`);
+    lines.push(`REPAIR_RECOVERY_STATUS: ${item.recoveryStatusCommand}`);
+  }
+  lines.push(`NEXT_SAFE_ACTION: ${result.stale ? "inspect drift, then reissue the receipt or prune stale receipts with explicit --apply" : "no receipt drift detected"}`);
+  return lines.join("\n");
+}
+
+function isReceiptDriftIssue(issue = "") {
+  return /output artifact (?:missing|hash mismatch)|artifact link .*missing|artifact link .*hash mismatch/i.test(String(issue || ""));
+}
+
+function extractReceiptDriftSource(issue = "") {
+  const text = String(issue || "");
+  const match = /:\s*(.+)$/.exec(text);
+  return (match ? match[1] : text).trim();
+}
+
+function uniqueStrings(values = []) {
+  return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))];
+}
+
 function buildHostInvocation(options) {
   const invocationId = options["host-invocation-id"] || options["invocation-id"];
   const evidencePath = options["host-trace"] || options["host-invocation-evidence"];
   if (!invocationId && !evidencePath) return null;
+  const host = String(options.host || "").toLowerCase();
+  const hostAgentSubject = options.agent || options.worker || options.reviewer || ["agent", "worker", "reviewer"].includes(String(options["subject-type"] || "").toLowerCase());
   return {
-    source: options["host-invocation-source"] || (evidencePath ? "host-trace-file" : "agent-invocations-jsonl"),
+    source: options["host-invocation-source"]
+      || (evidencePath ? "host-trace-file" : null)
+      || (host === "codex" || hostAgentSubject ? "codex-spawn-agent" : "agent-invocations-jsonl"),
     invocationId: invocationId || options["host-trace-id"] || evidencePath,
     evidencePath: evidencePath || null,
     traceId: options["host-trace-id"] || null,

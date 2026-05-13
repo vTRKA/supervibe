@@ -21,7 +21,11 @@
 import { readFile, access } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
-import { auditEvidenceLedger, formatEvidenceLedgerStatus } from './lib/supervibe-evidence-ledger.mjs';
+import {
+  auditEvidenceLedger,
+  formatEvidenceLedgerStatus,
+  repairEvidenceLedgerRedactionStatus,
+} from './lib/supervibe-evidence-ledger.mjs';
 import { resolveSupervibeProjectRoot } from './lib/supervibe-plugin-root.mjs';
 
 const REFACTOR_AGENTS = new Set([
@@ -127,11 +131,30 @@ async function main() {
   const windowIdx = args.indexOf('--window');
   const window = windowIdx >= 0 ? parseInt(args[windowIdx + 1], 10) : 10;
   const strict = args.includes('--strict');
+  const repairRedaction = args.includes('--repair-redaction-status');
+  const applyRepair = args.includes('--apply');
   const maxAgeIdx = args.indexOf('--max-age-hours');
   const maxAgeHours = maxAgeIdx >= 0 ? parseInt(args[maxAgeIdx + 1], 10) : (strict ? 48 : 0);
 
   const projectRoot = resolveSupervibeProjectRoot();
   const logPath = join(projectRoot, '.supervibe', 'memory', 'agent-invocations.jsonl');
+  if (repairRedaction) {
+    const repair = await repairEvidenceLedgerRedactionStatus({
+      rootDir: projectRoot,
+      apply: applyRepair,
+    });
+    console.log('SUPERVIBE_EVIDENCE_LEDGER_REDACTION_REPAIR');
+    console.log(`APPLY: ${repair.apply}`);
+    console.log(`PLANNED: ${repair.planned.length}`);
+    console.log(`APPENDED: ${repair.appended.length}`);
+    for (const item of repair.planned) {
+      console.log(`REPAIR: ${item.taskId || 'unknown'} / ${item.agentId || 'unknown'}: ${item.reason}`);
+    }
+    if (!applyRepair && repair.planned.length > 0) {
+      console.log('NEXT_ACTION: rerun with --repair-redaction-status --apply');
+    }
+    return;
+  }
   const ledgerReport = await auditEvidenceLedger({ rootDir: projectRoot });
 
   try {

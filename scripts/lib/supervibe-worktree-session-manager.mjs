@@ -31,6 +31,8 @@ export function createWorktreeSessionRecord(options = {}) {
     createdAt: options.createdAt || now,
     updatedAt: options.updatedAt || now,
     heartbeatAt: options.heartbeatAt || now,
+    staleAt: options.staleAt || null,
+    resumedAt: options.resumedAt || null,
     baselineCommit: options.baselineCommit || null,
     baselineChecks: options.baselineChecks || [],
     activeAgentIds: [...new Set(options.activeAgentIds || [])],
@@ -45,6 +47,7 @@ export function createWorktreeSessionRecord(options = {}) {
     resumeCommand: options.resumeCommand || `supervibe-loop --resume-session ${sessionId}`,
     cleanupCommand: options.cleanupCommand || `git worktree remove ${quotePath(worktreePath)}`,
     commandPlan: options.commandPlan || createWorktreeCommandPlan({ branchName, worktreePath, baselineCommit: options.baselineCommit }),
+    conflictOverride: normalizeConflictOverride(options.conflictOverride),
     safety: options.safety || {
       hiddenAutomation: false,
       providerBypass: false,
@@ -252,13 +255,25 @@ export function upsertWorktreeSession(registry = createSessionRegistry(), sessio
     };
   }
 
+  const storedRecord = conflicts.length > 0 && options.allowConflict
+    ? createWorktreeSessionRecord({
+        ...record,
+        conflictOverride: {
+          allowed: true,
+          reason: options.overrideReason || record.conflictOverride?.reason || "explicit conflict override",
+          at: options.now || new Date().toISOString(),
+          by: options.overrideOwner || record.owner || "supervibe-loop",
+          conflicts,
+        },
+      })
+    : record;
   const sessions = (registry.sessions || []).filter((candidate) => candidate.sessionId !== record.sessionId);
-  sessions.push(record);
+  sessions.push(storedRecord);
   return {
     ok: true,
     registry: { schemaVersion: registry.schemaVersion || 1, updatedAt: new Date().toISOString(), sessions },
     conflicts,
-    session: record,
+    session: storedRecord,
   };
 }
 
@@ -430,7 +445,14 @@ export function formatWorktreeSessionStatus(registry = createSessionRegistry()) 
       `writes=${formatCompactList(session.assignedWriteSet || [])}`,
       `agents=${formatCompactList(session.activeAgentIds || [])}`,
       `path=${session.worktreePath}`,
+      `owner=${session.owner || "unknown-owner"}`,
+      `heartbeat=${session.heartbeatAt || "unknown"}`,
+      `staleAt=${session.staleAt || "none"}`,
+      session.conflictOverride?.allowed ? `override=${session.conflictOverride.reason || "allowed"}` : "override=none",
     ].join(" "));
+    if (session.status === "stale") {
+      lines.push(`STALE_RECOVERY: ${session.sessionId} owner=${session.owner || "unknown-owner"} heartbeat=${session.heartbeatAt || "unknown"} staleAt=${session.staleAt || "unknown"} command=/supervibe-loop --resume-session ${session.sessionId}`);
+    }
   }
   return lines.join("\n");
 }
@@ -538,6 +560,17 @@ function normalizeOptionalMinutes(value) {
   if (value === undefined || value === null || value === "" || value === false) return null;
   const number = Number(value);
   return Number.isFinite(number) && number > 0 ? number : 0;
+}
+
+function normalizeConflictOverride(value) {
+  if (!value || typeof value !== "object") return null;
+  return {
+    allowed: value.allowed === true,
+    reason: value.reason || "explicit conflict override",
+    at: value.at || new Date().toISOString(),
+    by: value.by || "supervibe-loop",
+    conflicts: Array.isArray(value.conflicts) ? value.conflicts : [],
+  };
 }
 
 function quotePath(value) {

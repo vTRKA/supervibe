@@ -106,6 +106,31 @@ test("work-item terminal actions append audit events", () => {
   assert.equal(result.graph.events[0].reason, "verified");
 });
 
+test("work-item terminal actions preserve structured verification evidence", () => {
+  const evidence = {
+    command: "node --test tests/first.test.mjs",
+    status: "pass",
+    outputSummary: "targeted test passed",
+    receiptId: "workflow-test",
+  };
+  const result = mutateWorkItemGraph(baseGraph(), {
+    type: "complete",
+    itemId: "task-1",
+    actor: "agent-a",
+    reason: "verified",
+    verificationEvidence: [evidence],
+    now: "2026-05-07T00:00:00.000Z",
+  });
+
+  const item = result.graph.items.find((candidate) => candidate.itemId === "task-1");
+  const task = result.graph.tasks.find((candidate) => candidate.id === "task-1");
+  assert.equal(item.verificationEvidence[0].taskId, "task-1");
+  assert.equal(item.verificationEvidence[0].command, "node --test tests/first.test.mjs");
+  assert.equal(item.verificationEvidence[0].outputSummary, "targeted test passed");
+  assert.equal(task.verificationEvidence[0].receiptId, "workflow-test");
+  assert.equal(result.graph.events[0].verificationEvidence[0].status, "pass");
+});
+
 test("work-item edit updates items and loop tasks", () => {
   const result = mutateWorkItemGraph(baseGraph(), {
     type: "edit",

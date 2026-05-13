@@ -12,6 +12,10 @@ import {
   readWorkflowReceipts,
   validateWorkflowReceiptTrust,
 } from "./lib/supervibe-workflow-receipt-runtime.mjs";
+import {
+  defaultWorkItemRegistryPath,
+  readWorkItemRegistry,
+} from "./lib/supervibe-work-item-registry.mjs";
 
 async function walkGraphs(dir) {
   const out = [];
@@ -33,14 +37,25 @@ export async function validateEpicCompletionFiles({
   allowDryRunEvidence = false,
   requireTrustedEvidence = false,
   trustedReceiptIds = [],
+  trustedGraphReceiptIdsByGraphId = {},
+  activePreCloseGraphIds = [],
   disallowLegacyEvidence = false,
   allowLegacyEvidence = false,
   requireEpicClosed = true,
   requireFollowups = false,
 } = {}) {
   const results = [];
+  const preCloseGraphIds = new Set((activePreCloseGraphIds || []).map(String).filter(Boolean));
   for (const file of files) {
     const graph = JSON.parse(String(await readFile(file, "utf8")).replace(/^\uFEFF/, ""));
+    const graphId = graph.epicId || graph.graph_id || graph.items?.find?.((item) => item.type === "epic")?.itemId || null;
+    const trustedGraphReceiptIds = graphId ? trustedGraphReceiptIdsByGraphId[graphId] || [] : [];
+    const allowActivePreClose = Boolean(
+      requireEpicClosed
+        && graphId
+        && preCloseGraphIds.has(String(graphId))
+        && trustedGraphReceiptIds.length > 0,
+    );
     const report = validateEpicCompletion(graph, {
       production,
       requireEvidence,
@@ -48,11 +63,19 @@ export async function validateEpicCompletionFiles({
       allowDryRunEvidence,
       requireTrustedEvidence,
       trustedReceiptIds,
+      trustedGraphReceiptIds,
       disallowLegacyEvidence,
       allowLegacyEvidence,
-      requireEpicClosed,
+      requireEpicClosed: requireEpicClosed && !allowActivePreClose,
       requireFollowups,
     });
+    if (allowActivePreClose) {
+      report.warnings.push({
+        code: "active-preclose-epic",
+        itemId: graphId,
+        message: "Active epic is allowed to remain open during final release pre-close because a trusted graph-level completion receipt exists.",
+      });
+    }
     results.push({ file, report });
   }
   return {
@@ -74,6 +97,7 @@ async function main() {
       "disallow-legacy-evidence": { type: "boolean", default: false },
       "allow-legacy-evidence": { type: "boolean", default: false },
       "allow-open-epic": { type: "boolean", default: false },
+      "allow-active-preclose": { type: "boolean", default: false },
       "allow-skipped": { type: "boolean", default: true },
       "no-evidence-required": { type: "boolean", default: false },
       "require-followups": { type: "boolean", default: false },
@@ -95,7 +119,8 @@ dependencies must be terminal, the epic must be closed, and production completio
 Trusted mode:
   --require-trusted-evidence requires structured evidence to cite a runtime-issued trusted workflow receipt.
   --trusted-receipts <id,id> narrows accepted receipts to the listed trusted runtime receipts.
-  --disallow-legacy-evidence rejects migrated legacy graph evidence unless --allow-legacy-evidence is also set.`);
+  --disallow-legacy-evidence rejects migrated legacy graph evidence unless --allow-legacy-evidence is also set.
+  --allow-active-preclose allows the active registry epic to remain open only when a trusted graph-level completion receipt exists.`);
     return;
   }
 
@@ -121,6 +146,12 @@ Trusted mode:
   const trustedReceiptIds = trustedReceiptIdsForValidation(root, {
     explicitReceiptIds: splitCsv(values["trusted-receipts"]),
   });
+  const trustedGraphReceiptIdsByGraphId = trustedGraphReceiptIdsByGraphForValidation(root, {
+    explicitReceiptIds: splitCsv(values["trusted-receipts"]),
+  });
+  const activePreCloseGraphIds = await activePreCloseGraphIdsForValidation(root, {
+    enabled: Boolean(values["allow-active-preclose"]),
+  });
 
   const report = await validateEpicCompletionFiles({
     rootDir: root,
@@ -131,6 +162,8 @@ Trusted mode:
     allowDryRunEvidence: values["allow-dry-run-evidence"],
     requireTrustedEvidence: values["require-trusted-evidence"],
     trustedReceiptIds,
+    trustedGraphReceiptIdsByGraphId,
+    activePreCloseGraphIds,
     disallowLegacyEvidence: values["disallow-legacy-evidence"],
     allowLegacyEvidence: values["allow-legacy-evidence"],
     requireEpicClosed: !values["allow-open-epic"],
@@ -147,6 +180,34 @@ Trusted mode:
     process.exit(1);
   }
   console.log(`\nAll ${report.results.length} epic completion artifact(s) passed`);
+}
+
+async function activePreCloseGraphIdsForValidation(rootDir, { enabled = false } = {}) {
+  if (!enabled) return [];
+  const registry = await readWorkItemRegistry(defaultWorkItemRegistryPath(rootDir));
+  return [
+    registry.activeEpicId,
+    registry.epics?.[registry.activeEpicId]?.epicId,
+    registry.epics?.[registry.activeEpicId]?.graphId,
+  ].map(String).filter((value) => value && value !== "undefined" && value !== "null");
+}
+
+function trustedGraphReceiptIdsByGraphForValidation(rootDir, { explicitReceiptIds = [] } = {}) {
+  const explicit = new Set((explicitReceiptIds || []).map(String).filter(Boolean));
+  const out = {};
+  for (const receipt of readWorkflowReceipts(rootDir)) {
+    if (!receipt?.receiptId) continue;
+    if (explicit.size > 0 && !explicit.has(String(receipt.receiptId))) continue;
+    const graphId = receipt.graphId || receipt.workItemBinding?.graphId || null;
+    if (!graphId) continue;
+    const taskId = receipt.taskId || receipt.workItemId || receipt.graphTaskId || receipt.workItemBinding?.taskId || null;
+    if (taskId) continue;
+    const trust = validateWorkflowReceiptTrust(rootDir, receipt);
+    if (!trust.pass) continue;
+    if (!out[graphId]) out[graphId] = [];
+    out[graphId].push(String(receipt.receiptId));
+  }
+  return out;
 }
 
 function trustedReceiptIdsForValidation(rootDir, { explicitReceiptIds = [] } = {}) {

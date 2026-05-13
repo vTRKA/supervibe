@@ -27,6 +27,32 @@ test("plan checkboxes are parsed into executable tasks", () => {
   assert.equal(tasks[0].verificationCommands[0], "node --test tests/x.test.mjs");
 });
 
+test("reviewed task-heading plans inherit section verification", () => {
+  const tasks = parsePlanTasks(`## Task T00: Enforce Command Router Preflight
+
+**Files:**
+- Modify: \`scripts/supervibe-commands.mjs\`
+- Test: \`tests/supervibe-command-catalog.test.mjs\`
+
+**Acceptance Criteria:**
+- Router blocks unsafe continuation.
+
+- [ ] **Step 1: Add router preflight contract**
+- [ ] **Step 2: Verify**
+\`\`\`bash
+node --test tests/supervibe-command-catalog.test.mjs
+\`\`\`
+- [ ] **Step 3: Commit policy**
+`, ".supervibe/artifacts/plans/x.md");
+
+  assert.equal(tasks.length, 1);
+  assert.equal(tasks[0].id, "plan-t00");
+  assert.equal(tasks[0].goal, "Enforce Command Router Preflight");
+  assert.deepEqual(tasks[0].verificationCommands, ["node --test tests/supervibe-command-catalog.test.mjs"]);
+  assert.ok(tasks[0].targetFiles.includes("scripts/supervibe-commands.mjs"));
+  assert.ok(tasks[0].acceptanceCriteria.some((item) => /Router blocks/.test(item)));
+});
+
 test("missing plan path falls back to adjacent work-item source snapshot", async () => {
   const temp = await mkdtemp(join(tmpdir(), "supervibe-source-fallback-"));
   try {

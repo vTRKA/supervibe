@@ -5,6 +5,7 @@ import { dirname, join, relative, resolve, sep } from 'node:path';
 import { parseArgs } from 'node:util';
 import { resolveActiveWorkItemGraph } from './lib/supervibe-work-item-registry.mjs';
 import { parseTaskBudgetPolicyFromText } from './lib/supervibe-task-budget-policy.mjs';
+import { evaluatePlanSourceAgainstLifecycle } from './supervibe-plan-lifecycle.mjs';
 
 const PLACEHOLDER_PATTERNS = [
   /\bTBD\b/i,
@@ -281,13 +282,26 @@ export async function inspectActivePlanSource({ rootDir = process.cwd() } = {}) 
 
   const originalPath = resolve(rootDir, sourcePath);
   if (existsSync(originalPath)) {
+    const lifecycle = evaluatePlanSourceAgainstLifecycle({ rootDir, sourcePath: originalPath });
+    if (lifecycle.issues.length > 0) {
+      return {
+        status: 'lifecycle-issue',
+        active,
+        graphPath: active.graphPath,
+        sourcePath: originalPath,
+        warnings: lifecycle.warnings,
+        issues: lifecycle.issues,
+        lifecycle,
+      };
+    }
     return {
       status: 'original',
       active,
       graphPath: active.graphPath,
       sourcePath: originalPath,
-      warnings: [],
+      warnings: lifecycle.warnings,
       issues: [],
+      lifecycle,
     };
   }
 

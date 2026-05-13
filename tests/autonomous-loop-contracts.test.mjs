@@ -65,6 +65,27 @@ test("autonomy readiness passes complete contracts", () => {
   assert.deepEqual(readiness.missing, []);
 });
 
+test("preflight does not block local plans for production readiness wording", () => {
+  const tasks = [{
+    id: "t1",
+    goal: "Add production readiness proof command",
+    category: "verification",
+    acceptanceCriteria: ["Readiness proof exists"],
+    verificationCommands: ["npm test"],
+    stopConditions: ["policy_stop"],
+    policyRiskLevel: "low",
+  }];
+  const preflight = buildPreflight({
+    request: "local plan with production readiness checklist",
+    tasks,
+    options: { executionMode: "dry-run" },
+  });
+
+  assert.equal(preflight.environment_target, "local");
+  assert.deepEqual(preflight.missing_data, []);
+  assert.equal(preflight.blocked_actions.includes("production deploy"), false);
+});
+
 test("autonomy readiness returns concrete remediation below 9", () => {
   const tasks = [{
     id: "t1",

@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import { atomizePlanToWorkItems } from "../scripts/lib/supervibe-plan-to-work-items.mjs";
-import { summarizeTaskGraphStatus } from "../scripts/validate-task-graph-status-consistency.mjs";
+import { summarizeTaskGraphStatus, validateTaskGraphStatusConsistency } from "../scripts/validate-task-graph-status-consistency.mjs";
 
 const PLAN = `# Status Consistency Plan
 
@@ -46,10 +49,27 @@ test("open graph reports validation or unblock as next action", () => {
   assert.match(summary.nextAction, /claim|validate completion|unblock/);
 });
 
-function completedGraph() {
+test("closed historical graphs do not require active graph selection", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-status-consistency-"));
+  try {
+    await writeGraph(root, "epic-status-a", completedGraph({ epicId: "epic-status-a" }));
+    await writeGraph(root, "epic-status-b", completedGraph({ epicId: "epic-status-b" }));
+
+    const report = await validateTaskGraphStatusConsistency({ rootDir: root });
+
+    assert.equal(report.pass, true);
+    assert.equal(report.neutral, false);
+    assert.equal(report.summaries.length, 2);
+    assert.deepEqual(report.issues, []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+function completedGraph({ epicId = "epic-status" } = {}) {
   const graph = atomizePlanToWorkItems(PLAN, {
     planPath: ".supervibe/artifacts/plans/status.md",
-    epicId: "epic-status",
+    epicId,
     planReviewPassed: true,
   });
   const evidence = {
@@ -72,4 +92,10 @@ function completedGraph() {
   }));
   graph.evidence = graph.tasks.map((task) => ({ ...evidence, taskId: task.id }));
   return graph;
+}
+
+async function writeGraph(root, epicId, graph) {
+  const dir = join(root, ".supervibe", "memory", "work-items", epicId);
+  await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, "graph.json"), `${JSON.stringify(graph, null, 2)}\n`, "utf8");
 }

@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "description": "Fixtures for user-visible workflow handoff questions. These cases prevent markdown-only handoffs and truncated UI choice labels.",
+  "cases": [
+    {
+      "id": "plan-scope",
+      "stage": "plan-draft",
+      "runtimeStateRequired": true,
+      "question": {
+        "title": "Approve plan scope",
+        "prompt": "Step 1/1: approve the plan scope before writing the durable implementation plan?",
+        "reason": "The answer determines whether planning can become a durable artifact or must be revised first."
+      },
+      "choices": [
+        {
+          "id": "continue-plan",
+          "label": "Continue plan",
+          "description": "Writes the durable plan from the approved scope and keeps review gates active."
+        },
+        {
+          "id": "revise-scope",
+          "label": "Revise scope",
+          "description": "Returns to intake so missing or excessive scope can be corrected before a plan exists."
+        }
+      ]
+    },
+    {
+      "id": "plan-review",
+      "stage": "plan-review",
+      "runtimeStateRequired": true,
+      "question": {
+        "title": "Review implementation plan",
+        "prompt": "Step 1/1: send the implementation plan through the required specialist review loop?",
+        "reason": "The answer decides whether the plan can be reviewed, revised, or stopped before atomization."
+      },
+      "choices": [
+        {
+          "id": "continue-review",
+          "label": "Continue review",
+          "description": "Runs the required review loop and binds the result to runtime receipts."
+        },
+        {
+          "id": "inspect-readiness",
+          "label": "Inspect readiness",
+          "description": "Shows blockers, receipts, and verification evidence without mutating workflow state."
+        }
+      ]
+    },
+    {
+      "id": "atomization",
+      "stage": "work-item-atomization",
+      "runtimeStateRequired": true,
+      "question": {
+        "title": "Atomize reviewed plan",
+        "prompt": "Step 1/1: atomize the reviewed plan into an epic and child work items?",
+        "reason": "The answer decides whether a passed review becomes durable work items or stays as a reviewed plan."
+      },
+      "choices": [
+        {
+          "id": "continue-atomization",
+          "label": "Continue atomization",
+          "description": "Creates the epic and child tasks from the reviewed plan without starting execution."
+        },
+        {
+          "id": "revise-plan",
+          "label": "Revise plan first",
+          "description": "Returns to the reviewed plan so findings can be folded in before task creation."
+        }
+      ]
+    },
+    {
+      "id": "execution",
+      "stage": "execution",
+      "runtimeStateRequired": true,
+      "question": {
+        "title": "Start scoped execution",
+        "prompt": "Step 1/1: start executing the approved work graph with scoped task verification?",
+        "reason": "The answer authorizes targeted task execution while keeping the full test suite for the final gate."
+      },
+      "choices": [
+        {
+          "id": "continue-execution",
+          "label": "Start execution",
+          "description": "Runs ready work items with scoped verification only for each task or epic."
+        },
+        {
+          "id": "keep-stopped",
+          "label": "Keep stopped",
+          "description": "Preserves the approved work graph without starting worker tasks."
+        }
+      ]
+    },
+    {
+      "id": "inspect-readiness",
+      "stage": "readiness",
+      "runtimeStateRequired": true,
+      "question": {
+        "title": "Inspect workflow readiness",
+        "prompt": "Step 1/1: show blockers, receipts, and verification evidence without mutation?",
+        "reason": "The answer provides a safe diagnostic path when the user needs clarity before continuing."
+      },
+      "choices": [
+        {
+          "id": "show-readiness",
+          "label": "Show readiness",
+          "description": "Prints current blockers, receipts, graph status, and verification evidence only."
+        },
+        {
+          "id": "return-to-handoff",
+          "label": "Return to handoff",
+          "description": "Keeps the active question open so the user can choose the next workflow action."
+        }
+      ]
+    }
+  ]
+}

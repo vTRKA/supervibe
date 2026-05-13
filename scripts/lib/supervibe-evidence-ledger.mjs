@@ -72,14 +72,19 @@ async function readEvidenceLedger({ rootDir = process.cwd(), ledgerPath = defaul
 }
 
 export async function auditEvidenceLedger({ rootDir = process.cwd(), ledgerPath = defaultEvidenceLedgerPath(rootDir) } = {}) {
-  const entries = await readEvidenceLedger({ rootDir, ledgerPath });
-  const evaluated = entries.map((entry) => ({ ...entry, gate: entry.gate || evaluateEvidenceGate(entry) }));
+  const rawEntries = await readEvidenceLedger({ rootDir, ledgerPath });
+  const evaluated = rawEntries.map((entry) => ({ ...entry, gate: entry.gate || evaluateEvidenceGate(entry) }));
+  const entries = latestEvidenceEntries(evaluated);
   const failed = evaluated.filter((entry) => !entry.gate.pass);
+  const effectiveFailed = entries.filter((entry) => !entry.gate.pass);
   return {
-    pass: failed.length === 0,
-    total: evaluated.length,
-    failed,
-    entries: evaluated,
+    pass: effectiveFailed.length === 0,
+    total: entries.length,
+    rawTotal: evaluated.length,
+    failed: effectiveFailed,
+    rawFailed: failed,
+    entries,
+    rawEntries: evaluated,
   };
 }
 
@@ -96,6 +101,59 @@ export function formatEvidenceLedgerStatus(report = {}) {
   return lines.join("\n");
 }
 
+export async function repairEvidenceLedgerRedactionStatus({
+  rootDir = process.cwd(),
+  ledgerPath = defaultEvidenceLedgerPath(rootDir),
+  apply = false,
+  now = new Date().toISOString(),
+} = {}) {
+  const report = await auditEvidenceLedger({ rootDir, ledgerPath });
+  const repairable = (report.failed || []).filter(isRedactionOnlyFailure);
+  const planned = repairable.map((entry) => ({
+    taskId: entry.taskId || entry.task_id || null,
+    agentId: entry.agentId || entry.agent_id || null,
+    reason: entry.gate?.failures?.join("; ") || "redaction status failed",
+  }));
+  const appended = [];
+  if (apply) {
+    for (const entry of repairable) {
+      const record = await appendEvidenceRecord({
+        taskId: entry.taskId || entry.task_id,
+        agentId: entry.agentId || entry.agent_id,
+        retrievalPolicy: entry.retrievalPolicy || entry.retrieval_policy,
+        memoryIds: entry.memoryIds || entry.memory_ids || [],
+        ragChunkIds: entry.ragChunkIds || entry.rag_chunk_ids || [],
+        graphSymbols: entry.graphSymbols || entry.graph_symbols || [],
+        citations: entry.citations || [],
+        bypassReasons: entry.bypassReasons || entry.bypass_reasons || [],
+        verificationCommands: entry.verificationCommands || entry.verification_commands || [],
+        redactionStatus: "not-needed",
+        diagnosticEvents: [
+          ...(entry.diagnosticEvents || entry.diagnostic_events || []),
+          {
+            type: "redaction-status-repair",
+            message: "Supersedes older evidence entry with unknown redactionStatus after audit confirmed no redaction was needed.",
+            ts: now,
+          },
+        ],
+        workspaceId: entry.workspaceId || entry.workspace_id || null,
+      }, { rootDir, ledgerPath });
+      appended.push(record);
+    }
+  }
+  return {
+    apply,
+    planned,
+    appended,
+    before: {
+      pass: report.pass,
+      total: report.total,
+      rawTotal: report.rawTotal,
+      failed: report.failed.length,
+    },
+  };
+}
+
 function normalizePolicy(policy = {}) {
   return {
     memory: policy.memory || policy.sources?.memory || "optional",
@@ -104,6 +162,27 @@ function normalizePolicy(policy = {}) {
     docs: policy.docs || policy.sources?.docs || "optional",
     reason: policy.reason || "not specified",
   };
+}
+
+function latestEvidenceEntries(entries = []) {
+  const byKey = new Map();
+  entries.forEach((entry, index) => {
+    const key = evidenceIdentityKey(entry, index);
+    byKey.set(key, entry);
+  });
+  return [...byKey.values()];
+}
+
+function evidenceIdentityKey(entry = {}, index = 0) {
+  const agentId = entry.agentId || entry.agent_id;
+  const taskId = entry.taskId || entry.task_id;
+  if (!agentId || !taskId) return `entry:${index}`;
+  return `${slug(agentId)}::${slug(taskId)}`;
+}
+
+function isRedactionOnlyFailure(entry = {}) {
+  const failures = entry.gate?.failures || [];
+  return failures.length === 1 && failures[0] === "redaction status must be redacted or not-needed";
 }
 
 function normalizeCitation(citation = {}) {
@@ -130,4 +209,8 @@ function hasBypass(record, source) {
 
 function unique(values = []) {
   return [...new Set((Array.isArray(values) ? values : []).map(String).filter(Boolean))];
+}
+
+function slug(value = "") {
+  return String(value || "unknown").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "unknown";
 }

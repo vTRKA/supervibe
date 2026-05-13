@@ -878,11 +878,24 @@ function assertHostInvocationProofExists(rootDir, proof, expectedAgentId) {
   }
   const match = readAgentInvocationRecord(rootDir, proof.invocationId);
   if (!match) {
-    throw new Error(`hostInvocation ${proof.invocationId} not found in .supervibe/memory/agent-invocations.jsonl`);
+    throw new Error(missingHostInvocationRecoveryMessage({ proof, expectedAgentId }));
   }
   if (expectedAgentId && match.agent_id && match.agent_id !== expectedAgentId) {
     throw new Error(`hostInvocation agent mismatch: expected ${expectedAgentId}, got ${match.agent_id}`);
   }
+}
+
+function missingHostInvocationRecoveryMessage({ proof, expectedAgentId }) {
+  const source = proof?.source || "agent-invocations-jsonl";
+  const invocationId = proof?.invocationId || "<runtime-id>";
+  const agentId = expectedAgentId || proof?.agentId || "<agent-id>";
+  const host = source === "codex-spawn-agent" ? "codex" : "<host>";
+  return [
+    `hostInvocation ${invocationId} not found in .supervibe/memory/agent-invocations.jsonl for ${source}`,
+    `Supported recovery: node scripts/agent-invocation.mjs log --agent ${agentId} --host ${host} --host-invocation-id ${invocationId} --task "<summary>" --confidence <0-10>`,
+    `Atomic receipt path: add --issue-receipt --command <workflow-command> --stage <stage-id> --handoff-id <handoff-id> --output-artifacts <stable-output-path>`,
+    "Do not hand-edit receipts or .supervibe/memory/agent-invocations.jsonl.",
+  ].join(". ");
 }
 
 function readAgentInvocationRecord(rootDir, invocationId) {

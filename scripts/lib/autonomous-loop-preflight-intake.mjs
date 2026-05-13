@@ -77,7 +77,7 @@ export function buildPreflight({ request = "", tasks = [], options = {} } = {}) 
   if (environmentTarget === "production" && !options.productionApprovalPolicy) {
     missingData.push("production approval policy");
   }
-  if (/(server|deploy|remote|production)/i.test(request) && !options.serverAccessReference) {
+  if (requiresServerAccessReference(request) && !options.serverAccessReference) {
     missingData.push("server access reference");
   }
   if (executionMode === "fresh-context" && !providerCapabilities.freshContextAdapter) {
@@ -289,11 +289,23 @@ export function createPreflightQuestionCards(preflight, { locale = "en" } = {}) 
 
 function inferEnvironmentTarget(request, tasks) {
   const text = `${request} ${tasks.map((task) => task.goal).join(" ")}`.toLowerCase();
-  if (text.includes("production")) return "production";
+  if (isProductionMutationText(text)
+    || /\bprod\s+(deploy|deployment|release)\b/.test(text)) return "production";
   if (text.includes("staging")) return "staging";
   if (text.includes("docker")) return "docker";
   if (text.includes("server") || text.includes("deploy")) return "remote";
   return "local";
+}
+
+function requiresServerAccessReference(request) {
+  const text = String(request || "").toLowerCase();
+  return /\b(server|deploy|remote)\b/.test(text) || isProductionMutationText(text);
+}
+
+function isProductionMutationText(text) {
+  const value = String(text || "").toLowerCase();
+  return /(deploy|deployment|release|migrate|migration|mutate|mutation|write|promote)\s+(to\s+)?production\b/.test(value)
+    || /\bproduction\s+(deploy|deployment|release|migration|mutation|write|promotion)\b/.test(value);
 }
 
 function normalizeArgs(value) {

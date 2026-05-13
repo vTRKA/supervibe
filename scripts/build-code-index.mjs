@@ -11,7 +11,7 @@
 // Runtime:
 //   unbounded by default; --max-seconds enables graceful bounded batches
 
-import { CodeStore, CODE_GRAPH_EXTRACTOR_VERSION } from './lib/code-store.mjs';
+import { CodeStore, CODE_GRAPH_EXTRACTOR_VERSION, CODE_RAG_CHUNK_METADATA_VERSION } from './lib/code-store.mjs';
 import { collectIndexHealthFromStore, formatIndexHealth } from './lib/supervibe-index-health.mjs';
 import { discoverSourceFiles } from './lib/supervibe-index-policy.mjs';
 import { formatWatcherDiagnostics, readWatcherDiagnostics } from './lib/supervibe-index-watcher.mjs';
@@ -909,6 +909,13 @@ async function main() {
     }
     console.log(`\nTotal in DB: ${stats.totalFiles} files, ${stats.totalChunks} chunks`);
     console.log(`Code graph: ${stats.totalSymbols} symbols, ${stats.totalEdges} edges (${(stats.edgeResolutionRate * 100).toFixed(0)}% resolved)`);
+    if (values.health) {
+      const metadataHealth = store.getChunkMetadataHealth();
+      const rebuild = metadataHealth.rebuildRequired
+        ? '; rebuild recommended with --force or --resume after metadata migration'
+        : '';
+      console.log(`RAG chunk metadata: ${metadataHealth.status} (v${metadataHealth.version || CODE_RAG_CHUNK_METADATA_VERSION}, chunks=${metadataHealth.totalChunks})${rebuild}`);
+    }
     if (stats.byLang.length > 0) {
       console.log(`By language:`);
       for (const lg of stats.byLang) console.log(`  ${lg.language}: ${lg.n}`);

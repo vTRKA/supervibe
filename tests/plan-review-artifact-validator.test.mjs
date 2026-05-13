@@ -6,7 +6,10 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-import { validatePlanReviewArtifact } from "../scripts/validate-plan-review-artifacts.mjs";
+import {
+  validatePlanReviewArtifact,
+  validatePlanReviewGateForPlan,
+} from "../scripts/validate-plan-review-artifacts.mjs";
 
 const FIXTURE = "tests/fixtures/artifacts/plan-reviews/review-loop-hardening-plan-review.md";
 const VALIDATOR = fileURLToPath(new URL("../scripts/validate-plan-review-artifacts.mjs", import.meta.url));
@@ -124,4 +127,24 @@ test("validate-plan-review-artifacts CLI rejects active review mode when no revi
     encoding: "utf8",
     stdio: "pipe",
   }), /no plan review artifacts found[\s\S]*plan review artifact\(s\) failed/);
+});
+
+test("active plan review gate requires trusted reviewer receipts before atomization", async () => {
+  const dir = await mkdir(join(tmpdir(), `plan-review-receipts-${Date.now()}`), { recursive: true });
+  const reviewDir = join(dir, ".supervibe", "artifacts", "plan-reviews");
+  await mkdir(reviewDir, { recursive: true });
+  const reviewPath = join(reviewDir, "example-plan-review.md");
+  const markdown = (await readFile(FIXTURE, "utf8"))
+    .replaceAll(".supervibe/artifacts/plans/review-loop-hardening.md", ".supervibe/artifacts/plans/example.md");
+  await writeFile(reviewPath, markdown, "utf8");
+
+  const gate = await validatePlanReviewGateForPlan({
+    rootDir: dir,
+    planPath: ".supervibe/artifacts/plans/example.md",
+    requireActiveReview: true,
+  });
+
+  assert.equal(gate.pass, false);
+  assert.ok(gate.issues.some((issue) => issue.includes("missing trusted reviewer receipt for supervibe-orchestrator")));
+  assert.ok(gate.issues.every((issue) => issue.includes("repair: node scripts/workflow-receipt.mjs issue")));
 });

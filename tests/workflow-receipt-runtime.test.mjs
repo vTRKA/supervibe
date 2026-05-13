@@ -614,6 +614,97 @@ test("workflow receipt CLI supports command-wide agent aliases", async () => {
   }
 });
 
+test("workflow receipt CLI gives Codex spawn-id recovery when host invocation is missing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-workflow-codex-missing-"));
+  try {
+    await writeUtf8(root, ".supervibe/artifacts/loops/t55c/agent-output.json", JSON.stringify({ ok: true }, null, 2));
+
+    await assert.rejects(
+      execFileAsync(process.execPath, [
+        "scripts/workflow-receipt.mjs",
+        "issue",
+        "--root",
+        root,
+        "--command",
+        "/supervibe-loop",
+        "--agent",
+        "quality-gate-reviewer",
+        "--host-invocation-id",
+        "codex-spawn-missing",
+        "--stage",
+        "work-item-execution",
+        "--reason",
+        "reviewer proof for T55C",
+        "--output",
+        ".supervibe/artifacts/loops/t55c/agent-output.json",
+        "--handoff",
+        "t55c",
+      ], { cwd: REPO_ROOT }),
+      (error) => {
+        const output = `${error.stdout || ""}${error.stderr || ""}`;
+        assert.match(output, /hostInvocation codex-spawn-missing not found/);
+        assert.match(output, /codex-spawn-agent/);
+        assert.match(output, /node scripts\/agent-invocation\.mjs log --agent quality-gate-reviewer --host codex --host-invocation-id codex-spawn-missing/);
+        assert.match(output, /--issue-receipt --command <workflow-command>/);
+        return true;
+      },
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("agent invocation CLI can atomically register Codex spawn id and issue bound receipt", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-workflow-codex-recovery-"));
+  try {
+    const { stdout } = await execFileAsync(process.execPath, [
+      "scripts/agent-invocation.mjs",
+      "log",
+      "--root",
+      root,
+      "--agent",
+      "quality-gate-reviewer",
+      "--host",
+      "codex",
+      "--host-invocation-id",
+      "codex-spawn-recovered",
+      "--task",
+      "reviewer proof for T55C",
+      "--confidence",
+      "9",
+      "--issue-receipt",
+      "--command",
+      "/supervibe-loop",
+      "--stage",
+      "work-item-execution",
+      "--handoff-id",
+      "t55c",
+      "--output-artifacts",
+      ".supervibe/artifacts/_agent-outputs/codex-spawn-recovered/agent-output.json",
+      "--graph-id",
+      "epic-runtime",
+      "--task-id",
+      "epic-runtime-t55c",
+      "--secret",
+      "test-secret",
+    ], { cwd: REPO_ROOT });
+
+    assert.match(stdout, /SUPERVIBE_AGENT_INVOCATION_LOGGED/);
+    assert.match(stdout, /HOST_SOURCE: codex-spawn-agent/);
+    assert.match(stdout, /WORKFLOW_RECEIPT:/);
+    const result = validateWorkflowReceipts(root, { secret: "test-secret" });
+    assert.equal(result.pass, true);
+    assert.equal(result.checked, 1);
+    const receiptPath = result.receipts
+      ? null
+      : null;
+    const receiptFiles = await readFile(join(root, ".supervibe", "memory", "workflow-invocation-ledger.jsonl"), "utf8");
+    assert.match(receiptFiles, /epic-runtime-t55c/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("workflow receipt CLI shows issue help before attempting issuance", async () => {
   const { stdout } = await execFileAsync(process.execPath, [
     "scripts/workflow-receipt.mjs",

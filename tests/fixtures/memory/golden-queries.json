@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "queries": [
+    {
+      "topic": "handoff-gates",
+      "query": "handoff gates approval receipts source backed",
+      "requiresSourceBackedAnswer": true,
+      "expectedBehavior": "Return durable handoff gate decisions only when cited by memory, receipts, or review artifacts."
+    },
+    {
+      "topic": "kanban-blockers",
+      "query": "Kanban blockers open blocked work items",
+      "requiresSourceBackedAnswer": true,
+      "expectedBehavior": "Report open blockers as review-needed findings, not final decisions."
+    },
+    {
+      "topic": "memory-thinness",
+      "query": "memory thinness retrieval evidence absent maturity",
+      "requiresSourceBackedAnswer": true,
+      "expectedBehavior": "Flag thin memory evidence and avoid high-confidence maturity claims without sources."
+    },
+    {
+      "topic": "rag-maps",
+      "query": "RAG maps retrieval index freshness source map",
+      "requiresSourceBackedAnswer": true,
+      "expectedBehavior": "Cite current RAG map evidence when available and mark missing maps as readiness risk."
+    },
+    {
+      "topic": "codegraph-maps",
+      "query": "CodeGraph maps graph freshness symbol coverage",
+      "requiresSourceBackedAnswer": true,
+      "expectedBehavior": "Cite CodeGraph map freshness and coverage before using graph-backed conclusions."
+    },
+    {
+      "topic": "receipt-drift",
+      "query": "receipt drift workflow receipts ledger stale",
+      "requiresSourceBackedAnswer": true,
+      "expectedBehavior": "Surface receipt drift as a blocker or missing-verification memory until repaired."
+    },
+    {
+      "topic": "provider-config",
+      "query": "provider config host invocation source receipt proof",
+      "requiresSourceBackedAnswer": true,
+      "expectedBehavior": "Prefer current provider configuration decisions and include superseded history only on request."
+    },
+    {
+      "topic": "degrade-readiness",
+      "query": "degrade readiness when source backed answers are missing",
+      "requiresSourceBackedAnswer": true,
+      "expectedBehavior": "Degrade readiness when source-backed answers are missing instead of inventing defaults."
+    }
+  ]
+}

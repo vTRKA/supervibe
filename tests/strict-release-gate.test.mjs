@@ -54,6 +54,24 @@ function createAdaptProjectWithPendingAppAndDeploy() {
   return projectRoot;
 }
 
+function createArchivedWorkflowProject(prefix = "supervibe-strict-release-archived-") {
+  const projectRoot = mkdtempSync(join(tmpdir(), prefix));
+  mkdirSync(join(projectRoot, ".supervibe", "memory"), { recursive: true });
+  writeFileSync(join(projectRoot, ".supervibe", "memory", "active-workflow.json"), `${JSON.stringify({
+    schemaVersion: 1,
+    command: "/supervibe-loop",
+    stage: "archived",
+    question: null,
+    choices: [],
+    acceptedAnswer: null,
+    artifacts: [],
+    receipts: [],
+    nextCommand: "/supervibe-loop",
+    nextAction: "archived workflow retained for audit only",
+  }, null, 2)}\n`);
+  return projectRoot;
+}
+
 function runAdapt(projectRoot, args = []) {
   return execFileSync(process.execPath, [ADAPT_SCRIPT, ...args], {
     cwd: projectRoot,
@@ -262,7 +280,7 @@ test("strict token gate reports planned repairs, per-agent budget, and workflow 
 });
 
 test("strict release gate lists active proof gates, repair commands, and package scripts", () => {
-  const result = spawnSync(process.execPath, [STRICT_GATE_SCRIPT], {
+  const result = spawnSync(process.execPath, [STRICT_GATE_SCRIPT, "--require-active-proof"], {
     cwd: ROOT,
     encoding: "utf8",
     stdio: ["pipe", "pipe", "pipe"],
@@ -315,6 +333,57 @@ test("strict release gate blocks active workflow before release-ready stage", as
     const activeGate = report.gates.find((gate) => gate.id === "active-workflows");
     assert.equal(activeGate.pass, false);
     assert.ok(activeGate.blockers.some((blocker) => /stage must be release-ready/.test(blocker)));
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("strict release gate uses global mode for archived workflow state", async () => {
+  const projectRoot = createArchivedWorkflowProject();
+  try {
+    const report = await buildStrictReleaseGateReport(projectRoot);
+    const activeGate = report.gates.find((gate) => gate.id === "active-workflows");
+    const trustedGate = report.gates.find((gate) => gate.id === "trusted-epic-completion");
+
+    assert.equal(report.activeProofRequired, false);
+    assert.equal(report.maturityScope, "global-capability");
+    assert.equal(activeGate.pass, true);
+    assert.equal(activeGate.scope, "global-capability");
+    assert.equal(trustedGate.pass, true);
+    assert.equal(trustedGate.required, false);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("strict release gate CLI auto-uses global mode for archived workflow unless active proof is required", () => {
+  const projectRoot = createArchivedWorkflowProject("supervibe-strict-release-cli-");
+  try {
+    const defaultResult = spawnSync(process.execPath, [STRICT_GATE_SCRIPT, "--root", projectRoot, "--json"], {
+      cwd: ROOT,
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    assert.ok([0, 1].includes(defaultResult.status), defaultResult.stderr || defaultResult.stdout);
+    const defaultReport = JSON.parse(defaultResult.stdout);
+    const defaultActiveGate = defaultReport.gates.find((gate) => gate.id === "active-workflows");
+    assert.equal(defaultReport.activeProofRequired, false);
+    assert.equal(defaultReport.maturityScope, "global-capability");
+    assert.equal(defaultActiveGate.pass, true);
+    assert.equal(defaultActiveGate.scope, "global-capability");
+
+    const explicitResult = spawnSync(process.execPath, [STRICT_GATE_SCRIPT, "--root", projectRoot, "--require-active-proof", "--json"], {
+      cwd: ROOT,
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    assert.ok([0, 1].includes(explicitResult.status), explicitResult.stderr || explicitResult.stdout);
+    const explicitReport = JSON.parse(explicitResult.stdout);
+    const explicitActiveGate = explicitReport.gates.find((gate) => gate.id === "active-workflows");
+    assert.equal(explicitReport.activeProofRequired, true);
+    assert.equal(explicitReport.maturityScope, "active-workflow-readiness");
+    assert.equal(explicitActiveGate.pass, false);
+    assert.equal(explicitActiveGate.scope, "active-workflow-readiness");
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }

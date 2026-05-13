@@ -66,12 +66,14 @@ export function agentOnlyStrictBlockReason(reportOrPlan = {}) {
 function logicalFallbackAgentsCoveredByReceipts(plan = {}) {
   const fallbackAgents = plan.logicalFallbackRequiredAgents || [];
   if (fallbackAgents.length === 0) return true;
+  const runtimeReceiptsTrusted = plan.agentInvocationsCompleted === true
+    && plan.agentReceiptsTrusted === true
+    && /^trusted-/i.test(String(plan.receiptGate || ""));
+  if (plan.scopedReceiptGateActive !== true) return runtimeReceiptsTrusted;
   const scopedReceiptTrustPass = plan.scopedReceiptTrust?.pass === true || plan.scopedReceiptTrust?.trusted === true;
   return scopedReceiptTrustPass
     && (plan.scopedReceiptTrust?.missingSubjects || []).length === 0
-    && plan.agentInvocationsCompleted === true
-    && plan.agentReceiptsTrusted === true
-    && /^trusted-/i.test(String(plan.receiptGate || ""));
+    && runtimeReceiptsTrusted;
 }
 
 function issue(code, message) {

@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "projectionVersion": "supervibe-ui-api/v1",
+  "endpoints": [
+    {
+      "name": "run",
+      "path": "/api/run",
+      "responseKind": "loop-run",
+      "minimalFields": ["uiApi", "status", "runId", "runPathRelative", "nextAction", "waves", "tasks"],
+      "staleStateShape": ["status", "message", "nextAction", "inspectionCommand"],
+      "errorShape": ["uiApi", "error.code", "error.message", "error.repairCommand"]
+    },
+    {
+      "name": "graph",
+      "path": "/api/graph",
+      "responseKind": "work-graph",
+      "minimalFields": ["uiApi", "graphId", "items", "itemDetails", "epicGroups", "kanban", "panels"],
+      "staleStateShape": ["status", "graphId", "items", "kanban", "nextAction"],
+      "errorShape": ["uiApi", "error.code", "error.message", "error.repairCommand"]
+    },
+    {
+      "name": "index-status",
+      "path": "/api/index-status",
+      "responseKind": "index-health",
+      "minimalFields": ["uiApi", "overall", "indexMapContract", "indexMaps", "codeRag.health", "memory.health", "codeGraph.status"],
+      "staleStateShape": ["overall.status", "indexMaps.codeRag.health.status", "indexMaps.memory.health.status", "indexMaps.codeGraph.health.status", "codeRag.status", "memory.status", "codeGraph.status"],
+      "errorShape": ["uiApi", "error.code", "error.message", "error.repairCommand"]
+    },
+    {
+      "name": "pre-loop-summary",
+      "path": "/api/pre-loop-summary",
+      "responseKind": "pre-loop-summary",
+      "minimalFields": ["uiApi", "startsExecution", "epicCount", "taskCount", "epics", "orphanBucket"],
+      "staleStateShape": ["status", "startsExecution", "nextAction"],
+      "errorShape": ["uiApi", "error.code", "error.message", "error.repairCommand"]
+    }
+  ]
+}

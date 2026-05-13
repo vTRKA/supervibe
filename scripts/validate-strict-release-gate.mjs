@@ -28,7 +28,7 @@ function usage() {
   return [
     "SUPERVIBE_STRICT_RELEASE_GATE_HELP",
     "USAGE:",
-    "  node scripts/validate-strict-release-gate.mjs [--root .] [--json] [--global-capability]",
+    "  node scripts/validate-strict-release-gate.mjs [--root .] [--json] [--global-capability|--require-active-proof]",
     "",
     "Checks release readiness across active workflow proof, strict plan/review, trusted epic completion, task graph runtime maturity, design workflow report, token strictness, and .supervibe GC strictness.",
   ].join("\n");
@@ -42,7 +42,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
 
   const report = await buildStrictReleaseGateReport(resolve(options.root || process.cwd()), {
-    requireActiveProof: options["global-capability"] !== true,
+    requireActiveProof: options["global-capability"] === true
+      ? false
+      : options["require-active-proof"] === true
+        ? true
+        : undefined,
     workflowRunId: options["workflow-run"] || options.run || null,
   });
   console.log(options.json ? JSON.stringify(report, null, 2) : formatStrictReleaseGateReport(report));

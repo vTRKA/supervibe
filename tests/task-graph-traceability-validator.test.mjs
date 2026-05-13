@@ -28,6 +28,27 @@ test("traceability extracts goal and acceptance requirements", () => {
   assert.ok(requirements.includes("Traceability maps requirements to evidence."));
 });
 
+test("traceability extracts bold plan goal and task acceptance blocks without neighboring fields", () => {
+  const requirements = extractTraceabilityRequirements(`# Runtime Plan
+
+## Task T1: Harden loop
+**Acceptance Criteria:**
+- Loop records release evidence.
+- Done dependency blockers disappear.
+**Requirement IDs:** REQ-LOOP-001
+**Stop conditions:** blocked on missing receipt.
+- This stop condition is not a requirement.
+**Rollback:** revert the loop patch.
+- This rollback bullet is not a requirement.
+`);
+
+  assert.ok(requirements.includes("Loop records release evidence."));
+  assert.ok(requirements.includes("Done dependency blockers disappear."));
+  assert.equal(requirements.some((item) => /REQ-LOOP-001/.test(item)), false);
+  assert.equal(requirements.some((item) => /stop condition/i.test(item)), false);
+  assert.equal(requirements.some((item) => /rollback/i.test(item)), false);
+});
+
 test("traceability passes mapped terminal work with evidence", () => {
   const report = validateTaskGraphTraceability({
     spec: "## Acceptance Criteria\n- Status explains completed epics.",
@@ -40,6 +61,24 @@ test("traceability passes mapped terminal work with evidence", () => {
       }],
       evidence: [],
     },
+  });
+
+  assert.equal(report.pass, true);
+  assert.equal(report.mapped, 1);
+});
+
+test("traceability accepts trusted graph-level evidence for mapped terminal work", () => {
+  const report = validateTaskGraphTraceability({
+    spec: "## Acceptance Criteria\n- Status explains completed epics.",
+    graph: {
+      items: [{
+        itemId: "task-status",
+        status: "complete",
+        title: "Status explains completed epics",
+      }],
+      evidence: [],
+    },
+    trustedGraphEvidence: true,
   });
 
   assert.equal(report.pass, true);

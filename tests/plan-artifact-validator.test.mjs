@@ -283,3 +283,78 @@ test('validate-plan-artifacts strict mode fails active graph snapshot fallback',
   });
   assert.match(output, /snapshot fallback/);
 });
+
+test('validate-plan-artifacts strict mode fails when closed old plan is active graph source', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'plan-validator-stale-source-'));
+  const plansDir = join(dir, '.supervibe', 'artifacts', 'plans');
+  const archiveDir = join(plansDir, '_archive');
+  const graphDir = join(dir, '.supervibe', 'memory', 'work-items', 'epic-current');
+  const oldPlan = '.supervibe/artifacts/plans/2026-05-12-supervibe-workflow-hardening-10-of-10.md';
+  const currentPlan = '.supervibe/artifacts/plans/2026-05-12-supervibe-runtime-ui-memory-rag-codegraph-10-of-10.md';
+  await mkdir(plansDir, { recursive: true });
+  await mkdir(archiveDir, { recursive: true });
+  await mkdir(graphDir, { recursive: true });
+  await writeFile(join(dir, oldPlan), GOOD_PLAN.replace('Billing Export', 'Old Workflow Hardening'), 'utf8');
+  await writeFile(join(dir, currentPlan), GOOD_PLAN.replace('Billing Export', 'Runtime UI Memory RAG CodeGraph'), 'utf8');
+  await writeFile(join(archiveDir, 'index.json'), `${JSON.stringify({
+    schemaVersion: 1,
+    plans: [
+      {
+        path: oldPlan,
+        status: 'closed',
+        archivePath: '.supervibe/artifacts/plans/_archive/2026-05-12-supervibe-workflow-hardening-10-of-10.md',
+        archivedAt: '2026-05-13T00:00:00.000Z',
+        receiptId: 'workflow-test',
+      },
+    ],
+  }, null, 2)}\n`, 'utf8');
+  await writeFile(join(dir, '.supervibe', 'memory', 'active-plan.json'), `${JSON.stringify({
+    schemaVersion: 1,
+    activePlanPath: currentPlan,
+    status: 'executing',
+    updatedAt: '2026-05-13T00:00:00.000Z',
+  }, null, 2)}\n`, 'utf8');
+  await writeFile(join(graphDir, 'graph.json'), `${JSON.stringify({
+    kind: 'supervibe-work-item-graph',
+    graph_id: 'epic-current',
+    epicId: 'epic-current',
+    source: { type: 'plan', path: oldPlan, snapshotPath: 'source-plan.md' },
+    items: [
+      { itemId: 'epic-current', type: 'epic', status: 'open', title: 'Epic' },
+      { itemId: 't1', type: 'task', status: 'claimed', title: 'Task' },
+    ],
+  }, null, 2)}\n`, 'utf8');
+  await writeFile(join(dir, '.supervibe', 'memory', 'work-items', 'index.json'), `${JSON.stringify({
+    schemaVersion: 1,
+    activeEpicId: 'epic-current',
+    activeGraphPath: '.supervibe/memory/work-items/epic-current/graph.json',
+    epics: {
+      'epic-current': {
+        epicId: 'epic-current',
+        graphPath: '.supervibe/memory/work-items/epic-current/graph.json',
+        sourcePlanPath: currentPlan,
+        status: 'active',
+      },
+    },
+  }, null, 2)}\n`, 'utf8');
+
+  let output = '';
+  assert.throws(() => {
+    try {
+      execFileSync(process.execPath, [
+        join(process.cwd(), 'scripts', 'validate-plan-artifacts.mjs'),
+        '--all',
+        '--require-active-source',
+      ], {
+        cwd: dir,
+        encoding: 'utf8',
+        stdio: 'pipe',
+      });
+    } catch (error) {
+      output = `${error.stdout || ''}${error.stderr || ''}`;
+      throw error;
+    }
+  });
+  assert.match(output, /active graph source plan is closed/);
+  assert.match(output, /canonical active plan pointer/);
+});

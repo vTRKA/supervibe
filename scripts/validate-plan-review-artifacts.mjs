@@ -279,7 +279,12 @@ function trustedReviewerReceiptsForArtifact(rootDir, reviewRel) {
     if (coverage.has(id)) coverage.set(id, true);
   }
   for (const [reviewer, seen] of coverage.entries()) {
-    if (!seen) issues.push(`missing trusted reviewer receipt for ${reviewer} bound to current review artifact`);
+    if (!seen) {
+      issues.push([
+        `missing trusted reviewer receipt for ${reviewer} bound to current review artifact`,
+        `repair: node scripts/workflow-receipt.mjs issue --subject-type reviewer --subject-id ${reviewer} --output ${reviewRel}`,
+      ].join("; "));
+    }
   }
   return { pass: issues.length === 0, issues };
 }

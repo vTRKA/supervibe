@@ -5,8 +5,14 @@ import { join, relative, sep } from "node:path";
 import { validateEpicCompletion } from "./lib/supervibe-epic-completion-validator.mjs";
 import { createWorkItemIndex, detectOrphanWorkItems, detectStaleWorkItems, groupWorkItemsByStatus } from "./lib/supervibe-work-item-query.mjs";
 import { resolveActiveWorkItemGraph } from "./lib/supervibe-work-item-registry.mjs";
+import {
+  readWorkflowReceipts,
+  validateWorkflowReceiptTrust,
+} from "./lib/supervibe-workflow-receipt-runtime.mjs";
 
-export function summarizeTaskGraphStatus(graph = {}, { graphPath = "" } = {}) {
+const TERMINAL_GRAPH_STATUSES = new Set(["closed", "complete", "completed", "done", "skipped", "cancelled", "canceled"]);
+
+export function summarizeTaskGraphStatus(graph = {}, { graphPath = "", completionOptions = {} } = {}) {
   const index = createWorkItemIndex({
     graph,
     claims: graph.claims || [],
@@ -17,7 +23,7 @@ export function summarizeTaskGraphStatus(graph = {}, { graphPath = "" } = {}) {
   const stale = detectStaleWorkItems(index);
   const orphans = detectOrphanWorkItems(index, graph);
   const nextReady = grouped.ready[0]?.itemId || grouped.ready[0]?.id || null;
-  const completion = validateEpicCompletion(graph);
+  const completion = validateEpicCompletion(graph, completionOptions);
   const nextAction = nextReady
     ? `claim ${nextReady} or run /supervibe-loop --claim-ready`
     : completion.pass
@@ -39,16 +45,28 @@ export function summarizeTaskGraphStatus(graph = {}, { graphPath = "" } = {}) {
 export async function validateTaskGraphStatusConsistency({ rootDir = process.cwd(), graphPath = null } = {}) {
   const issues = [];
   let selectedPath = graphPath;
+  let paths = [];
   if (!selectedPath) {
     const active = await resolveActiveWorkItemGraph({ rootDir });
     if (active.status === "active") selectedPath = active.graphPath;
     else if (active.status === "none") {
       return { pass: true, neutral: true, summaries: [], issues: [] };
+    } else if (active.status === "ambiguous") {
+      const discovered = findGraphFiles(rootDir);
+      if (discovered.length > 0 && discovered.every((path) => isTerminalGraphFile(path))) {
+        paths = discovered;
+      } else {
+        issues.push(`active graph is ${active.status}: ${active.nextAction || "inspect registry"}`);
+      }
     } else {
       issues.push(`active graph is ${active.status}: ${active.nextAction || "inspect registry"}`);
     }
   }
-  const paths = selectedPath ? [selectedPath] : findGraphFiles(rootDir);
+  if (selectedPath) paths = [selectedPath];
+  else if (paths.length === 0) paths = findGraphFiles(rootDir);
+
+  const trustedReceiptIds = trustedReceiptIdsForStatusConsistency(rootDir);
+  const trustedGraphReceiptIdsByGraphId = trustedGraphReceiptIdsByGraphForStatusConsistency(rootDir);
   const summaries = [];
   for (const path of paths) {
     if (!existsSync(path)) {
@@ -56,7 +74,14 @@ export async function validateTaskGraphStatusConsistency({ rootDir = process.cwd
       continue;
     }
     const graph = JSON.parse(readFileSync(path, "utf8"));
-    const summary = summarizeTaskGraphStatus(graph, { graphPath: relative(rootDir, path).split(sep).join("/") });
+    const graphId = graphIdForCompletion(graph);
+    const summary = summarizeTaskGraphStatus(graph, {
+      graphPath: relative(rootDir, path).split(sep).join("/"),
+      completionOptions: {
+        trustedReceiptIds,
+        trustedGraphReceiptIds: graphId ? trustedGraphReceiptIdsByGraphId[graphId] || [] : [],
+      },
+    });
     summaries.push(summary);
     if (summary.completionPass && !/finish\/archive completed epic/i.test(summary.nextAction)) {
       issues.push(`${summary.graphPath}: completed graph has wrong next action: ${summary.nextAction}`);
@@ -99,6 +124,65 @@ function findGraphFiles(rootDir) {
     if (existsSync(path)) out.push(path);
   }
   return out;
+}
+
+function isTerminalGraphFile(path) {
+  try {
+    return isTerminalGraph(JSON.parse(readFileSync(path, "utf8")));
+  } catch {
+    return false;
+  }
+}
+
+function isTerminalGraph(graph = {}) {
+  const epic = (graph.items || []).find((item) => item.type === "epic");
+  const explicitStatus = normalizeStatus(epic?.status || graph.status || graph.epicStatus || graph.lifecycleStatus);
+  if (TERMINAL_GRAPH_STATUSES.has(explicitStatus)) return true;
+
+  const index = createWorkItemIndex({
+    graph,
+    claims: graph.claims || [],
+    gates: graph.gates || [],
+    evidence: graph.evidence || [],
+  });
+  const workItems = index.filter((item) => item.type !== "epic");
+  return workItems.length > 0 && workItems.every((item) => (
+    TERMINAL_GRAPH_STATUSES.has(normalizeStatus(item.effectiveStatus || item.status))
+  ));
+}
+
+function trustedGraphReceiptIdsByGraphForStatusConsistency(rootDir) {
+  const out = {};
+  for (const receipt of readWorkflowReceipts(rootDir)) {
+    if (!receipt?.receiptId) continue;
+    const graphId = receipt.graphId || receipt.workItemBinding?.graphId || null;
+    if (!graphId) continue;
+    const taskId = receipt.taskId || receipt.workItemId || receipt.graphTaskId || receipt.workItemBinding?.taskId || null;
+    if (taskId) continue;
+    const trust = validateWorkflowReceiptTrust(rootDir, receipt);
+    if (!trust.pass) continue;
+    if (!out[graphId]) out[graphId] = [];
+    out[graphId].push(String(receipt.receiptId));
+  }
+  return out;
+}
+
+function trustedReceiptIdsForStatusConsistency(rootDir) {
+  const trusted = [];
+  for (const receipt of readWorkflowReceipts(rootDir)) {
+    if (!receipt?.receiptId) continue;
+    const trust = validateWorkflowReceiptTrust(rootDir, receipt);
+    if (trust.pass) trusted.push(String(receipt.receiptId));
+  }
+  return trusted;
+}
+
+function graphIdForCompletion(graph = {}) {
+  return graph.epicId || graph.graph_id || graph.graphId || graph.items?.find?.((item) => item.type === "epic")?.itemId || null;
+}
+
+function normalizeStatus(status) {
+  return String(status || "").trim().toLowerCase();
 }
 
 function parseArgs(argv = process.argv.slice(2)) {

@@ -236,8 +236,7 @@ export function scoreAgentSystemMaturity({
 
   const total = dimensions.reduce((sum, item) => sum + item.score, 0);
   const active = validators.activeCommandReadiness || null;
-  const activePenalty = active && active.pass === false && validators.commandContracts?.pass === true ? 1 : 0;
-  const globalScore = Number(Math.min(10, total + activePenalty).toFixed(2));
+  const globalScore = Number(total.toFixed(2));
   const activeWorkflowScore = active ? (active.pass === true ? 10 : 9) : null;
   return {
     schemaVersion: 1,

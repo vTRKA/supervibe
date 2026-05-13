@@ -208,16 +208,16 @@ export function routeWorkflowIntent(input, options = {}) {
   }
 
   if (isVagueFeatureRequest(text)) {
-    return fromWorkflowStep("intake", {
+    return applySafetyState(fromWorkflowStep("intake", {
       intent: "feature_brainstorm",
       locale,
       confidence: 0.83,
       reason: "Vague feature request requires brainstorm before plan or execution.",
       source: "vague-feature-rule",
-    });
+    }), { dirtyGitState, artifacts });
   }
 
-  return {
+  return normalizeRouteQuestionPayload({
     intent: "unknown",
     phase: "diagnostics",
     command: "/supervibe --diagnose-trigger",
@@ -255,7 +255,7 @@ export function routeWorkflowIntent(input, options = {}) {
       command: "/supervibe --diagnose-trigger",
       artifact: "trigger request",
     }),
-  };
+  });
 }
 
 export function formatWorkflowRoute(route) {
@@ -771,6 +771,65 @@ function workflowArtifactImpact({ locale = "en", command = "", artifact = "" } =
   return `The answer decides whether ${commandText} runs for ${artifactText}, readiness is shown first, or the handoff stops.`;
 }
 
+function normalizeRouteQuestionPayload(route = {}) {
+  const choices = normalizeRouteChoices(route.questionChoices || route.nextQuestionChoices || []);
+  const prompt = route.nextQuestion || route.nextPromptText || "";
+  const title = route.questionTitle || questionTitleForRoute(route);
+  const reason = route.questionReason || route.reason || "";
+  const normalized = {
+    ...route,
+    questionTitle: title,
+    questionReason: reason,
+    questionChoices: choices,
+    questionPayload: {
+      title,
+      prompt,
+      reason,
+      stage: route.phase || "workflow",
+      nextCommand: route.command || null,
+      nextSkill: route.skill || null,
+      stopCondition: route.stopCondition || null,
+      choices,
+    },
+  };
+  if (route.nextQuestionChoices) normalized.nextQuestionChoices = choices;
+  return normalized;
+}
+
+function normalizeRouteChoices(choices = []) {
+  if (!Array.isArray(choices)) return [];
+  return choices.map((choice, index) => {
+    const source = choice && typeof choice === "object" && !Array.isArray(choice)
+      ? choice
+      : { label: String(choice || "") };
+    const label = sanitizeRouteText(source.label || `Choice ${index + 1}`, 96);
+    const id = String(source.id || slugifyRouteChoice(label) || `choice-${index + 1}`).trim();
+    const description = sanitizeRouteText(source.description || source.tradeoff || "", 220);
+    return {
+      ...source,
+      id,
+      label,
+      tradeoff: source.tradeoff || description,
+      description,
+    };
+  });
+}
+
+function questionTitleForRoute(route = {}) {
+  const phase = sanitizeRouteText(route.phase || "workflow", 40);
+  const command = sanitizeRouteText(route.command || "next action", 56);
+  if (route.intent === "workflow_resume_choice") return `Resolve saved ${phase} handoff`;
+  if (route.intent === "unknown") return "Resolve Supervibe route";
+  return `Confirm ${phase}: ${command}`;
+}
+
+function slugifyRouteChoice(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 function sanitizeRouteText(value, maxLength = 120) {
   const text = String(value || "").replace(/\s+/g, " ").trim();
   if (!text) return "";
@@ -795,7 +854,7 @@ function applySafetyState(route, { dirtyGitState, artifacts }) {
   if (route.command?.includes("--epic") && !artifacts.stopCommandAvailable && !safetyBlockers.includes("stop-command-unavailable")) {
     safetyBlockers.push("stop-command-unavailable");
   }
-  return { ...route, safetyBlockers: [...new Set(safetyBlockers)] };
+  return normalizeRouteQuestionPayload({ ...route, safetyBlockers: [...new Set(safetyBlockers)] });
 }
 
 function phaseForRoute(route) {

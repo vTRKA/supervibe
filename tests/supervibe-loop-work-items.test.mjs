@@ -72,6 +72,45 @@ test("loop CLI claim-ready claims the first ready work item in the graph", async
   }
 });
 
+test("loop CLI close records structured verification evidence", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-close-evidence-"));
+  try {
+    const graph = atomizePlanToWorkItems(PLAN, {
+      planPath: ".supervibe/artifacts/plans/close-evidence.md",
+      epicId: "epic-close-evidence",
+      planReviewPassed: true,
+    });
+    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: temp });
+
+    const { stdout } = await execFileAsync(process.execPath, [
+      join(ROOT, "scripts", "supervibe-loop.mjs"),
+      "--close",
+      "epic-close-evidence-t1",
+      "--file",
+      graphPath,
+      "--reason",
+      "verified",
+      "--verification",
+      "node --test tests/first.test.mjs",
+      "--evidence",
+      "targeted test passed",
+      "--actor",
+      "tester",
+    ], { cwd: ROOT });
+
+    assert.match(stdout, /ACTION: closed/);
+    const saved = JSON.parse(await readFile(graphPath, "utf8"));
+    const first = saved.items.find((item) => item.itemId === "epic-close-evidence-t1");
+    const task = saved.tasks.find((item) => item.id === "epic-close-evidence-t1");
+    assert.equal(first.verificationEvidence[0].command, "node --test tests/first.test.mjs");
+    assert.equal(first.verificationEvidence[0].outputSummary, "targeted test passed");
+    assert.equal(task.verificationEvidence[0].status, "pass");
+    assert.equal(saved.events.at(-1).verificationEvidence[0].source, "supervibe-loop");
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
 test("autonomous loop writes dry-run task completion back to canonical graph", async () => {
   const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-sync-"));
   try {

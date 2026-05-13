@@ -136,6 +136,37 @@ test("scoped real-agent receipts unlock active durable command plans", () => {
   assert.equal(commandAgentPlanStrictReady(report), true);
 });
 
+test("global runtime receipts can prove non-active Codex logical fallback command plans", () => {
+  const agents = ["supervibe-orchestrator", "repo-researcher", "memory-curator", "quality-gate-reviewer"];
+  const plan = buildCommandAgentPlan("/supervibe-audit", {
+    availableAgentIds: agents,
+    callableAgentIds: agents,
+    callableAgentSources: new Map([
+      ["supervibe-orchestrator", "host callable"],
+      ["repo-researcher", "codex-spawn-agent logical role"],
+      ["memory-curator", "codex-spawn-agent logical role"],
+      ["quality-gate-reviewer", "host callable"],
+    ]),
+    hostAdapterId: "codex",
+    enforceHostProof: true,
+    receiptTrust: {
+      pass: true,
+      trustedHostAgentReceipts: 10,
+      agentInvocations: 10,
+      minHostAgentReceipts: 1,
+      minAgentInvocations: 1,
+    },
+    workflowContext: {},
+  });
+  const report = { pass: true, plan };
+  const policy = evaluateAgentOnlyPolicy(report);
+
+  assert.equal(plan.scopedReceiptGateActive, false);
+  assert.deepEqual(plan.logicalFallbackRequiredAgents, ["repo-researcher", "memory-curator"]);
+  assert.equal(policy.pass, true);
+  assert.equal(commandAgentPlanStrictReady(report), true);
+});
+
 test("command-agent enforcement validator uses the agent-only policy helper", () => {
   const output = execFileSync(process.execPath, [
     join(ROOT, "scripts", "validate-command-agent-enforcement.mjs"),

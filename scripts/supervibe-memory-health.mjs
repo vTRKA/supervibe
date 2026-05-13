@@ -20,6 +20,7 @@ try {
     rootDir: args.root || process.cwd(),
     now: args.now || new Date().toISOString(),
     contextPackMaxTokens: args["context-pack-max-tokens"] || 3000,
+    largeProjectMode: args.strict ? "strict" : "auto",
   });
   console.log(args.json ? JSON.stringify(report, null, 2) : formatMemoryHealthReport(report));
   if (args.strict && !report.pass) process.exitCode = 2;

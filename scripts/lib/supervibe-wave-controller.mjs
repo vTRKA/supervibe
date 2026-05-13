@@ -10,11 +10,15 @@ export function buildExecutionWaves({
   reviewers = ["quality-gate-reviewer"],
   worktreeSessions = [],
   claims = [],
+  requireWriteSet = false,
+  writeSetLocks = [],
 } = {}) {
   const blockers = [];
   const staleSessions = worktreeSessions.filter((session) => session.status === "stale");
+  const lockReport = normalizeWriteSetLocks(writeSetLocks);
   if (reviewers.length === 0) blockers.push("missing-reviewer");
   if (staleSessions.length > 0) blockers.push("stale-worktree-session");
+  if (lockReport.stale.length > 0) blockers.push("stale-write-set-lock");
   if (claims.some((claim) => claim.status === "active" && claim.blocked === true)) blockers.push("blocked-worker-claim");
 
   const candidates = readyFront?.ready || readyFront?.parallel || computeReadyTasks(tasks);
@@ -26,12 +30,26 @@ export function buildExecutionWaves({
   const usedFiles = new Set();
 
   for (const task of candidates) {
+    const taskWriteSet = writeSet(task);
+    if (requireWriteSet && taskWriteSet.length === 0) {
+      blocked.push({ taskId: task.id, reason: "missing write-set declaration" });
+      continue;
+    }
+    const lockConflicts = findWriteSetLockConflicts({ taskId: task.id, writeSet: taskWriteSet }, lockReport.active);
+    if (lockConflicts.length > 0) {
+      blocked.push({
+        taskId: task.id,
+        reason: `write-set lock conflict: ${lockConflicts.map((lock) => lock.lockId).join(",")}`,
+        locks: lockConflicts.map((lock) => lock.lockId),
+      });
+      continue;
+    }
     if ((RISK_ORDER[task.policyRiskLevel || "low"] ?? 1) > (RISK_ORDER[maxPolicyRiskLevel] ?? 2)) {
       blocked.push({ taskId: task.id, reason: `risk ${task.policyRiskLevel || "low"} exceeds wave max ${maxPolicyRiskLevel}` });
       continue;
     }
-    if (conflictTaskIds.has(task.id) || writeSet(task).some((file) => usedFiles.has(file))) {
-      serialized.push({ taskId: task.id, reason: `write-set conflict: ${writeSet(task).join(",") || "unknown"}` });
+    if (conflictTaskIds.has(task.id) || taskWriteSet.some((file) => usedFiles.has(file))) {
+      serialized.push({ taskId: task.id, reason: `write-set conflict: ${taskWriteSet.join(",") || "unknown"}` });
       continue;
     }
     if (selected.length >= maxConcurrency) {
@@ -39,7 +57,7 @@ export function buildExecutionWaves({
       continue;
     }
     selected.push(task);
-    for (const file of writeSet(task)) usedFiles.add(file);
+    for (const file of taskWriteSet) usedFiles.add(file);
   }
 
   const readyWorktrees = worktreeSessions.filter((session) => ["ready", "active"].includes(session.status));
@@ -51,6 +69,7 @@ export function buildExecutionWaves({
     worktrees: readyWorktrees.slice(0, selected.length).map((session) => session.sessionId),
     reviewers: reviewers.slice(0, Math.max(1, selected.length)),
     verificationPlan: selected.map((task) => ({ taskId: task.id, required: task.verificationCommands || [] })),
+    writeSetLocks: selected.map((task) => createReservedWriteSetLock(task)),
     stopConditions: ["policy_stop", "failed_gate", "stale_worker_session", "write_set_conflict"],
     mergeStrategy: "verify-review-reconcile",
   } : null;
@@ -64,6 +83,7 @@ export function buildExecutionWaves({
     blocked,
     serialized,
     conflicts,
+    writeSetLocks: lockReport,
   };
 }
 
@@ -93,6 +113,8 @@ export function summarizeWavePlan(plan = {}) {
 
 export function formatWaveStatus(plan = {}) {
   const summary = summarizeWavePlan(plan);
+  const staleLocks = plan.writeSetLocks?.stale || [];
+  const activeLocks = plan.writeSetLocks?.active || [];
   return [
     "SUPERVIBE_WAVES",
     `STATUS: ${summary.status}`,
@@ -101,6 +123,9 @@ export function formatWaveStatus(plan = {}) {
     `NEXT_WAVE: ${plan.nextWave?.tasks?.join(",") || "none"}`,
     `BLOCKED: ${(plan.blocked || []).map((item) => `${item.taskId}:${item.reason}`).join(" | ") || "none"}`,
     `SERIALIZED: ${(plan.serialized || []).map((item) => `${item.taskId}:${item.reason}`).join(" | ") || "none"}`,
+    `WRITE_SET_LOCKS: active=${activeLocks.length} stale=${staleLocks.length}`,
+    `STALE_WRITE_SET_LOCKS: ${staleLocks.map((lock) => lock.lockId).join(",") || "none"}`,
+    `RECOVER_WRITE_SET_LOCKS: ${staleLocks.map((lock) => lock.recoverCommand).join(" | ") || "none"}`,
     `BLOCKERS: ${(plan.blockers || []).join(",") || "none"}`,
   ].join("\n");
 }
@@ -120,6 +145,49 @@ function writeSet(task = {}) {
     ...(task.fileImpact || []),
     ...(task.writeScope || []).map((entry) => entry.path || entry),
   ].map(normalizePath).filter(Boolean).sort();
+}
+
+function normalizeWriteSetLocks(locks = []) {
+  const all = locks.map((lock, index) => {
+    const lockId = lock.lockId || lock.id || `write-set-lock-${index + 1}`;
+    return {
+      lockId,
+      taskId: lock.taskId || lock.itemId || null,
+      owner: lock.owner || lock.agentId || null,
+      status: String(lock.status || "active").toLowerCase(),
+      writeSet: uniqueNormalizedPaths(lock.writeSet || lock.assignedWriteSet || lock.targetFiles || lock.files || []),
+      staleAt: lock.staleAt || null,
+      recoverCommand: `/supervibe-loop --recover-stale-lock ${lockId}`,
+    };
+  }).filter((lock) => lock.writeSet.length > 0);
+  return {
+    all,
+    active: all.filter((lock) => ["planned", "ready", "active", "locked", "reserved"].includes(lock.status)),
+    stale: all.filter((lock) => lock.status === "stale"),
+  };
+}
+
+function findWriteSetLockConflicts(taskLock = {}, locks = []) {
+  const taskFiles = new Set(taskLock.writeSet || []);
+  if (taskFiles.size === 0) return [];
+  return locks.filter((lock) => {
+    if (lock.taskId && taskLock.taskId && lock.taskId === taskLock.taskId) return false;
+    return (lock.writeSet || []).some((file) => taskFiles.has(file));
+  });
+}
+
+function createReservedWriteSetLock(task = {}) {
+  const taskId = task.id || task.taskId || "unknown-task";
+  return {
+    lockId: `write-set-${taskId}`,
+    taskId,
+    status: "reserved",
+    writeSet: writeSet(task),
+  };
+}
+
+function uniqueNormalizedPaths(paths = []) {
+  return [...new Set(paths.map(normalizePath).filter(Boolean))].sort();
 }
 
 function normalizePath(path = "") {

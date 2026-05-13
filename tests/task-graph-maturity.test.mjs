@@ -67,12 +67,35 @@ test("task graph runtime maturity blocks neutral traceability", () => {
   assert.ok(report.dimensions.some((dimension) => dimension.id === "active-traceability" && !dimension.pass));
 });
 
+test("task graph runtime maturity ignores closed historical graphs for active traceability", () => {
+  const root = mkdtempSync(join(tmpdir(), "supervibe-task-graph-maturity-active-filter-"));
+  writeMinimalSurface(root);
+  writeRuntimeGraph(root, { source: "## Acceptance Criteria\n- Runtime requirement.\n" });
+  const closedDir = join(root, ".supervibe", "memory", "work-items", "epic-closed");
+  mkdirSync(closedDir, { recursive: true });
+  writeFileSync(join(closedDir, "source-plan.md"), "## Acceptance Criteria\n- Closed requirement.\n", "utf8");
+  writeFileSync(join(closedDir, "graph.json"), `${JSON.stringify({
+    graph_id: "epic-closed",
+    source: { snapshotPath: "source-plan.md" },
+    items: [
+      { itemId: "epic-closed", type: "epic", status: "closed", title: "Closed" },
+      { itemId: "task-closed", type: "task", status: "complete", title: "Closed requirement" },
+    ],
+  }, null, 2)}\n`, "utf8");
+
+  const report = buildTaskGraphMaturityReport(root, { requireActiveGraph: true });
+  const traceability = report.dimensions.find((item) => item.id === "active-traceability");
+
+  assert.notEqual(traceability.summary, "2 active graph candidate(s) found");
+  assert.equal(traceability.blockers.some((blocker) => /exactly one active graph/.test(blocker)), false);
+});
+
 test("task graph runtime maturity blocks active legacy completion evidence", () => {
   const root = mkdtempSync(join(tmpdir(), "supervibe-task-graph-maturity-legacy-evidence-"));
   writeMinimalSurface(root);
   writeRuntimeGraph(root, {
     source: "## Acceptance Criteria\n- Runtime requirement.\n",
-    epicStatus: "complete",
+    epicStatus: "open",
     evidence: [{
       status: "pass",
       command: "node --test tests/runtime.test.mjs",

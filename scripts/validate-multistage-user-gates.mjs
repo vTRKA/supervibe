@@ -1,7 +1,12 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import {
+  buildActiveWorkflowResumeInfo,
+  readCurrentActiveWorkflowState,
+} from "./lib/supervibe-active-workflow-state.mjs";
 
 const EXPLICIT_SURFACE_RULES = Object.freeze([
   {
@@ -309,6 +314,7 @@ export function validateMultistageUserGates(rootDir = process.cwd()) {
   }
 
   const deduped = dedupeIssues(issues);
+  deduped.push(...validateActiveHandoffRuntimeState(rootDir));
   return {
     pass: deduped.length === 0,
     checked: EXPLICIT_SURFACE_RULES.length,
@@ -360,6 +366,23 @@ function dedupeIssues(issues) {
     out.push(issue);
   }
   return out;
+}
+
+function validateActiveHandoffRuntimeState(rootDir) {
+  const state = readCurrentActiveWorkflowState(rootDir);
+  if (!state.exists) return [];
+  const resume = buildActiveWorkflowResumeInfo(state.state);
+  if (resume.hasPendingQuestion || resume.acceptedAnswer !== null) return [];
+  const nextCommand = String(resume.nextCommand || state.state?.nextCommand || "").trim();
+  const nextAction = String(resume.nextAction || state.state?.nextAction || "").trim();
+  const hasHandoffCommand = nextCommand.includes("/supervibe-") || /handoff|answer active workflow question/i.test(nextAction);
+  if (!hasHandoffCommand) return [];
+  return [{
+    file: state.file || ".supervibe/memory/active-workflow.json",
+    label: "active handoff runtime state",
+    code: "active-handoff-question-missing",
+    message: `${state.file || ".supervibe/memory/active-workflow.json"}: active workflow has a handoff next command but no runtime question; repair by reissuing the question with recordNextStepHandoffQuestion or rerun the producer handoff command`,
+  }];
 }
 
 function normalizePath(path) {

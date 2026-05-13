@@ -16,6 +16,7 @@ import {
   validateScopedAgentProducerReceipts,
 } from "./lib/agent-producer-contract.mjs";
 import { selectHostAdapter } from "./lib/supervibe-host-detector.mjs";
+import { buildEvidencePacket, evidencePacketSummary } from "./lib/supervibe-evidence-packet.mjs";
 
 const PLUGIN_ROOT = resolve(fileURLToPath(new URL("../", import.meta.url)));
 
@@ -143,6 +144,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       console.log(JSON.stringify(report, null, 2));
     } else {
       console.log(formatCommandAgentPlan(report.plan));
+      console.log(formatCommandAgentVerificationPolicy(report.plan.verificationPolicy));
+      const packet = evidencePacketSummary(report.plan.evidencePacket);
+      console.log(`EVIDENCE_PACKET_ID: ${packet.packetId}`);
+      console.log(`EVIDENCE_PACKET_SOURCES: ${packet.sourceCount}`);
+      console.log(`EVIDENCE_PACKET_TOKENS: ${packet.tokenEstimate}`);
+      console.log(`EVIDENCE_PACKET_OMITTED: ${packet.omittedEvidenceReason}`);
       console.log(`STRICT_READY: ${commandAgentPlanStrictReady(report)}`);
       if (!commandAgentPlanStrictReady(report)) {
         console.log(`STRICT_BLOCK_REASON: ${commandAgentPlanStrictBlockReason(report)}`);
@@ -237,8 +244,44 @@ export function buildRuntimeCommandAgentPlan({
     scopedReceiptTrust,
     workflowContext: normalizedContext,
   });
+  const evidencePacket = buildEvidencePacket({
+    rootDir: resolvedProjectRoot,
+    commandId: command,
+    task: {
+      id: command,
+      goal: [
+        command,
+        normalizedContext.intent,
+        normalizedContext.artifactType,
+        normalizedContext.stage,
+        normalizedContext.stackTags,
+        normalizedContext.riskDomains,
+      ].filter(Boolean).join(" "),
+    },
+  });
+  const verificationPolicy = buildCommandAgentVerificationPolicy({
+    command,
+    workflowContext: normalizedContext,
+  });
+  const enrichedPlan = {
+    ...plan,
+    evidencePacket,
+    verificationPolicy,
+    ...(plan.codexSpawnPayloads
+      ? {
+        codexSpawnPayloads: plan.codexSpawnPayloads.map((payload) => ({
+          ...payload,
+          payload: {
+            ...payload.payload,
+            evidence_packet: evidencePacket,
+            verification_policy: verificationPolicy,
+          },
+        })),
+      }
+      : {}),
+  };
   return {
-    pass: plan.executionMode !== "agent-required-blocked",
+    pass: enrichedPlan.executionMode !== "agent-required-blocked",
     projectRoot: resolvedProjectRoot,
     pluginRoot: resolvedPluginRoot,
     selectedHost: hostSelection.selectedHost,
@@ -246,7 +289,7 @@ export function buildRuntimeCommandAgentPlan({
     availableAgentCount: availableAgentIds.length,
     callableAgentCount: callableAgentIds.length,
     installedOnly,
-    plan,
+    plan: enrichedPlan,
   };
 }
 
@@ -261,6 +304,40 @@ function isBareGenesisBootstrapPlan(options = {}) {
     && options["generate-apps"] !== true
     && options.verifyAgents !== true
     && options["verify-agents"] !== true;
+}
+
+function buildCommandAgentVerificationPolicy({
+  command,
+  workflowContext = {},
+} = {}) {
+  const stage = String(workflowContext.stage || workflowContext.phase || "").toLowerCase();
+  const artifactType = String(workflowContext.artifactType || "").toLowerCase();
+  const intent = String(workflowContext.intent || "").toLowerCase();
+  const commandId = String(command || "").toLowerCase();
+  const releaseGate = /\b(release|final|completion|phase-gate|phase)\b/.test(stage)
+    || /\b(release|final)\b/.test(artifactType)
+    || /\b(release|final)\b/.test(intent)
+    || commandId.includes("validate-completion");
+  return {
+    schemaVersion: 1,
+    scope: releaseGate ? "phase-or-release-gate" : "task-local",
+    targetedOnly: !releaseGate,
+    fullSuiteAllowed: releaseGate,
+    fullSuitePolicy: "Full verification commands such as npm run check are reserved for phase or release gates; normal task agents run targeted commands only.",
+    workerInstruction: releaseGate
+      ? "This is a phase/release verification gate; full checks may run here after child work is complete."
+      : "This is task-local execution; run only targeted checks from the assigned work item and defer npm run check to the final gate.",
+  };
+}
+
+function formatCommandAgentVerificationPolicy(policy = {}) {
+  return [
+    "SUPERVIBE_COMMAND_VERIFICATION_POLICY",
+    `VERIFICATION_SCOPE: ${policy.scope || "task-local"}`,
+    `TARGETED_ONLY: ${policy.targetedOnly !== false}`,
+    `FULL_SUITE_ALLOWED: ${policy.fullSuiteAllowed === true}`,
+    `FULL_VERIFICATION_POLICY: ${policy.fullSuitePolicy || "full checks reserved for phase or release gates"}`,
+  ].join("\n");
 }
 
 function listAvailableAgentSources({

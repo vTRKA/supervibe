@@ -15,6 +15,7 @@ import { classifyIndexPath, discoverSourceFiles, isGeneratedPath, looksMinifiedS
 import { applyCodeDbMigrations } from './supervibe-db-migrations.mjs';
 
 export const CODE_GRAPH_EXTRACTOR_VERSION = 3;
+export const CODE_RAG_CHUNK_METADATA_VERSION = 1;
 const DEFAULT_LARGE_FILE_CHAR_THRESHOLD = 150_000;
 const DEFAULT_CHUNK_TIMEOUT_MS = 30_000;
 const DEFAULT_LARGE_FILE_THRESHOLD_BYTES = 512 * 1024;
@@ -311,6 +312,96 @@ function ensureColumn(db, table, column, definition) {
   }
 }
 
+function inferChunkFileRole(relPath = '') {
+  const normalized = normalizeRelPath(relPath).toLowerCase();
+  const name = basename(normalized);
+  if (normalized.startsWith('tests/') || /\.(test|spec)\.[cm]?[jt]sx?$/.test(name)) return 'test';
+  if (normalized.startsWith('docs/') || normalized.endsWith('.md') || normalized.endsWith('.mdx')) return 'docs';
+  if (normalized.startsWith('agents/')) return 'agent';
+  if (normalized.startsWith('skills/')) return 'skill';
+  if (normalized.startsWith('rules/')) return 'rule';
+  if (normalized.startsWith('commands/')) return 'command';
+  if (normalized.startsWith('scripts/')) return 'script';
+  if (
+    normalized.startsWith('.github/') ||
+    normalized.startsWith('.codex/') ||
+    normalized.endsWith('.json') ||
+    normalized.endsWith('.yaml') ||
+    normalized.endsWith('.yml') ||
+    normalized.endsWith('.toml') ||
+    normalized.endsWith('.ini') ||
+    /(^|\/)(package|tsconfig|jsconfig|eslint|prettier|vitest|vite|playwright|jest)\b/.test(normalized)
+  ) {
+    return 'config';
+  }
+  return 'source';
+}
+
+function inferChunkArtifactType(relPath = '', fileRole = '') {
+  if (fileRole === 'test') return 'test-code';
+  if (fileRole === 'docs') return 'documentation';
+  if (fileRole === 'config') return 'configuration';
+  if (['agent', 'skill', 'rule', 'command'].includes(fileRole)) return `supervibe-${fileRole}`;
+  if (fileRole === 'script') return 'automation-script';
+  return 'source-code';
+}
+
+function extractChunkHeading(chunk = {}, relPath = '') {
+  const name = String(chunk.name || '').trim();
+  if (name) return String(chunk.kind || 'symbol') === 'block' ? name : `${chunk.kind || 'symbol'}:${name}`;
+  const text = String(chunk.text || '');
+  const markdownHeading = text.match(/^\s{0,3}#{1,6}\s+(.+)$/m)?.[1]?.trim();
+  if (markdownHeading) return markdownHeading.slice(0, 160);
+  const symbol = extractSymbolHints(chunk)[0];
+  if (symbol) return symbol;
+  return basename(normalizeRelPath(relPath));
+}
+
+function extractSymbolHints(chunk = {}) {
+  const hints = [];
+  const add = (value) => {
+    const clean = String(value || '').trim();
+    if (!clean || hints.includes(clean)) return;
+    hints.push(clean);
+  };
+  add(chunk.name);
+  const text = String(chunk.text || '');
+  const patterns = [
+    /\b(?:export\s+)?(?:async\s+)?function\s+([A-Za-z_$][\w$]*)/g,
+    /\b(?:export\s+)?(?:class|interface|type|enum|trait|struct)\s+([A-Za-z_$][\w$]*)/g,
+    /\b(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=/g,
+    /\b(?:def|fn)\s+([A-Za-z_][\w]*)/g,
+  ];
+  for (const pattern of patterns) {
+    for (const match of text.matchAll(pattern)) {
+      add(match[1]);
+      if (hints.length >= 12) return hints;
+    }
+  }
+  return hints.slice(0, 12);
+}
+
+function buildChunkMetadata({ relPath, chunk, indexStatus = 'full' } = {}) {
+  const fileRole = inferChunkFileRole(relPath);
+  return {
+    fileRole,
+    heading: extractChunkHeading(chunk, relPath),
+    symbolHintsJson: JSON.stringify(extractSymbolHints(chunk)),
+    artifactType: inferChunkArtifactType(relPath, fileRole),
+    freshness: indexStatus === 'partial' ? 'partial' : 'current',
+    metadataVersion: CODE_RAG_CHUNK_METADATA_VERSION,
+  };
+}
+
+function parseJsonStringArray(value) {
+  try {
+    const parsed = JSON.parse(String(value || '[]'));
+    return Array.isArray(parsed) ? parsed.filter((item) => typeof item === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
 function isConfigOnlyGraphPath(relPath = '') {
   const name = basename(String(relPath).replace(/\\/g, '/')).toLowerCase();
   return (
@@ -518,6 +609,12 @@ export class CodeStore {
         end_line INTEGER NOT NULL,
         token_count INTEGER NOT NULL,
         embedding BLOB,
+        file_role TEXT NOT NULL DEFAULT 'source',
+        heading TEXT,
+        symbol_hints_json TEXT NOT NULL DEFAULT '[]',
+        artifact_type TEXT NOT NULL DEFAULT 'source-code',
+        freshness TEXT NOT NULL DEFAULT 'current',
+        metadata_version INTEGER NOT NULL DEFAULT 1,
         PRIMARY KEY(path, chunk_idx),
         FOREIGN KEY(path) REFERENCES code_files(path) ON DELETE CASCADE
       );
@@ -585,6 +682,12 @@ export class CodeStore {
     ensureColumn(this.db, "code_files", "chunking_strategy", "TEXT NOT NULL DEFAULT 'standard'");
     ensureColumn(this.db, "code_files", "chunk_count", "INTEGER NOT NULL DEFAULT 0");
     ensureColumn(this.db, "code_files", "indexed_bytes", "INTEGER NOT NULL DEFAULT 0");
+    ensureColumn(this.db, "code_chunks", "file_role", "TEXT NOT NULL DEFAULT 'source'");
+    ensureColumn(this.db, "code_chunks", "heading", "TEXT");
+    ensureColumn(this.db, "code_chunks", "symbol_hints_json", "TEXT NOT NULL DEFAULT '[]'");
+    ensureColumn(this.db, "code_chunks", "artifact_type", "TEXT NOT NULL DEFAULT 'source-code'");
+    ensureColumn(this.db, "code_chunks", "freshness", "TEXT NOT NULL DEFAULT 'current'");
+    ensureColumn(this.db, "code_chunks", "metadata_version", `INTEGER NOT NULL DEFAULT ${CODE_RAG_CHUNK_METADATA_VERSION}`);
     return this;
   }
 
@@ -761,8 +864,11 @@ export class CodeStore {
       `).run(relPath, lang, hash, lines, chunkerMode, chunks.length, Number(fileStats?.size || Buffer.byteLength(content, 'utf8')));
 
       const insertChunk = this.db.prepare(`
-        INSERT INTO code_chunks (path, chunk_idx, chunk_text, kind, name, start_line, end_line, token_count, embedding)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO code_chunks (
+          path, chunk_idx, chunk_text, kind, name, start_line, end_line, token_count, embedding,
+          file_role, heading, symbol_hints_json, artifact_type, freshness, metadata_version
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       const insertFTS = this.db.prepare(`
         INSERT INTO code_chunks_fts (path, chunk_idx, chunk_text, name) VALUES (?, ?, ?, ?)
@@ -780,7 +886,28 @@ export class CodeStore {
             embeddingBuf = vectorToBuffer(vec);
           } catch {}
         }
-        insertChunk.run(relPath, i, safeChunk.text, c.kind, c.name || null, c.startLine, c.endLine, c.tokens || 0, embeddingBuf);
+        const metadata = buildChunkMetadata({
+          relPath,
+          chunk: { ...c, text: safeChunk.text },
+          indexStatus: 'full',
+        });
+        insertChunk.run(
+          relPath,
+          i,
+          safeChunk.text,
+          c.kind,
+          c.name || null,
+          c.startLine,
+          c.endLine,
+          c.tokens || 0,
+          embeddingBuf,
+          metadata.fileRole,
+          metadata.heading,
+          metadata.symbolHintsJson,
+          metadata.artifactType,
+          metadata.freshness,
+          metadata.metadataVersion,
+        );
         await enter('fts-write', { chunk: i + 1, chunks: chunks.length });
         insertFTS.run(relPath, i, safeChunk.text, c.name || '');
       }
@@ -857,8 +984,11 @@ export class CodeStore {
     `).run(relPath, lang, hash, initialLineCount || 0, chunkingStrategy);
 
     const insertChunk = this.db.prepare(`
-      INSERT INTO code_chunks (path, chunk_idx, chunk_text, kind, name, start_line, end_line, token_count, embedding)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO code_chunks (
+        path, chunk_idx, chunk_text, kind, name, start_line, end_line, token_count, embedding,
+        file_role, heading, symbol_hints_json, artifact_type, freshness, metadata_version
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const insertFTS = this.db.prepare(`
       INSERT INTO code_chunks_fts (path, chunk_idx, chunk_text, name) VALUES (?, ?, ?, ?)
@@ -896,6 +1026,8 @@ export class CodeStore {
         return;
       }
       const endLine = currentStartLine + currentLines.length - 1;
+      const chunk = { kind: currentKind, name: currentName, text: chunkText };
+      const metadata = buildChunkMetadata({ relPath, chunk, indexStatus: 'partial' });
       insertChunk.run(
         relPath,
         chunkIndex,
@@ -906,6 +1038,12 @@ export class CodeStore {
         endLine,
         estimateCodeTokens(chunkText),
         null,
+        metadata.fileRole,
+        metadata.heading,
+        metadata.symbolHintsJson,
+        metadata.artifactType,
+        metadata.freshness,
+        metadata.metadataVersion,
       );
       insertFTS.run(relPath, chunkIndex, chunkText, currentName || '');
       chunkIndex += 1;
@@ -1392,6 +1530,48 @@ export class CodeStore {
     };
   }
 
+  getChunkMetadataHealth() {
+    const requiredColumns = [
+      'file_role',
+      'heading',
+      'symbol_hints_json',
+      'artifact_type',
+      'freshness',
+      'metadata_version',
+    ];
+    const columns = this.db.prepare('PRAGMA table_info(code_chunks)').all().map((row) => row.name);
+    const missingColumns = requiredColumns.filter((column) => !columns.includes(column));
+    const totalChunks = this.db.prepare('SELECT COUNT(*) AS n FROM code_chunks').get().n;
+    if (missingColumns.length > 0) {
+      return {
+        pass: false,
+        status: 'columns-missing',
+        version: CODE_RAG_CHUNK_METADATA_VERSION,
+        totalChunks,
+        missingColumns,
+        rebuildRequired: true,
+      };
+    }
+    const staleRows = this.db.prepare(`
+      SELECT COUNT(*) AS n
+      FROM code_chunks
+      WHERE metadata_version < ?
+         OR file_role IS NULL OR file_role = ''
+         OR artifact_type IS NULL OR artifact_type = ''
+         OR freshness IS NULL OR freshness = ''
+         OR heading IS NULL OR heading = ''
+    `).get(CODE_RAG_CHUNK_METADATA_VERSION).n;
+    return {
+      pass: staleRows === 0,
+      status: staleRows === 0 ? 'current' : 'rebuild-recommended',
+      version: CODE_RAG_CHUNK_METADATA_VERSION,
+      totalChunks,
+      staleRows,
+      missingColumns: [],
+      rebuildRequired: staleRows > 0,
+    };
+  }
+
   maintain({ vacuum = false } = {}) {
     const started = Date.now();
     this.db.exec('PRAGMA optimize;');
@@ -1490,6 +1670,8 @@ export class CodeStore {
       SELECT cf.path AS path, cf.language AS language, cf.line_count AS line_count,
              cc.chunk_idx AS chunk_idx, cc.chunk_text AS chunk_text, cc.kind AS kind, cc.name AS name,
              cc.start_line AS start_line, cc.end_line AS end_line, cc.embedding AS embedding,
+             cc.file_role AS file_role, cc.heading AS heading, cc.symbol_hints_json AS symbol_hints_json,
+             cc.artifact_type AS artifact_type, cc.freshness AS freshness, cc.metadata_version AS metadata_version,
              bm25(code_chunks_fts) AS bm25
       FROM code_chunks_fts
       JOIN code_chunks cc ON cc.path = code_chunks_fts.path AND cc.chunk_idx = code_chunks_fts.chunk_idx
@@ -1590,6 +1772,8 @@ export class CodeStore {
       SELECT cf.path AS path, cf.language AS language, cf.line_count AS line_count,
              cc.chunk_idx AS chunk_idx, cc.chunk_text AS chunk_text, cc.kind AS kind, cc.name AS name,
              cc.start_line AS start_line, cc.end_line AS end_line, cc.embedding AS embedding,
+             cc.file_role AS file_role, cc.heading AS heading, cc.symbol_hints_json AS symbol_hints_json,
+             cc.artifact_type AS artifact_type, cc.freshness AS freshness, cc.metadata_version AS metadata_version,
              0 AS bm25
       FROM code_chunks cc
       JOIN code_files cf ON cf.path = cc.path
@@ -1628,6 +1812,14 @@ export class CodeStore {
       bm25: Math.abs(r.bm25 || 0),
       retrievalMode: r.retrievalMode || 'fts',
       generatedSource: isGeneratedPath(r.path),
+      metadata: {
+        fileRole: r.file_role || 'source',
+        heading: r.heading || '',
+        symbolHints: parseJsonStringArray(r.symbol_hints_json),
+        artifactType: r.artifact_type || inferChunkArtifactType(r.path, r.file_role || 'source'),
+        freshness: r.freshness || 'current',
+        metadataVersion: Number(r.metadata_version || 0),
+      },
       scoreComponents: {
         bm25: Math.abs(r.bm25 || 0),
         semantic: r.semanticScore || 0,

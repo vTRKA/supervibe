@@ -140,7 +140,7 @@ export function parsePlanForWorkItems(markdown, planPath = ".supervibe/artifacts
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
-    const taskHeading = /^#{2,4}\s+(?:Task\s+)?([A-Za-z]?\d+|T\d+)\s*[:.-]\s*(.+)$/i.exec(line);
+    const taskHeading = /^#{2,4}\s+(?:Task\s+)?(T?\d+[A-Za-z]?|[A-Za-z]?\d+[A-Za-z]?)\s*[:.-]\s*(.+)$/i.exec(line);
     const reviewGate = /^#{2,4}\s+REVIEW GATE\s*(\d+)?/i.exec(line);
     const codeFence = /^```(\w+)?/.exec(line.trim());
 
@@ -550,6 +550,7 @@ function createChildItems(parsed, epicId, options = {}) {
     return createAtomicInventoryItems(parsed, epicId, options);
   }
   const groups = parsed.parallelGroups;
+  const expandSteps = shouldExpandPlanSteps(parsed, options);
   const items = [];
   for (const [index, task] of parsed.tasks.entries()) {
     const item = createWorkItem({
@@ -609,7 +610,26 @@ function createChildItems(parsed, epicId, options = {}) {
     });
     const template = inferWorkItemTemplate({ ...item, planText: parsed.title });
     const taskItem = applyTemplateToWorkItem(item, template, options);
-    const subtaskItems = createStepSubtaskItems({ parsed, epicId, task, parentItem: taskItem, options });
+    const subtaskItems = expandSteps
+      ? createStepSubtaskItems({ parsed, epicId, task, parentItem: taskItem, options })
+      : [];
+    if (!expandSteps && task.steps.length > 0) {
+      taskItem.executionHints.planStepsCollapsed = true;
+      taskItem.executionHints.planStepCount = task.steps.length;
+      taskItem.executionHints.planSteps = task.steps.map((step) => ({
+        number: step.number,
+        title: step.title,
+        line: step.line,
+      }));
+      taskItem.verificationHints = uniqueStrings([
+        ...(taskItem.verificationHints ?? []),
+        `plan-steps-collapsed:${task.steps.length}`,
+      ]);
+      taskItem.acceptanceCriteria = uniqueStrings([
+        ...taskItem.acceptanceCriteria,
+        ...task.steps.map((step) => `Complete plan step ${step.number}: ${step.title}`),
+      ]);
+    }
     if (subtaskItems.length > 0 && !taskItem.blocks.includes(subtaskItems[0].itemId)) {
       taskItem.blocks.push(subtaskItems[0].itemId);
     }
@@ -622,6 +642,19 @@ function createChildItems(parsed, epicId, options = {}) {
     items.push(taskItem, ...subtaskItems);
   }
   return items;
+}
+
+function shouldExpandPlanSteps(parsed, options = {}) {
+  if (options.expandSteps === true) return true;
+  if (options.expandSteps === false || options.collapseSteps === true) return false;
+  const taskCount = parsed.tasks.length;
+  const stepCount = parsed.tasks.reduce((sum, task) => sum + (task.steps?.length || 0), 0);
+  const gateCount = parsed.reviewGates.length;
+  const followupCount = parsed.tasks.reduce((sum, task) => sum + (task.followups?.length || 0), 0);
+  const projectedChildItems = taskCount + stepCount + gateCount + followupCount;
+  const maxChildItems = parsed.globalMetadata?.taskBudgetPolicy?.maxChildItemsPerAtomizationRun;
+  if (Number.isInteger(maxChildItems) && projectedChildItems > maxChildItems) return false;
+  return true;
 }
 
 function createAtomicInventoryItems(parsed, epicId, options = {}) {
@@ -1129,8 +1162,8 @@ function findByTaskRef(items, taskRef) {
 
 function normalizeTaskRef(value, fallbackIndex) {
   const raw = String(value ?? "").trim();
-  const number = /(?:Task\s*)?T?([A-Za-z]?\d+)/i.exec(raw)?.[1];
-  if (number) return `T${number.replace(/^T/i, "")}`;
+  const number = /(?:Task\s*)?T?([A-Za-z]?\d+[A-Za-z]?)/i.exec(raw)?.[1];
+  if (number) return `T${number.replace(/^T/i, "").toUpperCase()}`;
   return fallbackIndex > 0 ? `T${fallbackIndex}` : "";
 }
 

@@ -110,7 +110,7 @@ test("UI server renders local control plane and keeps actions preview-first", as
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ file: graphRel, itemId: "design-kanban-cards", type: "close", apply: true }),
     })).json();
-    assert.match(rejected.error, /confirm=apply-local/);
+    assert.match(rejected.error.message, /confirm=apply-local/);
 
     const preview = await (await fetch(`${baseUrl}/api/action`, {
       method: "POST",
@@ -126,21 +126,21 @@ test("UI server renders local control plane and keeps actions preview-first", as
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ file: graphRel, itemId: "design-kanban-cards", type: "close", apply: true, confirm: "apply-local" }),
     })).json();
-    assert.match(bypass.error, /valid previewToken/);
+    assert.match(bypass.error.message, /valid previewToken/);
 
     const mismatch = await (await fetch(`${baseUrl}/api/action`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ file: graphRel, itemId: "design-kanban-cards", type: "edit", title: "Different mutation", apply: true, confirm: "apply-local", previewToken: preview.previewToken }),
     })).json();
-    assert.match(mismatch.error, /scope mismatch/);
+    assert.match(mismatch.error.message, /scope mismatch/);
 
     const applied = await (await fetch(`${baseUrl}/api/action`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ file: graphRel, itemId: "design-kanban-cards", type: "close", apply: true, confirm: "apply-local", previewToken: preview.previewToken }),
     })).json();
-    assert.match(applied.error, /unknown previewToken/);
+    assert.match(applied.error.message, /unknown previewToken/);
 
     const previewAgain = await (await fetch(`${baseUrl}/api/action`, {
       method: "POST",
@@ -282,7 +282,7 @@ test("kanban model keeps tasks tied to epics and agents", () => {
   assert.equal(model.columns.find((column) => column.id === "claimed").items[0].epicId, "epic-ui");
   assert.equal(model.columns.find((column) => column.id === "claimed").items[0].title, longTaskTitle);
   assert.deepEqual(model.columns.find((column) => column.id === "blocked").items[0].blockedBy, ["design-kanban-cards"]);
-  assert.deepEqual(model.columns.find((column) => column.id === "blocked").items[0].blockedByLabels, [longTaskTitle]);
+  assert.equal("blockedByLabels" in model.columns.find((column) => column.id === "blocked").items[0], false);
 });
 
 test("workflow flow model derives real phase state from graph, run, gates, and archive markers", () => {

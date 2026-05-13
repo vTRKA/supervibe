@@ -56,6 +56,9 @@ function normalizeTask(task) {
 }
 
 export function parsePlanTasks(markdown, planPath = "plan.md") {
+  const headingTasks = parsePlanHeadingTasks(markdown, planPath);
+  if (headingTasks.length > 0) return headingTasks;
+
   const lines = markdown.split(/\r?\n/);
   const tasks = [];
   let currentTask = null;
@@ -122,6 +125,93 @@ export function parsePlanTasks(markdown, planPath = "plan.md") {
   }
 
   return tasks;
+}
+
+function parsePlanHeadingTasks(markdown, planPath) {
+  const lines = markdown.split(/\r?\n/);
+  const tasks = [];
+  let currentTask = null;
+
+  const flush = () => {
+    if (currentTask) tasks.push(normalizeTask(currentTask));
+    currentTask = null;
+  };
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    const taskHeading = /^##+\s+Task\s+([A-Za-z]?\d+[A-Za-z]?):\s*(.+)$/i.exec(line);
+    if (taskHeading) {
+      flush();
+      const taskRef = taskHeading[1].toLowerCase();
+      const title = taskHeading[2].trim();
+      currentTask = {
+        id: `plan-${taskRef}`,
+        goal: title,
+        category: inferCategory(title),
+        requiredAgentCapability: inferCapability(title),
+        dependencies: [],
+        acceptanceCriteria: [`Complete task ${taskHeading[1].toUpperCase()} from ${planPath}:${index + 1}`],
+        verificationCommands: [],
+        confidenceRubricId: DEFAULT_RUBRIC,
+        policyRiskLevel: inferPolicyRisk(title),
+        stopConditions: ["policy_stop", "budget_stop", "verification_failed"],
+        source: { type: "plan", path: planPath, line: index + 1, section: `Task ${taskHeading[1].toUpperCase()}: ${title}` },
+        targetFiles: [],
+      };
+      continue;
+    }
+
+    if (!currentTask) continue;
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("//")) continue;
+
+    if (/^(node|npm|pnpm|yarn|bun|python|pytest|docker|git)\b/.test(trimmed)) {
+      currentTask.verificationCommands = [...new Set([...currentTask.verificationCommands, trimmed])];
+      continue;
+    }
+
+    const fileMatch = /^\s*-\s+(?:Add|Modify|Delete|Test):\s+(.+)$/i.exec(line);
+    if (fileMatch) {
+      currentTask.targetFiles = [...new Set([
+        ...(currentTask.targetFiles || []),
+        ...extractInlineCodePaths(fileMatch[1]),
+      ])];
+      continue;
+    }
+
+    const stopMatch = /^\*\*Stop conditions:\*\*\s*(.+)$/i.exec(trimmed);
+    if (stopMatch) {
+      currentTask.stopConditions = [...new Set([
+        ...(currentTask.stopConditions || []),
+        stopMatch[1].trim(),
+      ])];
+      continue;
+    }
+
+    const acceptance = /^\s*-\s+(.+)$/.exec(line);
+    if (acceptance && /acceptance criteria/i.test(lines.slice(Math.max(0, index - 3), index).join("\n"))) {
+      currentTask.acceptanceCriteria = [...new Set([
+        ...(currentTask.acceptanceCriteria || []),
+        acceptance[1].replace(/\*\*/g, "").trim(),
+      ])];
+    }
+  }
+
+  flush();
+  return tasks;
+}
+
+function extractInlineCodePaths(text) {
+  const paths = [];
+  for (const match of String(text || "").matchAll(/`([^`]+)`/g)) {
+    const value = match[1].trim();
+    if (value) paths.push(value);
+  }
+  if (paths.length > 0) return paths;
+  return String(text || "")
+    .split(/,\s*/)
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 async function resolvePlanTaskSource(planPath, options = {}) {
