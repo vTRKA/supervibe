@@ -208,13 +208,24 @@ describe("supervibe trigger router", () => {
   });
 
   it("keeps small routing questions on diagnostics instead of dispatching agent audits", () => {
-    const route = routeTriggerRequest("do not call agents for this tiny question, just explain the route");
+    const phrases = [
+      "do not call agents for this tiny question, just explain the route",
+      "why did intent routing choose prompt-ai-engineer",
+      "what does the intent router do and why would it pick prompt-ai-engineer",
+      "explain agent intent routing without calling agents",
+    ];
 
-    assert.equal(route.intent, "trigger_diagnostics");
-    assert.equal(route.command, "/supervibe --diagnose-trigger");
-    assert.notEqual(route.intent, "supervibe_audit");
-    assert.notEqual(route.intent, "agent_strengthen");
-    assert.deepEqual(route.safetyBlockers, []);
+    for (const phrase of phrases) {
+      const route = routeTriggerRequest(phrase);
+
+      assert.equal(route.intent, "trigger_diagnostics", phrase);
+      assert.equal(route.command, "/supervibe --diagnose-trigger", phrase);
+      assert.notEqual(route.intent, "supervibe_audit", phrase);
+      assert.notEqual(route.intent, "agent_strengthen", phrase);
+      assert.notEqual(route.intent, "prompt_ai_engineering", phrase);
+      assert.deepEqual(route.safetyBlockers, [], phrase);
+      assert.ok(route.routingEvidence.some((entry) => entry.arbiterEvidence?.length || entry.negativeEvidence?.length), phrase);
+    }
   });
 
   it("routes explicit slash and package commands through command catalog without repo search", () => {

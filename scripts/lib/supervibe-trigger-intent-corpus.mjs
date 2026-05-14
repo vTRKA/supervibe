@@ -424,7 +424,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.9,
     mutationRisk: "none",
     prerequisites: ["active-work-graph-or-loop-state"],
-    nextQuestionIncludes: "Step 1/1: show the active epic/task graph and next action for resume?",
+    nextQuestionIncludes: "Step 1/1: dispatch the next ready parallel agent wave for the active epic/task graph, with status fallback if no dispatch is available?",
     requiredSafety: baseSafety,
   },
   {
@@ -438,7 +438,7 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     confidenceFloor: 0.9,
     mutationRisk: "none",
     prerequisites: ["active-work-graph-or-loop-state"],
-    nextQuestionIncludes: "Step 1/1: show the active epic/task graph and next action for resume?",
+    nextQuestionIncludes: "Step 1/1: dispatch the next ready parallel agent wave for the active epic/task graph, with status fallback if no dispatch is available?",
     requiredSafety: baseSafety,
   },
   {

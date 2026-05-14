@@ -122,5 +122,66 @@
       "command": "/supervibe-design",
       "minConfidence": 0.99
     }
+  },
+  {
+    "id": "meta-routing-prompt-engineer-hard-negative",
+    "phrase": "why did intent routing choose prompt-ai-engineer",
+    "expected": {
+      "intent": "trigger_diagnostics",
+      "command": "/supervibe --diagnose-trigger",
+      "minConfidence": 0.9,
+      "forbiddenIntents": [
+        "prompt_ai_engineering",
+        "agent_strengthen"
+      ],
+      "notCommand": [
+        "/supervibe --agent prompt-ai-engineer"
+      ],
+      "agentIncludes": [
+        "supervibe-orchestrator",
+        "systems-analyst",
+        "quality-gate-reviewer"
+      ]
+    }
+  },
+  {
+    "id": "ru-agent-command-intent-quality-question",
+    "phrase": "сейчас у нас хорошо система определяет какого агента надо вызывать? Можно ли сделать умную интент систему чтобы меньше промахов было?",
+    "expected": {
+      "intent": "trigger_diagnostics",
+      "command": "/supervibe --diagnose-trigger",
+      "minConfidence": 0.9,
+      "forbiddenIntents": [
+        "prompt_ai_engineering",
+        "agent_strengthen"
+      ],
+      "notCommand": [
+        "/supervibe --agent prompt-ai-engineer"
+      ],
+      "agentIncludes": [
+        "supervibe-orchestrator",
+        "systems-analyst",
+        "quality-gate-reviewer"
+      ]
+    }
+  },
+  {
+    "id": "read-only-routing-not-network-ops",
+    "phrase": "Read-only task. Inspect existing golden corpus and trigger replay tests for command/agent routing.",
+    "expected": {
+      "intent": "trigger_diagnostics",
+      "command": "/supervibe --diagnose-trigger",
+      "minConfidence": 0.9,
+      "forbiddenIntents": [
+        "network_ops",
+        "prompt_ai_engineering"
+      ],
+      "notCommand": [
+        "/supervibe --agent network-router-engineer --read-only"
+      ],
+      "agentIncludes": [
+        "supervibe-orchestrator"
+      ]
+    }
   }
 ]

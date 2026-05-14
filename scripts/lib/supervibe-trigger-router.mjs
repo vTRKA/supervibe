@@ -1,5 +1,6 @@
 import { getTriggerIntentCorpus } from "./supervibe-trigger-intent-corpus.mjs";
 import { rankSemanticIntents } from "./supervibe-semantic-intent-router.mjs";
+import { arbitrateIntentCandidates } from "./supervibe-intent-arbiter.mjs";
 import { getCapabilityRouteHint } from "./supervibe-capability-registry.mjs";
 import { findCommandShortcut, resolveCommandRequest, SOURCE_RAG_INDEX_COMMAND } from "./supervibe-command-catalog.mjs";
 import {
@@ -961,33 +962,43 @@ export function routeTriggerRequest(input, options = {}) {
         painMatches: candidate.painMatches,
       },
     }));
-  const scored = [...keywordScored, ...semanticScored]
-    .filter((candidate) => !shouldSuppressLocalEvidenceLaneRoute(candidate, text))
+  const initialScored = [...keywordScored, ...semanticScored]
+    .filter((candidate) => !shouldSuppressLocalEvidenceLaneRoute(candidate, text));
+  const arbitration = arbitrateIntentCandidates(initialScored, {
+    text: requestText || text,
+    routeIntents: Object.keys(ROUTES),
+  });
+  const scored = arbitration.candidates
     .sort((a, b) => b.confidence - a.confidence || sourcePriority(b.source) - sourcePriority(a.source));
   if (scored.length > 0) {
-    const route = ROUTES[scored[0].intent];
+    const selected = arbitration.selected && ROUTES[arbitration.selected.intent] ? arbitration.selected : scored[0];
+    const route = ROUTES[selected.intent];
     return withArtifactStatus(
       withRoutingEvidence({
-        intent: scored[0].intent,
+        intent: selected.intent,
         phase: route.phase,
         command: route.command,
         skill: route.skill,
-        confidence: scored[0].confidence,
-        confidenceFloor: scored[0].confidence,
-        mutationRisk: mutationRiskFor(scored[0].intent),
+        confidence: selected.confidence,
+        confidenceFloor: selected.confidence,
+        mutationRisk: mutationRiskFor(selected.intent),
         prerequisites: route.prerequisites,
-        requiredSafety: requiredSafetyFor(scored[0].intent),
-        nextQuestion: localizedRouteQuestion(route, locale, scored[0]),
-        alternatives: scored.slice(1, 4).map((rule) => ({ intent: rule.intent, confidence: rule.confidence })),
+        requiredSafety: requiredSafetyFor(selected.intent),
+        nextQuestion: localizedRouteQuestion(route, locale, selected),
+        alternatives: scored.filter((rule) => rule.intent !== selected.intent).slice(0, 3).map((rule) => ({ intent: rule.intent, confidence: rule.confidence })),
         matchedPhrase: null,
-        semanticEvidence: scored[0].semanticEvidence,
-        source: scored[0].source,
-        reason: scored[0].reason,
-      }, evidenceFor(scored[0]), scored.slice(1, 4).map((rule) => ({
+        semanticEvidence: selected.semanticEvidence,
+        intentArbiter: arbitration.intentArbiter,
+        source: selected.source,
+        reason: selected.reason,
+      }, evidenceFor(selected), scored.filter((rule) => rule.intent !== selected.intent).slice(0, 3).map((rule) => ({
         intent: rule.intent,
         confidence: rule.confidence,
+        originalConfidence: rule.originalConfidence,
         source: rule.source,
         reason: rule.reason,
+        negativeEvidence: rule.negativeEvidence || [],
+        arbiterEvidence: rule.arbiterEvidence || [],
       }))),
       artifacts,
     );
@@ -1031,11 +1042,24 @@ export function evaluateIntentGoldenCorpus(corpus = []) {
     if (expected.intent && route.intent !== expected.intent) {
       failures.push(`expected intent ${expected.intent} but got ${route.intent}`);
     }
-    if (expected.notIntent && route.intent === expected.notIntent) {
-      failures.push(`expected not to route to ${expected.notIntent}`);
+    for (const forbiddenIntent of normalizeGoldenList(expected.notIntent || expected.forbiddenIntents)) {
+      if (route.intent === forbiddenIntent) {
+        failures.push(`expected not to route to ${forbiddenIntent}`);
+      }
     }
     if (expected.command && route.command !== expected.command) {
       failures.push(`expected command ${expected.command} but got ${route.command}`);
+    }
+    for (const forbiddenCommand of normalizeGoldenList(expected.notCommand || expected.forbiddenCommands)) {
+      if (route.command === forbiddenCommand) {
+        failures.push(`expected not to route to command ${forbiddenCommand}`);
+      }
+    }
+    for (const agentId of normalizeGoldenList(expected.agentIncludes || expected.expectedAgents)) {
+      const actualAgents = route.agentProfile?.requiredAgentIds || route.agentContract?.requiredAgentIds || [];
+      if (!actualAgents.includes(agentId)) {
+        failures.push(`expected agent ${agentId} in route agents`);
+      }
     }
     if (typeof expected.minConfidence === "number" && route.confidence < expected.minConfidence) {
       failures.push(`expected confidence >= ${expected.minConfidence} but got ${route.confidence}`);
@@ -1066,6 +1090,11 @@ export function evaluateIntentGoldenCorpus(corpus = []) {
     failed,
     results,
   };
+}
+
+function normalizeGoldenList(value) {
+  if (Array.isArray(value)) return value.filter(Boolean);
+  return value ? [value] : [];
 }
 
 export function formatIntentGoldenEvaluation(evaluation) {
@@ -1369,6 +1398,7 @@ function nextQuestionForResolvedCommand(resolvedCommand, locale) {
 function sourcePriority(source) {
   if (source === "exact-command") return 4;
   if (source === "exact-corpus") return 3;
+  if (source === "intent-arbiter") return 2.5;
   if (source === "semantic-intent-profile") return 2;
   if (source === "keyword-rule") return 1;
   return 0;
@@ -1474,6 +1504,8 @@ function evidenceFor(candidate) {
     reason: candidate.reason,
     matchedPhrase: candidate.matchedPhrase || null,
     semanticEvidence: candidate.semanticEvidence,
+    negativeEvidence: candidate.negativeEvidence || [],
+    arbiterEvidence: candidate.arbiterEvidence || [],
   }];
 }
 
@@ -1483,6 +1515,12 @@ function withRoutingEvidence(route, evidence, rejectedAlternatives) {
   const agentProfile = route.agentProfile || (commandId ? getCommandAgentProfile(commandId) : null);
   const locale = detectLocale(`${route.nextQuestion || ""} ${route.reason || ""}`);
   const routingEvidence = evidence.filter(Boolean);
+  const retrievalPolicy = decideRetrievalPolicy({ taskText: [route.intent, route.command, route.reason || ""].join(" ") });
+  const knowledgeReadiness = route.knowledgeReadiness || {
+    agentProfileBound: Boolean(agentProfile?.requiredAgentIds?.length),
+    requiredAgentIds: [...(agentProfile?.requiredAgentIds || [])],
+    retrievalPolicy,
+  };
   const questionSurface = route.questionSurface || buildCommandQuestionSurface(commandId || route.command || route.intent, route, {
     locale,
     request: route.matchedPhrase || route.reason || route.command || route.intent,
@@ -1504,7 +1542,8 @@ function withRoutingEvidence(route, evidence, rejectedAlternatives) {
     capabilityId: capability?.capabilityId || null,
     verificationHooks: capability?.verificationHooks || [],
     toolMetadata: { required: Boolean(capability?.toolMetadataRequired), deterministicOrder: true, intentScoped: true },
-    retrievalPolicy: decideRetrievalPolicy({ taskText: `${route.intent} ${route.command} ${route.reason || ""}` }),
+    retrievalPolicy,
+    knowledgeReadiness,
     routingEvidence,
     rejectedAlternatives: rejectedAlternatives || [],
     questionSurface,

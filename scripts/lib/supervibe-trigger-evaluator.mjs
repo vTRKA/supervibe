@@ -204,6 +204,28 @@ export const DEFAULT_SEMANTIC_TRIGGER_FIXTURES = Object.freeze([
     },
   },
   {
+    id: "meta-routing-prompt-engineer-hard-negative",
+    phrase: "why did intent routing choose prompt-ai-engineer",
+    expected: {
+      intent: "trigger_diagnostics",
+      command: "/supervibe --diagnose-trigger",
+      minConfidence: 0.9,
+      notIntent: ["prompt_ai_engineering", "agent_strengthen", "supervibe_audit"],
+      forbiddenSafetyBlockers: ["needs-explicit-user-confirmation"],
+    },
+  },
+  {
+    id: "read-only-routing-not-network-ops",
+    phrase: "Read-only task. Inspect existing golden corpus and trigger replay tests for command/agent routing.",
+    expected: {
+      intent: "trigger_diagnostics",
+      command: "/supervibe --diagnose-trigger",
+      minConfidence: 0.9,
+      notIntent: ["network_ops", "prompt_ai_engineering"],
+      notCommand: ["/supervibe --agent network-router-engineer --read-only"],
+    },
+  },
+  {
     id: "plan-review-before-start-en",
     phrase: "plan is ready, start implementation but run review and atomize first",
     expected: {
