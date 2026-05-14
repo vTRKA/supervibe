@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.37] - 2026-05-15
+
+### Fixed
+
+- Added Intent Arbiter reranking for semantic trigger candidates so route diagnostics beat prompt-agent false positives when users ask about routing quality.
+- Synchronized release-facing version surfaces after the 2.1.37 package bump.
+
+### Validation
+
+- Added golden corpus and trigger replay hard negatives for prompt-ai-engineer and network-router false positives.
+- Rechecked release security and install integrity surfaces for the synchronized version bump.
+
 ## [2.1.35] - 2026-05-15
 
 ### Fixed
