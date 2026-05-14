@@ -102,10 +102,10 @@ function activeWorkflowContinuationMatch(request, { projectRoot, closeCandidateM
     return continuationCommandMatch({
       id: "active-workflow-state-repair",
       intent: "active_workflow_state_repair",
-      command: "/supervibe-loop --status",
+      command: "/supervibe-loop --resume-dispatch",
       confidence: 0.93,
       reason: `Continuation phrase found but active workflow state is invalid: ${current.issues.map((issue) => issue.code).join(", ")}.`,
-      nextAction: "Show active loop status and repair the active workflow state before mutation.",
+      nextAction: "Repair active workflow state, then dispatch the next ready parallel agent wave before durable work.",
       diagnostics: {
         selectedBecause: "continuation-state-invalid",
         closeCandidates,
@@ -117,10 +117,10 @@ function activeWorkflowContinuationMatch(request, { projectRoot, closeCandidateM
   return continuationCommandMatch({
     id: "workflow-continuation-fallback",
     intent: "task_graph_resume",
-    command: "/supervibe-loop --status",
+    command: "/supervibe-loop --resume-dispatch",
     confidence: 0.88,
-    reason: "Continuation phrase found without active workflow state; routing to status instead of guessing a producer command.",
-    nextAction: "Show active workflow/task graph status and the next safe action.",
+    reason: "Continuation phrase found without active workflow state; routing to resume-dispatch so the next ready parallel agent wave is preferred over status-only guessing.",
+    nextAction: "Dispatch the next ready parallel agent wave for the active workflow/task graph, with no-active-graph fallback.",
     diagnostics: {
       selectedBecause: "bare-continuation-no-active-state",
       closeCandidates,
@@ -144,7 +144,7 @@ function intentForContinuationCommand(command = "") {
   if (value.includes("--atomize")) return "atomize_plan";
   if (value.includes("/supervibe-ui")) return "workflow_ui";
   if (value.includes("--claim-ready")) return "task_graph_claim_ready";
-  if (value.includes("--status")) return "task_graph_resume";
+  if (value.includes("--resume-dispatch") || value.includes("--status")) return "task_graph_resume";
   if (value.includes("--guided") || value.includes("--epic")) return "single_session_epic_run";
   if (value.includes("/supervibe-plan")) return "continue_plan";
   return "active_workflow_continue";

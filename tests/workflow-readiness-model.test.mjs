@@ -1,0 +1,79 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+import {
+  PLAN_GRAPH_TASK_FINAL_ONLY_VERIFICATION_POLICY,
+  buildWorkflowReadinessModel,
+  evaluateFinalOnlyVerificationPolicy,
+  formatWorkflowReadinessModel,
+} from "../scripts/lib/supervibe-workflow-readiness-model.mjs";
+
+test("workflow readiness reports one canonical next action by priority", () => {
+  const model = buildWorkflowReadinessModel({
+    receipts: { pass: true, summary: "receipt trust clean" },
+    indexHealth: { pass: false, status: "failed", summary: "content-stale", repairCommand: "repair index" },
+    graphProof: { pass: false, summary: "missing graph proof", nextAction: "repair graph" },
+    commandAgentPlan: { pass: true, summary: "plan ok" },
+    cleanupDebt: { count: 0, diagnosticCount: 0 },
+    maturity: { pass: false, score: 8, maxScore: 10 },
+  });
+
+  assert.equal(model.pass, false);
+  assert.equal(model.primaryBlocker, "indexHealth");
+  assert.equal(model.primaryAction, "repair index");
+  assert.equal(model.finalOnlyVerification, true);
+  assert.equal(model.verificationPolicy.pass, true);
+  assert.deepEqual(model.verificationPolicy.details.policy.appliesTo, ["plan", "graph", "task"]);
+  assert.equal(model.diagnostics.some((probe) => probe.id === "graphProof"), true);
+});
+
+test("workflow readiness formatter exposes canonical action and probes", () => {
+  const model = buildWorkflowReadinessModel({
+    receipts: { pass: true, summary: "receipt trust clean" },
+    indexHealth: { pass: true, summary: "ready" },
+    graphProof: { pass: true, score: 10 },
+    commandAgentPlan: { pass: true, summary: "plan ok" },
+    cleanupDebt: { count: 0, diagnosticCount: 0 },
+    maturity: { pass: true, score: 10, maxScore: 10 },
+  });
+  const output = formatWorkflowReadinessModel(model);
+
+  assert.equal(model.pass, true);
+  assert.match(output, /SUPERVIBE_WORKFLOW_READINESS/);
+  assert.match(output, /PRIMARY_BLOCKER: none/);
+  assert.match(output, /NEXT_ACTION: continue with the approved workflow/);
+  assert.match(output, /FINAL_ONLY_VERIFICATION: true/);
+  assert.match(output, /FINAL_ONLY_WORKFLOW_TYPES: plan,graph,task/);
+  assert.match(output, /DEVELOPMENT_TESTS_ALLOWED: false/);
+  assert.match(output, /DEVELOPMENT_VALIDATORS_ALLOWED: false/);
+  assert.match(output, /RELEASE_FINAL_VALIDATION_REQUIRED: true/);
+  assert.match(output, /PROBE: verificationPolicy pass=true/);
+  assert.match(output, /PROBE: maturity pass=true/);
+});
+
+test("workflow readiness blocks development test scheduling for plan graph task work", () => {
+  const weakenedPolicy = {
+    ...PLAN_GRAPH_TASK_FINAL_ONLY_VERIFICATION_POLICY,
+    development: {
+      ...PLAN_GRAPH_TASK_FINAL_ONLY_VERIFICATION_POLICY.development,
+      testsAllowed: true,
+    },
+  };
+  const policyProbe = evaluateFinalOnlyVerificationPolicy(weakenedPolicy);
+  const model = buildWorkflowReadinessModel({
+    receipts: { pass: true, summary: "receipt trust clean" },
+    indexHealth: { pass: true, summary: "ready" },
+    graphProof: { pass: true, score: 10 },
+    commandAgentPlan: { pass: true, summary: "plan ok" },
+    cleanupDebt: { count: 0, diagnosticCount: 0 },
+    verificationPolicy: weakenedPolicy,
+    maturity: { pass: true, score: 10, maxScore: 10 },
+  });
+
+  assert.equal(policyProbe.pass, false);
+  assert.deepEqual(policyProbe.details.failures, ["development.testsAllowed"]);
+  assert.equal(model.pass, false);
+  assert.equal(model.primaryBlocker, "verificationPolicy");
+  assert.equal(model.finalOnlyVerification, false);
+  assert.match(model.primaryAction, /final-only release verification/);
+});

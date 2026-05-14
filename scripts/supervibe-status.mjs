@@ -2,7 +2,6 @@
 // Comprehensive index health report (code RAG + graph + memory + grammars + watcher).
 // User-facing transparency — confirms indexes are working at any moment.
 
-import { CodeStore } from './lib/code-store.mjs';
 import { MemoryStore } from './lib/memory-store.mjs';
 import { SQLITE_NODE_MIN_VERSION, hasNodeSqliteSupport } from './lib/node-sqlite-runtime.mjs';
 import { getBrokenLanguages } from './lib/grammar-loader.mjs';
@@ -18,6 +17,7 @@ import { createIntegrationCatalog, formatIntegrationCatalog, summarizeIntegratio
 import { createWorkItemIndex, detectOrphanWorkItems, detectStaleWorkItems, groupWorkItemsByStatus } from './lib/supervibe-work-item-query.mjs';
 import { resolveActiveWorkItemGraph } from './lib/supervibe-work-item-registry.mjs';
 import { collectIndexHealthFromStore, evaluateIndexHealthGate, formatIndexHealth, formatIndexHealthGate } from './lib/supervibe-index-health.mjs';
+import { applyCodeIndexFreshnessPolicyToGate, buildCodeIndexFreshnessStatus, buildMissingCodeIndexFreshnessStatus, formatCodeIndexFreshnessStatus, isMissingCodeIndexError, openCodeIndexReadSnapshot } from './lib/code-index-health-status.mjs';
 import { applyStructuredWorkItemQuery, formatStructuredWorkItemQueryResult, parseWorkItemQuery } from './lib/supervibe-work-item-query-language.mjs';
 import { applySavedView, defaultSavedViewsPath, formatSavedViewResult, listSavedViews, readSavedViewStore, saveCustomView, writeSavedViewStore } from './lib/supervibe-work-item-saved-views.mjs';
 import { createRecurringWorkReport, createSlaReport, renderWorkReportMarkdown, writeWorkReportMarkdown } from './lib/supervibe-work-item-sla-reports.mjs';
@@ -59,6 +59,8 @@ import {
 import { buildArtifactSnapshotStatus, formatArtifactSnapshotStatus } from './supervibe-artifact-snapshot.mjs';
 import { createPlanLifecycleReport, formatPlanLifecycleReport } from './supervibe-plan-lifecycle.mjs';
 import { readWorkflowReceipts, validateWorkflowReceiptTrust } from './lib/supervibe-workflow-receipt-runtime.mjs';
+import { buildRuntimeWorkflowReadiness } from './lib/supervibe-workflow-readiness-runtime.mjs';
+import { formatWorkflowReadinessModel } from './lib/supervibe-workflow-readiness-model.mjs';
 
 const args = parseArgs(process.argv.slice(2));
 const SCRIPT_PLUGIN_ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -351,6 +353,16 @@ function formatInlineCounts(counts = {}) {
 function formatInlineSubsystemCoverage(coverage = {}) {
   const entries = Object.entries(coverage || {});
   return entries.length ? entries.map(([key, value]) => `${key}=${value.entries || 0}`).join(', ') : 'none';
+}
+function printMissingCodeIndexStatus(codeDbPath) {
+  const freshness = buildMissingCodeIndexFreshnessStatus({ dbPath: codeDbPath });
+  console.log(color(`x Code RAG: not-built (missing ${codeDbPath})`, 'red'));
+  console.log(color(`  Repair command: ${freshness.repairCommand}`, 'dim'));
+  console.log(color('x Code Graph: not-built (shares missing Code RAG database)', 'red'));
+  console.log(color(`  Graph repair command: ${freshness.graphRepairCommand}`, 'dim'));
+  console.log(color('  Language coverage: not-built', 'dim'));
+  console.log();
+  console.log(color(formatCodeIndexFreshnessStatus(freshness), 'yellow'));
 }
 
 async function main() {
@@ -696,102 +708,129 @@ async function main() {
   // Code RAG + Graph
   const codeDbPath = join(PROJECT_ROOT, '.supervibe', 'memory', 'code.db');
   if (!existsSync(codeDbPath)) {
-    console.log(color('✗ Code RAG + Graph: NOT INITIALIZED', 'red'));
-    console.log(color(`  Run: ${SOURCE_RAG_INDEX_COMMAND}`, 'dim'));
-    console.log(color('  Language coverage: NOT INITIALIZED', 'dim'));
+    printMissingCodeIndexStatus(codeDbPath);
   } else if (!sqliteAvailable) {
     console.log(color(`! Code RAG + Graph: requires Node.js ${SQLITE_NODE_MIN_VERSION}+ for node:sqlite`, 'yellow'));
     console.log(color(`  Current runtime: ${process.version}. Upgrade Node to read ${codeDbPath}`, 'dim'));
     console.log(color('  Language coverage: unavailable until Code RAG can be read', 'dim'));
   } else {
-    const store = new CodeStore(PROJECT_ROOT, { useEmbeddings: false });
-    await store.init();
-    const s = store.stats();
-    const health = store.getGrammarHealth();
-    const indexHealth = await collectIndexHealthFromStore(store, { rootDir: PROJECT_ROOT });
-    const indexGate = evaluateIndexHealthGate(indexHealth, { strictGraph: args['strict-index-health'] });
-    const unresolvedDiagnostics = buildUnresolvedEdgeDiagnosticsFromStore(store);
-    const watcherDiagnostics = readWatcherDiagnostics({ rootDir: PROJECT_ROOT });
-    const graphReadinessUi = buildCodeGraphReadinessUi({
-      indexGate,
-      unresolvedDiagnostics,
-      watcherDiagnostics,
-      graphStats: s,
-    });
-    const graphBuildState = store.db.prepare(`
-      SELECT COUNT(*) AS total,
-             SUM(CASE WHEN graph_version > 0 THEN 1 ELSE 0 END) AS current
-      FROM code_files
-    `).get();
-    store.close();
+    let readSnapshot = null;
+    try {
+      readSnapshot = await openCodeIndexReadSnapshot({
+        rootDir: PROJECT_ROOT,
+        useEmbeddings: false,
+        purpose: 'status',
+      });
+    } catch (error) {
+      if (!isMissingCodeIndexError(error)) throw error;
+      printMissingCodeIndexStatus(codeDbPath);
+    }
+    if (readSnapshot) {
+      const store = readSnapshot.store;
+      const s = store.stats();
+      const health = store.getGrammarHealth();
+      const indexHealth = await collectIndexHealthFromStore(store, { rootDir: PROJECT_ROOT });
+      const rawIndexGate = evaluateIndexHealthGate(indexHealth, { strictGraph: args['strict-index-health'] });
+      const indexFreshness = buildCodeIndexFreshnessStatus({
+        health: indexHealth,
+        gate: rawIndexGate,
+        strict: Boolean(args['strict-index-health']),
+        repairAvailable: true,
+        snapshot: readSnapshot.snapshot,
+      });
+      const indexGate = applyCodeIndexFreshnessPolicyToGate(rawIndexGate, indexFreshness);
+      const unresolvedDiagnostics = buildUnresolvedEdgeDiagnosticsFromStore(store);
+      const watcherDiagnostics = readWatcherDiagnostics({ rootDir: PROJECT_ROOT });
+      const graphReadinessUi = buildCodeGraphReadinessUi({
+        indexGate,
+        unresolvedDiagnostics,
+        watcherDiagnostics,
+        graphStats: s,
+      });
+      const graphBuildState = store.db.prepare(`
+        SELECT COUNT(*) AS total,
+               SUM(CASE WHEN graph_version > 0 THEN 1 ELSE 0 END) AS current
+        FROM code_files
+      `).get();
+      store.close();
 
-    const dbAge = Date.now() - statSync(codeDbPath).mtimeMs;
-    const sourceCoveragePct = (Number(indexHealth.sourceCoverage || 0) * 100).toFixed(1);
-    const coverageSummary = `${indexHealth.indexedSourceFiles}/${indexHealth.eligibleSourceFiles} source files indexed, ${sourceCoveragePct}% coverage`;
-    const readyEmpty = Number(indexHealth.eligibleSourceFiles || 0) === 0;
-    const codeRagReady = readyEmpty || (indexGate.ready && s.totalChunks > 0);
-    const graphNotBuilt = Number(graphBuildState.total || 0) > 0
-      && Number(graphBuildState.current || 0) === 0
-      && s.totalSymbols === 0;
-    const graphWarnings = new Set((indexGate.warnings || []).map((item) => item.code));
-    const graphTone = graphNotBuilt || graphWarnings.has('cross-resolution') || graphWarnings.has('symbol-coverage') ? 'yellow' : 'green';
-    const graphPrefix = graphTone === 'yellow' ? '!' : '✓';
-    console.log(color(`${codeRagReady ? '✓' : '!'} Code RAG: ${readyEmpty ? 'READY_EMPTY - ' : codeRagReady ? '' : 'PARTIAL - '}${s.totalFiles} files, ${s.totalChunks} chunks`, codeRagReady ? 'green' : 'yellow'));
-    console.log(color(`  Source coverage: ${coverageSummary}`, codeRagReady ? 'dim' : 'yellow'));
-    console.log(color(`${graphPrefix} Code Graph: ${graphNotBuilt ? 'not built in current source-readiness index' : `${s.totalSymbols} symbols, ${s.totalEdges} edges (${(s.edgeResolutionRate * 100).toFixed(0)}% cross-resolved)`}`, graphTone));
-    if (graphNotBuilt) {
-      console.log(color(`  Graph note: run \`${CODEGRAPH_INDEX_COMMAND}\` when graph data is needed.`, 'yellow'));
-    }
-    if (graphWarnings.has('cross-resolution')) {
-      console.log(color('  Graph warning: cross-file edge resolution is low; source RAG can still be ready.', 'yellow'));
-    }
-    console.log(color(`  Last update: ${ageStr(dbAge)}`, 'dim'));
-    if (s.byLang.length > 0) {
-      const langs = s.byLang.slice(0, 5).map(l => `${l.language}(${l.n})`).join(' ');
-      console.log(color(`  Languages: ${langs}`, 'dim'));
-    }
-
-    // Grammar health
-    const broken = graphNotBuilt ? [] : health.filter(h => !h.healthy);
-    if (graphNotBuilt) {
-      console.log(color('  Language coverage: graph not built in current source-readiness index', 'dim'));
-    } else if (broken.length > 0) {
-      console.log(color(`! Graph extraction degraded for: ${broken.map(b => b.language).join(', ')}`, 'yellow'));
-      for (const item of broken) {
-        const diagnostic = await diagnoseGraphExtractor(item.language);
-        const detail = item.reason || 'unknown symbol coverage issue';
-        console.log(color(`  Graph detail: ${item.language}: ${detail}; extractor=${diagnostic.reasonCode} (${diagnostic.reason})`, 'yellow'));
+      const dbAge = Date.now() - statSync(codeDbPath).mtimeMs;
+      const sourceCoveragePct = (Number(indexHealth.sourceCoverage || 0) * 100).toFixed(1);
+      const coverageSummary = `${indexHealth.indexedSourceFiles}/${indexHealth.eligibleSourceFiles} source files indexed, ${sourceCoveragePct}% coverage`;
+      const readyEmpty = Number(indexHealth.eligibleSourceFiles || 0) === 0;
+      const codeRagReady = readyEmpty || (indexFreshness.readyForMode && s.totalChunks > 0);
+      const codeRagHealthy = codeRagReady && indexFreshness.status === 'ready';
+      const codeRagStatusLabel = readyEmpty
+        ? 'READY_EMPTY - '
+        : indexFreshness.status === 'ready'
+          ? ''
+          : `${String(indexFreshness.status || 'unknown').toUpperCase()} - `;
+      const graphNotBuilt = Number(graphBuildState.total || 0) > 0
+        && Number(graphBuildState.current || 0) === 0
+        && s.totalSymbols === 0;
+      const graphWarnings = new Set((indexGate.warnings || []).map((item) => item.code));
+      const graphTone = graphNotBuilt || graphWarnings.has('cross-resolution') || graphWarnings.has('symbol-coverage') ? 'yellow' : 'green';
+      const graphPrefix = graphTone === 'yellow' ? '!' : '✓';
+      console.log(color(`${codeRagHealthy ? '\u2713' : '!'} Code RAG: ${codeRagStatusLabel}${s.totalFiles} files, ${s.totalChunks} chunks`, codeRagHealthy ? 'green' : 'yellow'));
+      console.log(color(`  Source coverage: ${coverageSummary}`, codeRagHealthy ? 'dim' : 'yellow'));
+      console.log(color(`  Read snapshot: ${readSnapshot.snapshot.mode}, age ${ageStr(readSnapshot.snapshot.dbAgeMs || 0)}, retries ${readSnapshot.snapshot.retryCount || 0}`, 'dim'));
+      console.log(color(`${graphPrefix} Code Graph: ${graphNotBuilt ? 'not built in current source-readiness index' : `${s.totalSymbols} symbols, ${s.totalEdges} edges (${(s.edgeResolutionRate * 100).toFixed(0)}% cross-resolved)`}`, graphTone));
+      if (graphNotBuilt) {
+        console.log(color(`  Graph note: run \`${CODEGRAPH_INDEX_COMMAND}\` when graph data is needed.`, 'yellow'));
       }
-      console.log(color('  Files indexed; source RAG remains available. Check grammars/queries/<lang>.scm for graph repair.', 'dim'));
-    } else if (health.length > 0) {
-      console.log(color(`✓ All ${health.length} active language(s) extracting symbols`, 'green'));
-    }
-    if (!graphNotBuilt) {
-      console.log(color(`  Language coverage: ${health.length - broken.length}/${Math.max(health.length, s.byLang.length)} active language(s), ${broken.length} broken`, broken.length > 0 ? 'yellow' : 'dim'));
-    }
-    const lowCoverage = health.filter(h => !h.configOnly && h.coverage < 0.5 && h.files > 5);
-    for (const lc of lowCoverage) {
-      console.log(color(`  ⚠  ${lc.language}: only ${(lc.coverage*100).toFixed(0)}% files have extracted symbols`, 'yellow'));
-    }
+      if (graphWarnings.has('cross-resolution')) {
+        console.log(color('  Graph warning: cross-file edge resolution is low; source RAG can still be ready.', 'yellow'));
+      }
+      console.log(color(`  Last update: ${ageStr(dbAge)}`, 'dim'));
+      if (s.byLang.length > 0) {
+        const langs = s.byLang.slice(0, 5).map(l => `${l.language}(${l.n})`).join(' ');
+        console.log(color(`  Languages: ${langs}`, 'dim'));
+      }
 
-    // Grammar runtime status (missing/truncated WASM)
-    const brokenState = getBrokenLanguages();
-    if (brokenState.pointers.length > 0) {
-      console.log(color(`⚠  Grammars are missing or truncated: ${brokenState.pointers.join(', ')}`, 'yellow'));
-      console.log(color(`   Affected languages will skip graph extraction (semantic RAG still works)`, 'dim'));
-    }
-    console.log();
-    console.log(color(formatIndexHealthGate(indexGate), indexGate.ready ? 'green' : 'yellow'));
-    console.log();
-    console.log(color(formatCodeGraphReadinessUi(graphReadinessUi), graphReadinessUi.ready ? 'green' : 'yellow'));
-    console.log();
-    console.log(color(formatUnresolvedEdgeDiagnostics(unresolvedDiagnostics), unresolvedDiagnostics.total > 0 ? 'yellow' : 'green'));
-    if (args['index-health']) {
+      // Grammar health
+      const broken = graphNotBuilt ? [] : health.filter(h => !h.healthy);
+      if (graphNotBuilt) {
+        console.log(color('  Language coverage: graph not built in current source-readiness index', 'dim'));
+      } else if (broken.length > 0) {
+        console.log(color(`! Graph extraction degraded for: ${broken.map(b => b.language).join(', ')}`, 'yellow'));
+        for (const item of broken) {
+          const diagnostic = await diagnoseGraphExtractor(item.language);
+          const detail = item.reason || 'unknown symbol coverage issue';
+          console.log(color(`  Graph detail: ${item.language}: ${detail}; extractor=${diagnostic.reasonCode} (${diagnostic.reason})`, 'yellow'));
+        }
+        console.log(color('  Files indexed; source RAG remains available. Check grammars/queries/<lang>.scm for graph repair.', 'dim'));
+      } else if (health.length > 0) {
+        console.log(color(`✓ All ${health.length} active language(s) extracting symbols`, 'green'));
+      }
+      if (!graphNotBuilt) {
+        console.log(color(`  Language coverage: ${health.length - broken.length}/${Math.max(health.length, s.byLang.length)} active language(s), ${broken.length} broken`, broken.length > 0 ? 'yellow' : 'dim'));
+      }
+      const lowCoverage = health.filter(h => !h.configOnly && h.coverage < 0.5 && h.files > 5);
+      for (const lc of lowCoverage) {
+        console.log(color(`  ⚠  ${lc.language}: only ${(lc.coverage*100).toFixed(0)}% files have extracted symbols`, 'yellow'));
+      }
+
+      // Grammar runtime status (missing/truncated WASM)
+      const brokenState = getBrokenLanguages();
+      if (brokenState.pointers.length > 0) {
+        console.log(color(`⚠  Grammars are missing or truncated: ${brokenState.pointers.join(', ')}`, 'yellow'));
+        console.log(color(`   Affected languages will skip graph extraction (semantic RAG still works)`, 'dim'));
+      }
       console.log();
-      console.log(color(formatIndexHealth(indexHealth), indexHealth.ok ? 'green' : 'yellow'));
-    }
-    if (args['strict-index-health'] && !indexGate.ready) {
-      process.exitCode = 2;
+      console.log(color(formatIndexHealthGate(indexGate), indexGate.ready ? 'green' : 'yellow'));
+      console.log();
+      console.log(color(formatCodeIndexFreshnessStatus(indexFreshness), indexFreshness.status === 'ready' ? 'green' : 'yellow'));
+      console.log();
+      console.log(color(formatCodeGraphReadinessUi(graphReadinessUi), graphReadinessUi.ready ? 'green' : 'yellow'));
+      console.log();
+      console.log(color(formatUnresolvedEdgeDiagnostics(unresolvedDiagnostics), unresolvedDiagnostics.total > 0 ? 'yellow' : 'green'));
+      if (args['index-health']) {
+        console.log();
+        console.log(color(formatIndexHealth(indexHealth), indexHealth.ok ? 'green' : 'yellow'));
+      }
+      if (args['strict-index-health'] && !indexFreshness.strictReady) {
+        process.exitCode = 2;
+      }
     }
   }
 
@@ -948,6 +987,16 @@ async function main() {
     }
   }
 
+  if (args['workflow-readiness']) {
+    console.log();
+    const readiness = await buildRuntimeWorkflowReadiness({
+      rootDir: PROJECT_ROOT,
+      command: args.command || '/supervibe-audit',
+      profile: args.profile || 'development',
+    });
+    console.log(color(formatWorkflowReadinessModel(readiness), readiness.pass ? 'green' : 'yellow'));
+  }
+
   if (!args['no-gc-hints']) {
     console.log();
     try {
@@ -962,7 +1011,7 @@ main().catch(err => { console.error('supervibe-status error:', err); process.exi
 
 function parseArgs(argv) {
   const parsed = { _: [] };
-  const booleans = new Set(['dashboard', 'integrations', 'json', 'block-network', 'no-color', 'interactive', 'eval-report', 'policy', 'role', 'anchors', 'waves', 'gc-hints', 'memory-health', 'agent-retrieval-health', 'strict', 'no-gc-hints', 'index-health', 'strict-index-health', 'intent-diagnostics', 'capabilities', 'host-diagnostics', 'stack-pack-diagnostics', 'watcher-diagnostics', 'index-policy-diagnostics', 'evidence-ledger', 'checkpoint-diagnostics', 'user-outcomes', 'performance-slo', 'workspace-isolation', 'ready', 'blocked', 'remaining', 'stale', 'orphan']);
+  const booleans = new Set(['dashboard', 'integrations', 'json', 'block-network', 'no-color', 'interactive', 'eval-report', 'policy', 'role', 'anchors', 'waves', 'gc-hints', 'memory-health', 'agent-retrieval-health', 'strict', 'no-gc-hints', 'index-health', 'strict-index-health', 'intent-diagnostics', 'capabilities', 'host-diagnostics', 'stack-pack-diagnostics', 'watcher-diagnostics', 'index-policy-diagnostics', 'evidence-ledger', 'checkpoint-diagnostics', 'user-outcomes', 'performance-slo', 'workspace-isolation', 'workflow-readiness', 'ready', 'blocked', 'remaining', 'stale', 'orphan']);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (!arg.startsWith('--')) {

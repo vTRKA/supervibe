@@ -284,12 +284,13 @@ test("runner defers heavy verification while epic work remains open", async () =
   const result = await runAutonomousLoop({ rootDir, plan: planPath, dryRun: true });
 
   assert.equal(result.status, "COMPLETE");
-  assert.equal(result.state.deferred_heavy_verification.length, 1);
-  assert.equal(result.state.deferred_heavy_verification[0].command, "npm run check");
-  assert.equal(result.state.verification_policy.heavyVerificationDeferred, 1);
-  assert.deepEqual(result.state.attempts[0].verificationEvidence, [
+  assert.equal(result.state.deferred_heavy_verification.length, 2);
+  assert.deepEqual(result.state.deferred_heavy_verification.map((item) => item.command), [
+    "npm run check",
     "node --test tests/intent-continuation-routing.test.mjs",
   ]);
+  assert.equal(result.state.verification_policy.heavyVerificationDeferred, 2);
+  assert.deepEqual(result.state.attempts[0].verificationEvidence, ["dry-run verification evidence"]);
 });
 
 test("runner requeues a failed fresh-context attempt once and then awaits user acceptance", async () => {

@@ -108,7 +108,9 @@ test("workflow receipt runtime preserves host trace metadata and emits receipt s
     assert.equal(receiptSpan.attributes["supervibe.workflow.receipt_id"], issued.receipt.receiptId);
 
     await writeUtf8(root, ".supervibe/artifacts/plans/trace/plan.md", "# Modified\n");
-    assert.equal(validateWorkflowReceipts(root, { secret: "test-secret" }).pass, false);
+    const afterLiveChange = validateWorkflowReceipts(root, { secret: "test-secret" });
+    assert.equal(afterLiveChange.pass, true);
+    assert.ok(afterLiveChange.diagnostics.some((item) => /live-output-changed/.test(item.message)));
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -129,7 +131,7 @@ test("workflow receipt output classifier blocks mutable log-like artifacts", () 
   assert.equal(stable.receiptable, true);
 });
 
-test("workflow receipt validation treats mutable work-item graph state drift as stale", async () => {
+test("workflow receipt validation treats live work-item graph drift as snapshot-backed diagnostic", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-workflow-graph-drift-"));
   try {
     const graphRel = ".supervibe/memory/work-items/epic-graph/graph.json";
@@ -154,8 +156,8 @@ test("workflow receipt validation treats mutable work-item graph state drift as 
 
     await writeUtf8(root, graphRel, `${JSON.stringify({ items: [{ itemId: "T1", status: "closed" }] }, null, 2)}\n`);
     const drifted = validateWorkflowReceipts(root, { secret: "test-secret" });
-    assert.equal(drifted.pass, false);
-    assert.ok(drifted.issues.some((issue) => /hash mismatch/.test(issue.message)));
+    assert.equal(drifted.pass, true);
+    assert.ok(drifted.diagnostics.some((issue) => /live-output-changed/.test(issue.message)));
 
     await writeUtf8(root, graphRel, `${JSON.stringify({ items: [{ itemId: "T1", status: "open" }] }, null, 2)}\n`);
     const sourceDir = join(root, ".supervibe", "memory", "work-items", "epic-graph");
@@ -226,8 +228,8 @@ test("workflow receipt runtime accepts compact agent-output manifest when archiv
     manifest.originalSha256 = "bad-digest";
     await writeUtf8(root, outputRel, `${JSON.stringify(manifest, null, 2)}\n`);
     const invalid = validateWorkflowReceipts(root, { secret: "test-secret" });
-    assert.equal(invalid.pass, false);
-    assert.ok(invalid.issues.some((issue) => /hash mismatch|missing/.test(issue.message)));
+    assert.equal(invalid.pass, true);
+    assert.ok(invalid.diagnostics.some((issue) => /live-output-changed/.test(issue.message)));
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -511,7 +513,7 @@ test("workflow receipt runtime serializes parallel ledger appends", async () => 
   }
 });
 
-test("workflow receipt runtime rejects ledger tampering and artifact drift", async () => {
+test("workflow receipt runtime keeps snapshot trust and diagnoses artifact drift", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-workflow-receipts-"));
   try {
     await writeUtf8(root, ".supervibe/artifacts/loops/checkout/run.md", "# Run\n");
@@ -532,8 +534,8 @@ test("workflow receipt runtime rejects ledger tampering and artifact drift", asy
 
     const result = validateWorkflowReceipts(root, { secret: "test-secret" });
 
-    assert.equal(result.pass, false);
-    assert.ok(result.issues.some((issue) => /hash mismatch/.test(issue.message)));
+    assert.equal(result.pass, true);
+    assert.ok(result.diagnostics.some((issue) => /live-output-changed/.test(issue.message)));
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -557,7 +559,9 @@ test("workflow receipt CLI reissue repairs artifact drift and rebuilds ledger", 
       secret: "test-secret",
     });
     await writeUtf8(root, ".supervibe/artifacts/loops/checkout/run.md", "# Modified\n");
-    assert.equal(validateWorkflowReceipts(root, { secret: "test-secret" }).pass, false);
+    const driftedBeforeReissue = validateWorkflowReceipts(root, { secret: "test-secret" });
+    assert.equal(driftedBeforeReissue.pass, true);
+    assert.ok(driftedBeforeReissue.diagnostics.some((issue) => /live-output-changed/.test(issue.message)));
 
     const { stdout } = await execFileAsync(process.execPath, [
       "scripts/workflow-receipt.mjs",
@@ -573,7 +577,11 @@ test("workflow receipt CLI reissue repairs artifact drift and rebuilds ledger", 
     ], { cwd: REPO_ROOT });
 
     assert.match(stdout, /SUPERVIBE_WORKFLOW_RECEIPT_REISSUED/);
-    assert.equal(validateWorkflowReceipts(root, { secret: "test-secret" }).pass, true);
+    assert.match(stdout, /SUPERSEDES_RECEIPT_ID:/);
+    assert.match(stdout, /EVIDENCE_SNAPSHOT:/);
+    const afterReissue = validateWorkflowReceipts(root, { secret: "test-secret" });
+    assert.equal(afterReissue.pass, true);
+    assert.equal(afterReissue.diagnostics.length, 0);
     assert.equal(validateWorkflowReceiptLedgerChain(root, { secret: "test-secret" }).entries, 1);
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -596,6 +604,7 @@ test("workflow receipt CLI prune-stale archives drifted receipts and rebuilds le
       completedAt: "2026-05-03T00:01:00.000Z",
       handoffId: "loop-checkout",
       secret: "test-secret",
+      snapshotEvidence: false,
     });
     await writeUtf8(root, ".supervibe/artifacts/loops/checkout/run.md", "# Modified\n");
 
@@ -638,6 +647,7 @@ test("workflow receipt CLI recovery-status reports trusted stage and dirty recei
       completedAt: "2026-05-03T00:01:00.000Z",
       handoffId: "loop-checkout",
       secret: "test-secret",
+      snapshotEvidence: false,
     });
     await writeUtf8(root, ".supervibe/artifacts/loops/checkout/run.md", "# Modified\n");
 

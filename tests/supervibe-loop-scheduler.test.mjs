@@ -12,6 +12,7 @@ import {
   atomizePlanToWorkItems,
   writeWorkItemGraph,
 } from "../scripts/lib/supervibe-plan-to-work-items.mjs";
+import { issueWorkflowInvocationReceipt } from "../scripts/lib/supervibe-workflow-receipt-runtime.mjs";
 import { buildExecutionWaves, formatWaveStatus } from "../scripts/lib/supervibe-wave-controller.mjs";
 import {
   defaultWorktreeRegistryPath,
@@ -139,8 +140,11 @@ test("assign-ready enforces task-local verification and defers full checks", asy
   const [dispatch] = JSON.parse(cli.stdout);
   assert.equal(dispatch.verificationPolicy.scope, "task-local");
   assert.equal(dispatch.reviewPolicy.mode, "final-sweep");
-  assert.deepEqual(dispatch.workerAssignmentPayload.verificationCommands, ["node --test tests/supervibe-loop-scheduler.test.mjs"]);
-  assert.deepEqual(dispatch.workerAssignmentPayload.deferredFullVerificationCommands, ["npm run check"]);
+  assert.deepEqual(dispatch.workerAssignmentPayload.verificationCommands, []);
+  assert.deepEqual(dispatch.workerAssignmentPayload.deferredFullVerificationCommands, [
+    "node --test tests/supervibe-loop-scheduler.test.mjs",
+    "npm run check",
+  ]);
   assert.equal(dispatch.workerAssignmentPayload.verificationPolicy.fullSuiteAllowed, false);
   assert.equal(dispatch.reviewerAssignmentPayload.deferredUntil, "graph-release-gate");
 
@@ -153,8 +157,10 @@ test("assign-ready enforces task-local verification and defers full checks", asy
   ], { cwd: dir });
   assert.match(explained.stdout, /SUPERVIBE_TASK_VERIFICATION_POLICY/);
   assert.match(explained.stdout, /VERIFICATION_SCOPE: task-local/);
-  assert.match(explained.stdout, /TARGETED_COMMANDS: node --test tests\/supervibe-loop-scheduler\.test\.mjs/);
-  assert.match(explained.stdout, /DEFERRED_FULL_COMMANDS: npm run check/);
+  assert.match(explained.stdout, /TARGETED_COMMANDS: none/);
+  assert.match(explained.stdout, /DEFERRED_FULL_COMMANDS: node --test tests\/supervibe-loop-scheduler\.test\.mjs && npm run check/);
+  assert.match(explained.stdout, /TEST_EXECUTION_ALLOWED: false/);
+  assert.match(explained.stdout, /TESTS_DEFERRED_UNTIL: release-handoff/);
 
   const commandPlan = await execFileAsync(process.execPath, [
     join(ROOT, "scripts", "command-agent-plan.mjs"),
@@ -177,7 +183,7 @@ test("assign-ready enforces task-local verification and defers full checks", asy
   assert.match(commandPlan.stdout, /SUPERVIBE_COMMAND_VERIFICATION_POLICY/);
   assert.match(commandPlan.stdout, /VERIFICATION_SCOPE: task-local/);
   assert.match(commandPlan.stdout, /FULL_SUITE_ALLOWED: false/);
-  assert.match(commandPlan.stdout, /normal task agents run targeted commands only/);
+  assert.match(commandPlan.stdout, /do not run tests or validators/i);
 });
 
 test("combined final-review sweep and completion validation does not skip completion gate", async () => {
@@ -322,55 +328,53 @@ test("workflow receipt drift inspect reports stale source and dry-run repair sta
   await mkdir(dirname(outputPath), { recursive: true });
   await writeFile(outputPath, "original\n", "utf8");
 
-  const issue = await execFileAsync(process.execPath, [
-    receiptCli,
-    "issue",
-    "--command",
-    "/supervibe-loop",
-    "--stage",
-    "work-item-execution",
-    "--reason",
-    "drift fixture",
-    "--output",
-    outputRel,
-    "--handoff",
-    "drift-fixture",
-  ], { cwd: dir, maxBuffer: 1024 * 1024 });
-  const receiptPath = /RECEIPT_PATH: (.+)/.exec(issue.stdout)?.[1]?.trim();
+  const issue = await issueWorkflowInvocationReceipt({
+    rootDir: dir,
+    command: "/supervibe-loop",
+    subjectType: "command",
+    subjectId: "supervibe-loop",
+    stage: "work-item-execution",
+    invocationReason: "legacy drift fixture",
+    outputArtifacts: [outputRel],
+    handoffId: "drift-fixture",
+    snapshotEvidence: false,
+  });
+  const receiptPath = issue.receiptPath;
   assert.ok(receiptPath);
   await writeFile(outputPath, "changed\n", "utf8");
 
-  let inspectError;
+  let inspectResult;
   try {
-    await execFileAsync(process.execPath, [
+    inspectResult = await execFileAsync(process.execPath, [
       receiptCli,
       "inspect",
     ], { cwd: dir, maxBuffer: 1024 * 1024 });
   } catch (error) {
-    inspectError = error;
+    inspectResult = error;
   }
-  assert.ok(inspectError);
-  assert.match(inspectError.stdout, /SUPERVIBE_WORKFLOW_RECEIPT_INSPECT/);
-  assert.match(inspectError.stdout, /APPLY: false/);
-  assert.match(inspectError.stdout, /MUTATION: none/);
-  assert.match(inspectError.stdout, /STALE: 1/);
-  assert.match(inspectError.stdout, /STALE_RECEIPT: workflow-/);
-  assert.match(inspectError.stdout, /DRIFT_SOURCE: \.supervibe\/artifacts\/drift\/output\.txt/);
-  assert.match(inspectError.stdout, /REPAIR_REISSUE: node scripts\/workflow-receipt\.mjs reissue --receipt/);
+  assert.ok(inspectResult);
+  assert.match(inspectResult.stdout, /SUPERVIBE_WORKFLOW_RECEIPT_INSPECT/);
+  assert.match(inspectResult.stdout, /APPLY: false/);
+  assert.match(inspectResult.stdout, /MUTATION: none/);
+  assert.match(inspectResult.stdout, /STALE: 1/);
+  assert.match(inspectResult.stdout, /STALE_RECEIPT: workflow-/);
+  assert.match(inspectResult.stdout, /DRIFT_SOURCE: \.supervibe\/artifacts\/drift\/output\.txt/);
+  assert.match(inspectResult.stdout, /REPAIR_REISSUE: node scripts\/workflow-receipt\.mjs reissue --receipt/);
   await stat(join(dir, receiptPath));
 
-  let pruneError;
+  let pruneResult;
   try {
-    await execFileAsync(process.execPath, [
+    pruneResult = await execFileAsync(process.execPath, [
       receiptCli,
       "prune-stale",
     ], { cwd: dir, maxBuffer: 1024 * 1024 });
   } catch (error) {
-    pruneError = error;
+    pruneResult = error;
   }
-  assert.ok(pruneError);
-  assert.match(pruneError.stdout, /SUPERVIBE_WORKFLOW_RECEIPT_PRUNE_STALE/);
-  assert.match(pruneError.stdout, /APPLY: false/);
+  assert.ok(pruneResult);
+  assert.match(pruneResult.stdout, /SUPERVIBE_WORKFLOW_RECEIPT_PRUNE_STALE/);
+  assert.match(pruneResult.stdout, /APPLY: false/);
+  assert.match(pruneResult.stdout, /STALE: 1/);
   await stat(join(dir, receiptPath));
 
   const fullStatus = await execFileAsync(process.execPath, [
@@ -753,7 +757,12 @@ test("dispatch-wave subtracts active graph claims from provider thread capacity"
   assert.equal(report.schedulerPolicy.activeGraphClaimedSlots, 2);
   assert.equal(report.schedulerPolicy.availableProviderThreads, 1);
   assert.equal(report.schedulerPolicy.effectiveMaxConcurrency, 1);
-  assert.deepEqual(report.assignedTaskIds, ["task-ready-1"]);
+  assert.equal(report.minimumParallelAgents, 2);
+  assert.equal(report.parallelDispatchBlocked, true);
+  assert.deepEqual(report.assignedTaskIds, []);
+  const blockedReady = report.dispatches.find((dispatch) => dispatch.taskId === "task-ready-1");
+  assert.equal(blockedReady.status, "blocked");
+  assert.match(blockedReady.blockedReason, /minimumParallelAgents=2, assigned=1/);
   assert.equal(report.dispatches.find((dispatch) => dispatch.taskId === "task-ready-2").status, "serialized");
   assert.match(report.schedulerPolicy.reason, /active graph claim/);
 });
@@ -1025,7 +1034,12 @@ test("dispatch-wave blocks ready tasks that overlap active claimed write sets", 
     "3",
   ], { cwd: dir, maxBuffer: 1024 * 1024 });
   const report = JSON.parse(cli.stdout);
-  assert.deepEqual(report.assignedTaskIds, ["task-free"]);
+  assert.equal(report.minimumParallelAgents, 2);
+  assert.equal(report.parallelDispatchBlocked, true);
+  assert.deepEqual(report.assignedTaskIds, []);
+  const fanoutBlocked = report.dispatches.find((dispatch) => dispatch.taskId === "task-free");
+  assert.equal(fanoutBlocked.status, "blocked");
+  assert.match(fanoutBlocked.blockedReason, /minimumParallelAgents=2, assigned=1/);
   const blocked = report.dispatches.find((dispatch) => dispatch.taskId === "task-conflict");
   assert.equal(blocked.status, "blocked");
   assert.match(blocked.blockedReason, /write-set lock conflict: claim-active/);

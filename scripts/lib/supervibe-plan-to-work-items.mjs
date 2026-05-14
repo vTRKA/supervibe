@@ -6,7 +6,11 @@ import { LOOP_SCHEMA_VERSION } from "./autonomous-loop-constants.mjs";
 import { materializeEpicAndTasks } from "./supervibe-task-tracker-sync.mjs";
 import { updateActiveWorkItemGraph } from "./supervibe-work-item-registry.mjs";
 import { applyTemplateToWorkItem, inferWorkItemTemplate } from "./supervibe-work-item-template-catalog.mjs";
-import { createEpicAgentContract } from "./supervibe-epic-agent-contract.mjs";
+import {
+  bindGraphProducerProofOutput,
+  createEpicAgentContract,
+  createGraphProducerProof,
+} from "./supervibe-epic-agent-contract.mjs";
 import {
   assertTaskBudgetAllowsGraphWrite,
   evaluateTaskBudgetPolicy,
@@ -36,6 +40,9 @@ export const WORK_ITEM_REQUIRED_FIELDS = Object.freeze([
   "parallelGroup",
   "executionHints",
 ]);
+
+export const PLAN_GRAPH_TASK_FINAL_ONLY_VERIFICATION_MODE = "final-only-release-verification";
+export const PLAN_GRAPH_TASK_TESTS_DEFERRED_UNTIL = "release-handoff";
 
 export async function atomizePlanFile(planPath, options = {}) {
   const markdown = await readFile(planPath, "utf8");
@@ -90,6 +97,27 @@ export function atomizePlanToWorkItems(markdown, options = {}) {
     policy: taskBudgetPolicy,
     decision: taskBudgetDecision,
   });
+  const proofOptions = options.graphProducerProof || options.producerProof || {};
+  const graphProducerProof = createGraphProducerProof({
+    ...proofOptions,
+    required: Boolean(options.planReviewPassed && !options.dryRun),
+    command: proofOptions.command || options.producerCommand || options.command || options.workflowCommand || "/supervibe-loop",
+    stage: proofOptions.stage || options.producerStage || options.stage || "work-item-atomization",
+    subjectType: proofOptions.subjectType || options.producerSubjectType || options.subjectType || "agent",
+    subjectId: proofOptions.subjectId || options.producerSubjectId || options.subjectId || options.agentId || "work-item-graph-builder",
+    agentId: proofOptions.agentId || options.producerAgentId || options.agentId || options.producerSubjectId || options.subjectId || "work-item-graph-builder",
+    graphId: epicId,
+    handoffId: proofOptions.handoffId || options.handoffId || options.slug || options.workflowRunId || epicId,
+    hostInvocation: proofOptions.hostInvocation || options.hostInvocation || null,
+    hostInvocationSource: proofOptions.hostInvocationSource || options.hostInvocationSource || options["host-invocation-source"] || null,
+    hostInvocationId: proofOptions.hostInvocationId || options.hostInvocationId || options["host-invocation-id"] || null,
+    hostInvocationEvidence: proofOptions.hostInvocationEvidence || options.hostInvocationEvidence || options["host-invocation-evidence"] || null,
+    outputArtifact: proofOptions.outputArtifact || options.outputArtifact || "graph.json",
+    outputArtifacts: proofOptions.outputArtifacts || options.outputArtifacts || [],
+    outputBinding: proofOptions.outputBinding || null,
+    receiptId: proofOptions.receiptId || options.receiptId || null,
+    receiptPath: proofOptions.receiptPath || options.receiptPath || null,
+  });
   const graph = createWorkItemGraph({
     epicId,
     planPath,
@@ -103,6 +131,7 @@ export function atomizePlanToWorkItems(markdown, options = {}) {
         required: Boolean(options.planReviewPassed && !options.dryRun),
         agentIds: options.epicAgentIds,
       }),
+      graphProducerProof,
       taskBudgetPolicy: {
         policy: taskBudgetReport.policy,
         decision: taskBudgetReport.decision,
@@ -417,6 +446,9 @@ export function workItemsToLoopTasks(items = []) {
       epicId: item.epicId,
       acceptanceCriteria: item.acceptanceCriteria,
       verificationCommands: item.verificationCommands,
+      deferredVerificationCommands: item.deferredVerificationCommands ?? [],
+      verificationPolicy: item.verificationPolicy ?? null,
+      testsDeferredUntil: item.verificationPolicy?.testsDeferredUntil ?? item.executionHints?.testsDeferredUntil ?? null,
       scopeIds: uniqueStrings([
         ...(item.scopeIds || []),
         ...(item.executionHints?.scopeIds || []),
@@ -486,8 +518,19 @@ export async function writeWorkItemGraph(graph, options = {}) {
   if (sourcePlanSnapshot?.content && sourcePlanSnapshot?.storedPath) {
     await writeFile(join(outDir, normalizePath(sourcePlanSnapshot.storedPath)), String(sourcePlanSnapshot.content), "utf8");
   }
-  await writeFile(graphPath, `${JSON.stringify(stripParsedFields(graph), null, 2)}\n`);
-  await writeFile(previewPath, `${createWorkItemPreview(graph, validation)}\n`);
+  const serializableGraph = stripParsedFields(graph);
+  if (serializableGraph.metadata?.graphProducerProof) {
+    serializableGraph.metadata = {
+      ...serializableGraph.metadata,
+      graphProducerProof: bindGraphProducerProofOutput(serializableGraph.metadata.graphProducerProof, {
+        rootDir,
+        graphPath,
+        graphId: graph.epicId || graph.graph_id || graph.id,
+      }),
+    };
+  }
+  await writeFile(graphPath, JSON.stringify(serializableGraph, null, 2) + "\n");
+  await writeFile(previewPath, createWorkItemPreview(graph, validation) + "\n");
   await updateActiveWorkItemGraph({
     rootDir,
     graphPath,
@@ -933,6 +976,15 @@ function createFollowupItems(parsed, epicId, childItems) {
 }
 
 function createWorkItem(item) {
+  const verificationCommands = uniqueStrings(item.verificationCommands ?? []);
+  const deferredVerificationCommands = uniqueStrings([
+    ...(item.deferredVerificationCommands ?? []),
+    ...verificationCommands.filter(isPlanGraphTaskReleaseOnlyCommand),
+  ]);
+  const verificationPolicy = createPlanGraphTaskVerificationPolicy({
+    existing: item.verificationPolicy,
+    deferredVerificationCommands,
+  });
   return {
     ...item,
     status: item.status ?? "open",
@@ -940,7 +992,9 @@ function createWorkItem(item) {
     related: uniqueStrings(item.related ?? []),
     blockedBy: uniqueStrings(item.blockedBy ?? []),
     acceptanceCriteria: uniqueStrings(item.acceptanceCriteria ?? []),
-    verificationCommands: uniqueStrings(item.verificationCommands ?? []),
+    verificationCommands,
+    deferredVerificationCommands,
+    verificationPolicy,
     writeScope: Array.isArray(item.writeScope) ? item.writeScope : [],
     labels: uniqueStrings(item.labels ?? []),
     severity: item.severity ?? null,
@@ -952,7 +1006,11 @@ function createWorkItem(item) {
     workspace: item.workspace ?? null,
     subproject: item.subproject ?? null,
     requiredGates: uniqueStrings(item.requiredGates ?? []),
-    verificationHints: uniqueStrings(item.verificationHints ?? []),
+    verificationHints: uniqueStrings([
+      ...(item.verificationHints ?? []),
+      "tests:deferred-until-release-handoff",
+      "validators:deferred-until-release-handoff",
+    ]),
     contractChecklist: uniqueStrings(item.contractChecklist ?? []),
     scopeSafetyChecklist: uniqueStrings(item.scopeSafetyChecklist ?? []),
     productionReadinessChecklist: uniqueStrings(item.productionReadinessChecklist ?? []),
@@ -962,8 +1020,57 @@ function createWorkItem(item) {
     evidenceScore: normalizeScoreField(item.evidenceScore, "evidence"),
     estimatedSize: item.estimatedSize ?? "medium",
     parallelGroup: item.parallelGroup ?? null,
-    executionHints: item.executionHints ?? {},
+    executionHints: enrichExecutionHintsWithVerificationPolicy(item.executionHints ?? {}, verificationPolicy, deferredVerificationCommands),
   };
+}
+
+function createPlanGraphTaskVerificationPolicy({ existing = null, deferredVerificationCommands = [] } = {}) {
+  return {
+    ...(existing && typeof existing === "object" ? existing : {}),
+    schemaVersion: 1,
+    mode: PLAN_GRAPH_TASK_FINAL_ONLY_VERIFICATION_MODE,
+    appliesTo: ["plan", "graph", "task"],
+    developmentTestsAllowed: false,
+    developmentValidatorsAllowed: false,
+    testsDeferredUntil: PLAN_GRAPH_TASK_TESTS_DEFERRED_UNTIL,
+    validatorsDeferredUntil: PLAN_GRAPH_TASK_TESTS_DEFERRED_UNTIL,
+    releaseGateRequired: true,
+    deferredVerificationCommands: uniqueStrings(deferredVerificationCommands),
+    workerInstruction: "Do not run tests or validators during plan/graph/task development; collect implementation evidence and defer those commands to the final release gate.",
+  };
+}
+
+function enrichExecutionHintsWithVerificationPolicy(hints = {}, verificationPolicy = {}, deferredVerificationCommands = []) {
+  return {
+    ...hints,
+    verificationPolicyMode: verificationPolicy.mode,
+    testsDeferredUntil: verificationPolicy.testsDeferredUntil,
+    validatorsDeferredUntil: verificationPolicy.validatorsDeferredUntil,
+    developmentTestsAllowed: false,
+    developmentValidatorsAllowed: false,
+    deferredVerificationCommands: uniqueStrings([
+      ...(hints.deferredVerificationCommands ?? []),
+      ...deferredVerificationCommands,
+    ]),
+  };
+}
+
+function isPlanGraphTaskReleaseOnlyCommand(command = "") {
+  const text = String(command || "").trim();
+  if (!text) return false;
+  return [
+    /^node\s+--test(?:\s|$)/i,
+    /^npm\s+(run\s+)?test(?:\s|$)/i,
+    /^pnpm\s+(run\s+)?test(?:\s|$)/i,
+    /^yarn\s+(run\s+)?test(?:\s|$)/i,
+    /^bun\s+test(?:\s|$)/i,
+    /^vitest(?:\s|$)/i,
+    /^npx\s+vitest(?:\s|$)/i,
+    /^pytest(?:\s|$)/i,
+    /^npm\s+run\s+check\b/i,
+    /^npm\s+run\s+validate:/i,
+    /^node\s+scripts[\\/]validate-/i,
+  ].some((pattern) => pattern.test(text));
 }
 
 function normalizeScoreField(value, kind) {

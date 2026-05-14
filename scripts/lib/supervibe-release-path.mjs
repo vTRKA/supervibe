@@ -121,9 +121,9 @@ export function buildLoopCompletionDecision(input = {}) {
     {
       id: "continue-loop",
       label: "Continue loop",
-      command: "/supervibe-loop --status",
-      description: "Resume implementation when completion evidence still has gaps.",
-      recommended: nextCommand === "/supervibe-loop --status",
+      command: "/supervibe-loop --resume-dispatch",
+      description: "Resume implementation with the next ready parallel agent wave when completion evidence still has gaps.",
+      recommended: nextCommand === "/supervibe-loop --resume-dispatch" || nextCommand === "/supervibe-loop --status",
     },
     {
       id: "revise-goals",
@@ -245,7 +245,7 @@ export function validateWorkflowState(record = {}, options = {}) {
 
 function nextReleaseCommandForFacts(source = {}) {
   if (source.reviewed || source.reviewComplete || source.review_complete || source.shipped || source.shipComplete || source.ship_complete) {
-    return "/supervibe-loop --status";
+    return "/supervibe-loop --resume-dispatch";
   }
   if (source.verified || source.verifyComplete || source.verify_complete) return "/supervibe-review";
   return "/supervibe-verify";

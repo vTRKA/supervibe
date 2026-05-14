@@ -87,7 +87,7 @@ export const WORKFLOW_INTENT_SCENARIO_FIXTURES = Object.freeze([
     id: "loop-continuation",
     request: "continue loop",
     expectedIntent: "task_graph_resume",
-    expectedCommand: "/supervibe-loop --status",
+    expectedCommand: "/supervibe-loop --resume-dispatch",
     workflowContext: {
       intent: "loop",
       stackTags: ["nextjs"],

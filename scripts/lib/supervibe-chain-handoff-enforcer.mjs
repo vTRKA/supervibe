@@ -162,8 +162,8 @@ function releaseDecisionChoices(recommendedCommand) {
       : {
         id: "continue-loop",
         label: "Continue loop",
-        command: "/supervibe-loop --status",
-        description: "Resume implementation when completion evidence still has gaps.",
+        command: "/supervibe-loop --resume-dispatch",
+        description: "Resume implementation with the next ready parallel agent wave when completion evidence still has gaps.",
       },
     {
       id: "revise-goals",

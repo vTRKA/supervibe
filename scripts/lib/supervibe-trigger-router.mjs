@@ -148,10 +148,11 @@ const ROUTES = {
   },
   task_graph_resume: {
     phase: "execution",
-    command: "/supervibe-loop --status",
+    command: "/supervibe-loop --resume-dispatch",
     skill: "supervibe:autonomous-agent-loop",
     nextQuestionRu: "Шаг 1/1: показать активный epic/task graph и следующий шаг для продолжения?",
-    nextQuestionEn: "Step 1/1: show the active epic/task graph and next action for resume?",
+    nextQuestionEn: "Step 1/1: dispatch the next ready parallel agent wave for the active epic/task graph, with status fallback if no dispatch is available?",
+    requiredSafety: ["real-parallel-agent-wave-required", "tests-deferred-until-release-gate"],
     prerequisites: ["active-work-graph-or-loop-state"],
   },
   task_graph_claim_ready: {

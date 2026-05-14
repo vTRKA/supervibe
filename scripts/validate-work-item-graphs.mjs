@@ -19,7 +19,7 @@ async function walkGraphs(dir) {
   return out;
 }
 
-export async function validateWorkItemGraphFiles({ rootDir = process.cwd(), files = [], requireSourcePlanSnapshot = false } = {}) {
+export async function validateWorkItemGraphFiles({ rootDir = process.cwd(), files = [], requireSourcePlanSnapshot = false, scopeMode = "graph-strict" } = {}) {
   const results = [];
   for (const file of files) {
     const graph = JSON.parse(await readFile(file, "utf8"));
@@ -47,14 +47,21 @@ export async function validateWorkItemGraphFiles({ rootDir = process.cwd(), file
   return {
     pass: results.every((result) => result.validation.valid),
     results,
+    checked: results.length,
+    scopeMode,
   };
 }
 
 async function main() {
   const { values } = parseArgs({
     options: {
+      root: { type: "string" },
       file: { type: "string", short: "f" },
       all: { type: "boolean", default: false },
+      strict: { type: "boolean", default: false },
+      "scope-file": { type: "string" },
+      "graph-id": { type: "string" },
+      "scope-graph-id": { type: "string" },
       "fixture-dir": { type: "string" },
       "require-source-plan-snapshot": { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
@@ -64,20 +71,32 @@ async function main() {
   if (values.help) {
     console.log(`Usage:
   node scripts/validate-work-item-graphs.mjs --file .supervibe/memory/work-items/<epic>/graph.json
-  node scripts/validate-work-item-graphs.mjs --all
+  node scripts/validate-work-item-graphs.mjs --scope-file .supervibe/memory/work-items/<epic>/graph.json
+  node scripts/validate-work-item-graphs.mjs --graph-id <epic-id>
+  node scripts/validate-work-item-graphs.mjs --strict
   node scripts/validate-work-item-graphs.mjs --fixture-dir tests/fixtures/work-item-graphs
   node scripts/validate-work-item-graphs.mjs --file .supervibe/memory/work-items/<epic>/graph.json --require-source-plan-snapshot`);
     return;
   }
 
-  const root = process.cwd();
-  const files = values.file
-    ? [values.file]
-    : values["fixture-dir"]
-      ? await walkGraphs(join(root, values["fixture-dir"]))
+  const root = resolve(values.root || process.cwd());
+  const scopeMode = resolveGraphScopeMode(values);
+  let files = resolveScopedGraphFiles(values, root);
+  if (files.length === 0) {
+    files = values["fixture-dir"]
+      ? await walkGraphs(resolve(root, values["fixture-dir"]))
       : await walkGraphs(join(root, ".supervibe", "memory", "work-items"));
+  }
+  const graphIds = splitCliList(values["graph-id"] || values["scope-graph-id"]);
+  const discovered = files.length;
+  if (graphIds.length > 0) {
+    files = await filterGraphFilesById(files, graphIds);
+  }
 
   if (files.length === 0) {
+    console.log("SCOPE: " + scopeMode);
+    console.log("CHECKED: 0");
+    console.log("DISCOVERED: " + discovered);
     console.log("[validate-work-item-graphs] no work-item graph files found; skipping");
     return;
   }
@@ -86,14 +105,23 @@ async function main() {
     rootDir: root,
     files,
     requireSourcePlanSnapshot: Boolean(values["require-source-plan-snapshot"]),
+    scopeMode,
   });
+  console.log("SCOPE: " + report.scopeMode);
+  console.log("CHECKED: " + report.checked);
+  console.log("DISCOVERED: " + discovered);
   for (const result of report.results) {
     const rel = relative(root, result.file).split(sep).join("/");
     if (result.validation.valid) {
       console.log(`OK   work-item-graph ${rel}`);
     } else {
       console.error(`FAIL work-item-graph ${rel}`);
-      for (const issue of result.validation.issues) console.error(`  - ${issue.code}: ${issue.message}`);
+      for (const issue of result.validation.issues) {
+        console.error(`  - ${issue.code}: ${issue.message}`);
+        const repairScope = formatRepairScope(issue.repairScope);
+        if (repairScope) console.error("    repair-scope: " + repairScope);
+        if (issue.missingProducerProofFields?.length) console.error("    missing-proof-fields: " + issue.missingProducerProofFields.join(","));
+      }
     }
   }
   if (!report.pass) {
@@ -101,6 +129,55 @@ async function main() {
     process.exit(1);
   }
   console.log(`\nAll ${report.results.length} work-item graph artifact(s) passed`);
+}
+
+
+function resolveGraphScopeMode(values = {}) {
+  if (values.strict || values.all) return "graph-strict";
+  if (values.file || values["scope-file"] || values["fixture-dir"] || values["graph-id"] || values["scope-graph-id"]) return "graph-scoped";
+  return "graph-strict";
+}
+
+function resolveScopedGraphFiles(values = {}, root = process.cwd()) {
+  const rawFiles = splitCliList(values["scope-file"] || values.file || "");
+  return rawFiles.map((file) => resolve(root, file));
+}
+
+function splitCliList(value = "") {
+  return String(value || "")
+    .split(/[,;]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+async function filterGraphFilesById(files = [], graphIds = []) {
+  const wanted = new Set(graphIds.map((id) => String(id).toLowerCase()));
+  const matched = [];
+  for (const file of files) {
+    try {
+      const graph = JSON.parse(await readFile(file, "utf8"));
+      const ids = [graph.epicId, graph.graph_id, graph.id].map((id) => String(id || "").toLowerCase()).filter(Boolean);
+      if (ids.some((id) => wanted.has(id))) matched.push(file);
+    } catch {
+      // Invalid JSON is left to the normal validator when directly scoped by file.
+    }
+  }
+  return matched;
+}
+
+function formatRepairScope(scope = null) {
+  if (!scope) return "";
+  return [
+    ["command", scope.command],
+    ["stage", scope.stage],
+    ["graphId", scope.graphId],
+    ["handoffId", scope.handoffId],
+    ["outputArtifact", scope.outputArtifact],
+    ["subjectIds", Array.isArray(scope.subjectIds) ? scope.subjectIds.join(",") : scope.subjectIds],
+  ]
+    .filter(([, value]) => value)
+    .map(([key, value]) => key + "=" + value)
+    .join(" ");
 }
 
 async function validateSourcePlanSnapshot({ graph = {}, graphPath }) {

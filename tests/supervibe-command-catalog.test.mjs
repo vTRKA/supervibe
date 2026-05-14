@@ -8,6 +8,7 @@ import test from "node:test";
 import {
   buildProjectCommandCatalog,
   COMMAND_AGENT_ORCHESTRATION_CONTRACT,
+  COMMAND_PARALLEL_AGENT_LAUNCH_POLICY,
   findCommandShortcut,
   formatCommandCatalog,
   formatCommandMatch,
@@ -44,10 +45,18 @@ test("project command catalog exposes slash commands, npm scripts, and fast shor
   assert.ok(shortcut);
   assert.equal(catalog.agentContract.ownerAgentId, "supervibe-orchestrator");
   assert.equal(catalog.agentContract.defaultExecutionMode, "real-agents");
-  assert.deepEqual(catalog.agentContract.executionModes, ["real-agents", "hybrid", "inline"]);
+  assert.deepEqual(catalog.agentContract.executionModes, ["real-agents"]);
   assert.equal(catalog.agentContract.blockedMode, "agent-required-blocked");
+  assert.equal(catalog.parallelAgentPolicy.mode, COMMAND_PARALLEL_AGENT_LAUNCH_POLICY.mode);
+  assert.equal(catalog.parallelAgentPolicy.requiresRealAgentFanout, true);
+  assert.equal(catalog.parallelAgentPolicy.appliesAfterCompactResume, true);
+  assert.equal(catalog.parallelAgentPolicy.appliesToSimpleTasks, true);
   assert.equal(catalog.slashCommands.every((entry) => entry.agentContract?.ownerAgentId === "supervibe-orchestrator"), true);
   assert.equal(catalog.slashCommands.every((entry) => entry.agentProfile?.defaultExecutionMode === "real-agents"), true);
+  assert.equal(catalog.slashCommands.every((entry) => entry.parallelAgentPolicy?.requiresRealAgentFanout === true), true);
+  const workflowShortcuts = catalog.shortcuts.filter((entry) => String(entry.command || "").startsWith("/supervibe"));
+  assert.ok(workflowShortcuts.length >= 10);
+  assert.equal(workflowShortcuts.every((entry) => entry.parallelAgentPolicy?.mode === "parallel-real-agents"), true);
   assert.match(shortcut.command, /build-code-index\.mjs --root \. --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress/);
   assert.ok(shortcut.followUpCommands.some((command) => /--resume --graph --max-files 200 --health/.test(command)));
   const report = formatCommandCatalog(catalog);
@@ -57,6 +66,10 @@ test("project command catalog exposes slash commands, npm scripts, and fast shor
   assert.match(report, /NPM_SCRIPTS:/);
   assert.match(report, /AGENT_OWNER: supervibe-orchestrator/);
   assert.match(report, /AGENT_BLOCKED_MODE: agent-required-blocked/);
+  assert.match(report, /PARALLEL_AGENT_POLICY: mandatory-parallel-agent-launch/);
+  assert.match(report, /PARALLEL_AGENT_MODE: parallel-real-agents/);
+  assert.match(report, /PARALLEL_AGENT_AFTER_COMPACT_RESUME: true/);
+  assert.match(report, /PARALLEL_AGENT_SIMPLE_TASKS: true/);
 });
 
 test("verify review ship command surfaces publish profiles, stages, and routes", () => {
@@ -218,12 +231,51 @@ test("command matches expose the real-agent orchestration contract", () => {
 
   const report = formatCommandMatch(match);
   assert.match(report, /OWNER_AGENT: supervibe-orchestrator/);
-  assert.match(report, /AGENT_EXECUTION_MODES: real-agents, hybrid, inline/);
+  assert.match(report, /AGENT_EXECUTION_MODES: real-agents/);
+  assert.doesNotMatch(report, /AGENT_EXECUTION_MODES: .*inline/);
   assert.match(report, /AGENT_BLOCKED_MODE: agent-required-blocked/);
   assert.match(report, /AGENT_PROOF: hostInvocation\.source, hostInvocation\.invocationId/);
   assert.match(report, /REQUIRED_AGENTS: .*creative-director.*prototype-builder/);
   assert.match(report, /AGENT_PLAN_COMMAND: node <resolved-supervibe-plugin-root>\/scripts\/command-agent-plan\.mjs --command \/supervibe-design/);
   assert.match(report, /AGENT_EMULATION: Do not emulate specialist agents/);
+});
+
+test("workflow routes expose mandatory parallel-agent policy for simple and resume phrasing", () => {
+  const cases = [
+    ["make a plan", "/supervibe-plan", "supervibe_plan"],
+    ["execute reviewed plan", "/supervibe-execute-plan", "supervibe_execute_plan"],
+    ["run project audit", "/supervibe-audit", "supervibe_audit"],
+  ];
+
+  for (const [request, command, intent] of cases) {
+    const match = resolveCommandRequest(request, { pluginRoot: ROOT, projectRoot: ROOT });
+    assert.equal(match.command, command, request);
+    assert.equal(match.intent, intent, request);
+    assert.equal(match.parallelAgentPolicy.mode, "parallel-real-agents", request);
+    assert.equal(match.parallelAgentPolicy.appliesAfterCompactResume, true, request);
+    assert.equal(match.parallelAgentPolicy.appliesToSimpleTasks, true, request);
+
+    const output = formatCommandMatch(match);
+    assert.match(output, /PARALLEL_AGENT_MODE: parallel-real-agents/, request);
+    assert.match(output, /PARALLEL_AGENT_AFTER_COMPACT_RESUME: true/, request);
+    assert.match(output, /PARALLEL_AGENT_SIMPLE_TASKS: true/, request);
+    assert.match(output, /AGENT_FANOUT_REQUIRED: true/, request);
+    assert.match(output, /NEXT: .*Launch real parallel host agents/, request);
+  }
+
+  const resumeOutput = formatCommandMatch({
+    id: "workflow-continuation-fallback",
+    intent: "task_graph_resume",
+    command: "/supervibe-loop --resume-dispatch",
+    confidence: 0.88,
+    doNotSearchProject: true,
+    reason: "static post-compact resume route",
+    nextAction: "Show active workflow/task graph status and the next safe action.",
+  });
+  assert.match(resumeOutput, /PARALLEL_AGENT_MODE: parallel-real-agents/);
+  assert.match(resumeOutput, /PARALLEL_AGENT_AFTER_COMPACT_RESUME: true/);
+  assert.match(resumeOutput, /PARALLEL_AGENT_SIMPLE_TASKS: true/);
+  assert.match(resumeOutput, /NEXT: .*Launch real parallel host agents/);
 });
 
 test("worktree plan loop request resolves to loop command, not flat plan execution", () => {
@@ -420,6 +472,30 @@ test("command catalog routes Russian plugin and agent-system audit requests", ()
   }
 });
 
+test("command resolver separates temporary plan review, execution, and index intent", () => {
+  const auditComplaint = resolveCommandRequest("critical workflow audit: receipt reissue loops, stale Code RAG CodeGraph index, validate work-item graphs missing epic agent receipt, agent subagent tracking, give 10 out of 10 solutions", {
+    pluginRoot: ROOT,
+    projectRoot: ROOT,
+  });
+  assert.equal(auditComplaint.command, "/supervibe-audit --workflow-chain");
+  assert.notEqual(auditComplaint.intent, "code_index_build");
+
+  const temporaryPlanReview = resolveCommandRequest("create a temporary plan with all tasks and run plan reviewers; only the plan for now, I will say when to start work", {
+    pluginRoot: ROOT,
+    projectRoot: ROOT,
+  });
+  assert.equal(temporaryPlanReview.intent, "plan_review");
+  assert.equal(temporaryPlanReview.command, "/supervibe-plan --review");
+  assert.notEqual(temporaryPlanReview.intent, "plan_then_execute");
+
+  const executeReviewedPlan = resolveCommandRequest("start work by the reviewed plan and mark completed tasks", {
+    pluginRoot: ROOT,
+    projectRoot: ROOT,
+  });
+  assert.equal(executeReviewedPlan.intent, "supervibe_execute_plan");
+  assert.equal(executeReviewedPlan.command, "/supervibe-execute-plan");
+});
+
 test("command catalog routes mandatory provider agent repair to provisioning", () => {
   for (const request of [
     "fix agents for every provider and make agents mandatory",
@@ -545,7 +621,7 @@ test("every slash command has a mandatory real-agents profile", () => {
   }
 });
 
-test("command agent plan blocks missing real agents and keeps inline diagnostic only", () => {
+test("command agent plan blocks missing real agents and normalizes inline requests", () => {
   const blocked = buildCommandAgentPlan("/supervibe-design", {
     availableAgentIds: ["supervibe-orchestrator"],
   });
@@ -561,10 +637,12 @@ test("command agent plan blocks missing real agents and keeps inline diagnostic 
     requestedExecutionMode: "inline",
     availableAgentIds: ["supervibe-orchestrator"],
   });
-  assert.equal(inline.executionMode, "inline");
+  assert.equal(inline.requestedExecutionMode, "real-agents");
+  assert.equal(inline.executionMode, "agent-required-blocked");
   assert.equal(inline.durableWritesAllowed, false);
   assert.equal(inline.agentOwnedOutputAllowed, false);
-  assert.match(inline.qualityImpact, /diagnostic\/dry-run only/);
+  assert.equal(inline.inlineDraftAllowed, false);
+  assert.ok(inline.missingAgents.includes("creative-director"));
 });
 
 test("genesis bootstrap-pre-agent mode allows only base scaffold before project agents exist", () => {
@@ -1024,12 +1102,14 @@ test("every command stays agent-first across host providers and blocks inline cl
       requestedExecutionMode: "inline",
       enforceHostProof: true,
     });
-    assert.equal(inline.executionMode, "inline", commandId);
+    assert.equal(inline.requestedExecutionMode, "real-agents", commandId);
+    assert.equal(inline.executionMode, "agent-dispatch-required", commandId);
     assert.equal(inline.agentOwnedOutputAllowed, false, commandId);
     assert.equal(inline.durableWritesAllowed, false, commandId);
-    assert.equal(inline.agentOwnedOutputRequiresReceipts, false, commandId);
-    assert.equal(inline.inlineDraftAllowed, true, commandId);
-    assert.match(inline.qualityImpact, /diagnostic\/dry-run only/i, commandId);
+    assert.equal(inline.agentOwnedOutputRequiresReceipts, true, commandId);
+    assert.equal(inline.inlineDraftAllowed, false, commandId);
+    assert.equal(inline.agentDispatchRequired, true, commandId);
+    assert.match(inline.qualityImpact, /runtime agent receipts|durable outputs remain blocked/i, commandId);
   }
 });
 

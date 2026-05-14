@@ -1,8 +1,16 @@
 export const COMMAND_AGENT_ORCHESTRATION_CONTRACT = Object.freeze({
   ownerAgentId: "supervibe-orchestrator",
   defaultExecutionMode: "real-agents",
-  executionModes: Object.freeze(["real-agents", "hybrid", "inline"]),
+  executionModes: Object.freeze(["real-agents"]),
   blockedMode: "agent-required-blocked",
+  agentFanoutPolicy: Object.freeze({
+    required: true,
+    minParallelAgents: 2,
+    requiredAfterContextCompaction: true,
+    requiredForSimpleTasks: true,
+    compactContinuationMode: "fresh-parallel-agent-wave",
+    simpleTaskMode: "owner-plus-reviewer-or-quality-gate",
+  }),
   requiredPlanFields: Object.freeze(["agentPlan", "requiredAgentIds"]),
   requiredReceiptFields: Object.freeze(["hostInvocation.source", "hostInvocation.invocationId"]),
   inlineScope: "diagnostic/dry-run only",
@@ -325,6 +333,8 @@ const CODEX_SPAWN_PAYLOAD_RULES = Object.freeze([
   "encode Supervibe logical agent role in message, not Codex agent_type.",
   "capture the returned Codex agent id as receipt evidence before issuing workflow receipts.",
   "use fork_context=false only for compact-context spawns that intentionally need agent_type/model/reasoning_effort overrides.",
+  "after compact/resume/context transition, start a fresh parallel agent wave before durable workflow work continues.",
+  "simple or low-risk tasks still require owner plus reviewer/quality-gate fan-out; low risk may reduce roles but must not become single-threaded durable work.",
 ]);
 
 const CODEX_WORKER_AGENT_PATTERNS = Object.freeze([
@@ -618,7 +628,6 @@ export function buildCommandAgentPlan(commandId, {
   const hostDispatch = resolveHostAgentDispatcher(hostAdapterId);
   const hostProofBlocked = Boolean(
     enforceHostProof
-      && requestedMode !== "inline"
       && hostDispatch
       && hostDispatch.status !== "supported",
   );
@@ -626,7 +635,6 @@ export function buildCommandAgentPlan(commandId, {
   const blocked = !bootstrapPreAgent
     && !adaptDryRunPhase
     && !adaptBaselineOnlyApplyPhase
-    && requestedMode !== "inline"
     && (missingAgents.length > 0 || callableAgentsBlocked || hostProofBlocked);
   const executionMode = blocked
     ? COMMAND_AGENT_ORCHESTRATION_CONTRACT.blockedMode
@@ -636,10 +644,8 @@ export function buildCommandAgentPlan(commandId, {
       ? "baseline-only-fast-path"
     : bootstrapPreAgent
       ? "bootstrap-pre-agent"
-    : requestedMode === "inline"
-      ? "inline"
-      : "agent-dispatch-required";
-  const inlineOnly = executionMode === "inline";
+    : "agent-dispatch-required";
+  const inlineOnly = false;
   const realAgentCapable = executionMode === "agent-dispatch-required";
   const bootstrapOnly = executionMode === "bootstrap-pre-agent";
   const dryRunAgentless = executionMode === "dry-run-no-agent";
@@ -652,8 +658,17 @@ export function buildCommandAgentPlan(commandId, {
   const durableWriteProofSource = receiptTrustApplies
     ? (scopedReceiptGateActive ? "scoped-runtime-agent-receipts" : "runtime-agent-receipts")
     : "blocked";
+  const agentFanoutPolicy = copyAgentFanoutPolicy(profile.agentFanoutPolicy);
+  const minimumParallelAgents = Number(agentFanoutPolicy.minParallelAgents || 2);
+  const parallelAgentDispatchRequired = agentFanoutPolicy.required === true
+    && !bootstrapOnly
+    && !dryRunAgentless
+    && !baselineOnly;
+  const compactContinuationAgentDispatchRequired = parallelAgentDispatchRequired
+    && agentFanoutPolicy.requiredAfterContextCompaction === true;
+  const simpleTaskAgentDispatchRequired = parallelAgentDispatchRequired
+    && agentFanoutPolicy.requiredForSimpleTasks === true;
   const codexSpawnPayloads = hostDispatch?.hostAdapterId === "codex"
-    && requestedMode !== "inline"
     && !bootstrapPreAgent
     && !dryRunAgentless
     && !baselineOnly
@@ -669,6 +684,11 @@ export function buildCommandAgentPlan(commandId, {
     executionMode,
     requestedExecutionMode: requestedMode,
     defaultExecutionMode: profile.defaultExecutionMode,
+    agentFanoutPolicy,
+    minimumParallelAgents,
+    parallelAgentDispatchRequired,
+    compactContinuationAgentDispatchRequired,
+    simpleTaskAgentDispatchRequired,
     requiredAgentIds,
     requiredAgentSources: agentSourcesFor(requiredAgentIds, availableAgentSources),
     callableAgentSources: callableAgentSourceRows,
@@ -697,7 +717,7 @@ export function buildCommandAgentPlan(commandId, {
     missingAgents,
     missingCallableAgents,
     hostDispatch,
-    hostProofRequired: requestedMode !== "inline",
+    hostProofRequired: true,
     hostProofBlocked,
     callableAgentsBlocked,
     agentsInstalled: missingAgents.length === 0,
@@ -737,9 +757,7 @@ export function buildCommandAgentPlan(commandId, {
     bootstrapPreAgentAllowed: bootstrapOnly,
     dryRunAgentlessAllowed: dryRunAgentless,
     baselineOnlyFastPathAllowed: baselineOnly,
-    qualityImpact: inlineOnly
-      ? "Inline mode is diagnostic/dry-run only and cannot satisfy specialist output."
-      : receiptTrustApplies
+    qualityImpact: receiptTrustApplies
         ? `${scopedReceiptGateActive ? "Scoped runtime agent receipt gate" : "Runtime agent receipt gate"} is trusted (${activeReceiptStatus.trustedHostAgentReceipts}/${activeReceiptStatus.minHostAgentReceipts} host receipts, ${activeReceiptStatus.agentInvocations}/${activeReceiptStatus.minAgentInvocations} receipt-bound invocations).`
       : dryRunAgentless
         ? "Adapt dry-run is read-only planning and may run without real-agent receipts; apply and verify-agents remain separate gated phases."
@@ -1000,6 +1018,13 @@ export function formatCommandAgentPlan(plan = {}) {
     `AGENT_SELECTION_MODE: ${plan.agentSelectionMode || "standard"}`,
     `EXECUTION_MODE: ${plan.executionMode || "unknown"}`,
     `DEFAULT_MODE: ${plan.defaultExecutionMode || COMMAND_AGENT_ORCHESTRATION_CONTRACT.defaultExecutionMode}`,
+    `AGENT_FANOUT_REQUIRED: ${plan.agentFanoutPolicy?.required === true}`,
+    `AGENT_FANOUT_AFTER_COMPACT: ${plan.agentFanoutPolicy?.requiredAfterContextCompaction === true}`,
+    `AGENT_FANOUT_SIMPLE_TASKS: ${plan.agentFanoutPolicy?.requiredForSimpleTasks === true}`,
+    `AGENT_MIN_PARALLEL: ${plan.minimumParallelAgents || plan.agentFanoutPolicy?.minParallelAgents || 2}`,
+    `PARALLEL_AGENT_DISPATCH_REQUIRED: ${plan.parallelAgentDispatchRequired === true}`,
+    `COMPACT_CONTINUATION_AGENT_DISPATCH_REQUIRED: ${plan.compactContinuationAgentDispatchRequired === true}`,
+    `SIMPLE_TASK_AGENT_DISPATCH_REQUIRED: ${plan.simpleTaskAgentDispatchRequired === true}`,
     `DURABLE_WRITES_ALLOWED: ${plan.durableWritesAllowed === true}`,
     `RECEIPT_GATE: ${plan.receiptGate || "unknown"}`,
     `AGENTS_INSTALLED: ${plan.agentsInstalled === true}`,
@@ -1162,6 +1187,7 @@ export function copyCommandAgentContract(contract = COMMAND_AGENT_ORCHESTRATION_
   return {
     ...contract,
     executionModes: [...(contract.executionModes || [])],
+    agentFanoutPolicy: copyAgentFanoutPolicy(contract.agentFanoutPolicy),
     requiredPlanFields: [...(contract.requiredPlanFields || [])],
     requiredReceiptFields: [...(contract.requiredReceiptFields || [])],
   };
@@ -1183,6 +1209,7 @@ function profile(commandId, requiredAgentIds, options = {}) {
     stageGateReason: options.stageGateReason || null,
     executionModes: COMMAND_AGENT_ORCHESTRATION_CONTRACT.executionModes,
     blockedMode: COMMAND_AGENT_ORCHESTRATION_CONTRACT.blockedMode,
+    agentFanoutPolicy: COMMAND_AGENT_ORCHESTRATION_CONTRACT.agentFanoutPolicy,
     requiredPlanFields: COMMAND_AGENT_ORCHESTRATION_CONTRACT.requiredPlanFields,
     requiredReceiptFields: COMMAND_AGENT_ORCHESTRATION_CONTRACT.requiredReceiptFields,
     inlineScope: COMMAND_AGENT_ORCHESTRATION_CONTRACT.inlineScope,
@@ -1190,6 +1217,10 @@ function profile(commandId, requiredAgentIds, options = {}) {
     emulationPolicy: COMMAND_AGENT_ORCHESTRATION_CONTRACT.emulationPolicy,
     durableOutputPolicy: COMMAND_AGENT_ORCHESTRATION_CONTRACT.durableOutputPolicy,
   });
+}
+
+function copyAgentFanoutPolicy(policy = COMMAND_AGENT_ORCHESTRATION_CONTRACT.agentFanoutPolicy) {
+  return { ...(policy || {}) };
 }
 
 function dispatcher(fields) {
@@ -1206,6 +1237,7 @@ function copyCommandAgentProfile(profile) {
     requiredAgentIds: [...profile.requiredAgentIds],
     lowRiskRequiredAgentIds: [...(profile.lowRiskRequiredAgentIds || profile.requiredAgentIds)],
     baselineOnlyRequiredAgentIds: [...(profile.baselineOnlyRequiredAgentIds || [])],
+    agentFanoutPolicy: copyAgentFanoutPolicy(profile.agentFanoutPolicy),
     dynamicAgentSelectors: [...profile.dynamicAgentSelectors],
     selectorInputFields: [...(profile.selectorInputFields || COMMAND_AGENT_SELECTOR_INPUT_FIELDS)],
     immediateAgentIds: [...(profile.immediateAgentIds || [])],
@@ -1299,7 +1331,6 @@ function nextActionForPlan(plan = {}) {
   if (plan.executionMode === "baseline-only-fast-path") {
     return "Run baseline-only adapt apply and deterministic validators; real-agent dispatch is not required for zero-change metadata refresh.";
   }
-  if (plan.executionMode === "inline") return "Diagnostic/dry-run only; do not claim specialist output.";
   if (plan.agentReceiptsTrusted) return "Runtime agent receipt gate is already trusted; proceed with the command-specific verified next action.";
   if (plan.scopedReceiptGateActive) return "Invoke required host agents for this command/handoff, capture invocation ids, then issue scoped workflow receipts before durable writes or completion claims.";
   if (plan.stageGate && plan.immediateAgentIds?.length && plan.deferredAgentIds?.length) {

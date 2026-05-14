@@ -118,16 +118,19 @@ worker/reviewer wait is not valid progress.
 Heavy verification commands are final-epic gates, not per-task loop checks.
 Commands such as `npm run check`, `npm test`, `npm run check:release-strict`,
 `npm run validate:epic-completion`, broad `node --test`, and known global
-quality sweeps must be deferred while any epic work remains open. During the
-open epic, workers may run targeted module tests and lightweight validators
-only. The deferred heavy commands must be reported in loop state and run after
-the epic is complete or when explicitly allowed by a final verification mode.
+quality sweeps must be deferred while any epic work remains open. For plan,
+graph, and task development, all tests and validators are final release-gate
+work: workers must report them as deferred release-gate commands in loop state,
+not run targeted tests, lightweight validators, or readiness validators during
+development. The deferred commands run only after the epic is complete or when
+explicitly allowed by a final verification mode.
 
 Continuation trigger phrases in Russian and English must read
 `.supervibe/memory/active-workflow.json`
 before the command catalog. If active state is valid, the router must execute the
 recorded next command. If active state is absent or invalid, it must route to
-`/supervibe-loop --status` and report close candidates instead of guessing a new
+`/supervibe-loop --resume-dispatch` so the runtime either dispatches the next
+parallel agent wave or reports that no active graph exists, instead of guessing a
 producer command. After plan review passes, the default next command is
 atomization; after atomization, the default next command is `/supervibe-ui` so
 the user can inspect epic and task progress before execution continues.

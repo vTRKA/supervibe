@@ -73,6 +73,11 @@ test("plan atomization adds an epic-agent receipt contract for durable reviewed 
   assert.equal(graph.metadata.epicAgentContract.required, true);
   assert.equal(graph.metadata.epicAgentContract.trust, "runtime-issued-host-agent-receipt");
   assert.ok(graph.metadata.epicAgentContract.allowedAgentIds.includes("stack-developer"));
+  assert.equal(graph.metadata.graphProducerProof.required, true);
+  assert.equal(graph.metadata.graphProducerProof.command, "/supervibe-loop");
+  assert.equal(graph.metadata.graphProducerProof.stage, "work-item-atomization");
+  assert.equal(graph.metadata.graphProducerProof.subjectId, "work-item-graph-builder");
+  assert.equal(graph.metadata.graphProducerProof.outputBinding.artifact, "graph.json");
 });
 
 test("plan atomization adds task, reviewer, and evidence score fields to work items and loop tasks", () => {
@@ -168,8 +173,47 @@ test("epic-agent contract rejects durable graph without a trusted host-agent rec
     const saved = JSON.parse(await readFile(graphPath, "utf8"));
     const report = validateEpicAgentContract({ rootDir: root, graph: saved, graphPath });
 
+    const missing = report.issues.find((issue) => issue.code === "missing-epic-agent-receipt");
     assert.equal(report.pass, false);
-    assert.ok(report.issues.some((issue) => issue.code === "missing-epic-agent-receipt"));
+    assert.ok(missing);
+    assert.equal(missing.repairScope.command, "/supervibe-loop");
+    assert.equal(missing.repairScope.stage, "work-item-atomization");
+    assert.equal(missing.repairScope.graphId, "epic-agent-contract");
+    assert.match(missing.repairScope.outputArtifact, /\.supervibe\/memory\/work-items\/epic-agent-contract\/graph\.json$/);
+    assert.ok(missing.missingProducerProofFields.includes("hostInvocation.invocationId"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("epic-agent contract accepts first-class graph producer proof without a legacy receipt", async () => {
+  const root = await mkdtemp(join(tmpdir(), "epic-agent-contract-proof-"));
+  try {
+    const graph = atomizePlanToWorkItems(PLAN, {
+      planPath: ".supervibe/artifacts/plans/agent-contract.md",
+      epicId: "epic-agent-contract-proof",
+      planReviewPassed: true,
+      graphProducerProof: {
+        command: "/supervibe-loop",
+        stage: "work-item-atomization",
+        subjectType: "agent",
+        subjectId: "work-item-graph-builder",
+        agentId: "work-item-graph-builder",
+        hostInvocation: {
+          source: "codex-spawn-agent",
+          invocationId: "codex-graph-proof-1",
+        },
+      },
+    });
+    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: root });
+    const saved = JSON.parse(await readFile(graphPath, "utf8"));
+    const report = validateEpicAgentContract({ rootDir: root, graph: saved, graphPath });
+
+    assert.equal(report.pass, true);
+    assert.equal(report.proofMode, "graph-producer-proof");
+    assert.equal(report.trustedReceipts.length, 0);
+    assert.equal(report.producerProof.subjectId, "work-item-graph-builder");
+    assert.equal(report.producerProof.hostInvocation.invocationId, "codex-graph-proof-1");
   } finally {
     await rm(root, { recursive: true, force: true });
   }

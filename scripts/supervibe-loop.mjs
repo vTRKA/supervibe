@@ -190,6 +190,8 @@ function parseArgs(argv) {
     "create-work-item",
     "claim-ready",
     "dispatch-wave",
+    "resume-dispatch",
+    "status-only-fallback",
     "eval",
     "eval-live",
     "approval-receipts",
@@ -565,9 +567,10 @@ function buildReadyAssignmentDispatches(tasks = [], {
           `Supervibe work item ${dispatch.taskId}: ${task.title || task.goal || "assigned task"}.`,
           "You are not alone in the codebase; do not revert edits made by others and keep to your assigned write set.",
           `Owned write set: ${writeSet.join(", ")}`,
-          `Run only targeted verification: ${verificationPolicy.targetedCommands.join(" && ") || "none available; request a testable owner path"}.`,
-          `Do not run deferred full verification: ${verificationPolicy.deferredFullCommands.join(" && ") || "none"}.`,
-          "Final response must list changed file paths, targeted verification run, and any blockers.",
+          "Do not run tests or validators during development for plan/graph/task work; they are release-gate only.",
+          `Non-test/non-validator evidence allowed now: ${verificationPolicy.targetedCommands.join(" && ") || "none; collect implementation evidence and defer test/validator execution"}.`,
+          `Deferred test/validator/full verification: ${verificationPolicy.deferredFullCommands.join(" && ") || "none"}.`,
+          "Final response must list changed file paths, non-test/non-validator evidence, deferred tests/validators, and any blockers.",
         ].join("\n"),
       },
     };
@@ -631,6 +634,30 @@ function loadWriteSetLocksForState(state = {}, args = {}) {
   ];
 }
 
+function resolveMinimumParallelAgentsForDispatch(args = {}) {
+  return Math.max(2, positiveInteger(args["min-parallel-agents"] || args["min-parallel"], 2));
+}
+
+function enforceMinimumParallelDispatchWave(dispatches = [], { minimumParallelAgents = 2, reason = "parallel agent wave required" } = {}) {
+  const assigned = dispatches.filter((dispatch) => dispatch.status === "assigned");
+  if (assigned.length === 0 || assigned.length >= minimumParallelAgents) return dispatches;
+  const blockedReason = `${reason}; minimumParallelAgents=${minimumParallelAgents}, assigned=${assigned.length}`;
+  return dispatches.map((dispatch) => {
+    if (dispatch.status !== "assigned") return dispatch;
+    return {
+      ...dispatch,
+      status: "blocked",
+      assignmentBlocked: true,
+      blockedReason,
+      writeSetLock: null,
+      workerAssignmentPayload: null,
+      reviewerAssignmentPayload: null,
+      codexSpawnPayload: null,
+      assignmentExplanation: null,
+    };
+  });
+}
+
 function isActiveClaimLock(claim = {}, nowMs = Date.now()) {
   const status = String(claim.status || "").toLowerCase();
   if (!["active", "claimed", "in_progress"].includes(status)) return false;
@@ -679,6 +706,7 @@ async function main() {
   const rootDir = process.cwd();
   let precomputedCompletionGraph = null;
   let precomputedCompletionGraphPath = null;
+  if (args["resume-dispatch"]) args["dispatch-wave"] = true;
 
   if (args.help) {
     printHelp();
@@ -906,7 +934,16 @@ async function main() {
     const graphPath = args.file
       ? resolve(rootDir, args.file)
       : await resolveActiveWorkItemGraphPath({ rootDir });
-    if (!graphPath) throw new Error("dispatch-wave requires --file <graph.json> or an active work graph");
+    if (!graphPath) {
+      if (args["resume-dispatch"] || args["status-only-fallback"]) {
+        console.log("SUPERVIBE_RESUME_DISPATCH");
+        console.log("STATUS: no-active-work-graph");
+        console.log("ASSIGNED: none");
+        console.log("NEXT_ACTION: create or atomize a reviewed work-item graph before dispatching a parallel agent wave");
+        return;
+      }
+      throw new Error("dispatch-wave requires --file <graph.json> or an active work graph");
+    }
     const graph = JSON.parse(await readFile(graphPath, "utf8"));
     const schedulerPolicy = resolveSchedulerPolicy({ args, rootDir, activeGraph: graph });
     const dispatches = buildReadyAssignmentDispatches(tasksReadyForAssignment(graph), {
@@ -916,7 +953,12 @@ async function main() {
       commandId: "supervibe-loop-dispatch-wave",
       writeSetLocks: loadWriteSetLocksForState(graph, args),
     });
-    const assigned = dispatches.filter((dispatch) => dispatch.status === "assigned");
+    const minimumParallelAgents = resolveMinimumParallelAgentsForDispatch(args);
+    const fanoutCheckedDispatches = enforceMinimumParallelDispatchWave(dispatches, {
+      minimumParallelAgents,
+      reason: "real parallel agent wave required for durable plan/graph/task workflows",
+    });
+    const assigned = fanoutCheckedDispatches.filter((dispatch) => dispatch.status === "assigned");
     const claimResults = [];
     if (args.apply && !args["dry-run"] && !args.preview) {
       if (assigned.length > 0) {
@@ -949,8 +991,11 @@ async function main() {
       graphPath,
       applied: Boolean(args.apply && !args["dry-run"] && !args.preview),
       schedulerPolicy,
+      minimumParallelAgents,
+      parallelDispatchRequired: true,
+      parallelDispatchBlocked: dispatches.some((dispatch) => dispatch.status === "assigned") && assigned.length === 0,
       assignedTaskIds: assigned.map((dispatch) => dispatch.taskId),
-      dispatches,
+      dispatches: fanoutCheckedDispatches,
       claimResults,
     };
     if (args.json) console.log(JSON.stringify(report, null, 2));
@@ -960,7 +1005,7 @@ async function main() {
       console.log(`APPLIED: ${report.applied}`);
       console.log(formatSchedulerPolicy(schedulerPolicy));
       console.log(`ASSIGNED: ${report.assignedTaskIds.join(", ") || "none"}`);
-      for (const dispatch of dispatches) {
+      for (const dispatch of fanoutCheckedDispatches) {
         if (dispatch.assignmentBlocked) console.log(`${dispatch.taskId}: ${dispatch.status} -> ${dispatch.blockedReason}`);
         else console.log(`${dispatch.taskId}: ${dispatch.primaryAgentId} writeSet=${dispatch.writeSet.join(",")}`);
       }
@@ -2645,6 +2690,24 @@ function normalizeCommandList(value) {
     .filter(Boolean);
 }
 
+function uniqueCommandList(commands = []) {
+  const seen = new Set();
+  const out = [];
+  for (const command of commands) {
+    const value = String(command || "").trim();
+    if (!value) continue;
+    const key = normalizeVerificationCommandKey(value);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(value);
+  }
+  return out;
+}
+
+function normalizeVerificationCommandKey(command = "") {
+  return String(command || "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
 function isFullVerificationCommand(command = "") {
   const text = String(command || "").trim();
   return [
@@ -2653,9 +2716,12 @@ function isFullVerificationCommand(command = "") {
     /^pnpm\s+(run\s+)?test\b/i,
     /^yarn\s+(run\s+)?test\b/i,
     /^bun\s+test\b/i,
-    /^node\s+--test\s*$/i,
-    /^vitest\s*$/i,
-    /^npx\s+vitest\s*$/i,
+    /^node\s+--test(?:\s|$)/i,
+    /^vitest(?:\s|$)/i,
+    /^npx\s+vitest(?:\s|$)/i,
+    /^pytest(?:\s|$)/i,
+    /^npm\s+run\s+validate:/i,
+    /^node\s+scripts[\\/]validate-/i,
   ].some((pattern) => pattern.test(text));
 }
 
@@ -2673,8 +2739,11 @@ function taskAllowsFullVerification(task = {}) {
 
 function createTaskLocalVerificationPolicy(task = {}) {
   const declaredCommands = normalizeCommandList(task.verificationCommands || task.verificationCommand || task.verification || task.tests);
-  const fullCommands = declaredCommands.filter(isFullVerificationCommand);
-  const targetedCommands = declaredCommands.filter((command) => !isFullVerificationCommand(command));
+  const explicitlyDeferredCommands = normalizeCommandList(task.deferredVerificationCommands || task.deferredFullVerificationCommands || task.finalVerificationCommands);
+  const explicitDeferredKeys = new Set(explicitlyDeferredCommands.map(normalizeVerificationCommandKey));
+  const allDeclaredCommands = uniqueCommandList([...declaredCommands, ...explicitlyDeferredCommands]);
+  const fullCommands = allDeclaredCommands.filter((command) => isFullVerificationCommand(command) || explicitDeferredKeys.has(normalizeVerificationCommandKey(command)));
+  const targetedCommands = allDeclaredCommands.filter((command) => !isFullVerificationCommand(command) && !explicitDeferredKeys.has(normalizeVerificationCommandKey(command)));
   const fullSuiteAllowed = taskAllowsFullVerification(task);
   const deferredFullCommands = fullSuiteAllowed ? [] : fullCommands;
   const allowedFullCommands = fullSuiteAllowed ? fullCommands : [];
@@ -2683,13 +2752,15 @@ function createTaskLocalVerificationPolicy(task = {}) {
     scope: fullSuiteAllowed ? "phase-or-release-gate" : "task-local",
     targetedOnly: !fullSuiteAllowed,
     fullSuiteAllowed,
-    fullSuitePolicy: "Full verification commands are reserved for phase or release gates; ordinary task/epic workers must run targeted commands only.",
+    testExecutionAllowed: fullSuiteAllowed,
+    testsDeferredUntil: fullSuiteAllowed ? null : "release-handoff",
+    fullSuitePolicy: "All test and validator execution for plan/graph/task work is reserved for the final phase or release gate; ordinary task/epic workers may collect non-test/non-validator evidence only.",
     targetedCommands,
     fullVerificationCommands: allowedFullCommands,
     deferredFullCommands,
-    workerInstruction: targetedCommands.length > 0
-      ? "Run only the targeted verification commands listed for this task; do not run npm run check from a normal task/epic worker assignment."
-      : "No targeted verification command is available; do not run full checks, and request a testable owner path before claiming completion.",
+    workerInstruction: fullSuiteAllowed
+      ? "This is a final phase/release gate; tests and validators may run after child work is complete."
+      : "Do not run tests or validators during development. Use only non-test/non-validator evidence listed for this task and defer node --test, npm test, npm run check, npm run validate:*, node scripts/validate-*, and equivalents to release-handoff.",
   };
 }
 
@@ -2713,6 +2784,8 @@ function formatTaskLocalVerificationPolicy(policy = {}) {
     `TARGETED_ONLY: ${policy.targetedOnly !== false}`,
     `TARGETED_COMMANDS: ${(policy.targetedCommands || []).join(" && ") || "none"}`,
     `DEFERRED_FULL_COMMANDS: ${(policy.deferredFullCommands || []).join(" && ") || "none"}`,
+    `TEST_EXECUTION_ALLOWED: ${policy.testExecutionAllowed === true}`,
+    `TESTS_DEFERRED_UNTIL: ${policy.testsDeferredUntil || "none"}`,
     `FULL_VERIFICATION_POLICY: ${policy.fullSuitePolicy || "full checks reserved for phase or release gates"}`,
   ].join("\n");
 }

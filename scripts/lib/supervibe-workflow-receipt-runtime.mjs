@@ -11,6 +11,16 @@ import {
   createTraceContext,
   createTraceSpan,
 } from "./supervibe-runtime-trace.mjs";
+import {
+  createWorkflowReceiptEvidenceSnapshot,
+  validateWorkflowReceiptEvidenceSnapshot,
+  workflowReceiptLiveOutputDiagnostics,
+} from "./supervibe-receipt-snapshot-store.mjs";
+import {
+  findWorkflowReceiptIndexMatches,
+  rebuildWorkflowReceiptIndex,
+  upsertWorkflowReceiptIndex,
+} from "./supervibe-receipt-index.mjs";
 
 export const WORKFLOW_RECEIPT_ISSUER = "supervibe-workflow-receipt-runtime";
 
@@ -62,6 +72,7 @@ export async function issueWorkflowInvocationReceipt({
   inputEvidence = [],
   outputArtifacts = [],
   allowMutableOutputArtifacts = false,
+  snapshotEvidence = true,
   startedAt,
   completedAt = null,
   runTimestamp = null,
@@ -114,6 +125,21 @@ export async function issueWorkflowInvocationReceipt({
     graphId,
     workGraphId,
   });
+  const evidenceSnapshot = snapshotEvidence === false
+    ? null
+    : await createWorkflowReceiptEvidenceSnapshot({
+      rootDir,
+      receiptId,
+      command,
+      subjectType,
+      subjectId,
+      stage,
+      handoffId,
+      createdAt: issuedAt,
+      inputHashes,
+      outputHashes,
+      workItemBinding,
+    });
 
   const runtime = {
     issuer: WORKFLOW_RECEIPT_ISSUER,
@@ -144,8 +170,19 @@ export async function issueWorkflowInvocationReceipt({
     hostInvocation: normalizedHostInvocation,
     runtime,
   };
+  if (evidenceSnapshot) canonical.evidenceSnapshot = evidenceSnapshot;
   if (workItemBinding) canonical.workItemBinding = workItemBinding;
-  if (recovery) canonical.recovery = normalizeRecoveryMetadata(recovery);
+  const normalizedRecovery = normalizeRecoveryMetadata(recovery);
+  if (normalizedRecovery) {
+    canonical.recovery = normalizedRecovery;
+    if (normalizedRecovery.originalReceiptId) {
+      canonical.supersedes = {
+        receiptId: normalizedRecovery.originalReceiptId,
+        receiptPath: normalizedRecovery.originalReceiptPath || null,
+        reason: normalizedRecovery.reason || null,
+      };
+    }
+  }
   const canonicalHash = sha256(stableStringify(canonical));
   const signature = signCanonical(canonical, resolvedSecret);
   const receipt = {
@@ -177,6 +214,7 @@ export async function issueWorkflowInvocationReceipt({
       signature,
       issuedAt,
     });
+    await upsertWorkflowReceiptIndex(rootDir, { ...receipt, __file: relReceiptPath }, relReceiptPath);
     return { relArtifactLinksPath: relLinksPath, ledgerEntry: entry };
   });
 
@@ -224,9 +262,10 @@ export async function issueWorkflowInvocationReceipt({
 
 export function validateWorkflowReceiptTrust(rootDir = process.cwd(), receipt = {}, options = {}) {
   const issues = [];
+  const diagnostics = [];
   const secret = options.secret ?? readReceiptSecretSync(rootDir);
   if (!receipt?.receiptId) {
-    return { pass: false, issues: ["receiptId missing"] };
+    return { pass: false, issues: ["receiptId missing"], diagnostics };
   }
   if (receipt.runtime?.issuer !== WORKFLOW_RECEIPT_ISSUER) {
     issues.push("runtime issuer missing or invalid");
@@ -256,15 +295,13 @@ export function validateWorkflowReceiptTrust(rootDir = process.cwd(), receipt = 
     }
   }
 
-  for (const output of receipt.outputHashes || []) {
-    const current = hashEvidencePath(rootDir, output.path, { required: false });
-    if (!current.exists) {
-      issues.push(`output artifact missing: ${output.path}`);
-      continue;
-    }
-    if (current.sha256 !== output.sha256) {
-      issues.push(`output artifact hash mismatch: ${output.path}`);
-    }
+  const snapshotCheck = validateWorkflowReceiptEvidenceSnapshot(rootDir, receipt);
+  if (!snapshotCheck.pass) {
+    issues.push(...snapshotCheck.issues);
+  } else if (snapshotCheck.legacy) {
+    issues.push(...liveOutputTrustIssues(rootDir, receipt));
+  } else {
+    diagnostics.push(...workflowReceiptLiveOutputDiagnostics(rootDir, receipt));
   }
 
   const ledgerCheck = validateReceiptLedgerEntry(rootDir, receipt, options);
@@ -282,7 +319,7 @@ export function validateWorkflowReceiptTrust(rootDir = process.cwd(), receipt = 
     }
   }
 
-  return { pass: issues.length === 0, issues };
+  return { pass: issues.length === 0, issues, diagnostics };
 }
 
 export function validateWorkflowReceiptLedgerChain(rootDir = process.cwd(), options = {}) {
@@ -378,11 +415,22 @@ export function workflowReceiptMatchesScope(receipt = {}, options = {}) {
 
 export function validateScopedWorkflowReceipts(rootDir = process.cwd(), options = {}) {
   const scope = normalizeWorkflowReceiptScope(options);
-  const allReceipts = readAllWorkflowReceipts(rootDir);
+  const indexMatches = findWorkflowReceiptIndexMatches(rootDir, scope);
+  const allReceipts = indexMatches.available
+    ? readWorkflowReceiptsByPaths(rootDir, indexMatches.receiptPaths)
+    : readAllWorkflowReceipts(rootDir);
   const receipts = allReceipts.filter((receipt) => workflowReceiptMatchesScope(receipt, scope));
   const issues = [];
+  const diagnostics = [];
   for (const receipt of receipts) {
     const trust = validateWorkflowReceiptTrust(rootDir, receipt, { ...options, skipLedgerChain: true });
+    for (const message of trust.diagnostics || []) {
+      diagnostics.push({
+        code: "workflow-receipt-live-output-diagnostic",
+        file: receipt.__file,
+        message: receipt.__file + ": " + message,
+      });
+    }
     for (const message of trust.issues) {
       issues.push({
         code: /artifact link manifest missing|artifact link missing/i.test(message)
@@ -404,22 +452,32 @@ export function validateScopedWorkflowReceipts(rootDir = process.cwd(), options 
     pass: issues.length === 0,
     checked: receipts.length,
     receipts: receipts.length,
-    totalReceipts: allReceipts.length,
+    totalReceipts: indexMatches.available ? indexMatches.totalReceipts : allReceipts.length,
     ledgerEntries: null,
     scopeMode: "scoped",
+    indexMode: indexMatches.available ? "indexed" : "full-scan-fallback",
     scope,
     batchingOptimization: "scoped-trust-fast-path",
     nextRepairCommand: repairCommandForReceiptIssues(issues),
     issues,
+    diagnostics,
   };
 }
 
 export function validateWorkflowReceipts(rootDir = process.cwd(), options = {}) {
   const receipts = readAllWorkflowReceipts(rootDir);
   const issues = [];
+  const diagnostics = [];
   const ledger = validateWorkflowReceiptLedgerChain(rootDir, options);
   for (const receipt of receipts) {
     const trust = validateWorkflowReceiptTrust(rootDir, receipt, { ...options, skipLedgerChain: true });
+    for (const message of trust.diagnostics || []) {
+      diagnostics.push({
+        code: "workflow-receipt-live-output-diagnostic",
+        file: receipt.__file,
+        message: receipt.__file + ": " + message,
+      });
+    }
     for (const message of trust.issues) {
       issues.push({
         code: /artifact link manifest missing|artifact link missing/i.test(message)
@@ -444,6 +502,122 @@ export function validateWorkflowReceipts(rootDir = process.cwd(), options = {}) 
     ledgerEntries: ledger.entries,
     nextRepairCommand: repairCommandForReceiptIssues(issues),
     issues,
+    diagnostics,
+  };
+}
+
+
+export async function backfillWorkflowReceiptEvidenceSnapshots({
+  rootDir = process.cwd(),
+  apply = false,
+  runTimestamp = null,
+  secret = null,
+  limit = 0,
+} = {}) {
+  const timestamp = runTimestamp || new Date().toISOString();
+  const resolvedSecret = secret ?? readReceiptSecretSync(rootDir);
+  const receipts = readAllWorkflowReceipts(rootDir).filter((receipt) => !receipt.__invalidJson);
+  const missingSnapshot = receipts.filter((receipt) => !receipt.evidenceSnapshot);
+  const candidates = [];
+  const skipped = [];
+  if (!resolvedSecret) {
+    for (const receipt of missingSnapshot) {
+      skipped.push({ receiptPath: receipt.__file, reason: "receipt runtime secret missing" });
+    }
+  } else {
+    for (const receipt of missingSnapshot) {
+      const trust = validateWorkflowReceiptTrust(rootDir, receipt, { secret: resolvedSecret, skipLedgerChain: true });
+      if (!trust.pass) {
+        skipped.push({ receiptPath: receipt.__file, reason: trust.issues.join("; ") || "receipt not trusted" });
+        continue;
+      }
+      candidates.push(receipt);
+    }
+  }
+  const max = Number(limit || 0);
+  const selected = max > 0 ? candidates.slice(0, max) : candidates;
+  const recoveryRoot = normalizeRelPath(".supervibe/artifacts/_workflow-recovery/receipt-snapshot-backfill/" + sanitizeId(timestamp));
+  const migrated = [];
+  let ledger = null;
+  let reportPath = null;
+
+  if (apply && selected.length > 0) {
+    for (const receipt of selected) {
+      const receiptRel = normalizeRelPath(receipt.__file);
+      const receiptAbs = join(rootDir, ...receiptRel.split("/"));
+      const backupRel = normalizeRelPath(recoveryRoot + "/receipts/" + receiptRel);
+      const backupAbs = join(rootDir, ...backupRel.split("/"));
+      await mkdir(dirname(backupAbs), { recursive: true });
+      await writeFile(backupAbs, JSON.stringify(stripRuntimeFields(receipt), null, 2) + "\n", "utf8");
+      const snapshot = await createWorkflowReceiptEvidenceSnapshot({
+        rootDir,
+        receiptId: receipt.receiptId,
+        command: receipt.command,
+        subjectType: receipt.subjectType,
+        subjectId: receipt.subjectId,
+        stage: receipt.stage,
+        handoffId: receipt.handoffId,
+        createdAt: timestamp,
+        inputHashes: receipt.inputHashes || [],
+        outputHashes: receipt.outputHashes || [],
+        workItemBinding: receipt.workItemBinding || null,
+      });
+      const nextReceipt = {
+        ...stripRuntimeFields(receipt),
+        evidenceSnapshot: snapshot,
+      };
+      const canonical = canonicalReceiptForVerification(nextReceipt);
+      const canonicalHash = sha256(stableStringify(canonical));
+      nextReceipt.runtime = {
+        ...(nextReceipt.runtime || {}),
+        canonicalHash,
+        signature: signCanonical(canonical, resolvedSecret),
+        keyId: keyIdForSecret(resolvedSecret),
+      };
+      await writeFile(receiptAbs, JSON.stringify(nextReceipt, null, 2) + "\n", "utf8");
+      migrated.push({
+        receiptId: receipt.receiptId,
+        receiptPath: receiptRel,
+        backupPath: backupRel,
+        snapshotPath: snapshot.path,
+        beforeCanonicalHash: receipt.runtime?.canonicalHash || null,
+        afterCanonicalHash: canonicalHash,
+      });
+    }
+    ledger = await rebuildWorkflowReceiptLedger({ rootDir, secret: resolvedSecret, pruneStale: false });
+  }
+
+  if (apply) {
+    reportPath = normalizeRelPath(recoveryRoot + "/report.json");
+    const reportAbs = join(rootDir, ...reportPath.split("/"));
+    await mkdir(dirname(reportAbs), { recursive: true });
+    await writeFile(reportAbs, JSON.stringify({
+      schemaVersion: 1,
+      operation: "receipt-snapshot-backfill",
+      appliedAt: timestamp,
+      checked: receipts.length,
+      missingSnapshot: missingSnapshot.length,
+      eligible: candidates.length,
+      migrated: migrated.length,
+      skipped,
+      ledger,
+    }, null, 2) + "\n", "utf8");
+  }
+
+  return {
+    schemaVersion: 1,
+    apply,
+    checked: receipts.length,
+    missingSnapshot: missingSnapshot.length,
+    eligible: candidates.length,
+    selected: selected.length,
+    migrated: migrated.length,
+    remainingMissingSnapshot: Math.max(0, missingSnapshot.length - migrated.length),
+    skipped,
+    migratedReceipts: migrated,
+    recoveryRoot: apply ? recoveryRoot : null,
+    reportPath,
+    ledger,
   };
 }
 
@@ -584,6 +758,7 @@ export async function rebuildWorkflowReceiptLedger({
     }
     await mkdir(dirname(ledgerPath), { recursive: true });
     await writeFile(ledgerPath, `${lines.join("\n")}${lines.length ? "\n" : ""}`, "utf8");
+    await rebuildWorkflowReceiptIndex(rootDir, retained.map((item) => ({ ...item.receipt, __file: item.receipt.__file })));
   });
   return {
     pass: receipts.every((item) => item.signatureIssues.length === 0) && (!pruneStale || receipts.every((item) => item.driftIssues.length === 0 || !retained.includes(item))),
@@ -615,6 +790,14 @@ function validateReceiptLedgerEntry(rootDir, receipt, options = {}) {
 }
 
 function receiptArtifactDriftIssues(rootDir, receipt = {}) {
+  const snapshotCheck = validateWorkflowReceiptEvidenceSnapshot(rootDir, receipt);
+  if (!snapshotCheck.legacy) {
+    return snapshotCheck.pass ? [] : snapshotCheck.issues;
+  }
+  return liveOutputTrustIssues(rootDir, receipt);
+}
+
+function liveOutputTrustIssues(rootDir, receipt = {}) {
   const issues = [];
   for (const output of receipt.outputHashes || []) {
     const current = hashEvidencePath(rootDir, output.path, { required: false });
@@ -949,7 +1132,9 @@ function readAllWorkflowReceipts(rootDir) {
       const rel = normalizeRelPath(relative(rootDir, file));
       return file.endsWith(".json")
         && !file.endsWith(ARTIFACT_LINKS_FILE)
-        && rel.includes("/_workflow-invocations/");
+        && rel.includes("/_workflow-invocations/")
+        && !rel.includes("/_workflow-recovery/")
+        && !rel.includes("/_workflow-receipt-snapshots/");
     })
     .map((file) => {
       try {
@@ -963,6 +1148,21 @@ function readAllWorkflowReceipts(rootDir) {
     });
 }
 
+function readWorkflowReceiptsByPaths(rootDir, receiptPaths = []) {
+  return uniqueStrings(receiptPaths).map((receiptPath) => {
+    const relPath = normalizeRelPath(receiptPath);
+    const absPath = join(rootDir, ...relPath.split("/"));
+    try {
+      return {
+        ...JSON.parse(readFileSync(absPath, "utf8")),
+        __file: relPath,
+      };
+    } catch {
+      return { __file: relPath, __invalidJson: true };
+    }
+  });
+}
+
 function walk(dir, files) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name);
@@ -974,6 +1174,13 @@ function walk(dir, files) {
     if (statSync(full).size > 1_000_000) continue;
     files.push(full);
   }
+}
+
+function stripRuntimeFields(receipt = {}) {
+  const clone = { ...receipt };
+  delete clone.__file;
+  delete clone.__invalidJson;
+  return clone;
 }
 
 function canonicalReceiptForVerification(receipt) {
@@ -1002,11 +1209,17 @@ function canonicalReceiptForVerification(receipt) {
     hostInvocation: receipt.hostInvocation || null,
     runtime,
   };
+  if (Object.prototype.hasOwnProperty.call(receipt, "evidenceSnapshot")) {
+    canonical.evidenceSnapshot = receipt.evidenceSnapshot || null;
+  }
   if (Object.prototype.hasOwnProperty.call(receipt, "workItemBinding")) {
     canonical.workItemBinding = receipt.workItemBinding || null;
   }
   if (Object.prototype.hasOwnProperty.call(receipt, "recovery")) {
     canonical.recovery = receipt.recovery || null;
+  }
+  if (Object.prototype.hasOwnProperty.call(receipt, "supersedes")) {
+    canonical.supersedes = receipt.supersedes || null;
   }
   return canonical;
 }

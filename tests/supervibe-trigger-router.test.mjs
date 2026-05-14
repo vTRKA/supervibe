@@ -105,7 +105,7 @@ describe("supervibe trigger router", () => {
       ["измени эпик", "task_graph_edit", "/supervibe-loop --edit <task-id> --preview"],
       ["удали эпик", "task_graph_delete", "/supervibe-loop --delete <task-id> --preview"],
       ["пропусти задачу", "task_graph_skip", "/supervibe-loop --skip <task-id> --preview"],
-      ["вернуться к проекту с задачами", "task_graph_resume", "/supervibe-loop --status"],
+      ["вернуться к проекту с задачами", "task_graph_resume", "/supervibe-loop --resume-dispatch"],
     ];
 
     for (const [request, intent, command] of cases) {

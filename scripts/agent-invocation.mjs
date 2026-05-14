@@ -24,6 +24,10 @@ import {
   defaultRuntimeCleanupRegistryPath,
   registerRuntimeCleanupTarget,
 } from "./lib/runtime-cleanup-registry.mjs";
+import {
+  removeAgentLeaseForInvocation,
+  upsertAgentLeaseFromInvocation,
+} from "./lib/supervibe-agent-lease-registry.mjs";
 
 const HOST_INVOCATION_SOURCES = Object.freeze({
   claude: "claude-code-task-hook",
@@ -143,6 +147,14 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         subtool_usage: parseKeyValueNumbers(options["subtool-usage"] || options.subtoolUsage),
         retrievalPolicy: parseRetrievalPolicy(options["retrieval-policy"] || options.retrievalPolicy),
         evidence: buildEvidenceFromOptions(options),
+        command: options.command || options.workflow || null,
+        stage: options.stage || options["stage-id"] || null,
+        handoff_id: options["handoff-id"] || options.handoff || null,
+        workflow_run_id: options["workflow-run-id"] || options.workflowRunId || null,
+        task_id: options["task-id"] || options["work-item-id"] || null,
+        subject_type: options["subject-type"] || "agent",
+        subject_id: options["subject-id"] || agentId,
+        output_artifacts: splitList(options["output-artifacts"] || options.outputArtifacts),
       });
       receiptResult = await maybeIssueWorkflowReceipt({
         options,
@@ -155,6 +167,16 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         traceId: traceContext.traceId,
         spanId: record.span_id,
       });
+      await maybeRecordAgentLease({
+        rootDir,
+        host,
+        source,
+        invocationId,
+        agentId,
+        taskSummary,
+        record,
+        options,
+      });
       await maybeRegisterHostManagedSubagentCleanup({
         rootDir,
         host,
@@ -162,6 +184,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         invocationId,
         agentId,
         record,
+        options,
       });
       const span = createTraceSpan({
         name: "supervibe.agent.invocation",
@@ -198,6 +221,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.log(`TRACE_ID: ${record.trace_id || "none"}`);
     console.log(`SPAN_ID: ${record.span_id || "none"}`);
     console.log("EVIDENCE: .supervibe/memory/agent-invocations.jsonl");
+    console.log("AGENT_LEASE_REGISTRY: .supervibe/memory/agent-lease-registry.json");
     console.log(`AGENT_OUTPUT_JSON: ${record.structured_output.json}`);
     console.log(`AGENT_OUTPUT_SUMMARY: ${record.structured_output.summary}`);
     if (receiptResult) {
@@ -219,6 +243,7 @@ async function maybeRegisterHostManagedSubagentCleanup({
   invocationId,
   agentId,
   record,
+  options = {},
 } = {}) {
   const status = String(record?.status || "completed").toLowerCase();
   if (host !== "codex") return null;
@@ -232,9 +257,48 @@ async function maybeRegisterHostManagedSubagentCleanup({
     status,
     completedAt: record?.ts || null,
     rootDir,
+    command: options.command || options.workflow || null,
+    stage: options.stage || options["stage-id"] || null,
+    handoffId: options["handoff-id"] || options.handoff || null,
+    workflowRunId: options["workflow-run-id"] || options.workflowRunId || null,
+    taskId: options["task-id"] || options["work-item-id"] || null,
   });
   return registerRuntimeCleanupTarget(target, {
     path: defaultRuntimeCleanupRegistryPath(rootDir),
+  });
+}
+
+async function maybeRecordAgentLease({
+  rootDir,
+  host,
+  source,
+  invocationId,
+  agentId,
+  taskSummary,
+  record,
+  options = {},
+} = {}) {
+  return upsertAgentLeaseFromInvocation({
+    rootDir,
+    record,
+    owner: {
+      agentId,
+      host,
+      hostInvocationSource: source,
+      hostInvocationId: invocationId,
+      task: taskSummary,
+    },
+    scope: {
+      command: options.command || options.workflow || null,
+      stage: options.stage || options["stage-id"] || null,
+      handoffId: options["handoff-id"] || options.handoff || null,
+      workflowRunId: options["workflow-run-id"] || options.workflowRunId || null,
+      taskId: options["task-id"] || options["work-item-id"] || null,
+      subjectType: options["subject-type"] || "agent",
+      subjectId: options["subject-id"] || agentId,
+      outputArtifacts: splitList(options["output-artifacts"] || options.outputArtifacts),
+      allowedOutputScope: splitList(options["allowed-output-scope"] || options.allowedOutputScope),
+    },
   });
 }
 
@@ -318,6 +382,11 @@ async function rollbackInvocationSideEffects({ rootDir, record }) {
   });
   await removeJsonlRecords(join(rootDir, ".supervibe", "memory", "evidence-ledger.jsonl"), (entry) => {
     return entry.invocationId === invocationId || entry.invocation_id === invocationId;
+  });
+  await removeAgentLeaseForInvocation({
+    rootDir,
+    hostInvocationSource: record.host_invocation_source || record.hostInvocationSource || "codex-spawn-agent",
+    hostInvocationId: record.host_invocation_id || record.hostInvocationId || invocationId,
   });
   if (record.structured_output?.directory) {
     await rm(join(rootDir, ...normalizeRelPath(record.structured_output.directory).split("/")), { recursive: true, force: true });

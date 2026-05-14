@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.35] - 2026-05-15
+
+### Fixed
+
+- Enforced mandatory real parallel-agent fan-out for durable Supervibe workflows, including compact/resume continuations and simple workflow tasks.
+- Removed durable command-agent inline execution bypasses; inline requests now normalize back to real-agent dispatch/proof requirements.
+- Deferred all plan/graph/task tests and validators to final release gates while preserving deferred command evidence in work-item and readiness outputs.
+- Hardened Code RAG and CodeGraph status reporting so missing indexes show not-built repair guidance instead of throwing or mutating read-only status.
+
+### Validation
+
+- Added regression coverage for resume-dispatch routing, minimum parallel dispatch waves, final-only verification policy, missing index status, workflow readiness, and 10/10 workflow logic gates.
+
+## [2.1.34] - 2026-05-14
+
+### Fixed
+
+- Stabilized workflow receipt evidence with immutable snapshot backfill, scoped receipt indexing, and migration recovery reports.
+- Promoted work-item graph producer proof to first-class metadata and repaired legacy graph proof debt.
+- Hardened Code RAG and CodeGraph readiness so development gates distinguish repairable freshness from strict release blockers.
+
+### Validation
+
+- Added workflow-logic 10/10 maturity checks, readiness diagnostics, scoped agent lease cleanup checks, and release-profile documentation.
+
 ## [2.1.33] - 2026-05-14
 
 ### Fixed

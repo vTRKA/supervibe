@@ -91,7 +91,7 @@ function usage() {
     "  Text output includes AGENT_SELECTION_MODE, REQUIRED_AGENT_SOURCES, CALLABLE_AGENT_SOURCES, CALLABLE_AGENTS_READY, SCOPED_RECEIPT_GATE, and MISSING_CALLABLE_AGENTS.",
     "  Unsupported or unverifiable host dispatch enters agent-required-blocked.",
     "  Workflow counts and selector context can select dynamic required roles, including low-risk fast paths, stack specialists, risk reviewers, and regulated-domain gates.",
-    "  Inline mode is diagnostic/dry-run only and never satisfies specialist output.",
+    "  Inline requests are normalized to real-agents for durable command plans; controller-authored inline drafts never satisfy specialist output.",
     "  /supervibe-genesis may use --bootstrap-pre-agent to install only base scaffold/state before project agents exist.",
     "  /supervibe-genesis --dry-run/--apply/--generate-apps are bootstrap-pre-agent phases; --verify-agents is the separate runtime smoke gate.",
     "  /supervibe-adapt --dry-run is agentless/read-only planning; --apply needs approval and --verify-agents is the separate runtime receipt gate.",
@@ -284,6 +284,7 @@ export function buildRuntimeCommandAgentPlan({
     ? summarizeHostManagedSubagentDebtSync({
         rootDir: resolvedProjectRoot,
         path: defaultRuntimeCleanupRegistryPath(resolvedProjectRoot),
+        strictRelease: true,
       })
     : { count: 0, closeRequired: [] };
   const codexSpawnBlockedByCleanup = codexCleanupDebt.count > 0 && Array.isArray(plan.codexSpawnPayloads) && plan.codexSpawnPayloads.length > 0;
@@ -355,16 +356,30 @@ function buildCommandAgentVerificationPolicy({
     || /\b(release|final)\b/.test(artifactType)
     || /\b(release|final)\b/.test(intent)
     || commandId.includes("validate-completion");
+  const planGraphTaskWorkflow = isPlanGraphTaskWorkflow({ commandId, artifactType, intent, stage });
+  const testExecutionAllowed = releaseGate;
   return {
     schemaVersion: 1,
     scope: releaseGate ? "phase-or-release-gate" : "task-local",
     targetedOnly: !releaseGate,
     fullSuiteAllowed: releaseGate,
-    fullSuitePolicy: "Full verification commands such as npm run check are reserved for phase or release gates; normal task agents run targeted commands only.",
+    testExecutionAllowed,
+    testsDeferredUntil: releaseGate ? null : "release-handoff",
+    planGraphTaskWorkflow,
+    fullSuitePolicy: planGraphTaskWorkflow
+      ? "Plan, graph, and task workflows defer all test and validator execution to the final release gate; task agents collect implementation evidence only."
+      : "Full verification commands such as npm run check are reserved for phase or release gates; normal task agents run non-test checks only.",
+    testExecutionPolicy: releaseGate
+      ? "Tests may run here because this is the final phase/release verification gate."
+      : "Do not run tests or validators during development; defer node --test, npm test, npm run check, npm run validate:*, node scripts/validate-*, and equivalent suites to release-handoff.",
     workerInstruction: releaseGate
       ? "This is a phase/release verification gate; full checks may run here after child work is complete."
-      : "This is task-local execution; run only targeted checks from the assigned work item and defer npm run check to the final gate.",
+      : "This is task-local execution; do not run tests or validators. Collect implementation evidence and defer all test/validator commands to the final gate.",
   };
+}
+
+function isPlanGraphTaskWorkflow({ commandId = "", artifactType = "", intent = "", stage = "" } = {}) {
+  return [commandId, artifactType, intent, stage].some((value) => /(?:plan|graph|task|epic|work-item|loop|execute-plan)/i.test(String(value || "")));
 }
 
 function formatCommandAgentVerificationPolicy(policy = {}) {
@@ -373,7 +388,11 @@ function formatCommandAgentVerificationPolicy(policy = {}) {
     `VERIFICATION_SCOPE: ${policy.scope || "task-local"}`,
     `TARGETED_ONLY: ${policy.targetedOnly !== false}`,
     `FULL_SUITE_ALLOWED: ${policy.fullSuiteAllowed === true}`,
+    `TEST_EXECUTION_ALLOWED: ${policy.testExecutionAllowed === true}`,
+    `TESTS_DEFERRED_UNTIL: ${policy.testsDeferredUntil || "none"}`,
+    `PLAN_GRAPH_TASK_WORKFLOW: ${policy.planGraphTaskWorkflow === true}`,
     `FULL_VERIFICATION_POLICY: ${policy.fullSuitePolicy || "full checks reserved for phase or release gates"}`,
+    `TEST_EXECUTION_POLICY: ${policy.testExecutionPolicy || "tests are release-only unless explicitly at release gate"}`,
   ].join("\n");
 }
 

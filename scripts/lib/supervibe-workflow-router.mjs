@@ -776,8 +776,19 @@ function normalizeRouteQuestionPayload(route = {}) {
   const prompt = route.nextQuestion || route.nextPromptText || "";
   const title = route.questionTitle || questionTitleForRoute(route);
   const reason = route.questionReason || route.reason || "";
+  const agentWavePolicy = buildRouteAgentWavePolicy(route);
+  const requiredSafety = uniqueRouteStrings([
+    ...(route.requiredSafety || []),
+    ...(agentWavePolicy.required ? ["real-parallel-agent-wave-required", "tests-deferred-until-release-gate"] : []),
+  ]);
   const normalized = {
     ...route,
+    requiredSafety,
+    agentWavePolicy,
+    requiresAgentWave: agentWavePolicy.required,
+    parallelAgentDispatchRequired: agentWavePolicy.required,
+    compactContinuationAgentDispatchRequired: agentWavePolicy.requiredAfterContextCompaction,
+    simpleTaskAgentDispatchRequired: agentWavePolicy.requiredForSimpleTasks,
     questionTitle: title,
     questionReason: reason,
     questionChoices: choices,
@@ -789,11 +800,31 @@ function normalizeRouteQuestionPayload(route = {}) {
       nextCommand: route.command || null,
       nextSkill: route.skill || null,
       stopCondition: route.stopCondition || null,
+      agentWavePolicy,
       choices,
     },
   };
   if (route.nextQuestionChoices) normalized.nextQuestionChoices = choices;
   return normalized;
+}
+
+function buildRouteAgentWavePolicy(route = {}) {
+  const command = String(route.command || "").trim();
+  const workflowLike = command.startsWith("/supervibe") && route.intent !== "unknown" && route.hardStop !== true;
+  return {
+    id: "mandatory-parallel-agent-wave",
+    required: workflowLike,
+    minParallelAgents: workflowLike ? 2 : 0,
+    requiredAfterContextCompaction: workflowLike,
+    requiredForSimpleTasks: workflowLike,
+    launchTiming: "before-durable-work",
+    resumeMode: command.includes("--resume-dispatch") ? "fresh-parallel-agent-wave" : "route-owned-agent-wave",
+    testExecutionPolicy: "plan/graph/task tests and validators run only at final release gate",
+  };
+}
+
+function uniqueRouteStrings(values = []) {
+  return [...new Set(values.map((item) => String(item || "").trim()).filter(Boolean))];
 }
 
 function normalizeRouteChoices(choices = []) {

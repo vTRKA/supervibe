@@ -14,6 +14,24 @@ export const CODEGRAPH_INDEX_COMMAND = "node <resolved-supervibe-plugin-root>/sc
 export const MEMORY_WATCH_COMMAND = "node <resolved-supervibe-plugin-root>/scripts/watch-memory.mjs";
 export { COMMAND_AGENT_ORCHESTRATION_CONTRACT } from "./command-agent-orchestration-contract.mjs";
 
+export const COMMAND_PARALLEL_AGENT_LAUNCH_POLICY = Object.freeze({
+  id: "mandatory-parallel-agent-launch",
+  mode: "parallel-real-agents",
+  threading: "multiagent-multithreaded",
+  required: true,
+  requiresRealAgentFanout: true,
+  minParallelAgents: 2,
+  appliesAfterCompactResume: true,
+  appliesToSimpleTasks: true,
+  requiredAfterContextCompaction: true,
+  requiredForSimpleTasks: true,
+  launchTiming: "before-durable-work",
+  triggers: Object.freeze(["workflow-like-request", "post-compact-resume", "simple-task-phrasing"]),
+  proof: Object.freeze(["hostInvocation.source", "hostInvocation.invocationId"]),
+  summary: "Launch real host-agent fan-out for workflow-like command routes, including compact/resume and simple-task phrasing.",
+  nextAction: "Launch real parallel host agents before durable work; scoped receipts must bind each host invocation.",
+});
+
 const KNOWN_NPM_SCRIPT_SHORTCUTS = Object.freeze({
   "code:index": "index-rag-codegraph",
 });
@@ -182,8 +200,18 @@ const SLASH_COMMAND_SHORTCUTS = Object.freeze([
   {
     command: "/supervibe-execute-plan",
     title: "Execute a reviewed plan",
-    aliases: ["выполни план", "execute reviewed plan", "запусти выполнение плана", "implement the plan"],
-    keywordGroups: [["execute", "implement", "run", "выполни", "реализуй", "запусти"], ["plan", "план"]],
+    aliases: [
+      "execute reviewed plan",
+      "start work by the reviewed plan",
+      "begin work from reviewed plan",
+      "implement the plan",
+      "выполни план",
+      "запусти выполнение плана"
+    ],
+    keywordGroups: [
+      ["execute", "implement", "run", "start work", "begin work", "выполни", "реализуй", "запусти", "начни работу"],
+      ["plan", "reviewed plan", "existing plan", "current plan", "by the plan", "план", "плану", "по плану"]
+    ],
   },
   {
     command: "/supervibe-gc",
@@ -524,6 +552,7 @@ const COMMAND_SHORTCUTS = Object.freeze([
     aliases: [
       "review plan with specialist agents",
       "run plan review with specialist agents",
+      "create a temporary plan with all tasks and run plan reviewers",
       "run review loop for the plan",
       "start plan review loop",
       "plan is ready, review it",
@@ -536,7 +565,7 @@ const COMMAND_SHORTCUTS = Object.freeze([
       "после плана сделай ревью луп",
     ],
     keywordGroups: [
-      ["review", "review loop", "ревью", "ревью луп", "проверь", "проверить", "аудит плана"],
+      ["review", "review loop", "reviewer", "reviewers", "plan reviewers", "ревью", "ревью луп", "проверь", "проверить", "аудит плана"],
       ["plan", "implementation plan", "план", "плана", "плану"],
       ["specialist agents", "specialist", "agents", "reviewer", "reviewers", "loop", "спец агент", "спец агентами", "агентами", "ревью луп"],
     ],
@@ -873,6 +902,7 @@ export function buildProjectCommandCatalog({
     pluginRoot,
     projectRoot,
     agentContract: copyCommandAgentContract(),
+    parallelAgentPolicy: copyParallelAgentLaunchPolicy(),
     shortcuts: getCommandShortcuts(),
     slashCommands: readSlashCommands(pluginRoot),
     npmScripts: readNpmScripts(projectRoot, "project"),
@@ -881,6 +911,8 @@ export function buildProjectCommandCatalog({
 }
 
 export function formatCommandCatalog(catalog = buildProjectCommandCatalog()) {
+  const parallelPolicy = copyParallelAgentLaunchPolicy(catalog.parallelAgentPolicy);
+  const agentFanoutPolicy = catalog.agentContract?.agentFanoutPolicy || COMMAND_AGENT_ORCHESTRATION_CONTRACT.agentFanoutPolicy || parallelPolicy;
   const lines = [
     "SUPERVIBE_COMMAND_CATALOG",
     `SHORTCUTS: ${catalog.shortcuts?.length || 0}`,
@@ -889,7 +921,18 @@ export function formatCommandCatalog(catalog = buildProjectCommandCatalog()) {
     `PLUGIN_NPM_SCRIPTS: ${catalog.pluginNpmScripts?.length || 0}`,
     `AGENT_OWNER: ${catalog.agentContract?.ownerAgentId || COMMAND_AGENT_ORCHESTRATION_CONTRACT.ownerAgentId}`,
     `AGENT_EXECUTION_MODES: ${(catalog.agentContract?.executionModes || COMMAND_AGENT_ORCHESTRATION_CONTRACT.executionModes).join(", ")}`,
+    `AGENT_FANOUT_REQUIRED: ${agentFanoutPolicy.required === true}`,
+    `AGENT_FANOUT_AFTER_COMPACT: ${agentFanoutPolicy.requiredAfterContextCompaction === true}`,
+    `AGENT_FANOUT_SIMPLE_TASKS: ${agentFanoutPolicy.requiredForSimpleTasks === true}`,
+    `AGENT_MIN_PARALLEL: ${agentFanoutPolicy.minParallelAgents || 2}`,
     `AGENT_BLOCKED_MODE: ${catalog.agentContract?.blockedMode || COMMAND_AGENT_ORCHESTRATION_CONTRACT.blockedMode}`,
+    `PARALLEL_AGENT_POLICY: ${parallelPolicy.id}`,
+    `PARALLEL_AGENT_MODE: ${parallelPolicy.mode}`,
+    `PARALLEL_AGENT_REQUIRED: ${parallelPolicy.required === true}`,
+    `PARALLEL_AGENT_MIN: ${parallelPolicy.minParallelAgents}`,
+    `PARALLEL_AGENT_AFTER_COMPACT_RESUME: ${parallelPolicy.appliesAfterCompactResume === true}`,
+    `PARALLEL_AGENT_SIMPLE_TASKS: ${parallelPolicy.appliesToSimpleTasks === true}`,
+    `PARALLEL_AGENT_TRIGGERS: ${parallelPolicy.triggers.join(", ")}`,
   ];
   for (const shortcut of catalog.shortcuts || []) {
     lines.push(`- ${shortcut.id}: ${shortcut.intent} -> ${shortcut.command}`);
@@ -914,6 +957,9 @@ export function formatCommandMatch(match) {
       "NEXT: run `node <resolved-supervibe-plugin-root>/scripts/supervibe-commands.mjs` to inspect the catalog",
     ].join("\n");
   }
+  const parallelPolicy = effectiveParallelAgentLaunchPolicy(match);
+  const agentFanoutPolicy = match.agentContract?.agentFanoutPolicy || parallelPolicy;
+  const nextAction = parallelPolicy ? appendParallelAgentNextAction(match.nextAction) : match.nextAction;
   return [
     "SUPERVIBE_COMMAND_MATCH",
     `MATCH: ${match.id}`,
@@ -930,8 +976,20 @@ export function formatCommandMatch(match) {
     match.hardStop ? `HARD_STOP: true` : null,
     `DO_NOT_SEARCH_PROJECT: ${match.doNotSearchProject === true}`,
     `COMMAND: ${match.command || "none"}`,
+    parallelPolicy ? `PARALLEL_AGENT_POLICY: ${parallelPolicy.id}` : null,
+    parallelPolicy ? `PARALLEL_AGENT_MODE: ${parallelPolicy.mode}` : null,
+    parallelPolicy ? `PARALLEL_AGENT_REQUIRED: ${parallelPolicy.required === true}` : null,
+    parallelPolicy ? `PARALLEL_AGENT_MIN: ${parallelPolicy.minParallelAgents}` : null,
+    parallelPolicy ? `PARALLEL_AGENT_AFTER_COMPACT_RESUME: ${parallelPolicy.appliesAfterCompactResume === true}` : null,
+    parallelPolicy ? `PARALLEL_AGENT_SIMPLE_TASKS: ${parallelPolicy.appliesToSimpleTasks === true}` : null,
+    parallelPolicy ? `PARALLEL_AGENT_TRIGGERS: ${parallelPolicy.triggers.join(", ")}` : null,
+    parallelPolicy ? `PARALLEL_AGENT_PROOF: ${parallelPolicy.proof.join(", ")}` : null,
     match.agentContract ? `OWNER_AGENT: ${match.agentContract.ownerAgentId}` : null,
     match.agentContract ? `AGENT_EXECUTION_MODES: ${match.agentContract.executionModes.join(", ")}` : null,
+    match.agentContract ? `AGENT_FANOUT_REQUIRED: ${agentFanoutPolicy?.required === true}` : null,
+    match.agentContract ? `AGENT_FANOUT_AFTER_COMPACT: ${agentFanoutPolicy?.requiredAfterContextCompaction === true}` : null,
+    match.agentContract ? `AGENT_FANOUT_SIMPLE_TASKS: ${agentFanoutPolicy?.requiredForSimpleTasks === true}` : null,
+    match.agentContract ? `AGENT_MIN_PARALLEL: ${agentFanoutPolicy?.minParallelAgents || 2}` : null,
     match.agentContract ? `AGENT_BLOCKED_MODE: ${match.agentContract.blockedMode}` : null,
     match.agentContract ? `AGENT_PROOF: ${match.agentContract.requiredReceiptFields.join(", ")}` : null,
     match.agentProfile ? `REQUIRED_AGENTS: ${match.agentProfile.requiredAgentIds.join(", ")}` : null,
@@ -945,7 +1003,7 @@ export function formatCommandMatch(match) {
       ? match.diagnostics.closeCandidates.map((candidate) => `CLOSE_CANDIDATE: ${candidate.id} intent=${candidate.intent} confidence=${candidate.confidence} reason=${candidate.reason}`)
       : []),
     `WHY: ${match.reason}`,
-    `NEXT: ${match.nextAction}`,
+    `NEXT: ${nextAction}`,
   ].filter(Boolean).join("\n");
 }
 
@@ -967,6 +1025,7 @@ function createSlashShortcut(profile) {
     agentContract: copyCommandAgentContract(),
     agentProfile: getCommandAgentProfile(profile.command),
     selectorInputFields: COMMAND_AGENT_SELECTOR_INPUT_FIELDS,
+    parallelAgentPolicy: copyParallelAgentLaunchPolicy(),
     mutationRisk: "delegates-to-slash-command",
     directRoute,
     requiredGroupIndexes: profile.requiredGroupIndexes || [0, 1],
@@ -990,6 +1049,13 @@ function scoreShortcut(shortcut, text) {
     return null;
   }
 
+  if (shortcut.id === "plan-then-execute-natural-language" && (looksLikePlanOnlyReviewGate(text) || looksLikeExistingPlanExecution(text))) {
+    return null;
+  }
+  if (shortcut.command === "/supervibe-execute-plan" && looksLikePlanOnlyReviewGate(text)) {
+    return null;
+  }
+
   const groups = shortcut.keywordGroups || [];
   const matchedGroups = groups
     .map((group) => group.find((phrase) => includesPhrase(text, phrase)))
@@ -1009,6 +1075,72 @@ function scoreShortcut(shortcut, text) {
     reason: `shortcut keyword groups: ${matchedGroups.join(", ")}`,
     matchedGroups,
   });
+}
+
+function looksLikePlanOnlyReviewGate(text) {
+  const planOnly = [
+    "only the plan for now",
+    "only plan for now",
+    "plan only",
+    "only the plan",
+    "только план",
+    "пока только план"
+  ].some((phrase) => includesPhrase(text, phrase));
+  const delayedExecution = [
+    "i will say when to start work",
+    "will say when to start work",
+    "i will say when to start",
+    "say when to start work",
+    "потом скажу",
+    "когда начнем",
+    "когда начнём"
+  ].some((phrase) => includesPhrase(text, phrase));
+  const asksReview = [
+    "review",
+    "reviewer",
+    "reviewers",
+    "plan review",
+    "ревью"
+  ].some((phrase) => includesPhrase(text, phrase));
+  return asksReview && (planOnly || delayedExecution);
+}
+
+function looksLikeExistingPlanExecution(text) {
+  const hasExecution = [
+    "execute",
+    "start work",
+    "begin work",
+    "implement",
+    "выполни",
+    "начни работу",
+    "запусти выполнение"
+  ].some((phrase) => includesPhrase(text, phrase));
+  const hasExistingPlan = [
+    "reviewed plan",
+    "existing plan",
+    "current plan",
+    "by the plan",
+    "по плану",
+    "плану"
+  ].some((phrase) => includesPhrase(text, phrase));
+  const hasProgressTracking = [
+    "mark completed",
+    "mark completed tasks",
+    "mark tasks",
+    "отмечай",
+    "отметь"
+  ].some((phrase) => includesPhrase(text, phrase));
+  const asksToCreatePlan = [
+    "create a plan",
+    "make a plan",
+    "write a plan",
+    "temporary plan",
+    "detailed plan",
+    "составь план",
+    "сделай план",
+    "детальный план"
+  ].some((phrase) => includesPhrase(text, phrase));
+  return hasExecution && hasExistingPlan && (hasProgressTracking || includesPhrase(text, "reviewed plan")) && !asksToCreatePlan;
 }
 
 function looksLikeReadOnlyAgentAudit(text) {
@@ -1070,6 +1202,7 @@ function readSlashCommands(pluginRoot) {
         description: parseDescription(raw),
         agentContract: copyCommandAgentContract(),
         agentProfile: getCommandAgentProfile(`/${basename(file, ".md")}`),
+        parallelAgentPolicy: copyParallelAgentLaunchPolicy(),
       };
     })
     .sort((a, b) => a.id.localeCompare(b.id));
@@ -1094,7 +1227,7 @@ function parseDescription(raw) {
 }
 
 function copyShortcut(shortcut) {
-  return {
+  return withParallelAgentPolicy({
     ...shortcut,
     aliases: [...(shortcut.aliases || [])],
     keywordGroups: (shortcut.keywordGroups || []).map((group) => [...group]),
@@ -1103,15 +1236,54 @@ function copyShortcut(shortcut) {
     selectorInputFields: [...(shortcut.selectorInputFields || COMMAND_AGENT_SELECTOR_INPUT_FIELDS)],
     agentContract: shortcut.agentContract ? copyCommandAgentContract(shortcut.agentContract) : undefined,
     agentProfile: shortcut.agentProfile ? copyAgentProfile(shortcut.agentProfile) : undefined,
-  };
+    parallelAgentPolicy: shortcut.parallelAgentPolicy ? copyParallelAgentLaunchPolicy(shortcut.parallelAgentPolicy) : undefined,
+  });
 }
 
 function enrichMatch(shortcut, fields = {}) {
-  return {
+  return withParallelAgentPolicy({
     ...shortcut,
     doNotSearchProject: true,
     ...fields,
+  });
+}
+
+function withParallelAgentPolicy(route = {}) {
+  if (!shouldApplyParallelAgentPolicy(route)) return route;
+  const parallelAgentPolicy = copyParallelAgentLaunchPolicy(route.parallelAgentPolicy);
+  return {
+    ...route,
+    parallelAgentPolicy,
+    nextAction: appendParallelAgentNextAction(route.nextAction),
   };
+}
+
+function effectiveParallelAgentLaunchPolicy(route = {}) {
+  if (!shouldApplyParallelAgentPolicy(route)) return null;
+  return copyParallelAgentLaunchPolicy(route.parallelAgentPolicy);
+}
+
+function shouldApplyParallelAgentPolicy(route = {}) {
+  if (!route || route.hardStop === true) return false;
+  if (["missing_slash_command", "missing_npm_script"].includes(route.intent)) return false;
+  const command = String(route.command || route.commandId || "");
+  return Boolean(route.parallelAgentPolicy || route.agentProfile || route.agentContract || command.startsWith("/supervibe"));
+}
+
+function copyParallelAgentLaunchPolicy(policy = COMMAND_PARALLEL_AGENT_LAUNCH_POLICY) {
+  return {
+    ...COMMAND_PARALLEL_AGENT_LAUNCH_POLICY,
+    ...(policy || {}),
+    triggers: [...(policy?.triggers || COMMAND_PARALLEL_AGENT_LAUNCH_POLICY.triggers)],
+    proof: [...(policy?.proof || COMMAND_PARALLEL_AGENT_LAUNCH_POLICY.proof)],
+  };
+}
+
+function appendParallelAgentNextAction(nextAction = "") {
+  const value = String(nextAction || "").trim();
+  if (!value) return COMMAND_PARALLEL_AGENT_LAUNCH_POLICY.nextAction;
+  if (value.includes(COMMAND_PARALLEL_AGENT_LAUNCH_POLICY.nextAction)) return value;
+  return [value, COMMAND_PARALLEL_AGENT_LAUNCH_POLICY.nextAction].join(" ");
 }
 
 function findWorkflowChainAuditShortcut(request, { shortcuts = COMMAND_SHORTCUTS } = {}) {
@@ -1252,6 +1424,7 @@ function copyAgentProfile(profile) {
     dynamicAgentSelectors: [...(profile.dynamicAgentSelectors || [])],
     selectorInputFields: [...(profile.selectorInputFields || COMMAND_AGENT_SELECTOR_INPUT_FIELDS)],
     executionModes: [...(profile.executionModes || [])],
+    agentFanoutPolicy: { ...(profile.agentFanoutPolicy || COMMAND_AGENT_ORCHESTRATION_CONTRACT.agentFanoutPolicy || {}) },
     requiredPlanFields: [...(profile.requiredPlanFields || [])],
     requiredReceiptFields: [...(profile.requiredReceiptFields || [])],
   };
@@ -1340,7 +1513,7 @@ function isBareScriptReferenceAllowed(script) {
 
 function resolveSlashCommandMatch(explicitSlash, slashCommands, { reasonPrefix = "explicit Supervibe slash command", confidence = 1 } = {}) {
   const slashCommand = slashCommands.find((entry) => entry.id === explicitSlash.name);
-  return {
+  return withParallelAgentPolicy({
     id: slashCommand ? `slash-command:${explicitSlash.name.slice(1)}` : `missing-slash-command:${explicitSlash.name.slice(1)}`,
     intent: slashCommand ? "slash_command" : "missing_slash_command",
     title: slashCommand?.description || `Slash command ${explicitSlash.name}`,
@@ -1363,7 +1536,7 @@ function resolveSlashCommandMatch(explicitSlash, slashCommands, { reasonPrefix =
     nextAction: slashCommand
       ? "Run this exact slash command in the active AI CLI; no repository search is needed. First run command-agent-plan.mjs for the slash command, then invoke the required host agents and require real host-agent receipts for specialist output."
       : "Hard stop: report the missing slash command from the catalog and do not inspect source files, marketplace command files, or repository paths to emulate it.",
-  };
+  });
 }
 
 function parseExplicitSupervibeSlashCommand(request) {

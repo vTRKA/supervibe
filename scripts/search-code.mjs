@@ -15,16 +15,15 @@
 //
 // Symbol arg accepts bare name OR full ID "path:kind:name:line" for disambiguation.
 
-import { CodeStore } from './lib/code-store.mjs';
 import {
   findCallers, findCallees, neighborhood, topSymbolsByDegree, disambiguate,
   impactRadius, listIndexedFiles, searchSymbols
 } from './lib/code-graph-queries.mjs';
 import { searchMemory } from './lib/memory-store.mjs';
 import { formatHybridRetrievalEvidence, runHybridCodeSearch } from './lib/supervibe-code-search.mjs';
-import { buildCodeGraphContext } from './lib/supervibe-codegraph-context.mjs';
 import { buildSharedEvidencePacket } from './lib/supervibe-evidence-packet.mjs';
 import { buildRepoMap, formatRepoMapContext, selectRepoMapContext } from './lib/supervibe-repo-map.mjs';
+import { buildCodeGraphContextFromReadSnapshot, openCodeIndexReadSnapshot } from './lib/code-index-health-status.mjs';
 import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
 
@@ -60,12 +59,11 @@ export async function buildLiveCompactContextPack({
 
   let ragResults = [];
   let retrieval = null;
-  let store = null;
+  let readSnapshot = null;
   try {
-    store = new CodeStore(rootDir, { useEmbeddings });
-    await store.init();
+    readSnapshot = await openCodeIndexReadSnapshot({ rootDir, useEmbeddings, purpose: "context-pack-rag" });
     if (normalizedQuery) {
-      const search = await runHybridCodeSearch(store, {
+      const search = await runHybridCodeSearch(readSnapshot.store, {
         query: normalizedQuery,
         limit: evidenceLimit,
         semantic: useEmbeddings,
@@ -79,13 +77,13 @@ export async function buildLiveCompactContextPack({
       reason: `unavailable: ${err.message}`,
     });
   } finally {
-    if (store) store.close();
+    readSnapshot?.close?.();
   }
 
   let codeGraphContext = null;
   try {
     codeGraphContext = normalizedQuery
-      ? await buildCodeGraphContext({
+      ? await buildCodeGraphContextFromReadSnapshot({
         rootDir,
         query: normalizedQuery,
         limit: Math.min(6, evidenceLimit),
@@ -310,8 +308,25 @@ if (values['context-pack'] || values.format === 'context-pack') {
   process.exit(0);
 }
 
-const store = new CodeStore(PROJECT_ROOT, { useEmbeddings: !values['no-semantic'] });
-await store.init();
+if (values.context) {
+  const context = await buildCodeGraphContextFromReadSnapshot({
+    rootDir: PROJECT_ROOT,
+    query: values.context,
+    limit,
+    graphDepth: parseInt(values.depth, 10),
+    useEmbeddings: !values['no-semantic'],
+    taskType: values['task-type'] || undefined,
+  });
+  if (values.json) console.log(JSON.stringify(context, null, 2));
+  else console.log(context.markdown);
+  process.exit(0);
+}
+const readSnapshot = await openCodeIndexReadSnapshot({
+  rootDir: PROJECT_ROOT,
+  useEmbeddings: !values['no-semantic'],
+  purpose: `search-code:${values.context ? 'context' : 'query'}`,
+});
+const store = readSnapshot.store;
 
 let results;
 let mode;
@@ -369,19 +384,7 @@ if (values['repo-map']) {
     limit
   });
 } else if (values.context) {
-  mode = 'context';
-  store.close();
-  const context = await buildCodeGraphContext({
-    rootDir: PROJECT_ROOT,
-    query: values.context,
-    limit,
-    graphDepth: parseInt(values.depth, 10),
-    useEmbeddings: !values['no-semantic'],
-    taskType: values['task-type'] || undefined,
-  });
-  if (values.json) console.log(JSON.stringify(context, null, 2));
-  else console.log(context.markdown);
-  process.exit(0);
+  throw new Error('unreachable context branch');
 } else {
   mode = 'semantic';
   const search = await runHybridCodeSearch(store, {
@@ -395,12 +398,11 @@ if (values['repo-map']) {
   retrieval = search.retrieval;
 }
 
-store.close();
+readSnapshot.close();
 
 if (mode === 'repo-map') {
   if (values.json) console.log(JSON.stringify(results, null, 2));
   else console.log(formatRepoMapContext(results));
-  store.close();
   process.exit(0);
 }
 

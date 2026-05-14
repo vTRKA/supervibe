@@ -17,9 +17,11 @@ export function formatWorkflowReceiptsReport(result) {
     `LEDGER_ENTRIES: ${result.ledgerEntries ?? "scope-skipped"}`,
     `COVERAGE_STATUS: ${coverageStatus(result)}`,
     `ISSUES: ${result.issues.length}`,
+    `DIAGNOSTICS: ${(result.diagnostics || []).length}`,
   ];
   if (result.scopeMode === "scoped") {
     lines.splice(1, 0, "SCOPE: scoped");
+    lines.push(`INDEX_MODE: ${result.indexMode || "unknown"}`);
     lines.push(`BATCHING_OPTIMIZATION: ${result.batchingOptimization || "scoped-trust-fast-path"}`);
   }
   if (!result.pass) {
@@ -27,6 +29,9 @@ export function formatWorkflowReceiptsReport(result) {
   }
   for (const issue of result.issues) {
     lines.push(`ISSUE: ${issue.code} ${issue.file} - ${issue.message}`);
+  }
+  for (const diagnostic of result.diagnostics || []) {
+    lines.push(`DIAGNOSTIC: ${diagnostic.code} ${diagnostic.file} - ${diagnostic.message}`);
   }
   return lines.join("\n");
 }

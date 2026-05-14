@@ -217,7 +217,7 @@ test("loop completion decision offers verify review continue revise-goals and st
   assert.deepEqual(decision.choices.map((choice) => choice.command), [
     "/supervibe-verify",
     "/supervibe-review",
-    "/supervibe-loop --status",
+    "/supervibe-loop --resume-dispatch",
     "/supervibe-loop --revise-goals",
     "",
   ]);

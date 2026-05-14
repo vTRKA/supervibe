@@ -34,6 +34,11 @@ workflow should name targeted validators before work starts, run only the
 commands required by the user request and changed surface, and report any
 skipped gate with a reason.
 
+Plan, graph, and task development is the exception: tests and validators are
+named as deferred release-gate commands, not run during development. Readiness
+models, status output, and handoffs should mark those commands as deferred until
+the final release gate.
+
 Common gate classes:
 
 - Link and artifact gates: prove docs point to existing files and durable
@@ -46,7 +51,9 @@ Common gate classes:
   or server behavior when the changed surface depends on them.
 
 Do not replace a failed validator with a manual claim. Fix the scoped problem,
-rerun the targeted gate, or record the failure and residual risk.
+rerun the targeted gate, or record the failure and residual risk. For
+plan/graph/task development, record the validator as deferred release-gate work
+instead of running it before the final gate.
 
 ## Progressive Disclosure
 
@@ -74,7 +81,8 @@ Before final review or completion, run a local self-review against the contract:
   by runtime evidence?
 - Are memory, Code RAG, Code Graph, or domain-evidence gaps called out when
   they affect confidence?
-- Did targeted verification run, and are failures or skips explained?
+- Did targeted verification run, or for plan/graph/task development was it
+  explicitly deferred to the release gate?
 - Is the final answer limited to changed files, verification, and residual
   risks that matter to the user?
 
@@ -85,10 +93,12 @@ blocked by missing access, missing approval, or user-owned scope.
 
 A workflow is acceptable only when the requested artifacts exist, scoped edits
 are complete, validators or targeted checks have run, and residual risks are
-explicit. Final summaries should not claim 10/10 maturity unless project memory,
-Code RAG, and Code Graph readiness were checked or the output states why those
-surfaces were unavailable and why the missing evidence does not lower
-confidence.
+explicit. Development handoff for plan, graph, and task workflows may satisfy
+this by listing tests and validators as deferred release-gate commands; release
+acceptance still requires those gates to run. Final summaries should not claim
+10/10 maturity unless project memory, Code RAG, and Code Graph readiness were
+checked or the output states why those surfaces were unavailable and why the
+missing evidence does not lower confidence.
 
 Final acceptance output should include:
 

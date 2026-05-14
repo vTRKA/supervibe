@@ -70,6 +70,7 @@ test("scoped agent producer CLI filters by command, handoff, stage, artifact has
       handoffId: "ship-t6",
       hostInvocation,
       secret: "test-secret",
+      snapshotEvidence: false,
     });
     await issueWorkflowInvocationReceipt({
       rootDir: root,
@@ -147,6 +148,7 @@ test("scoped agent producer CLI rejects stale artifact hashes and wrong host inv
       handoffId: "ship-t6",
       hostInvocation,
       secret: "test-secret",
+      snapshotEvidence: false,
     });
     await writeUtf8(root, artifact, JSON.stringify({ status: "pass", version: 2 }, null, 2) + "\n");
 

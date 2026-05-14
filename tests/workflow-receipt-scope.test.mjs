@@ -125,6 +125,7 @@ test("scoped workflow validation fails stale artifact hashes and recovers throug
       completedAt: "2026-05-14T00:01:00.000Z",
       handoffId: "ship-t6",
       secret: "test-secret",
+      snapshotEvidence: false,
     });
 
     await writeUtf8(root, artifact, "# After\n");

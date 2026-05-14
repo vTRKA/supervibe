@@ -93,7 +93,7 @@ export const WORKFLOW_EDGES = Object.freeze({
   "wave-review": {
     phase: "wave-review",
     nextPhase: "finish",
-    command: "/supervibe-loop --status",
+    command: "/supervibe-loop --resume-dispatch",
     skill: "supervibe:autonomous-agent-loop",
     artifactKind: "reviewed-wave-output",
     stopCondition: "ask-before-final-status",

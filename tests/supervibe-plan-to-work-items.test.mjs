@@ -357,6 +357,11 @@ test("atomization creates one epic, child tasks, blocker edges, gates, and follo
   assert.ok(t1.blocks.includes(t2.itemId));
   assert.ok(t2.acceptanceCriteria.some((item) => /idempotent/.test(item)));
   assert.ok(t2.verificationCommands.includes("npm test -- api.test.ts"));
+  assert.ok(t2.deferredVerificationCommands.includes("npm test -- api.test.ts"));
+  assert.equal(t2.verificationPolicy.mode, "final-only-release-verification");
+  assert.equal(t2.verificationPolicy.developmentTestsAllowed, false);
+  assert.equal(t2.verificationPolicy.developmentValidatorsAllowed, false);
+  assert.equal(t2.executionHints.testsDeferredUntil, "release-handoff");
   assert.deepEqual(t2.writeScope, [{ action: "modify", path: "src/api.ts" }]);
   assert.deepEqual(t2.executionHints.scopeIds, ["S2"]);
   assert.deepEqual(t2.executionHints.requirementIds, ["REQ2"]);
@@ -428,6 +433,8 @@ test("atomization expands checkbox steps into subtask work items", () => {
   assert.equal(stepOne.discoveredFrom.type, "plan-step");
   assert.equal(stepOne.executionHints.parentTaskRef, "T01");
   assert.ok(stepOne.verificationCommands.includes("node --test tests/supervibe-plan-to-work-items.test.mjs"));
+  assert.ok(stepOne.deferredVerificationCommands.includes("node --test tests/supervibe-plan-to-work-items.test.mjs"));
+  assert.equal(stepOne.verificationPolicy.testsDeferredUntil, "release-handoff");
   assert.ok(secondParent.blocks.includes(secondStep.itemId));
 });
 
@@ -528,6 +535,9 @@ test("work item graph converts into runner-compatible loop tasks", () => {
   assert.equal(tasks.some((task) => task.type === "epic"), false);
   assert.equal(apiTask.epicId, "epic-payment");
   assert.deepEqual(apiTask.dependencies, ["epic-payment-t1"]);
+  assert.ok(apiTask.deferredVerificationCommands.includes("npm test -- api.test.ts"));
+  assert.equal(apiTask.verificationPolicy.mode, "final-only-release-verification");
+  assert.equal(apiTask.testsDeferredUntil, "release-handoff");
   assert.equal(apiTask.writeScope[0].path, "src/api.ts");
 });
 

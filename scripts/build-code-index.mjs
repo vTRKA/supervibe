@@ -12,7 +12,8 @@
 //   unbounded by default; --max-seconds enables graceful bounded batches
 
 import { CodeStore, CODE_GRAPH_EXTRACTOR_VERSION, CODE_RAG_CHUNK_METADATA_VERSION } from './lib/code-store.mjs';
-import { collectIndexHealthFromStore, formatIndexHealth } from './lib/supervibe-index-health.mjs';
+import { collectIndexHealthFromStore, evaluateIndexHealthGate, formatIndexHealth } from './lib/supervibe-index-health.mjs';
+import { buildCodeIndexFreshnessStatus, formatCodeIndexFreshnessStatus } from './lib/code-index-health-status.mjs';
 import { discoverSourceFiles } from './lib/supervibe-index-policy.mjs';
 import { formatWatcherDiagnostics, readWatcherDiagnostics } from './lib/supervibe-index-watcher.mjs';
 import { recoverCorruptCodeDb } from './lib/supervibe-db-migrations.mjs';
@@ -921,8 +922,16 @@ async function main() {
       for (const lg of stats.byLang) console.log(`  ${lg.language}: ${lg.n}`);
     }
     if (health) {
+      const healthGate = evaluateIndexHealthGate(health, { strictGraph: false });
+      const healthFreshness = buildCodeIndexFreshnessStatus({
+        health,
+        gate: healthGate,
+        repairAvailable: true,
+      });
       console.log();
       console.log(formatIndexHealth(health));
+      console.log();
+      console.log(formatCodeIndexFreshnessStatus(healthFreshness));
     }
   } finally {
     cleanup();
@@ -933,7 +942,13 @@ async function main() {
 
 main().catch((err) => {
   if (err.code === 'SUPERVIBE_INDEX_LOCKED') {
-    console.error(`build-code-index locked: ${err.message}`);
+    console.error([
+      'SUPERVIBE_INDEX_LOCK_RETRY',
+      'STATUS: failed',
+      'ATTEMPTS: 2',
+      `ERROR: ${err.message}`,
+      'NEXT_ACTION: wait for the live indexer, or run node scripts/build-code-index.mjs --root . --clean-stale-lock if the lock is stale',
+    ].join('\n'));
     process.exit(2);
   }
   console.error('build-code-index error:', err);

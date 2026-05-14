@@ -37,7 +37,10 @@ rules and command entry points.
 ## Working Rules
 
 - Check project memory, code search and code graph before non-trivial code changes.
+- Durable Supervibe workflow work must use real multi-agent fan-out after context compaction and for simple task phrasing; exact terminal/file lookups are the only controller-local exception.
+- For plan, graph, and task workflows, do not run tests or validators during development. Defer `node --test`, `npm test`, `npm run check`, validator npm scripts such as `validate:*`, and `node scripts/validate-*` to the final release/merge gate.
 - Do not claim 10/10 agent, skill, design-data, or system maturity unless project memory, Code RAG, and CodeGraph readiness were checked, or the output explicitly records that no prior memory/index evidence was available and why that does not reduce confidence.
+- Use `validate:workflow-logic-10of10:dev` only as part of the final validation block for plan/graph/task work; `validate:workflow-logic-10of10:release` remains final release/merge gate only.
 - For command-like user requests, run `node scripts/supervibe-commands.mjs --match "<user request>"` before broad source search. If the result is `INTENT: missing_slash_command` or `HARD_STOP: true`, report the missing command and stop; do not inspect source files, marketplace command files, or repository paths to emulate it.
 - For ambiguous audit phrases about agents, skills, design datasets, RAG/CodeGraph, memory, or "10/10" maturity, route to `/supervibe-audit` before plan review unless the user explicitly references an existing plan artifact.
 - For every claimed Supervibe command, skill, agent, reviewer, worker, validator, or external-tool invocation, create a runtime-issued workflow receipt with `node scripts/workflow-receipt.mjs issue ...`; hand-written receipts are untrusted and `npm run validate:workflow-receipts` must pass before claiming delegated work is complete.
@@ -72,7 +75,7 @@ rules and command entry points.
 
 ## Verification Expectations
 
-For narrow changes, run the targeted `node --test` command that covers the edited module. Before release or commit, run:
+For narrow non-workflow changes, run the targeted `node --test` command that covers the edited module. For plan, graph, and task workflows, defer targeted tests and validators to the final release validation block. Before release or commit, run:
 
 ```bash
 npm run check

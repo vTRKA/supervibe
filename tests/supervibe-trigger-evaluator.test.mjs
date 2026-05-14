@@ -53,7 +53,7 @@ test("semantic routing covers Russian task graph control phrases", () => {
     {
       id: "ru-resume-project-tasks",
       phrase: "вернись к проекту с задачами",
-      expected: { intent: "task_graph_resume", command: "/supervibe-loop --status", minConfidence: 0.9 },
+      expected: { intent: "task_graph_resume", command: "/supervibe-loop --resume-dispatch", minConfidence: 0.9 },
     },
     {
       id: "ru-change-loop-goal",

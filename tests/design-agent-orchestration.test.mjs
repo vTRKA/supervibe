@@ -1513,6 +1513,7 @@ test("design agent receipt validator rejects output artifact hash drift", async 
       handoffId: "design-agent-chat",
       hostInvocation: await writeAgentInvocation(root),
       secret: "test-secret",
+      snapshotEvidence: false,
     });
     await writeUtf8(root, ".supervibe/artifacts/brandbook/direction.md", "# Changed after receipt\n");
 

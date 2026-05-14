@@ -193,8 +193,8 @@ test("command agent plan suppresses Codex spawn payloads for invocation-log-only
   }
 });
 
-test("command agent cleanup debt does not block inline diagnostics", () => {
-  const root = mkdtempSync(join(tmpdir(), "supervibe-command-cleanup-inline-"));
+test("command agent cleanup debt blocks durable plans even when inline is requested", () => {
+  const root = mkdtempSync(join(tmpdir(), "supervibe-command-cleanup-inline-blocked-"));
   try {
     const registryPath = join(root, ".supervibe", "memory", "runtime-cleanup-registry.json");
     mkdirSync(dirname(registryPath), { recursive: true });
@@ -221,10 +221,12 @@ test("command agent cleanup debt does not block inline diagnostics", () => {
       enforceHostProof: false,
     });
 
-    assert.equal(report.pass, true);
-    assert.equal(report.plan.executionMode, "inline");
+    assert.equal(report.pass, false);
+    assert.equal(report.plan.requestedExecutionMode, "real-agents");
+    assert.equal(report.plan.executionMode, "agent-required-blocked");
     assert.equal(report.plan.hostManagedCleanupDebt.count, 1);
-    assert.equal(report.plan.codexSpawnBlockedByCleanup, undefined);
+    assert.equal(report.plan.codexSpawnBlockedByCleanup, true);
+    assert.equal(report.plan.inlineDraftAllowed, false);
     assert.deepEqual(report.plan.codexSpawnPayloads || [], []);
   } finally {
     rmSync(root, { recursive: true, force: true });

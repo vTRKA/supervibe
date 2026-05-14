@@ -7,6 +7,11 @@ import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
+import {
+  formatCommandMatch,
+  resolveCommandRequest,
+} from "../scripts/lib/supervibe-command-catalog.mjs";
+
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const execFileAsync = promisify(execFile);
 
@@ -25,6 +30,28 @@ async function matchCommand(request) {
     await rm(projectRoot, { recursive: true, force: true });
   }
 }
+
+test("static route formatting requires parallel real agents after compact resume and simple requests", () => {
+  const simple = resolveCommandRequest("make a plan", { pluginRoot: ROOT, projectRoot: ROOT });
+  const simpleOutput = formatCommandMatch(simple);
+  assert.match(simpleOutput, /COMMAND: \/supervibe-plan/);
+  assert.match(simpleOutput, /PARALLEL_AGENT_MODE: parallel-real-agents/);
+  assert.match(simpleOutput, /PARALLEL_AGENT_SIMPLE_TASKS: true/);
+  assert.match(simpleOutput, /NEXT: .*Launch real parallel host agents/);
+
+  const resumeOutput = formatCommandMatch({
+    id: "active-workflow-continuation",
+    intent: "continue_plan",
+    command: "/supervibe-plan --from-brainstorm",
+    confidence: 0.99,
+    doNotSearchProject: true,
+    reason: "static compact-chat resume route",
+    nextAction: "Resume active workflow: continue plan.",
+  });
+  assert.match(resumeOutput, /PARALLEL_AGENT_MODE: parallel-real-agents/);
+  assert.match(resumeOutput, /PARALLEL_AGENT_AFTER_COMPACT_RESUME: true/);
+  assert.match(resumeOutput, /PARALLEL_AGENT_PROOF: hostInvocation\.source, hostInvocation\.invocationId/);
+});
 
 test("routes plain planning workflow phrases to plan command", async () => {
   for (const request of [
@@ -48,6 +75,19 @@ test("routes plan then execute requests to planning without review-only hijack",
   assert.doesNotMatch(output, /COMMAND: \/supervibe-plan --review/);
   assert.match(output, /\/supervibe-loop --atomize-plan <plan-path> --plan-review-passed/);
   assert.match(output, /\/supervibe-execute-plan <reviewed-plan-path>/);
+});
+
+test("routes temporary plan review and reviewed plan execution distinctly", async () => {
+  const reviewOutput = await matchCommand("create a temporary plan with all tasks and run plan reviewers; only the plan for now, I will say when to start work");
+  assert.match(reviewOutput, /INTENT: plan_review/);
+  assert.match(reviewOutput, new RegExp("COMMAND: \/supervibe-plan --review"));
+  assert.doesNotMatch(reviewOutput, /INTENT: plan_then_execute/);
+  assert.doesNotMatch(reviewOutput, new RegExp("COMMAND: \/supervibe-ui"));
+
+  const executeOutput = await matchCommand("start work by the reviewed plan and mark completed tasks");
+  assert.match(executeOutput, /INTENT: supervibe_execute_plan/);
+  assert.match(executeOutput, new RegExp("COMMAND: \/supervibe-execute-plan"));
+  assert.doesNotMatch(executeOutput, /INTENT: plan_then_execute/);
 });
 
 test("routes broken design workflow audits before plan-review", async () => {
@@ -86,10 +126,10 @@ test("routes visual explanation requests to text-first summary", async () => {
   assert.match(output, /COMMAND: \/supervibe-plan --visual-summary/);
 });
 
-test("routes Russian task graph resume requests to loop status", async () => {
+test("routes Russian task graph resume requests to resume-dispatch loop wave", async () => {
   const output = await matchCommand("продолжи loop по эпикам и задачам");
   assert.match(output, /INTENT: task_graph_resume/);
-  assert.match(output, /COMMAND: \/supervibe-loop --status/);
+  assert.match(output, /COMMAND: \/supervibe-loop --resume-dispatch/);
 });
 
 test("routes task graph deletion and editing requests to preview actions", async () => {

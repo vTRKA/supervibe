@@ -50,14 +50,14 @@ function matchCommand(request, projectRoot) {
   });
 }
 
-test("bare continuation phrases route to safe workflow status without active state", () => {
+test("bare continuation phrases route to safe workflow resume dispatch without active state", () => {
   withTempProject((root) => {
     for (const request of ["Продолжи", "продолжи", "давай дальше", "ок продолжай", "go on", "continue"]) {
       const output = matchCommand(request, root);
 
       assert.match(output, /MATCH: workflow-continuation-fallback/);
       assert.match(output, /INTENT: task_graph_resume/);
-      assert.match(output, /COMMAND: \/supervibe-loop --status/);
+      assert.match(output, /COMMAND: \/supervibe-loop --resume-dispatch/);
       assert.match(output, /SELECTED_BECAUSE: bare-continuation-no-active-state/);
     }
   });
@@ -119,14 +119,14 @@ test("continuation diagnostics report close command-catalog candidates", () => {
     writeActiveState(root, {
       command: "/supervibe-loop",
       stage: "executing",
-      nextCommand: "/supervibe-loop --status",
+      nextCommand: "/supervibe-loop --resume-dispatch",
       nextAction: "continue active execution",
     });
 
     const output = matchCommand("продолжай работу и добавь исправление чтобы агенты не зависали", root);
 
     assert.match(output, /MATCH: active-workflow-continuation/);
-    assert.match(output, /COMMAND: \/supervibe-loop --status/);
+    assert.match(output, /COMMAND: \/supervibe-loop --resume-dispatch/);
     assert.match(output, /CLOSE_CANDIDATE: semantic-trigger:agent_provisioning intent=agent_provisioning/);
   });
 });

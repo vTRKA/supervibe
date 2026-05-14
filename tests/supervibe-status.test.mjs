@@ -28,25 +28,25 @@ test('supervibe-status: prints index health summary header', () => {
 
 test('supervibe-status: reports Code RAG state', () => {
   const out = runStatus();
-  // Either initialized (lists files/chunks) or NOT INITIALIZED warning
+  // Either initialized (lists files/chunks) or not-built warning
   assert.ok(/Code RAG/.test(out), 'should mention Code RAG');
   assert.ok(
-    /\d+ files, \d+ chunks/.test(out) || /NOT INITIALIZED/.test(out),
-    'should show file/chunk counts or NOT INITIALIZED'
+    /\d+ files, \d+ chunks/.test(out) || /not-built/.test(out) || /NOT INITIALIZED/.test(out),
+    'should show file/chunk counts or not-built'
   );
 });
 
 test('supervibe-status: reports source coverage directly', () => {
   const out = runStatus();
-  assert.ok(/Source coverage: \d+\/\d+ source files indexed, \d+\.\d+% coverage/.test(out) || /NOT INITIALIZED/.test(out));
+  assert.ok(/Source coverage: \d+\/\d+ source files indexed, \d+\.\d+% coverage/.test(out) || /not-built/.test(out) || /NOT INITIALIZED/.test(out));
 });
 
 test('supervibe-status: reports Code Graph state', () => {
   const out = runStatus();
-  // Either lists symbols/edges or NOT INITIALIZED (graph lives in same DB as RAG)
+  // Either lists symbols/edges or not-built (graph lives in same DB as RAG)
   assert.ok(
-    /Code Graph: \d+ symbols, \d+ edges/.test(out) || /Code Graph: not built/.test(out) || /NOT INITIALIZED/.test(out),
-    'should show symbol/edge counts or NOT INITIALIZED'
+    /Code Graph: \d+ symbols, \d+ edges/.test(out) || /Code Graph: not built/.test(out) || /not-built/.test(out) || /NOT INITIALIZED/.test(out),
+    'should show symbol/edge counts or not-built'
   );
 });
 

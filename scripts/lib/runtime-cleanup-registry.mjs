@@ -2,6 +2,11 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { mkdir, readFile, readdir, stat, unlink, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
+import {
+  classifyCleanupDebt,
+  closeAgentLease,
+  summarizeAgentLeaseDebtSync,
+} from "./supervibe-agent-lease-registry.mjs";
 
 const AGENT_INVOCATIONS_RELATIVE_PATH = ".supervibe/memory/agent-invocations.jsonl";
 const HOST_MANAGED_COMPLETED_STATUSES = new Set(["completed", "complete", "done", "closed"]);
@@ -138,11 +143,18 @@ export async function cleanupRuntimeTargets({
       if (results[index].status !== "host-managed-completed-pruned") continue;
       const target = targets[index];
       if (!target?.hostInvocationId) continue;
+      const closedAt = target.closedAt || now.toISOString();
       addHostManagedClosedInvocation(hostManagedClosedInvocations, {
         hostInvocationSource: target.hostInvocationSource,
         hostInvocationId: target.hostInvocationId,
         agentId: target.agentId || null,
-        closedAt: target.closedAt || now.toISOString(),
+        closedAt,
+      });
+      await closeAgentLease({
+        rootDir,
+        hostInvocationSource: target.hostInvocationSource || "codex-spawn-agent",
+        hostInvocationId: target.hostInvocationId,
+        closedAt,
       });
     }
     await writeRuntimeCleanupRegistry(path, {
@@ -175,8 +187,9 @@ export async function cleanupRuntimeTargets({
 }
 
 function normalizeRuntimeCleanupTarget(target = {}) {
-  const id = target.id || `${target.kind || "process"}:${target.pid || target.port || Date.now()}`;
+  const id = target.id || String(target.kind || "process") + ":" + (target.pid || target.port || Date.now());
   const registeredAt = target.registeredAt || new Date().toISOString();
+  const scope = normalizeRuntimeCleanupScope(target.scope || target);
   return {
     id,
     kind: target.kind || "process",
@@ -199,9 +212,14 @@ function normalizeRuntimeCleanupTarget(target = {}) {
     status: target.status || null,
     completedAt: target.completedAt || target.completed_at || null,
     closedAt: target.closedAt || target.closed_at || null,
+    command: scope.command,
+    stage: scope.stage,
+    handoffId: scope.handoffId,
+    workflowRunId: scope.workflowRunId,
+    taskId: scope.taskId,
+    scope,
   };
 }
-
 function normalizeHostManagedClosedInvocations(items = []) {
   if (!Array.isArray(items)) return [];
   const seen = new Set();
@@ -293,6 +311,11 @@ export async function discoverHostManagedSubagentTargets({
       hostInvocationId,
       agentId: record.agent_id || null,
       status,
+      command: record.command || record.workflow || null,
+      stage: record.stage || record.stage_id || null,
+      handoffId: record.handoffId || record.handoff_id || record.handoff || null,
+      workflowRunId: record.workflowRunId || record.workflow_run_id || null,
+      taskId: record.task_id || record.taskId || null,
       registeredAt: record.ts || new Date().toISOString(),
       lastSeenAt: record.ts || new Date().toISOString(),
       completedAt: record.ts || null,
@@ -309,6 +332,11 @@ export function createHostManagedSubagentCleanupTarget({
   status = "completed",
   completedAt = null,
   rootDir = null,
+  command = null,
+  stage = null,
+  handoffId = null,
+  workflowRunId = null,
+  taskId = null,
 } = {}) {
   if (!hostInvocationId) throw new Error("hostInvocationId required");
   return normalizeRuntimeCleanupTarget({
@@ -323,6 +351,11 @@ export function createHostManagedSubagentCleanupTarget({
     hostInvocationId,
     agentId,
     status,
+    command,
+    stage,
+    handoffId,
+    workflowRunId,
+    taskId,
     registeredAt: completedAt || new Date().toISOString(),
     lastSeenAt: completedAt || new Date().toISOString(),
     completedAt,
@@ -334,6 +367,8 @@ export function summarizeHostManagedSubagentDebtSync({
   path = defaultRuntimeCleanupRegistryPath(rootDir),
   invocationLogPath = join(rootDir, ...AGENT_INVOCATIONS_RELATIVE_PATH.split("/")),
   includeInvocationLog = true,
+  scope = {},
+  strictRelease = false,
 } = {}) {
   const registry = readRuntimeCleanupRegistrySync(path);
   const registryTargets = registry.targets;
@@ -371,6 +406,11 @@ export function summarizeHostManagedSubagentDebtSync({
         hostInvocationId,
         agentId: record.agent_id || null,
         status,
+        command: record.command || record.workflow || null,
+        stage: record.stage || record.stage_id || null,
+        handoffId: record.handoffId || record.handoff_id || record.handoff || null,
+        workflowRunId: record.workflowRunId || record.workflow_run_id || null,
+        taskId: record.task_id || record.taskId || null,
         registeredAt: record.ts || new Date().toISOString(),
         lastSeenAt: record.ts || new Date().toISOString(),
         completedAt: record.ts || null,
@@ -378,17 +418,80 @@ export function summarizeHostManagedSubagentDebtSync({
     }
   }
   const targets = [...registryTargets, ...discoveredTargets].filter(isCompletedHostManagedSubagent);
-  const closeRequired = targets.filter((target) => !target.closedAt).map((target) => ({
-    id: target.id,
-    hostInvocationId: target.hostInvocationId,
-    agentId: target.agentId,
-  }));
+  const targetRows = targets.map((target) => cleanupDebtRowFromTarget(target, { scope, strictRelease }));
+  const leaseDebt = summarizeAgentLeaseDebtSync({
+    rootDir,
+    includeInvocationLog: false,
+    scope,
+    strictRelease,
+  });
+  const rows = dedupeCleanupDebtRows([
+    ...targetRows.filter((row) => row.closeRequired),
+    ...(leaseDebt.closeRequired || []),
+    ...(leaseDebt.diagnostics || []),
+  ]);
+  const blocking = rows.filter((row) => row.blocks);
+  const diagnostics = rows.filter((row) => !row.blocks);
   return {
     schemaVersion: 1,
-    count: closeRequired.length,
-    closeRequired,
-    discovered: discoveredTargets.length,
+    strictRelease: strictRelease === true,
+    scoped: hasRuntimeCleanupScope(scope),
+    scope: normalizeRuntimeCleanupScope(scope),
+    count: blocking.length,
+    blockingCount: blocking.length,
+    diagnosticCount: diagnostics.length,
+    globalCount: rows.length,
+    closeRequired: blocking.map((item) => ({
+      id: item.id,
+      hostInvocationId: item.hostInvocationId,
+      agentId: item.agentId,
+      command: item.command || null,
+      handoffId: item.handoffId || null,
+      classification: item.classification,
+      reason: item.reason,
+    })),
+    diagnostics,
+    discovered: discoveredTargets.length + Number(leaseDebt.discovered || 0),
+    registryTargets: registryTargets.length,
+    checked: targets.length + Number(leaseDebt.checked || 0),
   };
+}
+
+function cleanupDebtRowFromTarget(target = {}, { scope = {}, strictRelease = false } = {}) {
+  const classification = classifyCleanupDebt({
+    ...target,
+    scope: target.scope || normalizeRuntimeCleanupScope(target),
+  }, { scope, strictRelease });
+  return {
+    id: target.id,
+    agentId: target.agentId || null,
+    hostInvocationSource: target.hostInvocationSource || null,
+    hostInvocationId: target.hostInvocationId || null,
+    command: target.scope?.command || target.command || null,
+    handoffId: target.scope?.handoffId || target.handoffId || null,
+    workflowRunId: target.scope?.workflowRunId || target.workflowRunId || null,
+    classification: classification.classification,
+    blocks: classification.blocks,
+    closeRequired: classification.closeRequired,
+    reason: classification.reason,
+  };
+}
+
+function dedupeCleanupDebtRows(rows = []) {
+  const seen = new Set();
+  const out = [];
+  for (const row of rows) {
+    const key = [row.hostInvocationSource || "", row.hostInvocationId || row.id || ""].join("\u0000");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(row);
+  }
+  return out;
+}
+
+function hasRuntimeCleanupScope(scope = {}) {
+  const normalized = normalizeRuntimeCleanupScope(scope);
+  return Boolean(normalized.command || normalized.handoffId || normalized.workflowRunId);
 }
 
 function hostManagedSubagentCleanupTargetId(source, invocationId) {
@@ -588,6 +691,22 @@ function isCompletedHostManagedSubagent(target = {}) {
     && target.hostInvocationSource === "codex-spawn-agent"
     && Boolean(target.hostInvocationId)
     && HOST_MANAGED_COMPLETED_STATUSES.has(status);
+}
+
+function normalizeRuntimeCleanupScope(scope = {}) {
+  return {
+    command: normalizeOptionalScopeValue(scope.command || scope.workflow),
+    stage: normalizeOptionalScopeValue(scope.stage || scope.phase || scope.stageId || scope.stage_id),
+    handoffId: normalizeOptionalScopeValue(scope.handoffId || scope.handoff || scope.handoff_id),
+    workflowRunId: normalizeOptionalScopeValue(scope.workflowRunId || scope.workflow_run_id),
+    taskId: normalizeOptionalScopeValue(scope.taskId || scope.task_id || scope.workItemId || scope.work_item_id),
+  };
+}
+
+function normalizeOptionalScopeValue(value) {
+  if (value === undefined || value === null) return null;
+  const normalized = String(value).trim();
+  return normalized || null;
 }
 
 function normalizePathForCompare(path = "") {
