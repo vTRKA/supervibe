@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -9,6 +9,38 @@ import test from "node:test";
 const ROOT = process.cwd();
 const GENESIS_SCRIPT = join(ROOT, "scripts", "supervibe-genesis.mjs");
 
+function createIsolatedCodexHome(prefix = "supervibe-genesis-codex-home-") {
+  const codexHome = mkdtempSync(join(tmpdir(), prefix));
+  writeFileSync(join(codexHome, "config.toml"), [
+    'approval_policy = "never"',
+    'sandbox_mode = "workspace-write"',
+    'default_permissions = ":workspace"',
+    'web_search = "live"',
+    "",
+    "[features]",
+    "apps = true",
+    "multi_agent = true",
+    "memories = true",
+    "shell_snapshot = true",
+    "codex_hooks = true",
+    "goals = true",
+    "",
+    "[agents]",
+    "max_threads = 8",
+    "max_depth = 1",
+    "job_max_runtime_seconds = 1800",
+    "",
+    "[apps._default]",
+    "enabled = true",
+    "",
+    "[[tool_suggest.discoverables]]",
+    'type = "plugin"',
+    'id = "supervibe@supervibe-marketplace"',
+    "",
+  ].join("\n"));
+  return codexHome;
+}
+
 function runGenesis(args, cwd, env = {}) {
   return execFileSync(process.execPath, [GENESIS_SCRIPT, ...args], {
     cwd,
@@ -16,6 +48,7 @@ function runGenesis(args, cwd, env = {}) {
       ...process.env,
       SUPERVIBE_HOST: "codex",
       SUPERVIBE_PLUGIN_ROOT: ROOT,
+      CODEX_HOME: env.CODEX_HOME || createIsolatedCodexHome(),
       ...env,
     },
     encoding: "utf8",

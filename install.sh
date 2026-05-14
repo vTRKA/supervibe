@@ -77,7 +77,7 @@ validate_safe_path() {
     "/"|"$HOME"|"$HOME/"|*"/../"*|*".."*) die "unsafe plugin target path: $path" ;;
   esac
   case "$path" in
-    "$HOME/.claude/plugins/marketplaces/$MARKETPLACE_NAME") ;;
+    "$HOME/.codex/plugins/marketplaces/$MARKETPLACE_NAME"|"$HOME/.claude/plugins/marketplaces/$MARKETPLACE_NAME"|"$HOME/.gemini/plugins/marketplaces/$MARKETPLACE_NAME") ;;
     *) die "unexpected package root: $path" ;;
   esac
 }
@@ -183,7 +183,7 @@ quarantine_non_git_target() {
   local root="$1"
   local stamp backup_dir backup
   stamp=$(date -u +%Y%m%dT%H%M%SZ 2>/dev/null || date +%Y%m%dT%H%M%S)
-  backup_dir="$ANTHROPIC_CONFIG_DIR/plugins/.supervibe-install-backups"
+  backup_dir="$(dirname "$(dirname "$root")")/.supervibe-install-backups"
   backup="$backup_dir/$MARKETPLACE_NAME.non-git.$stamp"
   mkdir -p "$backup_dir"
   warn "found non-git plugin target at $root; moving it aside before clean reinstall"
@@ -316,12 +316,30 @@ fi
 
 # ---- clone or update the shared checkout ----
 
-# All CLIs reference one on-disk checkout. Claude Code reads it via marketplace
-# layout; Codex via symlink; Gemini via GEMINI.md @-include.
-TARGET="$ANTHROPIC_CONFIG_DIR/plugins/marketplaces/$MARKETPLACE_NAME"
+select_plugin_target() {
+  local cli
+  for cli in "${CLIS_FOUND[@]}"; do
+    case "$cli" in
+      codex) printf '%s\n' "$CODEX_DIR/plugins/marketplaces/$MARKETPLACE_NAME"; return ;;
+    esac
+  done
+  for cli in "${CLIS_FOUND[@]}"; do
+    case "$cli" in
+      claude) printf '%s\n' "$ANTHROPIC_CONFIG_DIR/plugins/marketplaces/$MARKETPLACE_NAME"; return ;;
+    esac
+  done
+  for cli in "${CLIS_FOUND[@]}"; do
+    case "$cli" in
+      gemini) printf '%s\n' "$GEMINI_DIR/plugins/marketplaces/$MARKETPLACE_NAME"; return ;;
+    esac
+  done
+  printf '%s\n' "$ANTHROPIC_CONFIG_DIR/plugins/marketplaces/$MARKETPLACE_NAME"
+}
+
+TARGET="$(select_plugin_target)"
 validate_safe_path "$TARGET"
-say "plan: will install or update checkout at $TARGET"
-say "plan: will modify Claude config under $ANTHROPIC_CONFIG_DIR, Codex plugin cache/config + native skill links under $CODEX_DIR and ~/.agents, and Gemini include under $GEMINI_DIR when those CLIs are detected"
+say "plan: will install or update provider-scoped checkout at $TARGET"
+say "plan: will modify detected host config under $ANTHROPIC_CONFIG_DIR, $CODEX_DIR, $GEMINI_DIR, and ~/.agents only when those CLIs are detected"
 say "plan: integrity pins ref=$REF expected_commit=${EXPECTED_COMMIT:-not set} package_sha256=$([ -n "$EXPECTED_PACKAGE_SHA256" ] && printf set || printf 'not set')"
 
 if [ -d "$TARGET/.git" ]; then
@@ -620,7 +638,7 @@ ${C_GREEN}=================================================================${C_R
   Upgrade:     curl -fsSL https://raw.githubusercontent.com/vTRKA/supervibe/main/install.sh | bash
   Manual:      cd "$TARGET" && npm run supervibe:upgrade
   Uninstall:   rm -rf "$TARGET" + remove "$PLUGIN_NAME@$MARKETPLACE_NAME" from
-               ~/.claude/plugins/installed_plugins.json
+               the detected host registration files
 
   Docs: https://github.com/vTRKA/supervibe#readme
 EOF

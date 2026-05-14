@@ -25,7 +25,7 @@ import {
 } from "./frontend-target-resolver.mjs";
 import { createAgentProvisioningContextMigration } from "./agent-provisioning.mjs";
 import { writeContextMigrationPlan } from "./supervibe-context-migrator.mjs";
-import { applyProjectProviderConfigDefaults } from "./supervibe-provider-config-applier.mjs";
+import { applyUserProviderConfigDefaults } from "./supervibe-provider-config-applier.mjs";
 import {
   createProviderConfigDoctorReport,
   loadProviderCapabilities,
@@ -299,10 +299,10 @@ async function buildAdaptProviderConfigPreflight({ projectRoot, pluginRoot, host
     provider: providerId,
     manifest,
   });
-  const apply = await applyProjectProviderConfigDefaults({
+  const apply = await applyUserProviderConfigDefaults({
     provider,
     providerId,
-    rootDir: projectRoot,
+    projectRoot,
     manifest,
     write,
   });
@@ -312,8 +312,8 @@ async function buildAdaptProviderConfigPreflight({ projectRoot, pluginRoot, host
     host,
     doctor,
     apply,
-    homeConfigWriteAllowed: false,
-    homeConfigAction: "manual-only",
+    homeConfigWriteAllowed: apply.homeConfigWriteAllowed === true,
+    homeConfigAction: apply.homeConfigAction || "manual-only",
   };
 }
 
@@ -862,6 +862,7 @@ function summarizeProviderConfig(providerConfig) {
   return {
     providerId: providerConfig.providerId || apply.providerId || "unknown",
     targetPath: apply.targetPath || null,
+    scope: apply.scope || providerConfig.scope || null,
     changed: apply.changed === true,
     written: apply.written === true,
     blocked: apply.blocked === true,
@@ -872,6 +873,7 @@ function summarizeProviderConfig(providerConfig) {
     addedMissing: apply.operationCounts?.added || 0,
     homeConfigAction: providerConfig.homeConfigAction || apply.homeConfigAction || "manual-only",
     backupPath: apply.backupPath || null,
+    ignoredProjectConfigs: apply.ignoredProjectConfigs || [],
   };
 }
 

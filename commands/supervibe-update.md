@@ -12,7 +12,7 @@ Update the installed Supervibe plugin to the latest commit. Wraps `npm run super
 
 ## Difference from `/supervibe-adapt`
 
-- `/supervibe-update` updates the **plugin source** in `~/.claude/plugins/marketplaces/supervibe-marketplace/` (global, single install per machine).
+- `/supervibe-update` updates the **provider-scoped plugin source** in the resolved install root, for example `~/.codex/plugins/marketplaces/supervibe-marketplace/` for Codex or `~/.claude/plugins/marketplaces/supervibe-marketplace/` for Claude Code.
 - `/supervibe-adapt` propagates upstream agent improvements into a **specific project's** selected host adapter overrides.
 
 Run `/supervibe-update` first, then `/supervibe-adapt` per project that has overrides.

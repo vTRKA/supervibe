@@ -129,6 +129,7 @@ Match exact pack?
 9. For each `rules-attach` → copy rule file to the selected adapter's rules folder, including upstream `related-rules` closure or explicitly marked external links.
 10. Copy support skills referenced by selected agents or the bootstrap/adapt flow to the selected adapter's skills folder.
 10a. Generate or update the selected adapter's settings file only if supported.
+10b. Provider runtime config writes are user-provider-home scoped only: add missing settings to the selected provider home, preserve existing values, and never create or modify project runtime config files in provider-named folders or provider-shaped root config files.
 11. Generate or update the selected adapter's instruction file through `scripts/lib/supervibe-context-migrator.mjs`, using managed block markers and preserving user-owned content.
 11b. Create Supervibe-owned state under `.supervibe/memory/` only, including `.supervibe/memory/index-config.json` and `.supervibe/memory/.supervibe-version`. Do not create the legacy Claude memory path unless the user explicitly asks for migration.
 9. Copy `husky/`, `commitlint.config.js`, `lint-staged.config.js` from pack

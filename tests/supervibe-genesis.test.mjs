@@ -47,11 +47,13 @@ test("supervibe-genesis dry-run previews Codex provider config without writing p
     const state = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "genesis", "state.json"), "utf8"));
 
     assert.equal(summary.providerConfig.providerId, "codex");
-    assert.equal(summary.providerConfig.targetPath, ".codex/config.toml");
+    const expectedTarget = join(homeRoot, ".codex", "config.toml").replace(/\\/g, "/");
+    assert.equal(summary.providerConfig.targetPath, expectedTarget);
+    assert.equal(summary.providerConfig.scope, "user-provider-home");
     assert.equal(summary.providerConfig.changed, true);
     assert.equal(summary.providerConfig.written, false);
     assert.equal(summary.providerConfig.blocked, false);
-    assert.equal(summary.providerConfig.homeConfigAction, "manual-only");
+    assert.equal(summary.providerConfig.homeConfigAction, "apply-add-missing-only");
     assert.equal(state.providerConfig.apply.written, false);
     assert.equal(existsSync(join(projectRoot, ".codex", "config.toml")), false);
     assert.equal(existsSync(join(homeRoot, ".codex", "config.toml")), false);
@@ -66,7 +68,10 @@ test("supervibe-genesis apply adds missing Codex provider config defaults withou
   const homeRoot = mkdtempSync(join(tmpdir(), "supervibe-genesis-home-"));
   try {
     mkdirSync(join(projectRoot, ".codex"), { recursive: true });
-    writeFileSync(join(projectRoot, ".codex", "config.toml"), [
+    mkdirSync(join(homeRoot, ".codex"), { recursive: true });
+    const projectConfigBefore = "# unsafe project config must be ignored\napproval_policy = \"on-request\"\n";
+    writeFileSync(join(projectRoot, ".codex", "config.toml"), projectConfigBefore);
+    writeFileSync(join(homeRoot, ".codex", "config.toml"), [
       "# keep operator settings",
       "approval_policy = \"on-request\"",
       "",
@@ -79,19 +84,19 @@ test("supervibe-genesis apply adds missing Codex provider config defaults withou
       env: { HOME: homeRoot, USERPROFILE: homeRoot },
     });
     const summary = JSON.parse(out);
-    const config = readFileSync(join(projectRoot, ".codex", "config.toml"), "utf8");
+    const config = readFileSync(join(homeRoot, ".codex", "config.toml"), "utf8");
     const state = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "genesis", "state.json"), "utf8"));
 
     assert.equal(summary.providerConfig.written, true);
-    assert.equal(summary.providerConfig.homeConfigAction, "manual-only");
+    assert.equal(summary.providerConfig.homeConfigAction, "apply-add-missing-only");
     assert.match(config, /# keep operator settings/);
     assert.match(config, /approval_policy = "on-request"/);
     assert.match(config, /max_threads = 4/);
     assert.match(config, /web_search = "live"/);
     assert.match(config, /sandbox_mode = "workspace-write"/);
     assert.equal(state.providerConfig.apply.written, true);
-    assert.equal(state.providerConfig.homeConfigAction, "manual-only");
-    assert.equal(existsSync(join(homeRoot, ".codex", "config.toml")), false);
+    assert.equal(state.providerConfig.homeConfigAction, "apply-add-missing-only");
+    assert.equal(readFileSync(join(projectRoot, ".codex", "config.toml"), "utf8"), projectConfigBefore);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
     rmSync(homeRoot, { recursive: true, force: true });
@@ -103,6 +108,7 @@ test("supervibe-genesis blocks duplicate Codex provider config keys before scaff
   const homeRoot = mkdtempSync(join(tmpdir(), "supervibe-genesis-home-"));
   try {
     mkdirSync(join(projectRoot, ".codex"), { recursive: true });
+    mkdirSync(join(homeRoot, ".codex"), { recursive: true });
     const before = [
       "agents.max_threads = 2",
       "",
@@ -110,7 +116,8 @@ test("supervibe-genesis blocks duplicate Codex provider config keys before scaff
       "max_threads = 4",
       "",
     ].join("\n");
-    writeFileSync(join(projectRoot, ".codex", "config.toml"), before);
+    writeFileSync(join(projectRoot, ".codex", "config.toml"), "# ignored project duplicate\n" + before);
+    writeFileSync(join(homeRoot, ".codex", "config.toml"), before);
 
     const result = runGenesisMaybeFails(["--apply", "--target", projectRoot, "--host", "codex", "--no-color"], {
       env: { HOME: homeRoot, USERPROFILE: homeRoot },
@@ -120,10 +127,10 @@ test("supervibe-genesis blocks duplicate Codex provider config keys before scaff
     assert.equal(result.status, 1);
     assert.match(result.stderr, /SUPERVIBE_GENESIS_ERROR/);
     assert.match(result.stderr, /duplicate key agents\.max_threads/);
-    assert.equal(readFileSync(join(projectRoot, ".codex", "config.toml"), "utf8"), before);
+    assert.equal(readFileSync(join(homeRoot, ".codex", "config.toml"), "utf8"), before);
+    assert.match(readFileSync(join(projectRoot, ".codex", "config.toml"), "utf8"), /# ignored project duplicate/);
     assert.equal(state.lifecycle, "dry-run");
     assert.equal(existsSync(join(projectRoot, ".codex", "agents")), false);
-    assert.equal(existsSync(join(homeRoot, ".codex", "config.toml")), false);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
     rmSync(homeRoot, { recursive: true, force: true });

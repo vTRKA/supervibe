@@ -134,6 +134,19 @@ test('install.sh and install.ps1 reference the same plugin name', () => {
   assert.strictEqual(shName, psName, `plugin name mismatch: bash=${shName} ps1=${psName}`);
 });
 
+test('Codex installer checkout root is provider-scoped and never the Claude marketplace root', () => {
+  const sh = readFileSync(SH, 'utf8');
+  const ps1 = readFileSync(PS1, 'utf8');
+
+  assert.match(sh, /select_plugin_target/, 'bash installer must choose a provider-scoped checkout root');
+  assert.match(sh, /CODEX_DIR\/plugins\/marketplaces\/\$MARKETPLACE_NAME/, 'bash installer must use the Codex provider plugin marketplace root');
+  assert.doesNotMatch(sh, /TARGET="\$ANTHROPIC_CONFIG_DIR\/plugins\/marketplaces\/\$MARKETPLACE_NAME"/, 'bash installer must not hard-code the Claude marketplace as the shared target');
+
+  assert.match(ps1, /Resolve-PluginTarget/, 'PowerShell installer must choose a provider-scoped checkout root');
+  assert.match(ps1, /Join-Path \$CodexDir "plugins\\marketplaces\\\$MarketplaceName"/, 'PowerShell installer must use the Codex provider plugin marketplace root');
+  assert.doesNotMatch(ps1, /\$Target\s*=\s*Join-Path \$AnthropicConfigDir "plugins\\marketplaces\\\$MarketplaceName"/, 'PowerShell installer must not hard-code the Claude marketplace as the shared target');
+});
+
 test('Codex installer registration includes native skills for Zed ACP sessions', () => {
   const sh = readFileSync(SH, 'utf8');
   const ps1 = readFileSync(PS1, 'utf8');
@@ -370,11 +383,15 @@ test('update.ps1 has Stop ErrorAction + dirty-check + delegation', () => {
   assert.match(src, /npm run supervibe:upgrade/, 'must delegate to the canonical upgrade script');
 });
 
-test('update scripts use the same plugin-marketplace path layout as install scripts', () => {
+test('update scripts use provider-scoped plugin-marketplace roots', () => {
   const sh = readFileSync(UPD_SH, 'utf8');
   const ps1 = readFileSync(UPD_PS1, 'utf8');
+  assert.match(sh, /\.codex\/plugins\/marketplaces\/supervibe-marketplace/);
   assert.match(sh, /\.claude\/plugins\/marketplaces\/supervibe-marketplace/);
+  assert.match(ps1, /\.codex\\plugins\\marketplaces\\supervibe-marketplace/);
   assert.match(ps1, /\.claude\\plugins\\marketplaces\\supervibe-marketplace/);
+  assert.match(sh, /resolve_plugin_root/);
+  assert.match(ps1, /Resolve-PluginRoot/);
 });
 
 test('update scripts honor SUPERVIBE_PLUGIN_ROOT env override', () => {

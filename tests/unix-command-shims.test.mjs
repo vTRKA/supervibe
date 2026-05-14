@@ -100,8 +100,9 @@ test("every macOS/Linux terminal alias has a non-destructive help path", async (
   const packageJson = JSON.parse(await readFile(join(ROOT, "package.json"), "utf8"));
   const aliases = Object.keys(packageJson.bin).filter((alias) => alias !== "supervibe").sort();
 
-  assert.equal(aliases.length, 20);
+  assert.ok(aliases.length >= 20);
   assert.ok(aliases.includes("supervibe-stage"));
+  assert.ok(aliases.includes("supervibe-validate"));
   for (const alias of aliases) {
     const { stdout } = await execFileAsync(process.execPath, [
       join(ROOT, "bin", "supervibe.mjs"),

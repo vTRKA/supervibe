@@ -121,7 +121,7 @@ const SLASH_COMMAND_SHORTCUTS = Object.freeze([
     ],
     keywordGroups: [
       ["audit", "check", "review", "rate", "score", "assess", "проверь", "проведи", "сделай", "оцени", "насколько", "на сколько", "аудит"],
-      ["project", "health", "agent system", "agents", "maturity", "out of 10", "10 из 10", "качество", "проект", "здоровье", "агент", "агенты", "агентской системы", "зрелость", "зрелая"],
+      ["project", "health", "agent system", "agents", "maturity", "out of 10", "10 из 10", "качество", "проект", "здоровье", "агент", "агенты", "агентов", "агентской системы", "зрелость", "зрелая"],
       ["intent", "routing", "router", "receipt", "receipts", "skills", "semantic", "rag", "codegraph", "coverage", "emulation", "invoked", "really invoked", "интент", "роут", "маршрут", "рецепт", "скил", "семантичес", "покрытие", "вызываются", "эмулируются"],
     ],
   },
@@ -650,7 +650,7 @@ const COMMAND_SHORTCUTS = Object.freeze([
     ],
     keywordGroups: [
       ["add", "install", "provision", "connect", "copy", "sync", "invoke", "invoked", "fix", "repair", "make", "добавь", "установи", "подключи", "подключены", "скопируй", "синхронизируй", "вызываются", "почини", "исправь", "пофикси", "сделай"],
-      ["emulated", "real", "missing", "unavailable", "mandatory", "required", "provider", "providers", "host callable", "callable", "every provider", "for each provider", "эмулируются", "настоящих", "не хватает", "недостающ", "недоступны", "отсутствуют", "обязательн", "провайдер"],
+      ["emulated", "real", "missing", "unavailable", "mandatory", "required", "provider", "providers", "host callable", "callable", "every provider", "for each provider", "эмулируются", "настоящих", "не хватает", "недостающ", "недостающих", "недоступны", "отсутствуют", "обязательн", "обязательными", "провайдера", "провайдер"],
       ["agent", "agents", "skill", "skills", "агент", "агенты", "агентов", "скил", "скилы", "скиллы", "skills"],
     ],
     requiredGroupIndexes: [0, 1, 2],

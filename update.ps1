@@ -4,7 +4,7 @@
 #   irm https://raw.githubusercontent.com/vTRKA/supervibe/main/update.ps1 | iex
 #
 # What it does:
-#   1. Finds the existing plugin checkout (default: ~/.claude/plugins/marketplaces/supervibe-marketplace)
+#   1. Finds the existing provider-scoped plugin checkout (Codex, then Claude, then Gemini)
 #   2. If missing, delegates to install.ps1 for first-time install
 #   3. Restores managed checkout tracked drift and refuses only if restore fails
 #   4. Delegates to `npm run supervibe:upgrade` inside the checkout
@@ -13,11 +13,20 @@
 # Safe as the user-facing "install or update" entrypoint.
 $ErrorActionPreference = 'Stop'
 
-$PluginRoot = if ($env:SUPERVIBE_PLUGIN_ROOT) {
-  $env:SUPERVIBE_PLUGIN_ROOT
-} else {
-  Join-Path $HOME '.claude\plugins\marketplaces\supervibe-marketplace'
+function Resolve-PluginRoot {
+  if ($env:SUPERVIBE_PLUGIN_ROOT) { return $env:SUPERVIBE_PLUGIN_ROOT }
+  $candidates = @(
+    (Join-Path $HOME '.codex\plugins\marketplaces\supervibe-marketplace'),
+    (Join-Path $HOME '.claude\plugins\marketplaces\supervibe-marketplace'),
+    (Join-Path $HOME '.gemini\plugins\marketplaces\supervibe-marketplace')
+  )
+  foreach ($candidate in $candidates) {
+    if (Test-Path (Join-Path $candidate '.git')) { return $candidate }
+  }
+  return $candidates[0]
 }
+
+$PluginRoot = Resolve-PluginRoot
 $ExpectedCommit = if ($env:SUPERVIBE_EXPECTED_COMMIT) { $env:SUPERVIBE_EXPECTED_COMMIT } else { '' }
 $ExpectedPackageSha256 = if ($env:SUPERVIBE_EXPECTED_PACKAGE_SHA256) { $env:SUPERVIBE_EXPECTED_PACKAGE_SHA256.ToLowerInvariant() } else { '' }
 $MinNodeVersion = [version]'22.5.0'

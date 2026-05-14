@@ -40,8 +40,13 @@ function Assert-SafePluginPath {
   $full = [System.IO.Path]::GetFullPath($Path)
   $root = [System.IO.Path]::GetPathRoot($full)
   if ($full.TrimEnd('\') -eq $root.TrimEnd('\')) { Die "unsafe plugin target path: $Path" }
-  $expected = [System.IO.Path]::GetFullPath((Join-Path $HOME ".claude\plugins\marketplaces\$MarketplaceName"))
-  if ($full.TrimEnd('\') -ne $expected.TrimEnd('\')) { Die "unexpected package root: $Path" }
+  $expectedRoots = @(
+    [System.IO.Path]::GetFullPath((Join-Path $HOME ".codex\plugins\marketplaces\$MarketplaceName")),
+    [System.IO.Path]::GetFullPath((Join-Path $HOME ".claude\plugins\marketplaces\$MarketplaceName")),
+    [System.IO.Path]::GetFullPath((Join-Path $HOME ".gemini\plugins\marketplaces\$MarketplaceName"))
+  )
+  $matched = $expectedRoots | Where-Object { $_.TrimEnd('\') -eq $full.TrimEnd('\') }
+  if (-not $matched) { Die "unexpected package root: $Path" }
 }
 
 function Write-Utf8NoBom {
@@ -184,10 +189,18 @@ if ($ClisFound.Count -eq 0) {
 
 # ---- clone or update the shared checkout ----
 
-$Target = Join-Path $AnthropicConfigDir "plugins\marketplaces\$MarketplaceName"
+function Resolve-PluginTarget {
+  param([string[]]$CliIds)
+  if ($CliIds -contains 'codex') { return (Join-Path $CodexDir "plugins\marketplaces\$MarketplaceName") }
+  if ($CliIds -contains 'claude') { return (Join-Path $AnthropicConfigDir "plugins\marketplaces\$MarketplaceName") }
+  if ($CliIds -contains 'gemini') { return (Join-Path $GeminiDir "plugins\marketplaces\$MarketplaceName") }
+  return (Join-Path $AnthropicConfigDir "plugins\marketplaces\$MarketplaceName")
+}
+
+$Target = Resolve-PluginTarget -CliIds $ClisFound
 Assert-SafePluginPath $Target
-Say "plan: will install or update checkout at $Target"
-Say "plan: will modify Claude config under $AnthropicConfigDir, Codex plugin cache/config + native skill links under $CodexDir and ~/.agents, and Gemini include under $GeminiDir when those CLIs are detected"
+Say "plan: will install or update provider-scoped checkout at $Target"
+Say "plan: will modify detected host config under $AnthropicConfigDir, $CodexDir, $GeminiDir, and ~/.agents only when those CLIs are detected"
 Say "plan: integrity pins ref=$Ref expected_commit=$(if ($ExpectedCommit) { $ExpectedCommit } else { 'not set' }) package_sha256=$(if ($ExpectedPackageSha256) { 'set' } else { 'not set' })"
 
 function Run-Git {
@@ -290,7 +303,8 @@ function Invoke-RequiredOnnxModelSetup {
 function Move-NonGitTargetAside {
   param([string]$Path)
   $stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
-  $backupDir = Join-Path (Join-Path $AnthropicConfigDir 'plugins') '.supervibe-install-backups'
+  $pluginsRoot = Split-Path (Split-Path $Path -Parent) -Parent
+  $backupDir = Join-Path $pluginsRoot '.supervibe-install-backups'
   $backup = Join-Path $backupDir "$MarketplaceName.non-git.$stamp"
   New-Item -ItemType Directory -Force -Path $backupDir | Out-Null
   Warn "found non-git plugin target at $Path; moving it aside before clean reinstall"
@@ -636,7 +650,7 @@ Write-Host ''
 Write-Host '  Upgrade:     irm https://raw.githubusercontent.com/vTRKA/supervibe/main/install.ps1 | iex'
 Write-Host "  Manual:      cd '$Target'; npm run supervibe:upgrade"
 Write-Host "  Uninstall:   Remove-Item -Recurse '$Target' + remove '$PluginName@$MarketplaceName'"
-Write-Host '               from ~/.claude/plugins/installed_plugins.json'
+Write-Host '               from the detected host registration files'
 Write-Host ''
 Write-Host '  Docs: https://github.com/vTRKA/supervibe#readme'
 Write-Host ''

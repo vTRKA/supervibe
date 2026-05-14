@@ -30,6 +30,8 @@ It does not block necessary follow-through such as tests, validators, docs for
 changed behavior, migration notes, rollback instructions, or generated metadata
 required by the changed surface.
 
+Provider runtime configuration is never a project artifact by default. When a workflow needs provider settings, write only additive, missing values in the selected local user provider home and treat project runtime config files in provider-named folders or provider-shaped root config files as detection-only unless a future explicit cleanup command is approved.
+
 ## What to do
 
 - Apply `docs/references/scope-safety-standard.md` before accepting scope growth.

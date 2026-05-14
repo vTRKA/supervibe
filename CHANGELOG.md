@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.33] - 2026-05-14
+
+### Fixed
+
+- Forced provider config updates for Genesis and Adapt into the local user provider home, including `~/.codex/config.toml`, with add-missing-only merging and no project-local config writes.
+- Routed Codex installs and updates through the Codex provider plugin home instead of the Claude marketplace directory.
+
+### Validation
+
+- Added provider config scope regression coverage and a release gate that blocks project-scoped provider config writes from returning.
+
 ## [2.1.31] - 2026-05-14
 
 ### Changed

@@ -72,6 +72,39 @@ function createArchivedWorkflowProject(prefix = "supervibe-strict-release-archiv
   return projectRoot;
 }
 
+function createIsolatedCodexHome(prefix = "supervibe-strict-codex-home-") {
+  const codexHome = mkdtempSync(join(tmpdir(), prefix));
+  mkdirSync(codexHome, { recursive: true });
+  writeFileSync(join(codexHome, "config.toml"), [
+    'approval_policy = "never"',
+    'sandbox_mode = "workspace-write"',
+    'default_permissions = ":workspace"',
+    'web_search = "live"',
+    "",
+    "[features]",
+    "apps = true",
+    "multi_agent = true",
+    "memories = true",
+    "shell_snapshot = true",
+    "codex_hooks = true",
+    "goals = true",
+    "",
+    "[agents]",
+    "max_threads = 8",
+    "max_depth = 1",
+    "job_max_runtime_seconds = 1800",
+    "",
+    "[apps._default]",
+    "enabled = true",
+    "",
+    "[[tool_suggest.discoverables]]",
+    'type = "plugin"',
+    'id = "supervibe@supervibe-marketplace"',
+    "",
+  ].join("\n"));
+  return codexHome;
+}
+
 function runAdapt(projectRoot, args = []) {
   return execFileSync(process.execPath, [ADAPT_SCRIPT, ...args], {
     cwd: projectRoot,
@@ -80,6 +113,7 @@ function runAdapt(projectRoot, args = []) {
       SUPERVIBE_HOST: "codex",
       SUPERVIBE_PLUGIN_ROOT: ROOT,
       SUPERVIBE_SKIP_DOCKER_PROBE: "1",
+      CODEX_HOME: createIsolatedCodexHome(),
     },
     encoding: "utf8",
     stdio: ["pipe", "pipe", "pipe"],

@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
+import { homedir } from "node:os";
 import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { dirname, isAbsolute, resolve } from "node:path";
 
 const REDACTED = "[REDACTED]";
 
@@ -224,10 +225,120 @@ function redactSensitiveText(value = "") {
   return redacted;
 }
 
-export async function applyProjectProviderConfigDefaults({
+export function resolveUserProviderConfigTarget({
   provider,
   providerId,
-  rootDir = process.cwd(),
+  projectRoot = process.cwd(),
+  userHome,
+  providerHome,
+  env = process.env,
+} = {}) {
+  const selectedProviderId = provider?.id || providerId || "unknown";
+  const runtimeConfig = normalizeRuntimeConfig(provider || { id: selectedProviderId });
+  const configFile = runtimeConfig.configFile;
+  const format = runtimeConfig.format || inferFormatFromPath(configFile);
+  const resolvedProjectRoot = resolve(projectRoot || process.cwd());
+
+  if (!runtimeConfig.writable) {
+    return {
+      scope: "manual-only",
+      providerId: selectedProviderId,
+      providerHome: null,
+      configFile,
+      absolutePath: null,
+      targetPath: null,
+      format,
+      writable: false,
+      providerHomeSource: "manual-only",
+      projectRootBlocked: false,
+      issue: issue("provider-config-manual-only", selectedProviderId, "Provider runtime config is manual-only."),
+    };
+  }
+
+  const providerHomeSelection = selectProviderHome({
+    runtimeConfig,
+    providerHome,
+    userHome,
+    env,
+  });
+  const resolvedProviderHome = providerHomeSelection.value ? resolve(providerHomeSelection.value) : null;
+  if (!resolvedProviderHome) {
+    return blockedTarget({
+      providerId: selectedProviderId,
+      configFile,
+      format,
+      code: "provider-home-missing",
+      message: "No user provider home could be resolved.",
+    });
+  }
+  if (isAbsolute(configFile) || configFile.split(/[\\/]+/).includes("..")) {
+    return blockedTarget({
+      providerId: selectedProviderId,
+      providerHome: resolvedProviderHome,
+      configFile,
+      format,
+      code: "provider-config-file-unsafe",
+      message: "Provider runtime config file must be relative to provider home.",
+    });
+  }
+
+  const absolutePath = resolve(resolvedProviderHome, configFile);
+  const underProviderHome = isPathInsideRoot(resolvedProviderHome, absolutePath);
+  const underProjectRoot = isPathInsideRoot(resolvedProjectRoot, absolutePath);
+  if (!underProviderHome || underProjectRoot) {
+    return {
+      scope: "user-provider-home",
+      providerId: selectedProviderId,
+      providerHome: normalizePathForReport(resolvedProviderHome),
+      configFile,
+      absolutePath: normalizePathForReport(absolutePath),
+      targetPath: normalizePathForReport(absolutePath),
+      format,
+      writable: false,
+      providerHomeSource: providerHomeSelection.source,
+      projectRootBlocked: underProjectRoot,
+      issue: issue(
+        underProjectRoot ? "provider-config-target-inside-project-root" : "provider-config-target-outside-provider-home",
+        normalizePathForReport(absolutePath),
+        "Provider runtime config target must stay under provider home and outside the project root.",
+      ),
+    };
+  }
+
+  return {
+    scope: "user-provider-home",
+    providerId: selectedProviderId,
+    providerHome: resolvedProviderHome,
+    configFile,
+    absolutePath,
+    targetPath: normalizePathForReport(absolutePath),
+    format,
+    writable: true,
+    providerHomeSource: providerHomeSelection.source,
+    projectRootBlocked: false,
+  };
+}
+
+export function detectProjectProviderRuntimeConfigs({ projectRoot = process.cwd() } = {}) {
+  const root = resolve(projectRoot || process.cwd());
+  return [
+    { projectRel: ".codex/config.toml", providerId: "codex" },
+    { projectRel: ".claude/settings.json", providerId: "claude-code" },
+    { projectRel: ".claude/settings.local.json", providerId: "claude-code" },
+    { projectRel: "config.toml", providerId: "unknown" },
+  ]
+    .map((entry) => ({ ...entry, absolutePath: resolve(root, ...entry.projectRel.split("/")) }))
+    .filter((entry) => existsSync(entry.absolutePath))
+    .map((entry) => ({ ...entry, absolutePath: normalizePathForReport(entry.absolutePath) }));
+}
+
+export async function applyUserProviderConfigDefaults({
+  provider,
+  providerId,
+  projectRoot = process.cwd(),
+  userHome,
+  providerHome,
+  env = process.env,
   manifest,
   write = false,
   checkedAt,
@@ -235,34 +346,52 @@ export async function applyProjectProviderConfigDefaults({
 } = {}) {
   const selectedProvider = provider || findProvider(manifest, providerId);
   const selectedProviderId = selectedProvider?.id || providerId || "unknown";
-  const projectConfigPath = selectProjectProviderConfigPath(selectedProvider);
-  const homeConfigPaths = listHomeProviderConfigPaths(selectedProvider);
-  const targetPath = projectConfigPath || "provider-config";
-  const resolvedRoot = resolve(rootDir);
-  const absolutePath = projectConfigPath ? resolve(resolvedRoot, projectConfigPath) : null;
-  const projectConfigPathSafe = absolutePath ? isPathInsideRoot(resolvedRoot, absolutePath) : false;
-  const existing = absolutePath && projectConfigPathSafe ? existsSync(absolutePath) : false;
+  const target = resolveUserProviderConfigTarget({
+    provider: selectedProvider,
+    providerId: selectedProviderId,
+    projectRoot,
+    userHome,
+    providerHome,
+    env,
+  });
+  const ignoredProjectConfigs = detectProjectProviderRuntimeConfigs({ projectRoot });
+  const absolutePath = target.absolutePath && target.writable ? target.absolutePath : null;
+  const existing = absolutePath ? existsSync(absolutePath) : false;
   const text = existing ? await readFile(absolutePath, "utf8") : "";
   const report = createProviderConfigApplyReport({
     provider: selectedProvider,
     providerId: selectedProviderId,
     text,
-    targetPath,
+    format: target.format,
+    targetPath: target.targetPath || "provider-config",
     manifest,
     checkedAt,
   });
+  if (target.issue) {
+    report.blocked = target.scope !== "manual-only";
+    report.issues = [...(report.issues || []), target.issue];
+  }
+  report.scope = target.scope;
+  report.status = target.scope === "manual-only" ? "manual-only" : report.blocked ? "blocked" : report.changed ? "changed" : "unchanged";
+  report.ignoredProjectConfigs = ignoredProjectConfigs;
+
   const result = {
     schemaVersion: 1,
     providerId: selectedProviderId,
-    targetPath,
+    scope: target.scope,
+    targetPath: target.targetPath || null,
+    providerHome: target.providerHome ? normalizePathForReport(target.providerHome) : null,
+    providerHomeSource: target.providerHomeSource || null,
     format: report.format,
     writeRequested: write === true,
     writeMode: write ? "apply-add-missing-only" : "dry-run-add-missing-only",
-    projectConfigPresent: existing,
-    projectConfigPathSafe,
-    homeConfigWriteAllowed: false,
-    homeConfigAction: "manual-only",
-    homeConfigPaths,
+    projectConfigPresent: ignoredProjectConfigs.length > 0,
+    projectConfigPathSafe: false,
+    ignoredProjectConfigs,
+    homeConfigWriteAllowed: target.scope === "user-provider-home" && target.writable === true,
+    homeConfigAction: target.scope === "manual-only" ? "manual-only" : "apply-add-missing-only",
+    homeConfigPaths: target.targetPath ? [target.targetPath] : [],
+    userConfigPresent: existing,
     changed: report.changed === true,
     blocked: report.blocked === true,
     skipped: false,
@@ -283,27 +412,20 @@ export async function applyProjectProviderConfigDefaults({
       skipReason: "provider-not-found",
     };
   }
-  if (!projectConfigPath || !absolutePath) {
+  if (target.scope === "manual-only") {
     return {
       ...result,
       skipped: true,
-      skipReason: "project-config-path-missing",
+      skipReason: "provider-config-manual-only",
+      changed: false,
     };
   }
-  if (!projectConfigPathSafe) {
+  if (!target.writable || !absolutePath) {
     return {
       ...result,
       blocked: true,
       skipped: true,
-      skipReason: "project-config-path-outside-root",
-      report: {
-        ...report,
-        blocked: true,
-        issues: [
-          ...(report.issues || []),
-          issue("project-config-path-outside-root", targetPath, "Project provider config path must stay inside the target project root."),
-        ],
-      },
+      skipReason: target.issue?.code || "provider-config-target-invalid",
     };
   }
   if (!write || report.blocked || !report.changed) return result;
@@ -313,7 +435,7 @@ export async function applyProjectProviderConfigDefaults({
     text,
     format: report.format,
     entries: defaults,
-    targetPath,
+    targetPath: target.targetPath,
   });
   if (rawApply.blocked) {
     return {
@@ -329,11 +451,11 @@ export async function applyProjectProviderConfigDefaults({
   }
 
   await mkdir(dirname(absolutePath), { recursive: true });
+  let backupPath = null;
   if (existing) {
     const stamp = toBackupStamp(now);
-    const backupPath = `${absolutePath}.supervibe-backup-${stamp}`;
+    backupPath = `${absolutePath}.supervibe-backup-${stamp}`;
     await copyFile(absolutePath, backupPath);
-    result.backupPath = toProjectRelative(rootDir, backupPath);
   }
   await writeFile(absolutePath, rawApply.output, "utf8");
   return {
@@ -342,6 +464,7 @@ export async function applyProjectProviderConfigDefaults({
     created: !existing,
     updated: existing,
     changed: true,
+    backupPath: backupPath ? normalizePathForReport(backupPath) : null,
   };
 }
 
@@ -526,6 +649,84 @@ function findProvider(manifest, providerId) {
   return (manifest?.providers || []).find((candidate) => candidate.id === providerId) || null;
 }
 
+function normalizeRuntimeConfig(provider = {}) {
+  const configured = provider.runtimeConfig && typeof provider.runtimeConfig === "object" ? provider.runtimeConfig : null;
+  if (configured) {
+    return {
+      scope: configured.scope || "manual-only",
+      providerHomeEnv: Array.isArray(configured.providerHomeEnv) ? configured.providerHomeEnv : [configured.providerHomeEnv].filter(Boolean),
+      defaultProviderHomeSegments: configured.defaultProviderHomeSegments || defaultProviderHomeSegments(provider.id),
+      configFile: configured.configFile || defaultConfigFile(provider.id),
+      format: configured.format || inferFormatFromPath(configured.configFile || defaultConfigFile(provider.id)),
+      mergeStrategy: configured.mergeStrategy || "add-missing-only",
+      writable: configured.writable === true && configured.scope === "user-provider-home",
+    };
+  }
+  const homeConfig = (provider?.paths?.config || []).find((candidate) => isHomeProviderPath(candidate));
+  const withoutHome = homeConfig ? String(homeConfig).replace(/^~\//, "") : null;
+  const segments = withoutHome ? withoutHome.split(/[\\/]+/) : defaultProviderHomeSegments(provider.id);
+  const configFile = segments.length > 1 ? segments.slice(1).join("/") : defaultConfigFile(provider.id);
+  return {
+    scope: provider.id === "codex" ? "user-provider-home" : "manual-only",
+    providerHomeEnv: defaultProviderHomeEnv(provider.id),
+    defaultProviderHomeSegments: segments.length > 1 ? [segments[0]] : defaultProviderHomeSegments(provider.id),
+    configFile,
+    format: inferFormatFromPath(configFile),
+    mergeStrategy: "add-missing-only",
+    writable: provider.id === "codex",
+  };
+}
+
+function defaultProviderHomeEnv(providerId = "") {
+  if (providerId === "codex") return ["CODEX_HOME"];
+  if (providerId === "claude-code") return ["CLAUDE_HOME"];
+  return [];
+}
+
+function defaultProviderHomeSegments(providerId = "") {
+  if (providerId === "codex") return [".codex"];
+  if (providerId === "claude-code") return [".claude"];
+  return [`.${providerId || "provider"}`];
+}
+
+function defaultConfigFile(providerId = "") {
+  if (providerId === "codex") return "config.toml";
+  if (providerId === "claude-code") return "settings.json";
+  return "config.toml";
+}
+
+function selectProviderHome({ runtimeConfig, providerHome, userHome, env = process.env } = {}) {
+  if (providerHome) return { value: providerHome, source: "providerHome" };
+  for (const key of runtimeConfig.providerHomeEnv || []) {
+    if (env?.[key]) return { value: env[key], source: key };
+  }
+  const selectedUserHome = userHome || env?.USERPROFILE || env?.HOME || homedir();
+  if (!selectedUserHome) return { value: null, source: "missing" };
+  return {
+    value: resolve(selectedUserHome, ...(runtimeConfig.defaultProviderHomeSegments || [])),
+    source: userHome ? "userHome" : env?.USERPROFILE ? "USERPROFILE" : env?.HOME ? "HOME" : "os.homedir",
+  };
+}
+
+function blockedTarget({ providerId, providerHome = null, configFile, format, code, message }) {
+  return {
+    scope: "user-provider-home",
+    providerId,
+    providerHome: providerHome ? normalizePathForReport(providerHome) : null,
+    configFile,
+    absolutePath: null,
+    targetPath: null,
+    format,
+    writable: false,
+    providerHomeSource: "blocked",
+    projectRootBlocked: false,
+    issue: issue(code, configFile || providerId, message),
+  };
+}
+
+function normalizePathForReport(path = "") {
+  return String(path || "").replace(/\\/g, "/");
+}
 function selectProjectProviderConfigPath(provider = {}) {
   return (provider?.paths?.config || []).find((path) => !isHomeProviderPath(path) && !isEnvironmentPath(path)) || null;
 }

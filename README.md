@@ -9,7 +9,7 @@ Runs locally. No Docker. Windows, macOS, and Linux.
 
 Supervibe commands are agent-gated by default: every `/supervibe-*` workflow has required specialist agents, active durable work is blocked until scoped runtime receipts exist, and inline/controller-only output stays diagnostic. Design and prototype flows additionally require their producer and reviewer agents before completion can be claimed.
 
-**v2.1** - current plugin `v2.1.31` - MIT - 2102 tests
+**v2.1** - current plugin `v2.1.33` - MIT - 2195 tests
 
 > **Compliance notice:** This tool is designed exclusively for development assistance. By using it, you agree to comply with the Terms of Service (ToS) and Acceptable Use Policy (AUP) of all involved services, including Anthropic. Unauthorized automated usage, OAuth token abuse, or violation of third-party policies is the sole responsibility of the end user.
 
@@ -169,7 +169,7 @@ The installer:
 After restart, you should see something like:
 
 ```text
-[supervibe] welcome  plugin v2.1.31 initialized for this project
+[supervibe] welcome  plugin v2.1.33 initialized for this project
 [supervibe] code RAG  N files / M chunks (fresh)
 [supervibe] code graph  N symbols / M edges (X% resolved)
 ```
@@ -185,7 +185,7 @@ After restart, you should see something like:
 | OpenCode | Add `supervibe@git+https://github.com/vTRKA/supervibe.git` to `opencode.json` |
 | GitHub Copilot CLI | Use the Copilot plugin marketplace commands |
 
-Codex note: the installer registers the plugin cache under `~/.codex/plugins/cache/supervibe-marketplace/supervibe/local`, enables `[plugins."supervibe@supervibe-marketplace"]` in `~/.codex/config.toml`, keeps a legacy `~/.codex/plugins/supervibe` link, and links native skills into `~/.agents/skills/supervibe`.
+Codex note: when Codex is detected, the installer keeps the managed checkout under `~/.codex/plugins/marketplaces/supervibe-marketplace`, registers the plugin cache under `~/.codex/plugins/cache/supervibe-marketplace/supervibe/local`, enables `[plugins."supervibe@supervibe-marketplace"]` in `~/.codex/config.toml`, keeps a legacy `~/.codex/plugins/supervibe` link, and links native skills into `~/.agents/skills/supervibe`.
 
 ## First Project Setup
 
@@ -469,6 +469,7 @@ Plugin removal and project data removal are different.
 macOS / Linux:
 
 ```bash
+rm -rf ~/.codex/plugins/marketplaces/supervibe-marketplace
 rm -rf ~/.claude/plugins/marketplaces/supervibe-marketplace
 rm -rf ~/.codex/plugins/cache/supervibe-marketplace/supervibe
 rm -f  ~/.codex/plugins/supervibe

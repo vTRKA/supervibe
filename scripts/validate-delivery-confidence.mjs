@@ -99,8 +99,12 @@ export async function validateDeliveryConfidence({ rootDir = ROOT } = {}) {
     if (packageJson.scripts?.["validate:delivery-confidence"] !== "node scripts/validate-delivery-confidence.mjs") {
       issues.push("package.json: missing validate:delivery-confidence script");
     }
-    if (!String(packageJson.scripts?.check || "").includes("validate:delivery-confidence")) {
-      issues.push("package.json: check script must include validate:delivery-confidence");
+    const checkScript = String(packageJson.scripts?.check || "");
+    const checkFullScript = String(packageJson.scripts?.["check:full"] || "");
+    const checkCoversDeliveryConfidence = checkScript.includes("validate:delivery-confidence")
+      || (checkScript.includes("run-release-check.mjs") && checkFullScript.includes("validate:delivery-confidence"));
+    if (!checkCoversDeliveryConfidence) {
+      issues.push("package.json: check script must include validate:delivery-confidence or route to check:full containing it");
     }
   }
 

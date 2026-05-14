@@ -5,7 +5,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/vTRKA/supervibe/main/update.sh | bash
 #
 # What it does:
-#   1. Finds the existing plugin checkout (default: ~/.claude/plugins/marketplaces/supervibe-marketplace)
+#   1. Finds the existing provider-scoped plugin checkout (Codex, then Claude, then Gemini)
 #   2. If missing, delegates to install.sh for first-time install
 #   3. Restores managed checkout tracked drift and refuses only if restore fails
 #   4. Delegates to `npm run supervibe:upgrade` inside the checkout, which does
@@ -16,8 +16,26 @@
 
 set -euo pipefail
 
-PLUGIN_ROOT_DEFAULT="$HOME/.claude/plugins/marketplaces/supervibe-marketplace"
-PLUGIN_ROOT="${SUPERVIBE_PLUGIN_ROOT:-$PLUGIN_ROOT_DEFAULT}"
+PLUGIN_ROOT_CANDIDATES=(
+  "$HOME/.codex/plugins/marketplaces/supervibe-marketplace"
+  "$HOME/.claude/plugins/marketplaces/supervibe-marketplace"
+  "$HOME/.gemini/plugins/marketplaces/supervibe-marketplace"
+)
+resolve_plugin_root() {
+  if [ -n "${SUPERVIBE_PLUGIN_ROOT:-}" ]; then
+    printf '%s\n' "$SUPERVIBE_PLUGIN_ROOT"
+    return
+  fi
+  local candidate
+  for candidate in "${PLUGIN_ROOT_CANDIDATES[@]}"; do
+    if [ -d "$candidate/.git" ]; then
+      printf '%s\n' "$candidate"
+      return
+    fi
+  done
+  printf '%s\n' "${PLUGIN_ROOT_CANDIDATES[0]}"
+}
+PLUGIN_ROOT="$(resolve_plugin_root)"
 EXPECTED_COMMIT="${SUPERVIBE_EXPECTED_COMMIT:-}"
 EXPECTED_PACKAGE_SHA256="${SUPERVIBE_EXPECTED_PACKAGE_SHA256:-}"
 MIN_NODE_VERSION="22.5.0"

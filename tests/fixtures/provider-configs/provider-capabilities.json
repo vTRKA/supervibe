@@ -6,37 +6,89 @@
       "id": "codex",
       "name": "Codex",
       "paths": {
-        "config": ["~/.codex/config.toml", ".codex/config.toml"],
-        "project": [".codex/agents/", ".codex/config.toml", "AGENTS.md"]
+        "config": [
+          "~/.codex/config.toml",
+          ".codex/config.toml"
+        ],
+        "project": [
+          ".codex/agents/",
+          ".codex/config.toml",
+          "AGENTS.md"
+        ]
       },
       "capabilities": {
         "agents": {
           "support": "native",
-          "surfaces": ["features.multi_agent", "agents.max_threads", "agents.max_depth", "agents.job_max_runtime_seconds", "~/.codex/agents/", ".codex/agents/"]
+          "surfaces": [
+            "features.multi_agent",
+            "agents.max_threads",
+            "agents.max_depth",
+            "agents.job_max_runtime_seconds",
+            "~/.codex/agents/",
+            ".codex/agents/"
+          ]
         },
         "memory": {
           "support": "native",
-          "surfaces": ["features.memories", "memories.generate_memories", "memories.use_memories", "sqlite_home", "CODEX_HOME"]
+          "surfaces": [
+            "features.memories",
+            "memories.generate_memories",
+            "memories.use_memories",
+            "sqlite_home",
+            "CODEX_HOME"
+          ]
         },
         "mcp": {
           "support": "native",
-          "surfaces": ["mcp_servers.<id>", "enabled_tools", "disabled_tools", "startup_timeout_sec", "tool_timeout_sec", "scopes"]
+          "surfaces": [
+            "mcp_servers.<id>",
+            "enabled_tools",
+            "disabled_tools",
+            "startup_timeout_sec",
+            "tool_timeout_sec",
+            "scopes"
+          ]
         },
         "hooks": {
           "support": "native",
-          "surfaces": ["features.codex_hooks", "hooks", "requirements.toml managed hooks"]
+          "surfaces": [
+            "features.codex_hooks",
+            "hooks",
+            "requirements.toml managed hooks"
+          ]
         },
         "backgroundExecution": {
           "support": "local-agent-jobs",
-          "surfaces": ["spawn_agent", "send_input", "wait_agent", "close_agent", "agent jobs in sqlite_home"]
+          "surfaces": [
+            "spawn_agent",
+            "send_input",
+            "wait_agent",
+            "close_agent",
+            "agent jobs in sqlite_home"
+          ]
         },
         "permissions": {
           "support": "native",
-          "surfaces": ["approval_policy", "sandbox_mode", "default_permissions", "web_search", "permissions.<name>.filesystem", "permissions.<name>.network"]
+          "surfaces": [
+            "approval_policy",
+            "sandbox_mode",
+            "default_permissions",
+            "web_search",
+            "permissions.<name>.filesystem",
+            "permissions.<name>.network"
+          ]
         },
         "schema": {
           "support": "native",
-          "surfaces": ["config-schema.json", "TOML config reference", "features.apps", "features.goals", "apps._default", "tool_suggest.discoverables", "tool_suggest.disabled_tools"]
+          "surfaces": [
+            "config-schema.json",
+            "TOML config reference",
+            "features.apps",
+            "features.goals",
+            "apps._default",
+            "tool_suggest.discoverables",
+            "tool_suggest.disabled_tools"
+          ]
         }
       },
       "providerLimits": {
@@ -155,43 +207,97 @@
           "url": "https://developers.openai.com/codex/use-cases/follow-goals",
           "checkedAt": "2026-05-13"
         }
-      ]
+      ],
+      "runtimeConfig": {
+        "scope": "user-provider-home",
+        "providerHomeEnv": [
+          "CODEX_HOME"
+        ],
+        "defaultProviderHomeSegments": [
+          ".codex"
+        ],
+        "configFile": "config.toml",
+        "format": "toml",
+        "mergeStrategy": "add-missing-only",
+        "writable": true
+      }
     },
     {
       "id": "claude-code",
       "name": "Claude Code",
       "paths": {
-        "config": ["~/.claude/settings.json", ".claude/settings.json", ".claude/settings.local.json"],
-        "project": [".claude/agents/", ".mcp.json", "CLAUDE.md", ".claude/CLAUDE.md"]
+        "config": [
+          "~/.claude/settings.json",
+          ".claude/settings.json",
+          ".claude/settings.local.json"
+        ],
+        "project": [
+          ".claude/agents/",
+          ".mcp.json",
+          "CLAUDE.md",
+          ".claude/CLAUDE.md"
+        ]
       },
       "capabilities": {
         "agents": {
           "support": "native",
-          "surfaces": ["~/.claude/agents/", ".claude/agents/", "subagent frontmatter", "tool narrowing"]
+          "surfaces": [
+            "~/.claude/agents/",
+            ".claude/agents/",
+            "subagent frontmatter",
+            "tool narrowing"
+          ]
         },
         "memory": {
           "support": "native",
-          "surfaces": ["CLAUDE.md", ".claude/CLAUDE.md", "CLAUDE.local.md", "memory hierarchy"]
+          "surfaces": [
+            "CLAUDE.md",
+            ".claude/CLAUDE.md",
+            "CLAUDE.local.md",
+            "memory hierarchy"
+          ]
         },
         "mcp": {
           "support": "native",
-          "surfaces": [".mcp.json", "enabledMcpjsonServers", "managed MCP allow/deny"]
+          "surfaces": [
+            ".mcp.json",
+            "enabledMcpjsonServers",
+            "managed MCP allow/deny"
+          ]
         },
         "hooks": {
           "support": "native",
-          "surfaces": ["PreToolUse", "PostToolUse", "SubagentStop", "SessionStart", "SessionEnd"]
+          "surfaces": [
+            "PreToolUse",
+            "PostToolUse",
+            "SubagentStop",
+            "SessionStart",
+            "SessionEnd"
+          ]
         },
         "backgroundExecution": {
           "support": "local-runtime",
-          "surfaces": ["subagents", "Claude Code on the web as separate surface"]
+          "surfaces": [
+            "subagents",
+            "Claude Code on the web as separate surface"
+          ]
         },
         "permissions": {
           "support": "native",
-          "surfaces": ["permissions.allow", "permissions.ask", "permissions.deny", "managed settings", "sandbox settings"]
+          "surfaces": [
+            "permissions.allow",
+            "permissions.ask",
+            "permissions.deny",
+            "managed settings",
+            "sandbox settings"
+          ]
         },
         "schema": {
           "support": "native",
-          "surfaces": ["JSON settings schema", "managed settings JSON"]
+          "surfaces": [
+            "JSON settings schema",
+            "managed settings JSON"
+          ]
         }
       },
       "providerLimits": {
@@ -262,37 +368,76 @@
       "id": "gemini-cli",
       "name": "Gemini CLI",
       "paths": {
-        "config": ["~/.gemini/settings.json", ".gemini/settings.json"],
-        "project": [".gemini/settings.json", "GEMINI.md", ".gemini/extensions/"]
+        "config": [
+          "~/.gemini/settings.json",
+          ".gemini/settings.json"
+        ],
+        "project": [
+          ".gemini/settings.json",
+          "GEMINI.md",
+          ".gemini/extensions/"
+        ]
       },
       "capabilities": {
         "agents": {
           "support": "preview/provider-specific",
-          "surfaces": ["preview sub-agents", "agent skills", "extensions"]
+          "surfaces": [
+            "preview sub-agents",
+            "agent skills",
+            "extensions"
+          ]
         },
         "memory": {
           "support": "native",
-          "surfaces": ["GEMINI.md", "context.fileName", "/memory show", "/memory refresh"]
+          "surfaces": [
+            "GEMINI.md",
+            "context.fileName",
+            "/memory show",
+            "/memory refresh"
+          ]
         },
         "mcp": {
           "support": "native",
-          "surfaces": ["mcpServers", "includeTools", "excludeTools", "timeout", "gemini mcp"]
+          "surfaces": [
+            "mcpServers",
+            "includeTools",
+            "excludeTools",
+            "timeout",
+            "gemini mcp"
+          ]
         },
         "hooks": {
           "support": "extension-hooks",
-          "surfaces": ["extensions", "extension hooks"]
+          "surfaces": [
+            "extensions",
+            "extension hooks"
+          ]
         },
         "backgroundExecution": {
           "support": "local-session",
-          "surfaces": ["checkpointing", "/restore", "--resume", "--list-sessions"]
+          "surfaces": [
+            "checkpointing",
+            "/restore",
+            "--resume",
+            "--list-sessions"
+          ]
         },
         "permissions": {
           "support": "native",
-          "surfaces": ["general.defaultApprovalMode", "--approval-mode", "trust", "sandbox", "respectGitIgnore", "respectGeminiIgnore"]
+          "surfaces": [
+            "general.defaultApprovalMode",
+            "--approval-mode",
+            "trust",
+            "sandbox",
+            "respectGitIgnore",
+            "respectGeminiIgnore"
+          ]
         },
         "schema": {
           "support": "native",
-          "surfaces": ["settings.schema.json"]
+          "surfaces": [
+            "settings.schema.json"
+          ]
         }
       },
       "providerLimits": {
@@ -363,37 +508,80 @@
       "id": "cursor",
       "name": "Cursor",
       "paths": {
-        "config": [".cursor/rules", ".cursor/mcp.json", ".cursor/environment.json"],
-        "project": [".cursor/rules", ".cursor/mcp.json", ".cursor/environment.json", "AGENTS.md", "CLAUDE.md"]
+        "config": [
+          ".cursor/rules",
+          ".cursor/mcp.json",
+          ".cursor/environment.json"
+        ],
+        "project": [
+          ".cursor/rules",
+          ".cursor/mcp.json",
+          ".cursor/environment.json",
+          "AGENTS.md",
+          "CLAUDE.md"
+        ]
       },
       "capabilities": {
         "agents": {
           "support": "native",
-          "surfaces": ["cursor-agent", "background agents", "project rules", "Agent Requested rules"]
+          "surfaces": [
+            "cursor-agent",
+            "background agents",
+            "project rules",
+            "Agent Requested rules"
+          ]
         },
         "memory": {
           "support": "context-rules",
-          "surfaces": [".cursor/rules", "AGENTS.md", "CLAUDE.md", "codebase indexing"]
+          "surfaces": [
+            ".cursor/rules",
+            "AGENTS.md",
+            "CLAUDE.md",
+            "codebase indexing"
+          ]
         },
         "mcp": {
           "support": "native",
-          "surfaces": [".cursor/mcp.json", "~/.cursor/mcp.json", "stdio", "SSE", "Streamable HTTP"]
+          "surfaces": [
+            ".cursor/mcp.json",
+            "~/.cursor/mcp.json",
+            "stdio",
+            "SSE",
+            "Streamable HTTP"
+          ]
         },
         "hooks": {
           "support": "rule-attachment",
-          "surfaces": ["Always", "Auto Attached", "Agent Requested", "Manual"]
+          "surfaces": [
+            "Always",
+            "Auto Attached",
+            "Agent Requested",
+            "Manual"
+          ]
         },
         "backgroundExecution": {
           "support": "remote-background-agents",
-          "surfaces": [".cursor/environment.json", "GitHub branch handoff", "remote Ubuntu environment"]
+          "surfaces": [
+            ".cursor/environment.json",
+            "GitHub branch handoff",
+            "remote Ubuntu environment"
+          ]
         },
         "permissions": {
           "support": "mixed",
-          "surfaces": ["interactive CLI approval", "cursor-agent --print full write access", "GitHub read-write for background agents"]
+          "surfaces": [
+            "interactive CLI approval",
+            "cursor-agent --print full write access",
+            "GitHub read-write for background agents"
+          ]
         },
         "schema": {
           "support": "partial",
-          "surfaces": ["MDC rules", "mcp.json", "environment.json"]
+          "surfaces": [
+            "MDC rules",
+            "mcp.json",
+            "environment.json"
+          ]
         }
       },
       "providerLimits": {
@@ -464,37 +652,86 @@
       "id": "opencode",
       "name": "OpenCode",
       "paths": {
-        "config": ["opencode.json", "~/.config/opencode/opencode.json", "OPENCODE_CONFIG"],
-        "project": ["opencode.json", ".opencode/agents/", ".opencode/plugins/", "AGENTS.md"]
+        "config": [
+          "opencode.json",
+          "~/.config/opencode/opencode.json",
+          "OPENCODE_CONFIG"
+        ],
+        "project": [
+          "opencode.json",
+          ".opencode/agents/",
+          ".opencode/plugins/",
+          "AGENTS.md"
+        ]
       },
       "capabilities": {
         "agents": {
           "support": "native",
-          "surfaces": ["agent config", ".opencode/agents/", "mode=subagent", "per-agent model", "per-agent permission"]
+          "surfaces": [
+            "agent config",
+            ".opencode/agents/",
+            "mode=subagent",
+            "per-agent model",
+            "per-agent permission"
+          ]
         },
         "memory": {
           "support": "instructions-compaction",
-          "surfaces": ["instructions", "compaction", "AGENTS.md", "CLAUDE.md"]
+          "surfaces": [
+            "instructions",
+            "compaction",
+            "AGENTS.md",
+            "CLAUDE.md"
+          ]
         },
         "mcp": {
           "support": "native",
-          "surfaces": ["mcp local", "mcp remote", "timeout", "oauth", "headers"]
+          "surfaces": [
+            "mcp local",
+            "mcp remote",
+            "timeout",
+            "oauth",
+            "headers"
+          ]
         },
         "hooks": {
           "support": "plugin-hooks",
-          "surfaces": ["tool.execute.before", "tool.execute.after", "permission.asked", "session.*", "file.watcher.updated"]
+          "surfaces": [
+            "tool.execute.before",
+            "tool.execute.after",
+            "permission.asked",
+            "session.*",
+            "file.watcher.updated"
+          ]
         },
         "backgroundExecution": {
           "support": "local-server-watcher",
-          "surfaces": ["opencode serve", "opencode web", "watcher.ignore"]
+          "surfaces": [
+            "opencode serve",
+            "opencode web",
+            "watcher.ignore"
+          ]
         },
         "permissions": {
           "support": "native",
-          "surfaces": ["permission.ask", "permission.allow", "permission.deny", "bash", "edit", "task", "webfetch", "websearch"]
+          "surfaces": [
+            "permission.ask",
+            "permission.allow",
+            "permission.deny",
+            "bash",
+            "edit",
+            "task",
+            "webfetch",
+            "websearch"
+          ]
         },
         "schema": {
           "support": "native",
-          "surfaces": ["https://opencode.ai/config.json", "JSON", "JSONC"]
+          "surfaces": [
+            "https://opencode.ai/config.json",
+            "JSON",
+            "JSONC"
+          ]
         }
       },
       "providerLimits": {

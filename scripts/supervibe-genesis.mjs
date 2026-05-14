@@ -19,7 +19,7 @@ import { validateAgentProducerReceipts } from "./lib/agent-producer-contract.mjs
 import { writeAdaptFileManifestSnapshot } from "./lib/supervibe-adapt.mjs";
 import { writeContextMigrationPlan } from "./lib/supervibe-context-migrator.mjs";
 import { resolveSupervibePluginRoot } from "./lib/supervibe-plugin-root.mjs";
-import { applyProjectProviderConfigDefaults } from "./lib/supervibe-provider-config-applier.mjs";
+import { applyUserProviderConfigDefaults } from "./lib/supervibe-provider-config-applier.mjs";
 import {
   createProviderConfigDoctorReport,
   loadProviderCapabilities,
@@ -226,10 +226,10 @@ async function buildGenesisProviderConfigPreflight({ targetRoot, pluginRoot, hos
     provider: providerId,
     manifest,
   });
-  const apply = await applyProjectProviderConfigDefaults({
+  const apply = await applyUserProviderConfigDefaults({
     provider,
     providerId,
-    rootDir: targetRoot,
+    projectRoot: targetRoot,
     manifest,
     write,
   });
@@ -239,8 +239,8 @@ async function buildGenesisProviderConfigPreflight({ targetRoot, pluginRoot, hos
     host,
     doctor,
     apply,
-    homeConfigWriteAllowed: false,
-    homeConfigAction: "manual-only",
+    homeConfigWriteAllowed: apply.homeConfigWriteAllowed === true,
+    homeConfigAction: apply.homeConfigAction || "manual-only",
   };
 }
 
@@ -1348,6 +1348,7 @@ function summarizeProviderConfig(providerConfig) {
   return {
     providerId: providerConfig.providerId || apply.providerId || "unknown",
     targetPath: apply.targetPath || null,
+    scope: apply.scope || providerConfig.scope || null,
     changed: apply.changed === true,
     written: apply.written === true,
     blocked: apply.blocked === true,
@@ -1358,6 +1359,7 @@ function summarizeProviderConfig(providerConfig) {
     addedMissing: apply.operationCounts?.added || 0,
     homeConfigAction: providerConfig.homeConfigAction || apply.homeConfigAction || "manual-only",
     backupPath: apply.backupPath || null,
+    ignoredProjectConfigs: apply.ignoredProjectConfigs || [],
   };
 }
 

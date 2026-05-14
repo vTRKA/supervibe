@@ -11,10 +11,10 @@ This template is grounded in the official Codex configuration documentation:
 
 Codex reads user-level configuration from `~/.codex/config.toml` and project
 configuration from `.codex/config.toml`. Project `.codex/` layers load only when
-the project is trusted. Home config writes are preview-only for Supervibe
-provider-config tooling: generate the patch or instructions for
-`~/.codex/config.toml`, but do not automatically apply changes outside the
-workspace.
+the project is trusted. The genesis/adapt provider config applier may add
+missing settings to `~/.codex/config.toml` with an add-missing-only merge and
+must never create or modify project `.codex/config.toml` files. The provider
+config doctor home config report remains preview-only.
 
 ## Scope And Precedence
 
@@ -38,8 +38,9 @@ use as the automatic apply candidate after normal path and trust checks.
 <!-- provider-config-template:codex:schema-backed:start -->
 ```toml
 # Codex config.toml schema-backed template.
-# Add this to ~/.codex/config.toml for personal defaults, or to
-# <repo>/.codex/config.toml for trusted project-local overrides.
+# Add this to ~/.codex/config.toml for personal defaults.
+# For trusted project-local overrides, use this as a reference only;
+# genesis/adapt never write <repo>/.codex/config.toml.
 
 model = "gpt-5.5"
 model_provider = "openai"
@@ -180,7 +181,8 @@ Codex exposes schema-backed app/connector controls through `[features].apps`,
 the app surface in the template and records `supervibe@supervibe-marketplace`
 as a discoverable plugin suggestion instead of adding an unlisted top-level
 plugin boolean. Destructive app tools stay disabled by default, and
-provider-config tooling still operates in preview-only mode for home config.
+genesis/adapt only add missing user-provider-home config values, and the
+provider-config doctor remains preview-only.
 
 ## Goals
 
@@ -188,8 +190,8 @@ Codex `/goal` is an experimental CLI workflow for durable long-running
 objectives. The official "Follow a goal" use-case page says it can be enabled
 from `/experimental` or by adding `goals = true` under `[features]` in
 `config.toml`. Supervibe therefore includes `features.goals = true` in the
-Codex project template and provider-config applier, while still preserving any
-existing user-owned `[features]` values.
+Codex user-provider config applier, while still preserving any existing
+user-owned `[features]` values.
 
 ## Permissions And Sandbox
 

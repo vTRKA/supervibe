@@ -96,6 +96,9 @@ Deleted or renamed files are referenced by agents, skills, rules, or commands
 
 Adapt apply would write project artifacts
   -> Require dry-run evidence and explicit approval before mutation.
+
+Provider runtime config drift is detected
+  -> Modify only the selected user provider home with add-missing-only semantics; project runtime config files are detection-only and must not be created, modified, or deleted.
 ```
 
 ## Procedure

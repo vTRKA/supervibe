@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
 import { execFileSync, execSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -336,7 +336,7 @@ test('supervibe-status --capabilities resolves plugin root when launched from a 
 
     assert.match(out, /SUPERVIBE_CAPABILITY_REGISTRY/);
     assert.match(out, /PASS: true/);
-    assert.match(out, /COMMANDS: 19/);
+    assert.match(out, new RegExp(`COMMANDS: ${readdirSync(join(ROOT, 'commands')).filter((file) => file.endsWith('.md')).length}`));
     assert.doesNotMatch(out, /missing-command: command file missing: \/supervibe-adapt/);
     assert.doesNotMatch(out, /AGENTS: 0/);
     assert.doesNotMatch(out, /SKILLS: 0/);
