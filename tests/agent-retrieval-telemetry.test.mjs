@@ -49,6 +49,7 @@ test("agent retrieval telemetry creates strengthening tasks for weak retrieval b
     task_summary: "refactor checkout callers",
     confidence_score: 8,
     subtool_usage: { memory: 0, "code-search": index % 2, "code-graph": 0 },
+    retrieval_policy: { memory: "mandatory", rag: "mandatory", codegraph: "mandatory" },
     evidence_contract: { pass: index === 0 },
   }));
 
@@ -123,14 +124,36 @@ test("agent retrieval telemetry caps maturity for legacy-only invocations", () =
   assert.ok(report.globalWarnings.some((item) => item.includes("post-enforcement retrieval telemetry samples")));
 });
 
+
+test("agent retrieval telemetry ignores evidence gates without retrieval evidence", () => {
+  const invocations = Array.from({ length: 6 }, (_, index) => ({
+    ts: `2026-05-02T00:00:${String(index).padStart(2, "0")}.000Z`,
+    agent_id: "quality-gate-reviewer",
+    task_summary: "quality gate with no retrieval scope",
+    confidence_score: 9,
+    evidence_gate: { pass: true, score: 10 },
+  }));
+
+  const report = buildAgentRetrievalTelemetryReport({
+    invocations,
+    evidenceEntries: [],
+    thresholds: { minSample: 5 },
+  });
+
+  assert.equal(report.summary.invocations, 0);
+  assert.equal(report.summary.legacySkipped, 6);
+  assert.equal(report.sampleStatus, "ready-no-post-enforcement-samples");
+});
+
 test("agent retrieval telemetry skips explicit not-provided enforcement samples", () => {
   const invocations = Array.from({ length: 6 }, (_, index) => ({
     ts: `2026-05-02T00:00:${String(index).padStart(2, "0")}.000Z`,
     agent_id: "quality-gate-reviewer",
     task_summary: "review quality gate without retrieval evidence",
     confidence_score: 9,
-    retrieval_enforcement: { schemaVersion: 1, evidenceLedger: "not-provided" },
+    retrieval_enforcement: { schemaVersion: 1, evidenceLedger: "written", ledgerPath: ".supervibe/memory/evidence-ledger.jsonl", evidencePass: true },
     retrieval_policy: { schemaVersion: 1, provided: false, reason: "not-provided" },
+    evidence_gate: { pass: true, score: 10 },
   }));
 
   const report = buildAgentRetrievalTelemetryReport({

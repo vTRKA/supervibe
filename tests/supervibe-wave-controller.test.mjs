@@ -4,7 +4,9 @@ import {
   buildExecutionWaves,
   detectWriteSetConflicts,
   formatWaveStatus,
+  selectSafeExecutionWave,
   summarizeWavePlan,
+  taskWriteSet,
 } from "../scripts/lib/supervibe-wave-controller.mjs";
 
 test("wave controller groups ready work by dependency, write-set, risk, reviewers, and worktrees", () => {
@@ -62,4 +64,56 @@ test("write set conflicts are deterministic", () => {
   ]);
 
   assert.deepEqual(conflicts, [{ filePath: "src/a.ts", taskIds: ["a", "b"] }]);
+});
+
+test("task write set ignores read/test verification scope and safe wave serializes overlaps", () => {
+  assert.deepEqual(taskWriteSet({
+    id: "docs",
+    writeScope: [
+      { action: "modify", path: "docs/a.md" },
+      { action: "test", path: "tests/a.test.mjs" },
+      { action: "read", path: "README.md" },
+    ],
+  }), ["docs/a.md"]);
+
+  const wave = selectSafeExecutionWave({
+    maxConcurrency: 3,
+    requireWriteSet: true,
+    tasks: [
+      { id: "a", targetFiles: ["src/a.ts"] },
+      { id: "b", writeScope: [{ path: "tests/a.test.mjs", action: "test" }, { path: "src/b.ts", action: "modify" }] },
+      { id: "c", targetFiles: ["src/a.ts"] },
+    ],
+  });
+
+  assert.deepEqual(wave.selected.map((task) => task.id), ["a", "b"]);
+  assert.ok(wave.serialized.some((item) => item.taskId === "c" && /write-set conflict/.test(item.reason)));
+});
+
+test("wave controller honors zero provider slots without selecting fallback work", () => {
+  const wave = selectSafeExecutionWave({
+    maxConcurrency: 0,
+    requireWriteSet: true,
+    tasks: [
+      { id: "a", targetFiles: ["src/a.ts"], policyRiskLevel: "low" },
+      { id: "b", targetFiles: ["src/b.ts"], policyRiskLevel: "low" },
+    ],
+  });
+
+  assert.deepEqual(wave.selected, []);
+  assert.deepEqual(wave.serialized.map((item) => item.taskId), ["a", "b"]);
+  assert.ok(wave.serialized.every((item) => /max concurrency 0/.test(item.reason)));
+
+  const plan = buildExecutionWaves({
+    maxConcurrency: 0,
+    requireWriteSet: true,
+    tasks: [
+      { id: "a", status: "open", dependencies: [], targetFiles: ["src/a.ts"], policyRiskLevel: "low" },
+      { id: "b", status: "open", dependencies: [], targetFiles: ["src/b.ts"], policyRiskLevel: "low" },
+    ],
+  });
+
+  assert.equal(plan.currentWave, null);
+  assert.equal(plan.waves.length, 0);
+  assert.deepEqual(plan.serialized.map((item) => item.taskId), ["a", "b"]);
 });

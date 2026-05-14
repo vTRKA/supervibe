@@ -34,6 +34,7 @@ skills:
   - supervibe:pre-pr-check
   - supervibe:confidence-scoring
   - supervibe:using-git-worktrees
+  - supervibe:receiving-code-review
 verification:
   - tests-pass-before
   - tests-pass-after
@@ -331,6 +332,7 @@ npm run typecheck   # or: tsc --noEmit
 - `supervibe:pre-pr-check` - run final type, test, lint, audit, and release-readiness evidence before merge.
 - `supervibe:confidence-scoring` - score outputs against rubrics and block weak delivery below gate.
 - `supervibe:using-git-worktrees` - isolate risky work in registered worktrees with ownership and status.
+- `supervibe:receiving-code-review` - triage reviewer feedback on structural changes before accepting, rejecting, or amending a refactor finding.
 
 ## Project Context
 

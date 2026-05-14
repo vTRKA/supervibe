@@ -32,6 +32,7 @@ skills:
   - supervibe:test-strategy
   - supervibe:experiment
   - supervibe:pre-pr-check
+  - supervibe:seo-audit
 verification:
   - before-after-benchmark
   - profiler-output
@@ -248,6 +249,7 @@ Do NOT chase: improvements within statistical noise (Δ < std-dev) — that's no
 - `supervibe:test-strategy` - choose unit/integration/e2e coverage, fixtures, flake budget, and risk triangulation.
 - `supervibe:experiment` - define measurable experiment hypotheses, metrics, cohorts, and analysis plans.
 - `supervibe:pre-pr-check` - run final type, test, lint, audit, and release-readiness evidence before merge.
+- `supervibe:seo-audit` - apply SEO audit evidence when public-page performance work affects Core Web Vitals, render mode, crawlability, or indexable metadata.
 
 ## Project Context
 

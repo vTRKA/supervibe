@@ -1,11 +1,7 @@
 ---
 name: auth-flow-design
 namespace: app-excellence
-description: >-
-  Use BEFORE implementing authentication TO choose the right flow
-  (authorization-code+PKCE / client-credentials / device-code /
-  resource-owner-password) for the use case. Triggers: 'auth flow', 'дизайн
-  авторизации', 'OAuth выбор', 'как сделать логин'.
+description: 'Use BEFORE implementing authentication TO choose the right flow (authorization-code+PKCE / client-credentials / device-code / resource-owner-password) for the use case. Triggers: ''auth flow'', ''дизайн авторизации'', ''OAuth выбор'', ''как сделать логин''.'
 allowed-tools:
   - Read
   - Grep
@@ -22,7 +18,11 @@ last-verified: 2026-04-27T00:00:00.000Z
 
 # Auth Flow Design
 
-## When to invoke
+## Overview
+
+Auth Flow Design provides a reusable Supervibe operating method for Use BEFORE implementing authentication TO choose the right flow (authorization-code+PKCE / client-credentials / device-code / resource-owner-password) for the use case. Triggers: 'auth flow', 'дизайн авторизации', 'OAuth выбор', 'как сделать логин'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
+## When to Use
 
 BEFORE implementing the first auth path of a new app. BEFORE adding a new client type (mobile, CLI, third-party integration) to an existing identity provider. WHEN refresh tokens are not rotating. WHEN logging out only clears a cookie and leaves a JWT alive in localStorage. WHEN someone proposes the password grant for a third-party integration.
 

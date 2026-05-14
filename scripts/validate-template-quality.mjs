@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync } from "node:fs";
-import { relative, sep } from "node:path";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { join, relative, sep } from "node:path";
 
 const TEMPLATE_RULES = [
   {
@@ -304,6 +304,7 @@ export function validateTemplateQuality({ rootDir = process.cwd(), rules = TEMPL
     }
     results.push({ ...rule, path, issues });
   }
+  results.push(...validateReferenceTemplates(rootDir));
   return {
     pass: results.every((result) => result.issues.length === 0),
     results,
@@ -339,6 +340,57 @@ function countWords(markdown) {
 
 function stripFencedCode(markdown) {
   return String(markdown).replace(/```[\s\S]*?```/g, " ");
+}
+
+function validateReferenceTemplates(rootDir) {
+  const templateDir = join(rootDir, "references", "templates");
+  if (!existsSync(templateDir)) return [];
+
+  const files = readdirSync(templateDir)
+    .filter((file) => file.endsWith(".md"))
+    .sort();
+  const indexPath = join(templateDir, "template-index.md");
+  const indexMarkdown = existsSync(indexPath) ? readFileSync(indexPath, "utf8") : "";
+  const ownerFiles = walkTextFiles(rootDir)
+    .filter((file) => !relative(rootDir, file).split(sep).join("/").startsWith("references/templates/"));
+
+  return files.map((file) => {
+    const issues = [];
+    const path = join(templateDir, file);
+    if (file !== "template-index.md" && !indexMarkdown.includes(`(${file})`)) {
+      issues.push("template missing from references/templates/template-index.md");
+    }
+
+    const ownerPattern = new RegExp(`(?:^|[^A-Za-z0-9_-])(?:\\.\\.?/)*references/templates/${escapeRegex(file)}(?:$|[^A-Za-z0-9_-])`);
+    const hasOwner = ownerFiles.some((ownerFile) => ownerPattern.test(readFileSync(ownerFile, "utf8")));
+    if (!hasOwner) {
+      issues.push("template has no live owner link outside references/templates");
+    }
+
+    return {
+      file: `references/templates/${file}`,
+      label: `reference template ${file}`,
+      path,
+      issues,
+    };
+  });
+}
+
+function walkTextFiles(dir, out = []) {
+  const skipDirs = new Set([".git", "node_modules", ".supervibe"]);
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (skipDirs.has(entry.name)) continue;
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      walkTextFiles(full, out);
+      continue;
+    }
+    if (!entry.isFile()) continue;
+    if (!/\.(md|mjs|js|json|yml|yaml|txt)$/i.test(entry.name)) continue;
+    if (statSync(full).size > 2_000_000) continue;
+    out.push(full);
+  }
+  return out;
 }
 
 if (import.meta.url === `file://${process.argv[1]?.replace(/\\/g, "/")}` || process.argv[1]?.endsWith("validate-template-quality.mjs")) {

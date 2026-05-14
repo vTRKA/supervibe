@@ -1,20 +1,28 @@
 ---
 name: trigger-diagnostics
 namespace: process
-description: "Use WHEN a Supervibe trigger, command route, or skill handoff did not match, matched the wrong flow, or needs explanation TO diagnose intent, missing artifacts, confidence, blockers, and the next safe action."
-allowed-tools: [Read, Grep, Glob, Bash]
+description: 'Use WHEN a Supervibe trigger, command route, or skill handoff did not match, matched the wrong flow, or needs explanation TO diagnose intent, missing artifacts, confidence, blockers, and the next safe action.'
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
 phase: review
 prerequisites: []
 emits-artifact: agent-output
 confidence-rubric: confidence-rubrics/agent-delivery.yaml
 gate-on-exit: false
-version: 1.0
-last-verified: 2026-05-02
+version: 1
+last-verified: 2026-05-02T00:00:00.000Z
 ---
 
 # Trigger Diagnostics
 
-## When to invoke
+## Overview
+
+Trigger Diagnostics provides a reusable Supervibe operating method for Use WHEN a Supervibe trigger, command route, or skill handoff did not match, matched the wrong flow, or needs explanation TO diagnose intent, missing artifacts, confidence, blockers, and the next safe action.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
+## When to Use
 
 Use this skill when the user asks why a Supervibe phrase, command, trigger, skill selection, or next-step handoff behaved unexpectedly.
 

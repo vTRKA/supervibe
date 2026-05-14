@@ -2,11 +2,11 @@
 name: prototype
 namespace: process
 description: >-
-  Use WHEN user asks for design/mockup/UI exploration BEFORE implementing in
-  framework to produce 1:1 capability-aware HTML/CSS/JS prototype in /prototypes
-  for brand approval, feedback iteration, and framework-agnostic 1:1 transfer. Triggers:
-  'сделай мокап', 'покажи как будет выглядеть', 'нарисуй UI', 'нужен прототип',
-  'сделай макет'.
+  Use WHEN user asks for design, mockup, or UI exploration BEFORE framework
+  implementation to build a capability-aware HTML/CSS/JS prototype for visual
+  approval, feedback iteration, and stack-agnostic handoff. Triggers:
+  'сделай мокап', 'покажи как будет выглядеть', 'нарисуй UI',
+  'нужен прототип', 'сделай макет'.
 allowed-tools:
   - Read
   - Grep
@@ -20,329 +20,303 @@ prerequisites:
 emits-artifact: prototype
 confidence-rubric: confidence-rubrics/prototype.yaml
 gate-on-exit: true
-version: 2
-last-verified: 2026-04-28T00:00:00.000Z
+version: 2.1
+last-verified: 2026-05-14T00:00:00.000Z
 ---
 
 # Prototype
 
-Build a **native HTML / CSS / JS** prototype that materializes an approved design system into a clickable, viewport-correct mockup. The prototype is for design approval and stack-agnostic handoff — never for production deployment.
+## Overview
 
-## Design Intelligence Preflight
+Build a native HTML/CSS/JS prototype that materializes the approved design
+system into a clickable, viewport-correct mockup. The prototype exists for
+design approval and implementation handoff; it is not production code.
 
-Before prototype structure or visual decisions, run project memory, code search, and internal `supervibe:design-intelligence` lookup. Use retrieved rows for style, UX, chart, icon, app-interface, and stack evidence, but never override approved `.supervibe/artifacts/prototypes/_design-system/` tokens without an explicit extension approval.
+This skill keeps the workflow, gates, and output contract. Reusable directory
+layouts, config JSON examples, capability-plan fields, data-fed mock shapes,
+approval markers, and verification snippets live in
+`references/skills/prototype-examples.md`.
 
 ## Local Design Expert Reference
 
-Read `docs/references/design-expert-knowledge.md` before building. Start with Design Pass Triage from the `Eight-Pass Expert Routine` and classify each pass as `required | reuse | delegated | skipped | N/A`. For prototype work inside an approved design system, reuse preference intake and visual-system decisions; run only the relevant local evidence, reference, IA/user-flow, responsive/platform, quality, and prototype/review/feedback passes. A candidate or needs_revision design system must resume approval review and cannot unlock prototype work. Do not force all eight passes just because the user asked for another mockup. If a missing token, component, asset, or interaction is needed, ask one narrow design-system extension question before building. External references are supplemental; use the internet only for current references or official platform evidence after local data has been checked.
+Read `docs/references/design-expert-knowledge.md` before design-facing output. Use `supervibe:design-intelligence`, `designContextPreflight()`, or `searchDesignIntelligence()` before external lookup. Start with Design Pass Triage from the `Eight-Pass Expert Routine` and classify evidence as `required | reuse | delegated | skipped | N/A`.
 
-## When to invoke
+Do not force all eight passes when an approved design system already covers the surface. If the design system is candidate or needs_revision, resume approval instead of treating it as production-ready. If a missing token, component, asset, or interaction is found, request a narrow design-system extension instead of a full restart.
 
-AFTER `supervibe:brandbook` has produced an approved design system at `.supervibe/artifacts/prototypes/_design-system/`. Triggered by prototype requests; other-language trigger phrases remain in the frontmatter `Triggers:` metadata.
+External references are supplemental; local project memory, approved tokens, accessibility, and code evidence win. Preview and feedback flows should run through the preview server with `--daemon` when a live review URL is required.
 
-NOT for:
-- Implementing in a real framework — that is `<stack>-developer` agents AFTER prototype is approved and handed off
-- Production landing pages — `supervibe:landing-page` covers SEO + analytics requirements
-- Pure visual exploration without interaction — that's brandbook moodboard territory
+## When to Use
 
-## Hard constraints
+Use this skill after `supervibe:brandbook` has produced an approved design
+system and the user asks for:
+- A mockup, design preview, UI exploration, clickable flow, or prototype.
+- A viewport-specific proof for web, extension, desktop webview, or mobile UI.
+- A framework-agnostic visual handoff before stack implementation.
+- A data-fed mock with local fixtures and explicit fake API contracts.
+- A distinct design variant set for approval.
 
-1. **Capability-aware prototype output.** Default to `native-static` or `enhanced-native` HTML/CSS/JS, but do not block quality when the brief needs stronger media. Allowed modes are `native-static`, `enhanced-native`, `bundled-dependency`, `framework-sandbox`, and `handoff-only`. Any `bundled-dependency`, `framework-sandbox`, or `handoff-only` decision requires `.supervibe/artifacts/prototypes/<slug>/decisions/prototype-capability-plan.md` before implementation, with purpose, libraries, artifact scope, license/security posture, bundle/performance budget, accessibility fallback, reduced-motion fallback, and verification commands.
-2. **Design system is source of truth.** Every color, spacing, type ramp, radius, motion timing comes from `.supervibe/artifacts/prototypes/_design-system/tokens.css`. Raw hex values, magic pixel numbers, ad-hoc cubic-beziers are forbidden. If the system doesn't have it, ask user to extend the system FIRST.
-3. **Two viewports by default** — `375px` (mobile) and `1440px` (desktop). The user may request more (e.g. `768px` tablet, `1920px` wide-screen) but the default is exactly these two. Ask user upfront before building.
-4. **One question at a time.** Never dump 5 questions in one message. Use markdown formatting with a dynamic progress indicator (`Step N/M`), where `M` is the count of required questions after triage.
-5. **Approval lifecycle is explicit.** Every prototype passes through draft → review → revisions → approved → handoff. The agent never proceeds across a stage without user signal.
-6. **Existing artifact mode is explicit.** If `.supervibe/artifacts/prototypes/`, `.supervibe/artifacts/mockups/`, or `.supervibe/artifacts/presentations/` already contains candidates and the user did not say continue existing or create new from scratch, ask the artifact-mode question before reading or editing old files.
-7. **Preview feedback button is mandatory.** The preview server must expose the visible `Feedback` button. Do not use `--no-feedback` for prototype previews. The browser feedback overlay is supplemental and not an approval gate; it captures region comments, while the post-delivery approve/revise/alternative/stop prompt remains the lifecycle gate.
-8. **Data-fed mocks are contract-backed.** If interaction depth is `data-fed`, run `supervibe:mock-data-contract` and create `mocks/mock-contract.json`, `mocks/mock-scenarios.json`, and `mocks/api-fixtures/` before claiming frontend-before-backend readiness.
-9. **Design Diversity Benchmark for alternatives.** A distinct alternative must differ on at least three of palette, typography, motion, imagery, hierarchy, density, composition, and interaction. Same shell, new paint is a failed alternative even when the screenshot looks cleaner.
-10. **Dependencies are approved tools, not defaults.** Use native CSS/WAAPI, Canvas, SVG, and local assets first. Escalate to Motion, GSAP, Lottie/lottie-web, Rive, Three.js, PixiJS, D3, Observable Plot, ECharts, MapLibre GL, Theatre.js, Rough.js, Matter.js, Monaco, CodeMirror, or a stack-specific chart library only when the plan proves the library unlocks a materially better prototype.
-11. **Explicit multi-variant output is separate, not tabbed.** If the brief asks for a number of different variants, create `.supervibe/artifacts/prototypes/<slug>/variant-manifest.json` and one fullscreen artifact per variant at `variants/<variant-id>/index.html`. Do not deliver a root `index.html` tab switcher, carousel, or comparison shell as the primary artifact. Run `node scripts/validate-design-variant-set.mjs --slug <slug>` before preview.
-12. **Feedback target per variant.** Every listed variant must have a unique `feedbackTargetId`, the corresponding HTML must include the feedback overlay marker, and old-prototype functional evidence must be recorded per variant when old prototypes informed the brief.
+Do not use it for production landing pages, real framework implementation, or
+brand exploration without an approved design system.
 
 ## Expert Operating Standard
 
-Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+Follow `docs/references/skill-expert-operating-standard.md`: start from source
+of truth, preserve retrieval evidence, apply scope safety, use real producers
+with runtime receipts for durable delegated outputs, verify before completion
+claims, and keep confidence below gate when evidence is partial.
 
-## Step 0 — Read source of truth (required)
+## Step 0 - Read source of truth
 
-1. **Design system check.** Read `.supervibe/artifacts/prototypes/_design-system/design-flow-state.json`, `manifest.json`, `tokens.css`, `components/*.md`, and `voice.md`. If `design_system.status !== "approved"` or any required section is missing from `approved_sections` (`palette`, `typography`, `spacing-density`, `radius-elevation`, `motion`, `component-set`, `copy-language`, `accessibility-platform`) -> STOP. Tell user: "Cannot build a prototype without an approved design system. Approve the missing design-system sections first."
-2. **Artifact mode check.** Run `node "<resolved-supervibe-plugin-root>/scripts/lib/design-artifact-intake.mjs" --json --brief "<brief>"`. If `needsQuestion: true`, stop and ask whether to continue an existing artifact, create a new design from scratch, or create an alternative. Do not open old prototype files as source until the user chooses.
-3. **Memory check.** `supervibe:project-memory --query <topic>` — surface any prior prototype on this surface or related decisions.
-4. **Brief read.** Get the user's exact wording. If unclear (≥3 ambiguities), enter clarification dialogue (one question at a time).
+Before writing prototype files:
+1. Read `.supervibe/artifacts/prototypes/_design-system/design-flow-state.json`,
+   `manifest.json`, `tokens.css`, `motion.css`, `voice.md`,
+   `accessibility.md`, and relevant `components/*.md`.
+2. Stop if `design_system.status !== "approved"` or any required section is
+   missing from `approved_sections`.
+3. Run `node scripts/lib/design-artifact-intake.mjs --json --brief "<brief>"`
+   and ask the artifact-mode question if existing artifacts are ambiguous.
+4. Run project memory, code search, CodeGraph/design-intelligence lookup for the
+   surface, target platform, UX, style, chart, icon, accessibility, and stack
+   evidence.
+5. Read the user's exact brief and identify blocking ambiguities. Ask one
+   question at a time only when the next write cannot proceed safely.
 
-## Target surfaces (Step 0 — ASK BEFORE viewport)
+If the design system lacks a required token, component, motion recipe, asset
+treatment, or copy pattern, route a narrow extension through
+`supervibe:brandbook` before building.
 
-Prototype skill supports five target runtimes. Ask user FIRST:
+## Decision tree
 
-**Step 0/N:** Which platform is this prototype for?
-- `web` - browser website/SaaS (default 375 mobile + 1440 desktop)
-- `chrome-extension` - browser extension (popup + options + side-panel)
-- `electron` — Electron desktop app (main + settings windows)
-- `tauri` — Tauri desktop app (Rust + webview)
-- `mobile-native` - native mobile (iOS/Android - React Native / Flutter / SwiftUI)
+Target surface:
+- `web` -> default 375px mobile plus 1440px desktop.
+- `chrome-extension` -> popup, options, and side-panel presets.
+- `electron` or `tauri` -> webview prototype with desktop viewport constraints.
+- `mobile-native` -> HTML simulation of native mobile viewports.
 
-After selection, load `templates/viewport-presets/<target>.json` and ask about viewports (default/optional/custom).
+Interaction depth:
+- Visual-only -> semantic HTML and CSS, no JS required.
+- Click-through -> anchor-routed pages or minimal JS navigation.
+- Realistic interaction -> CSS, WAAPI, Intersection Observer, local JS modules,
+  and `supervibe:interaction-design-patterns` recipes.
+- Data-fed -> local `mocks/` contract, scenarios, and fixtures before fetch
+  logic is claimed, including `mock-contract.json`, `mock-scenarios.json`, and
+  `api-fixtures/`.
 
-For `mobile-native`: prototype is HTML simulation of mobile UI within an iframe with the chosen viewport size — note that final implementation will be React Native / Flutter / native; the HTML prototype is a fidelity sketch only.
+Capability mode:
+- `native-static` or `enhanced-native` are defaults.
+- `bundled-dependency`, `framework-sandbox`, or `handoff-only` require
+  `decisions/prototype-capability-plan.md` before implementation.
 
-For `tauri` / `electron`: HTML/CSS/JS still works (renderer is webview-based), but constraints differ (see preset `constraints` field). Do NOT use Node APIs in HTML — IPC bridges only via documented preload exposed APIs.
-
-For `chrome-extension`: HTML/CSS/JS works. Manifest constraints (CSP — no inline handlers) must be respected even at prototype stage.
-
-## Decision tree — viewport configuration
-
-```
-What viewports does this prototype need?
-├─ Read templates/viewport-presets/<target>.json for defaults + optional
-├─ DEFAULT (web): [375, 1440] — mobile + desktop. Cover 95% of cases.
-├─ DEFAULT (extension): popup 360x600 + options 1024x768 + side-panel 400x800
-├─ DEFAULT (electron/tauri): 1280x800 main + 800x600 settings
-├─ DEFAULT (mobile-native): iPhone 15 393x852 + Pixel 8 412x915
-└─ User can choose any subset of defaults+optional, or custom widths.
-
-ASK (one question, after target chosen):
-  "Use the default viewports for <target>: <list>, or choose different ones?"
-
-Wait for explicit answer. Save chosen viewports + target + runtime + constraints
-to .supervibe/artifacts/prototypes/<slug>/config.json BEFORE any HTML written.
-
-The pre-write hook (scripts/hooks/pre-write-prototype-guard.mjs) blocks every
-file write to .supervibe/artifacts/prototypes/<slug>/ until config.json exists
-and blocks HTML/CSS/JS prototype writes until design-flow-state allows
-prototype.requested.
-```
-
-## Decision tree — interaction depth
-
-```
-What level of fidelity does this prototype need?
-├─ Visual-only — static screens, hover states, no real navigation
-│   → just HTML + CSS, no JS
-├─ Click-through flow — moves between screens on user click
-│   → light JS, anchor-routed (no SPA, no client router)
-├─ Realistic interaction — form validation, animations,
-│   skeleton loaders, micro-interactions
-│   → CSS animations + Web Animations API + Intersection Observer
-│   (defer to supervibe:interaction-design-patterns for recipes)
-└─ Data-fed mock — fake API responses, realistic content state
-    → fetch() against local JSON files in .supervibe/artifacts/prototypes/<slug>/mocks/
-    → requires supervibe:mock-data-contract with mock-contract.json, mock-scenarios.json, and api-fixtures/
-```
+Capability library families that require a Prototype Capability Plan when used: Motion, GSAP, Lottie, Rive, Three.js, PixiJS, D3, Observable Plot, ECharts, MapLibre, Theatre.js, Rough.js, Matter.js, Monaco, CodeMirror.
 
 ## Procedure
 
-### Stage 1 — Setup
+1. Choose or confirm a kebab-case slug under
+   `.supervibe/artifacts/prototypes/<slug>/`.
+2. Ask the target surface question before viewport questions unless an existing
+   `config.json` already answers it.
+3. Load `templates/viewport-presets/<target>.json`, ask the viewport question,
+   and write `config.json` before any HTML/CSS/JS prototype files.
+4. Confirm interaction depth and, for `data-fed`, run
+   `supervibe:mock-data-contract` before local fetch logic. Data-fed mock
+   output must include `mocks/mock-contract.json`, `mocks/mock-scenarios.json`,
+   and `mocks/api-fixtures/`.
+5. Classify capability mode. Write a prototype capability plan before using
+   dependencies, framework sandboxes, advanced media, maps, charts, code
+   editors, 3D, physics, or handoff-only storyboards.
+6. Create the prototype directory layout and import the shared design system.
+7. Build with semantic HTML, token-based CSS variables, approved components,
+   approved motion recipes, and local assets.
+8. Keep dependencies relative/local. Remote CDN, `node_modules/`, and unplanned
+   `import from` references are forbidden unless documented in the capability
+   plan and reviewer notes.
+9. For explicit multi-variant output, write `variant-manifest.json` and separate
+   fullscreen artifacts under `variants/<variant-id>/`; do not deliver a tabbed
+   comparison shell as the primary artifact.
+10. Start `supervibe:preview-server` with feedback enabled and verify the
+    visible Feedback button plus shared design-system asset responses.
+11. Deliver the preview URL, declared viewports, draft state, and one feedback
+    gate: Approve, Revise, Alternative, or Stop.
+12. On explicit approval only, write `.approval.json`, set `config.json`
+    approval to `approved`, and stop before implementation handoff.
 
-1. Pick a slug for the prototype: `.supervibe/artifacts/prototypes/<feature-slug>/` (kebab-case, ≤30 chars).
-2. Read `config.json` if it exists; otherwise ask **target surface** question first (see "Target surfaces" section above), then load `<resolved-supervibe-plugin-root>/templates/viewport-presets/<target>.json`, then ask **viewports** question. Save answer to `.supervibe/artifacts/prototypes/<slug>/config.json` BEFORE any other write — the pre-write hook enforces this. The config.json structure: `{ "target": "web|chrome-extension|electron|tauri|mobile-native", "viewports": [...], "runtime": "<from preset>", "constraints": [...from preset] }`.
-3. Confirm interaction depth level (visual-only / click-through / realistic / data-fed). One question, multiple-choice format.
-3a. If interaction is `data-fed`, run `supervibe:mock-data-contract` before writing mock fetch logic. The mock bundle must declare contract status, owner, schema refs, scenarios, PII policy, and backend drift rule.
-4. Create directory layout:
-   ```
-   .supervibe/artifacts/prototypes/<slug>/
-   ├── config.json              { "viewports": [375, 1440], "interaction": "click-through", "approval": "draft" }
-   ├── index.html               entry point
-   ├── pages/                   per-flow HTML files
-   ├── styles/
-   │   ├── reset.css            normalize / reset
-   │   ├── system.css           imports from ../../_design-system/tokens.css
-   │   └── pages.css            per-page composition (no token literals)
-   ├── scripts/                 native JS modules
-   ├── mocks/                   contract-backed JSON if interaction='data-fed'
-   │   ├── mock-contract.json    API/schema ownership, endpoints, entities, drift rule
-   │   ├── mock-scenarios.json   success/loading/empty/error/permission/validation/partial/large-list matrix
-   │   └── api-fixtures/         one synthetic JSON fixture per scenario
-   ├── assets/                  per-prototype images (icons in design-system, not here)
-   └── _reviews/                ui-polish + a11y reports land here later
-   ```
+## Preview Feedback Gate
 
-### Stage 2 — One question at a time
+For design previews, run `supervibe:preview-server --root .supervibe/artifacts/prototypes --label <slug> --daemon` and present `http://localhost:NNNN/<slug>/` as the review URL. Verify that shared design-system tokens return HTTP 200 through the server before handoff. Never use `file://` verification for prototype review or approval. Do not use `--no-feedback` for approval flows; it is diagnostic-only and blocks prototype approval.
 
-The prototype-builder agent (or this skill, when run inline) asks user-facing questions ONE AT A TIME, formatted as:
+## Design Diversity Benchmark
 
-```markdown
-**Step N/M: Viewports.**
-Use default 375px mobile and 1440px desktop?
+For any distinct alternative request, produce a meaningfully different variant rather than a same shell, new paint pass. Record why the variant changes at least one structural experience axis and name the tradeoff for palette, typography, motion, imagery, hierarchy, density, composition, or interaction.
 
-- Yes, defaults
-- Add 768px tablet
-- Add 1920px wide
-- Custom sizes
-```
+Artifact-level diversity evidence must list `domLayoutSignature`, `cssTokenSignature`, `screenshotViewportPlan`, and `interactionMotionSignature`; if these signatures are effectively unchanged, the prototype is not a distinct alternative.
 
-Wait for explicit answer. Then next question. Never combine.
+## User Approval Gate
 
-### Stage 2a — Prototype Capability Plan
+Preview feedback button is mandatory. The browser feedback overlay is supplemental and cannot approve the artifact. Do NOT proceed without explicit choice from the chat-level feedback prompt.
 
-Before Stage 3, classify the prototype mode:
+## Feedback prompt
 
-- `native-static` - semantic HTML/CSS/JS is enough.
-- `enhanced-native` - CSS/WAAPI, Canvas, SVG, local assets, or browser APIs are needed.
-- `bundled-dependency` - an approved local bundle is needed for charts, 3D, advanced motion, maps, code editing, physics, or data visualization.
-- `framework-sandbox` - a temporary framework/build sandbox is needed to prove a framework-specific behavior.
-- `handoff-only` - the effect cannot be responsibly rendered in the prototype environment, so ship a static/storyboard preview plus exact implementation notes.
+After presenting a preview URL, show exactly one lifecycle prompt and wait:
 
-If the mode is not `native-static`, write `.supervibe/artifacts/prototypes/<slug>/decisions/prototype-capability-plan.md` from `templates/design-decisions/prototype-capability-plan.md.tpl` before implementation. The plan must name the library or browser API, why it is necessary, what native-only alternative was rejected, artifact scope, license/security posture, bundle/performance budget, accessibility fallback, reduced-motion fallback, and verification commands.
+- ✅ Approve - write approval metadata and stop before implementation handoff.
+- ✎ Revise - collect one focused change request and keep the same direction.
+- 🔀 Alternative - create a meaningfully different variant with named tradeoffs.
+- 📊 Run reviews - dispatch visual, accessibility, and interaction checks.
+- 🛑 Stop - archive current draft state without pretending it is approved.
 
-### Stage 3 — Build
+## Required anti-patterns
 
-1. Build the chosen viewports as separate breakpoint blocks in `styles/pages.css` using container queries OR a single `@media (min-width)` cascade. Pick one and keep consistent.
-2. Compose components by reading `.supervibe/artifacts/prototypes/_design-system/components/<name>.md` for each — NEVER invent component patterns; if the design system doesn't have what you need, STOP and ask user to extend the system.
-3. Animations come from `.supervibe/artifacts/prototypes/_design-system/motion.css` (named keyframes + named easings + named durations) — apply, don't author new motion in the prototype.
-4. **Dependency boundary.** Verify `<script src=>` and `<link href=>` reference only relative files unless the approved `Prototype Capability Plan` explicitly documents a reviewed exception. No blind CDN, no unplanned `import` from npm, and no `node_modules/` runtime path inside the prototype. Greppable default: `grep -rE '(unpkg|cdn|jsdelivr|https://.*\.(js|css)|node_modules)' .supervibe/artifacts/prototypes/<slug>/` must return zero hits unless each hit is listed in the capability plan and reviewer notes.
-5. **Data-fed state matrix.** For `data-fed` prototypes, every local `fetch()` target must be listed in `mocks/mock-contract.json`, every UI state must map to a scenario in `mocks/mock-scenarios.json`, and every scenario must have a synthetic fixture in `mocks/api-fixtures/`.
+- `asking-multiple-questions-at-once` - bundling target, viewport, dependency,
+  and approval decisions into one prompt.
+- `advancing-without-feedback-prompt` - building past the preview gate without
+  the explicit lifecycle choice above.
+- `random-regen-instead-of-tradeoff-alternatives` - creating another variant
+  without naming which design axes changed and what tradeoff it makes.
+- `unapproved-dependency-coupling` - adding framework, chart, media, or 3D
+  runtime dependencies before a Prototype Capability Plan.
+- `silent-viewport-expansion` - adding desktop, mobile, extension, or desktop
+  app targets beyond the approved viewport set.
+- `silent-existing-artifact-reuse` - reading or continuing old prototype
+  artifacts before asking whether to continue, start fresh, or fork.
+- `missing-preview-feedback-button` - presenting a preview URL without a visible
+  feedback overlay and verified feedback target.
 
-### Stage 4 — Live preview
+## Examples
 
-1. Invoke `supervibe:preview-server` with `--root .supervibe/artifacts/prototypes --label <slug> --daemon` when the prototype imports the shared `_design-system`; present `http://localhost:NNNN/<slug>/` as the URL. Serving `--root .supervibe/artifacts/prototypes/<slug>/ --daemon` is allowed only because the server maps `/_design-system/*` to the sibling folder. It spawns silently with SSE hot-reload, idle-shutdown 30 min, and mandatory feedback overlay.
-2. Verify the served HTML includes `#supervibe-fb-toggle` / the visible `Feedback` button and that shared design-system tokens return HTTP 200. If missing, fix the preview setup before presenting the URL. Never use `file://` as delivery verification because it bypasses the feedback overlay.
-3. Print URL to user. Hand-off to user for visual review.
-4. Ensure server stays alive while feedback loop runs.
+- Simple dashboard mockup: use `native-static`, the web viewport preset, design
+  tokens, approved card/table/button specs, preview-server verification, and a
+  draft feedback gate.
+- Settings flow: use click-through depth with anchor pages, local JS only for
+  navigation state, and no dependency plan.
+- Data-fed billing screen: produce `mocks/mock-contract.json`,
+  `mocks/mock-scenarios.json`, and one fixture under `mocks/api-fixtures/` per
+  scenario before wiring local `fetch()` calls.
+- Interactive chart or 3D scene: write a capability plan that names the library,
+  native alternative rejected, bundle/performance budget, accessibility fallback,
+  reduced-motion fallback, and verification commands.
 
-### Stage 5 — Feedback loop (required)
-
-After delivering the URL, the skill EXPLICITLY prompts feedback:
-
-```markdown
-**Prototype ready:** http://localhost:3047
-**Viewports:** 375px (mobile), 1440px (desktop)
-**State:** draft
-
-What should happen next?
-
-- **Approve** - set state to `approved`, prepare handoff in `.supervibe/artifacts/prototypes/<slug>/handoff/`
-- **Revise** - describe the change and apply one iteration
-- **Alternative** - propose two other visual/composition directions
-- **Stop** - keep as draft and resume later
-```
-
-Do NOT proceed without explicit choice. If "Revise" -> ask one clarifying question per round. If "Alternative" -> spawn `.supervibe/artifacts/prototypes/<slug>/alternatives/<variant-name>/` with the variant; user can compare side-by-side. Every distinct alternative must record Design Diversity Benchmark fields: changed axes, `differsBecause`, `gains`, `givesUp`, reference packet, screenshot plan, token notes, `domLayoutSignature`, `cssTokenSignature`, `screenshotViewportPlan`, and `interactionMotionSignature`.
-
-### Stage 6 — Approval marker
-
-When the user explicitly approves:
-
-1. Write `.supervibe/artifacts/prototypes/<slug>/.approval.json`:
-   ```json
-   {
-     "status": "approved",
-     "approvedAt": "<ISO date>",
-     "approvedBy": "<user — from git config user.name>",
-     "viewports": [375, 1440],
-     "designSystemVersion": "<commit-sha of _design-system/ at approval time>",
-     "previewUrl": "http://localhost:3047",
-     "feedbackRounds": 3,
-     "approvalScope": "full | viewport-mobile | viewport-desktop | layout-only"
-   }
-   ```
-
-2. Update `config.json`: `"approval": "approved"`.
-3. Stop here. The skill does not write the handoff — that is `prototype-handoff` skill or the `/supervibe-design` command's Stage 7.
-
-### Stage 7 — Score + done
-
-1. Score against `prototype.yaml` rubric (≥9 to ship).
-2. Print final summary including approval state, file count, viewport count, link to `_reviews/`.
+See `references/skills/prototype-examples.md` for concrete file trees, JSON
+templates, grep audits, capability-plan fields, variant manifests, and approval
+marker samples.
 
 ## When not to use
 
-- Do not use this skill to bypass the command or workflow that owns durable artifacts.
-- Do not use it when source evidence, RAG/CodeGraph, or required verification is missing.
-- Do not use it to replace a specialist producer, worker, or reviewer that must issue runtime evidence.
+- Do not use this skill to bypass design-system approval or `/supervibe-design`
+  write gates.
+- Do not build from candidate or needs-revision design-system state.
+- Do not reuse or edit old design artifacts before the artifact-mode question
+  when the brief is ambiguous.
+- Do not replace required producer, reviewer, preview, or receipt paths with
+  controller-authored inline outputs.
+- Do not use `file://` as delivery verification.
 
 ## Common rationalizations
 
-- "This is small, so no source check is needed" - reject when the skill changes code, config, or durable artifacts.
-- "The user asked for speed, so skip receipts" - reject when durable work, delegation, or review is claimed.
-- "Existing prose is enough evidence" - reject when validators or command output are required.
+- "It is only a mockup, so raw hex is fine." Reject; prototypes prove the design
+  system and must use tokens.
+- "The dependency is just for a prototype." Reject without a capability plan,
+  local bundle strategy, and fallback.
+- "The preview works in the file browser." Reject; feedback overlay and shared
+  token paths must be verified through the preview server.
+- "The old mockup is obviously the source." Reject until the user chooses
+  continue existing, new from scratch, or alternative.
 
 ## Red flags
 
-- A durable artifact changes without a command, receipt, or verification path.
-- The skill is used outside its phase without an explicit handoff.
-- Claims of completion appear before evidence and confidence scoring.
+- Prototype CSS contains raw colors, magic spacing, ad-hoc easing, or local
+  component patterns not approved in `_design-system/`.
+- `config.json` is missing or declares viewports different from what was built.
+- Preview URL is delivered without the visible Feedback button.
+- Distinct variants change only palette/type while layout, hierarchy, density,
+  and interaction stay the same.
+- Data-fed mock files exist without `mock-contract.json`,
+  `mock-scenarios.json`, and `api-fixtures/`.
 
 ## Checklist
 
-- Source of truth read.
-- Scope and owner confirmed.
-- RAG/CodeGraph/memory requirement decided.
-- Evidence artifact or command recorded.
-- Stop condition and next handoff clear.
+- Approved design system confirmed.
+- Artifact mode resolved before reading old prototype sources.
+- Target and viewports saved to `config.json`.
+- Interaction depth and capability mode recorded.
+- Required capability plan written before dependency or handoff-only mode.
+- Components and motion recipes consumed from the design system.
+- No remote runtime imports unless planned and reviewed.
+- Preview server started with feedback enabled and shared tokens returning 200.
+- Feedback gate presented after URL delivery.
+- Approval marker written only after explicit user approval.
 
 ## Failure modes
 
-- Inline emulation replaces a required producer or reviewer.
-- Broad use of the skill slows delivery without improving evidence.
-- Missing verification lets stale assumptions pass as production-ready.
+- Prototype becomes production implementation and bypasses stack agents.
+- Design-system gaps are patched locally instead of extended through brandbook.
+- Preview validation misses mobile overflow, reduced-motion behavior, or feedback
+  capture.
+- Variants are presented as alternatives without Design Diversity Benchmark
+  evidence.
+- Data-fed demos drift from backend expectations because mock contracts were
+  skipped.
 
 ## Output contract
 
-```
-=== Prototype ===
-Slug:           <slug>
-Location:       .supervibe/artifacts/prototypes/<slug>/
-Viewports:      [375, 1440]   (mobile, desktop)
-Interaction:    click-through
-Mock data:      <N/A | provisional | api-backed | schema-backed | data-model-backed> .supervibe/artifacts/prototypes/<slug>/mocks/mock-contract.json
-Files:          index.html (1) + pages (N) + styles (M) + scripts (K)
-Design system:  .supervibe/artifacts/prototypes/_design-system/  (commit: <sha>)
-Preview URL:    http://localhost:NNNN
-Approval:       <draft | approved>     ← saved at .supervibe/artifacts/prototypes/<slug>/.approval.json
-Feedback rounds: <count>
-
-Confidence: <N>.<dd>/10
-Override:   <true|false>
-Rubric:     prototype
-```
+Return these fields:
+- `slug`: prototype slug and artifact path.
+- `target`: web, chrome-extension, electron, tauri, or mobile-native.
+- `viewports`: declared viewport set from `config.json`.
+- `interaction`: visual-only, click-through, realistic, or data-fed.
+- `mode`: native-static, enhanced-native, bundled-dependency,
+  framework-sandbox, or handoff-only.
+- `files`: index, pages, styles, scripts, mocks, assets, reviews, variants.
+- `designSystem`: source path and approval status.
+- `previewUrl`: Supervibe preview-server URL with feedback enabled.
+- `approval`: draft, revised, alternative, approved, or stopped.
+- `verification`: targeted checks and blockers.
+- `confidence`: numeric score, override flag, and `prototype` rubric.
 
 ## Guard rails
 
-- DO NOT install, import, or bundle any dependency without a written `Prototype Capability Plan` and a verification note explaining why native CSS/WAAPI, Canvas, SVG, or local assets are insufficient.
-- DO NOT exceed 2 viewports unless user explicitly asked for more.
-- DO NOT proceed past delivery without explicit feedback choice.
-- DO NOT reuse or edit an old design artifact without the artifact-mode question when the brief is ambiguous.
-- DO NOT disable preview feedback overlay for prototype previews.
-- DO NOT verify design delivery through `file://`; use the Supervibe preview server so the feedback button and shared tokens are checked in the same mode the user sees.
-- DO NOT build or preview from a candidate or needs_revision design system.
-- DO NOT claim a data-fed prototype is frontend-before-backend ready without `mocks/mock-contract.json`, `mocks/mock-scenarios.json`, and `mocks/api-fixtures/`.
-- DO NOT mark approved without `.approval.json` artifact.
-- DO NOT extend the design system inside a prototype dir — design system extensions go through `supervibe:brandbook`.
-- DO NOT ask >1 question per message.
-- DO NOT use raw hex / magic px / ad-hoc cubic-bezier — everything from tokens.
-- DO NOT present a distinct alternative that is same shell, new paint; it must change at least three benchmark axes.
+- Ask one user-facing question at a time.
+- Do not exceed the declared viewport set without asking.
+- Do not build from an unapproved design system.
+- Do not disable the preview feedback overlay.
+- Do not install, import, or bundle dependencies without a capability plan.
+- Do not extend the design system inside a prototype directory.
+- Do not mark approved without `.approval.json` and explicit user signal.
+- Do not claim frontend-before-backend readiness for data-fed mocks without
+  `mock-contract.json`, `mock-scenarios.json`, and `api-fixtures/`.
 
 ## Verification
 
-- `find .supervibe/artifacts/prototypes/<slug>/ -name '*.html'` shows expected structure
-- `grep -rE '(unpkg|cdn|jsdelivr|node_modules|import .* from)' .supervibe/artifacts/prototypes/<slug>/` returns 0 hits, or every hit is documented in `decisions/prototype-capability-plan.md` with approved scope and local bundle strategy
-- `grep -rE '#[0-9a-f]{3,8}|rgb\(|rgba\(' .supervibe/artifacts/prototypes/<slug>/styles/pages.css` returns 0 hits (all colors via var(--token))
-- Open prototype at each declared viewport in DevTools, confirm no horizontal overflow at 375px
-- If interaction is `data-fed`, `mocks/mock-contract.json`, `mocks/mock-scenarios.json`, and `mocks/api-fixtures/` exist and map every local fetch to a scenario fixture
-- Approval marker written when the user explicitly approves
-- `prefers-reduced-motion: reduce` honored — animations disabled or shortened to ≤100ms
+- `config.json` exists before HTML/CSS/JS and matches the target/viewports built.
+- HTML files exist in the expected prototype structure.
+- Grep CSS for raw colors and local literals; design values should use
+  `var(--token)` or approved local aliases.
+- Grep runtime files for CDN, `node_modules`, and unplanned imports; every
+  exception must be named in the capability plan.
+- Open the preview URL at each declared viewport and check no horizontal
+  overflow at mobile width.
+- Confirm `#supervibe-fb-toggle` or the visible Feedback button is present.
+- Confirm shared design-system imports return HTTP 200 through the server.
+- If data-fed, confirm mock contract, scenarios, and fixtures cover every local
+  fetch target.
+- Emulate reduced motion and verify animations are disabled or shortened.
 
-## Anti-patterns (skill-level — fail conditions)
+## Supporting references
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
-- `advancing-without-feedback-prompt` — concluding delivery without printing the 5-choice feedback block (✅ / ✎ / 🔀 / 📊 / 🛑) and waiting for explicit user choice.
-- `unapproved-dependency-coupling` — emitting `import from`, `require()`, `<script src="...cdn...">`, `<script src="...unpkg...">`, or any `node_modules/` reference without a `Prototype Capability Plan`, local bundle strategy, and reviewer-approved scope.
-- `silent-viewport-expansion` — adding viewport widths beyond what `.supervibe/artifacts/prototypes/<slug>/config.json` declares without re-asking the user.
-- `same-shell-new-paint` — presenting a color/type refresh as a distinct alternative without changed composition, hierarchy, density, or interaction.
-- `random-regen-instead-of-tradeoff-alternatives` — when user dislikes a direction, re-rolling without producing 2-3 documented alternatives via `templates/alternatives/tradeoff.md.tpl`.
-- `silent-existing-artifact-reuse` — reading or modifying a prior design artifact before the user chose continue existing vs new from scratch.
-- `missing-preview-feedback-button` — presenting a preview URL without the visible `Feedback` overlay button.
-- `ad-hoc-data-fed-json` — local JSON exists without mock-contract.json, mock-scenarios.json, scenario fixtures, schema owner, and backend drift rule.
+- `references/skills/prototype-examples.md`
+- `references/skills/design-patterns.md`
+- `references/checklists/accessibility.md`
+- `references/checklists/performance.md`
+- `references/skill-baseline/skill-anatomy-baseline.md`
 
 ## Related
 
-- `supervibe:brandbook` — produces the design system this skill consumes (PREREQUISITE)
-- `supervibe:interaction-design-patterns` — animation recipes referenced from `motion.css`
-- `supervibe:mock-data-contract` — data-fed mock contract, scenario fixtures, and backend integration notes
-- `supervibe:preview-server` — auto-spawned at Stage 4 for live URL
-- `supervibe:landing-page` — sibling skill for marketing-page-specific concerns (SEO, analytics)
-- `agents/_design/prototype-builder` — the implementer agent that wraps this skill
-- `agents/_design/ui-polish-reviewer` — invoked after delivery for 8-dim review
-- `agents/_design/accessibility-reviewer` — invoked after delivery for WCAG check
-- `commands/supervibe-design.md` — full pipeline orchestrator (brand → spec → prototype → review → handoff)
+- `supervibe:brandbook` produces the approved design system.
+- `supervibe:interaction-design-patterns` supplies motion recipes.
+- `supervibe:mock-data-contract` owns data-fed mock contracts and fixtures.
+- `supervibe:preview-server` serves live previews with feedback enabled.
+- `supervibe:landing-page` handles production marketing-page concerns.
+- `agents/_design/prototype-builder` implements the prototype.
+- `agents/_design/ui-polish-reviewer` reviews visual and interaction quality.
+- `agents/_design/accessibility-reviewer` checks WCAG and reduced motion.
+- `commands/supervibe-design.md` orchestrates brand, prototype, review, and
+  handoff.

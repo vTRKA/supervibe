@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { spawnSync } from "node:child_process";
 import { access, copyFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -44,7 +45,8 @@ import { detectAnchorDrift, fixDerivedAnchorIndex, formatAnchorDriftReport, read
 import { appendChangeSummary, defaultChangeSummaryPath, formatChangeSummaryReport, readChangeSummaries } from "./lib/supervibe-change-summary-index.mjs";
 import { buildSemanticAnchorIndex, formatSemanticAnchorReport, parseSemanticAnchors } from "./lib/supervibe-semantic-anchor-index.mjs";
 import { formatAssignmentExplanation } from "./lib/supervibe-assignment-explainer.mjs";
-import { buildExecutionWaves, formatWaveStatus } from "./lib/supervibe-wave-controller.mjs";
+import { buildExecutionWaves, formatWaveStatus, selectSafeExecutionWave, taskWriteSet } from "./lib/supervibe-wave-controller.mjs";
+import { defaultRuntimeCleanupRegistryPath, summarizeHostManagedSubagentDebtSync } from "./lib/runtime-cleanup-registry.mjs";
 import { createHappyPathPlan, formatHappyPathPlan } from "./lib/supervibe-happy-path.mjs";
 import { formatEpicCompletionReport, validateEpicCompletion } from "./lib/supervibe-epic-completion-validator.mjs";
 import { createPreLoopSummaryModel } from "./lib/supervibe-ui-server.mjs";
@@ -185,6 +187,7 @@ function parseArgs(argv) {
     "force",
     "create-work-item",
     "claim-ready",
+    "dispatch-wave",
     "eval",
     "eval-live",
     "approval-receipts",
@@ -236,6 +239,7 @@ function parseArgs(argv) {
     "final-review-status",
     "write-final-review-sweep",
     "allow-untrusted-final-review",
+    "apply",
   ]);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -435,12 +439,137 @@ function isSemanticEpicCandidate(item = {}) {
 }
 
 function taskDeclaredWriteSet(task = {}) {
-  return [...new Set([
-    ...(task.targetFiles || []),
-    ...(task.filesTouched || []),
-    ...(task.fileImpact || []),
-    ...(task.writeScope || []).map((entry) => entry.path || entry),
-  ].map(normalizeTaskPath).filter(Boolean))].sort();
+  return taskWriteSet(task).map(normalizeTaskPath).filter(Boolean);
+}
+
+function tasksReadyForAssignment(state = {}) {
+  if (Array.isArray(state.items) && state.items.length > 0) {
+    const index = createWorkItemIndex({ graph: state });
+    return orderReadyWorkItems(index.filter((item) => item.type !== "epic" && item.effectiveStatus === "ready"), { graph: state })
+      .map((item) => ({
+        ...(item.task || {}),
+        ...item,
+        id: item.itemId || item.id,
+        taskId: item.itemId || item.id,
+        goal: item.goal || item.title,
+        category: item.category || item.type || "implementation",
+      }));
+  }
+  return (state.tasks || [])
+    .filter((task) => ["open", "ready", "pending"].includes(task.status || "open"))
+    .map((task) => ({
+      ...task,
+      id: task.id || task.itemId || task.taskId,
+      taskId: task.taskId || task.id || task.itemId,
+    }));
+}
+
+function buildReadyAssignmentDispatches(tasks = [], {
+  args = {},
+  rootDir = process.cwd(),
+  maxConcurrency = 3,
+  commandId = "supervibe-loop-assign-ready",
+  writeSetLocks = [],
+} = {}) {
+  const cleanupBlocked = Number(maxConcurrency) <= 0;
+  const selection = cleanupBlocked
+    ? { selected: [], blocked: [], serialized: [], conflicts: [] }
+    : selectSafeExecutionWave({
+        tasks,
+        maxConcurrency,
+        maxPolicyRiskLevel: args["max-policy-risk-level"] || args.maxPolicyRiskLevel || "medium",
+        requireWriteSet: true,
+        writeSetLocks,
+      });
+  const selectedIds = new Set(selection.selected.map((task) => task.id || task.taskId || task.itemId));
+  const blockedReasons = new Map(selection.blocked.map((item) => [item.taskId, item.reason]));
+  const serializedReasons = new Map(selection.serialized.map((item) => [item.taskId, item.reason]));
+  const planned = tasks.map((task) => {
+    const taskId = task.id || task.taskId || task.itemId;
+    const writeSet = taskDeclaredWriteSet(task);
+    if (cleanupBlocked) {
+      return {
+        task,
+        taskId,
+        writeSet,
+        status: "blocked",
+        blockedReason: "completed Codex subagent cleanup is required before opening new provider threads",
+      };
+    }
+    if (selectedIds.has(taskId)) return { task, taskId, writeSet, status: "assigned", blockedReason: null };
+    if (blockedReasons.has(taskId)) return { task, taskId, writeSet, status: "blocked", blockedReason: blockedReasons.get(taskId) };
+    if (serializedReasons.has(taskId)) return { task, taskId, writeSet, status: "serialized", blockedReason: serializedReasons.get(taskId) };
+    return { task, taskId, writeSet, status: "serialized", blockedReason: "outside current safe execution wave" };
+  });
+
+  return planned.map(({ task, taskId, writeSet, status, blockedReason }) => {
+    const evidencePacket = buildEvidencePacket({ rootDir, task, commandId });
+    const verificationPolicy = createTaskLocalVerificationPolicy(task);
+    const writeSetLock = status === "assigned" ? createAssignmentWriteSetLock(task, writeSet) : null;
+    if (status !== "assigned") {
+      return {
+        taskId,
+        status,
+        assignmentBlocked: true,
+        blockedReason,
+        writeSet,
+        writeSetLock,
+        evidencePacket,
+        verificationPolicy,
+        workerAssignmentPayload: null,
+        reviewerAssignmentPayload: null,
+        codexSpawnPayload: null,
+        assignmentExplanation: null,
+      };
+    }
+    const reviewMode = args.reviewMode || args["review-mode"] || "final-sweep";
+    const dispatch = dispatchTask({ ...task, id: taskId }, { useCapabilityRegistry: true, reviewMode });
+    const assignmentExplanation = attachVerificationPolicyToExplanation(dispatch.assignmentExplanation, verificationPolicy);
+    const workerAssignmentPayload = {
+      agentId: dispatch.primaryAgentId,
+      taskId: dispatch.taskId,
+      writeSet,
+      writeSetLock,
+      evidencePacket,
+      verificationPolicy,
+      verificationCommands: verificationPolicy.targetedCommands,
+      deferredFullVerificationCommands: verificationPolicy.deferredFullCommands,
+    };
+    return {
+      ...dispatch,
+      status: "assigned",
+      writeSet,
+      writeSetLock,
+      evidencePacket,
+      verificationPolicy,
+      assignmentExplanation,
+      workerAssignmentPayload,
+      reviewerAssignmentPayload: {
+        deferredUntil: dispatch.reviewPolicy?.mode === "final-sweep" ? "graph-release-gate" : null,
+        agentId: dispatch.reviewerAgentId,
+        taskId: dispatch.taskId,
+        writeSet,
+        writeSetLock,
+        evidencePacket,
+        verificationPolicy,
+        verificationCommands: verificationPolicy.targetedCommands,
+        deferredFullVerificationCommands: verificationPolicy.deferredFullCommands,
+      },
+      codexSpawnPayload: {
+        agent_type: "worker",
+        fork_context: false,
+        task_id: dispatch.taskId,
+        message: [
+          `Supervibe work item ${dispatch.taskId}: ${task.title || task.goal || "assigned task"}.`,
+          "You are not alone in the codebase; do not revert edits made by others and keep to your assigned write set.",
+          `Owned write set: ${writeSet.join(", ")}`,
+          `Run only targeted verification: ${verificationPolicy.targetedCommands.join(" && ") || "none available; request a testable owner path"}.`,
+          `Do not run deferred full verification: ${verificationPolicy.deferredFullCommands.join(" && ") || "none"}.`,
+          "Final response must list changed file paths, targeted verification run, and any blockers.",
+        ].join("\n"),
+      },
+    };
+  });
 }
 
 function createAssignmentWriteSetLock(task = {}, writeSet = taskDeclaredWriteSet(task)) {
@@ -459,6 +588,53 @@ function createAssignmentWriteSetLock(task = {}, writeSet = taskDeclaredWriteSet
 function loadWriteSetLocksFromArgs(args = {}) {
   if (Array.isArray(args.writeSetLocks)) return args.writeSetLocks;
   return [];
+}
+
+function activeClaimWriteSetLocks(state = {}) {
+  const claims = Array.isArray(state.claims) ? state.claims : [];
+  const itemById = new Map();
+  for (const entry of [...(state.items || []), ...(state.tasks || [])]) {
+    const id = entry.itemId || entry.id || entry.taskId;
+    if (id && !itemById.has(id)) itemById.set(id, entry);
+  }
+  const nowMs = Date.now();
+  return claims
+    .filter((claim) => isActiveClaimLock(claim, nowMs))
+    .map((claim, index) => {
+      const taskId = claim.taskId || claim.itemId || null;
+      const declaredWriteSet = [
+        ...(claim.writeSetLock?.writeSet || []),
+        ...(claim.writeSet || []),
+      ];
+      const fallbackWriteSet = taskId ? taskDeclaredWriteSet(itemById.get(taskId) || {}) : [];
+      const writeSet = [...new Set((declaredWriteSet.length ? declaredWriteSet : fallbackWriteSet)
+        .map(normalizeTaskPath)
+        .filter(Boolean))].sort();
+      if (writeSet.length === 0) return null;
+      return {
+        lockId: claim.writeSetLock?.lockId || claim.claimId || `active-claim-${index + 1}`,
+        taskId,
+        owner: claim.agentId || claim.owner || "active-claim",
+        status: "active",
+        writeSet,
+      };
+    })
+    .filter(Boolean);
+}
+
+function loadWriteSetLocksForState(state = {}, args = {}) {
+  return [
+    ...loadWriteSetLocksFromArgs(args),
+    ...activeClaimWriteSetLocks(state),
+  ];
+}
+
+function isActiveClaimLock(claim = {}, nowMs = Date.now()) {
+  const status = String(claim.status || "").toLowerCase();
+  if (!["active", "claimed", "in_progress"].includes(status)) return false;
+  if (!claim.expiresAt) return true;
+  const expiresAt = Date.parse(claim.expiresAt);
+  return !Number.isFinite(expiresAt) || expiresAt > nowMs;
 }
 
 function semanticTaskId(task = {}) {
@@ -698,64 +874,18 @@ async function main() {
 
   if (args["assign-ready"]) {
     const state = args.file ? JSON.parse(await readFile(resolve(rootDir, args.file), "utf8")) : { tasks: [] };
-    const tasks = (state.tasks || []).filter((task) => ["open", "ready", "pending"].includes(task.status || "open"));
-    const dispatches = tasks.map((task) => {
-      const evidencePacket = buildEvidencePacket({ rootDir, task, commandId: "supervibe-loop-assign-ready" });
-      const writeSet = taskDeclaredWriteSet(task);
-      const verificationPolicy = createTaskLocalVerificationPolicy(task);
-      if (writeSet.length === 0) {
-        return {
-          taskId: task.id,
-          status: "blocked",
-          assignmentBlocked: true,
-          blockedReason: "missing write-set declaration before worker assignment",
-          writeSet,
-          writeSetLock: null,
-          evidencePacket,
-          verificationPolicy,
-          workerAssignmentPayload: null,
-          reviewerAssignmentPayload: null,
-          assignmentExplanation: null,
-        };
-      }
-      const writeSetLock = createAssignmentWriteSetLock(task, writeSet);
-      const reviewMode = args.reviewMode || args["review-mode"] || "final-sweep";
-      const dispatch = dispatchTask(task, { useCapabilityRegistry: true, reviewMode });
-      const assignmentExplanation = attachVerificationPolicyToExplanation(dispatch.assignmentExplanation, verificationPolicy);
-      return {
-        ...dispatch,
-        status: "assigned",
-        writeSet,
-        writeSetLock,
-        evidencePacket,
-        verificationPolicy,
-        assignmentExplanation,
-        workerAssignmentPayload: {
-          agentId: dispatch.primaryAgentId,
-          taskId: dispatch.taskId,
-          writeSet,
-          writeSetLock,
-          evidencePacket,
-          verificationPolicy,
-          verificationCommands: verificationPolicy.targetedCommands,
-          deferredFullVerificationCommands: verificationPolicy.deferredFullCommands,
-        },
-        reviewerAssignmentPayload: {
-          deferredUntil: dispatch.reviewPolicy?.mode === "final-sweep" ? "graph-release-gate" : null,
-          agentId: dispatch.reviewerAgentId,
-          taskId: dispatch.taskId,
-          writeSet,
-          writeSetLock,
-          evidencePacket,
-          verificationPolicy,
-          verificationCommands: verificationPolicy.targetedCommands,
-          deferredFullVerificationCommands: verificationPolicy.deferredFullCommands,
-        },
-      };
+    const schedulerPolicy = resolveSchedulerPolicy({ args, rootDir, activeGraph: state });
+    const dispatches = buildReadyAssignmentDispatches(tasksReadyForAssignment(state), {
+      args,
+      rootDir,
+      maxConcurrency: schedulerPolicy.effectiveMaxConcurrency,
+      commandId: "supervibe-loop-assign-ready",
+      writeSetLocks: loadWriteSetLocksForState(state, args),
     });
     if (args.json) console.log(JSON.stringify(dispatches, null, 2));
     else {
       console.log("SUPERVIBE_ASSIGN_READY");
+      console.log(formatSchedulerPolicy(schedulerPolicy));
       for (const dispatch of dispatches) {
         if (dispatch.assignmentBlocked) {
           console.log(`${dispatch.taskId}: blocked -> ${dispatch.blockedReason}`);
@@ -765,6 +895,72 @@ async function main() {
             : `${dispatch.taskId}: ${dispatch.primaryAgentId} -> ${dispatch.reviewerAgentId || "final-reviewer-sweep"}`);
         }
         console.log(formatEvidencePacketSummary(dispatch.evidencePacket));
+      }
+    }
+    return;
+  }
+
+  if (args["dispatch-wave"]) {
+    const graphPath = args.file
+      ? resolve(rootDir, args.file)
+      : await resolveActiveWorkItemGraphPath({ rootDir });
+    if (!graphPath) throw new Error("dispatch-wave requires --file <graph.json> or an active work graph");
+    const graph = JSON.parse(await readFile(graphPath, "utf8"));
+    const schedulerPolicy = resolveSchedulerPolicy({ args, rootDir, activeGraph: graph });
+    const dispatches = buildReadyAssignmentDispatches(tasksReadyForAssignment(graph), {
+      args,
+      rootDir,
+      maxConcurrency: schedulerPolicy.effectiveMaxConcurrency,
+      commandId: "supervibe-loop-dispatch-wave",
+      writeSetLocks: loadWriteSetLocksForState(graph, args),
+    });
+    const assigned = dispatches.filter((dispatch) => dispatch.status === "assigned");
+    const claimResults = [];
+    if (args.apply && !args["dry-run"] && !args.preview) {
+      if (assigned.length > 0) {
+        const waveId = args["wave-id"] || `wave-${Date.now()}`;
+        const result = await mutateWorkItemGraphFile(graphPath, {
+          type: "claim-wave",
+          waveId,
+          claims: assigned.map((dispatch) => ({
+            itemId: dispatch.taskId,
+            writeSet: dispatch.writeSet,
+            writeSetLock: dispatch.writeSetLock,
+          })),
+          actor: args.actor || args.owner || "codex-wave",
+          reason: args.reason || "claimed by /supervibe-loop --dispatch-wave",
+          force: Boolean(args.force),
+          rootDir,
+        });
+        claimResults.push(...(result.claimResults || []).map((item) => ({
+          itemId: item.itemId,
+          claimId: item.claimId,
+          changed: item.changed,
+          action: result.action,
+          waveId,
+        })));
+      }
+    }
+    const report = {
+      schemaVersion: 1,
+      command: "supervibe-loop-dispatch-wave",
+      graphPath,
+      applied: Boolean(args.apply && !args["dry-run"] && !args.preview),
+      schedulerPolicy,
+      assignedTaskIds: assigned.map((dispatch) => dispatch.taskId),
+      dispatches,
+      claimResults,
+    };
+    if (args.json) console.log(JSON.stringify(report, null, 2));
+    else {
+      console.log("SUPERVIBE_DISPATCH_WAVE");
+      console.log(`GRAPH: ${graphPath}`);
+      console.log(`APPLIED: ${report.applied}`);
+      console.log(formatSchedulerPolicy(schedulerPolicy));
+      console.log(`ASSIGNED: ${report.assignedTaskIds.join(", ") || "none"}`);
+      for (const dispatch of dispatches) {
+        if (dispatch.assignmentBlocked) console.log(`${dispatch.taskId}: ${dispatch.status} -> ${dispatch.blockedReason}`);
+        else console.log(`${dispatch.taskId}: ${dispatch.primaryAgentId} writeSet=${dispatch.writeSet.join(",")}`);
       }
     }
     return;
@@ -2213,7 +2409,9 @@ function formatEpicTaskStatusLine(item = {}) {
   const status = item.effectiveStatus || item.status || "open";
   const blocks = Array.isArray(item.blocks) && item.blocks.length ? item.blocks.join(",") : "none";
   const blockedBy = Array.isArray(item.blockedBy) && item.blockedBy.length ? item.blockedBy.join(",") : "none";
-  const claim = item.claims?.[0]?.agentId || item.claimOwner || item.owner || "none";
+  const activeClaim = (item.claims || []).find(isDisplayActiveClaim);
+  const owner = status === "done" ? null : (item.claimOwner || item.owner || null);
+  const claim = activeClaim?.agentId || owner || "none";
   const stall = entryStallState(item) || entryStallState(item.task || {});
   const stalled = String(stall?.status || "").toLowerCase() === "stalled";
   const next = stalled
@@ -2228,6 +2426,10 @@ function formatEpicTaskStatusLine(item = {}) {
           ? "verified"
           : "wait";
   return `TASK: ${id} STATUS: ${status} BLOCKS: ${blocks} BLOCKED_BY: ${blockedBy} CLAIM: ${claim} NEXT: ${next}`;
+}
+
+function isDisplayActiveClaim(claim = {}) {
+  return ["active", "claimed", "in_progress", "running"].includes(String(claim.status || "").toLowerCase());
 }
 
 function isOperationallyClosedWorkGraph(graph = {}) {
@@ -2544,7 +2746,7 @@ function createReleaseFullCheckGate(graph = {}, additionalEvidence = []) {
     evidence.push({ ...entry, scope: entry.scope || "pending-close" });
   };
   addAdditionalEvidence(additionalEvidence);
-  const passed = evidence.find((entry) => isFullVerificationCommand(entry.command) && isPassingVerificationEvidence(entry));
+  const passed = evidence.find((entry) => isReleaseFullCheckEvidence(entry) && isFullVerificationCommand(entry.command) && isPassingVerificationEvidence(entry));
   return {
     schemaVersion: 1,
     pass: Boolean(passed),
@@ -2558,6 +2760,14 @@ function createReleaseFullCheckGate(graph = {}, additionalEvidence = []) {
     evidenceStatus: passed?.status || null,
     policy: "Full checks run once at final phase/release handoff, not inside every child task or epic worker assignment.",
   };
+}
+
+function isReleaseFullCheckEvidence(entry = {}) {
+  const scope = String(entry.scope || "").toLowerCase();
+  const releaseScopes = new Set(["graph", "epic", "pending-close", "release", "final", "final-close", "release-gate", "graph-release-gate"]);
+  if (!releaseScopes.has(scope)) return false;
+  if (scope === "graph" && (entry.taskId || entry.workItemId) && !entry.releaseGate && !entry.phaseGate && !entry.finalGate) return false;
+  return true;
 }
 
 function formatReleaseFullCheckGate(gate = {}) {
@@ -2575,6 +2785,14 @@ function formatReleaseFullCheckGate(gate = {}) {
 
 function nextActionForEpicStatus(grouped = {}, graph = {}) {
   const nextReady = grouped.ready?.[0]?.itemId || grouped.ready?.[0]?.id || null;
+  const readyCount = (grouped.ready || []).filter((item) => item.type !== "epic").length;
+  const dispatchableReady = selectStatusReadyWave(grouped.ready || [], graph);
+  if (nextReady && dispatchableReady.blockedByActiveClaims) {
+    return `wait for current claimed wave or complete/recover active claims before dispatching ready items; blocked ready items: ${dispatchableReady.blockedTaskIds.join(", ")}`;
+  }
+  if (dispatchableReady.taskIds.length > 1) return `dispatch safe wave from ${dispatchableReady.taskIds.length} ready items with /supervibe-loop --dispatch-wave --apply --file <graph.json>, or claim ${dispatchableReady.taskIds[0]}`;
+  if (dispatchableReady.taskIds.length === 1) return `claim ${dispatchableReady.taskIds[0]} or run /supervibe-loop --claim-ready`;
+  if (nextReady && readyCount > 1) return `dispatch safe wave from ${readyCount} ready items with /supervibe-loop --dispatch-wave --apply --file <graph.json>, or claim ${nextReady}`;
   if (nextReady) return `claim ${nextReady} or run /supervibe-loop --claim-ready`;
   const stalled = collectStalledItemsFromGraph(graph);
   if (stalled.length > 0) return `recover stalled work: ${stalled.map((item) => item.itemId).join(", ")}`;
@@ -2586,6 +2804,34 @@ function nextActionForEpicStatus(grouped = {}, graph = {}) {
     // Keep status reporting usable even if completion validation cannot inspect a legacy graph.
   }
   return "run /supervibe-loop --validate-completion";
+}
+
+function selectStatusReadyWave(readyItems = [], graph = {}) {
+  const readyTasks = readyItems
+    .filter((item) => item.type !== "epic")
+    .map((item) => ({
+      ...(item.task || {}),
+      ...item,
+      id: item.itemId || item.id,
+      taskId: item.itemId || item.id,
+    }));
+  if (readyTasks.length === 0) return { taskIds: [], blockedTaskIds: [], blockedByActiveClaims: false };
+  const activeLocks = activeClaimWriteSetLocks(graph);
+  if (activeLocks.length === 0) {
+    return { taskIds: readyTasks.map((task) => task.id || task.taskId || task.itemId).filter(Boolean), blockedTaskIds: [], blockedByActiveClaims: false };
+  }
+  const selection = selectSafeExecutionWave({
+    tasks: readyTasks,
+    maxConcurrency: readyTasks.length,
+    requireWriteSet: true,
+    writeSetLocks: activeLocks,
+  });
+  const blockedByLock = selection.blocked.filter((item) => /write-set lock conflict/.test(item.reason || ""));
+  return {
+    taskIds: selection.selected.map((task) => task.id || task.taskId || task.itemId).filter(Boolean),
+    blockedTaskIds: blockedByLock.map((item) => item.taskId).filter(Boolean),
+    blockedByActiveClaims: selection.selected.length === 0 && blockedByLock.length > 0,
+  };
 }
 
 function resolveWorkItemAction(args) {
@@ -2803,13 +3049,28 @@ async function maybePrepareWorktreeSession(args, rootDir) {
     worktreePath = join(selection.selected, branchName.replace(/[\\/]/g, "-"));
   }
 
+  const baselineCommit = args["baseline-commit"] || "HEAD";
+  let materializedAt = null;
+  if (args["worktree-create"] && !args["dry-run"] && !args["worktree-existing"]) {
+    const result = spawnSync("git", ["worktree", "add", worktreePath, "-b", branchName, baselineCommit], {
+      cwd: rootDir,
+      encoding: "utf8",
+      windowsHide: true,
+    });
+    if (result.status !== 0) {
+      throw new Error(`git worktree add failed: ${(result.stderr || result.stdout || `exit ${result.status}`).trim()}`);
+    }
+    materializedAt = new Date().toISOString();
+  }
+
   const session = createWorktreeSessionRecord({
     sessionId: args["session-id"],
     rootDir,
     epicId,
     branchName,
     worktreePath,
-    baselineCommit: args["baseline-commit"] || "HEAD",
+    baselineCommit,
+    materializedAt,
     baselineChecks: args["baseline-check"] ? [{ command: args["baseline-check"], status: "planned" }] : [],
     assignedWaveId,
     assignedTaskIds,
@@ -2855,7 +3116,7 @@ function buildAdapterConfig(args) {
   return Object.keys(config).length > 0 ? config : undefined;
 }
 
-function resolveSchedulerPolicy({ args = {}, rootDir = process.cwd() } = {}) {
+function resolveSchedulerPolicy({ args = {}, rootDir = process.cwd(), activeGraph = null } = {}) {
   const requestedMaxConcurrency = positiveInt(args["max-concurrency"], 3);
   const providerId = String(args.provider || args.tool || process.env.SUPERVIBE_PROVIDER || "codex").toLowerCase();
   const manifest = loadProviderCapabilities({ rootDir: args["plugin-root"] || rootDir });
@@ -2863,19 +3124,96 @@ function resolveSchedulerPolicy({ args = {}, rootDir = process.cwd() } = {}) {
   const providerLimits = provider?.providerLimits || {};
   const providerMaxThreads = positiveInt(args["provider-max-threads"], positiveInt(providerLimits.defaultMaxThreads, requestedMaxConcurrency));
   const providerTimeoutSeconds = positiveInt(args["provider-timeout-seconds"], positiveInt(providerLimits.defaultJobRuntimeSeconds, null));
-  const effectiveMaxConcurrency = Math.max(1, Math.min(requestedMaxConcurrency, providerMaxThreads || requestedMaxConcurrency));
+  const hostManagedCleanupDebt = providerId === "codex"
+    ? summarizeHostManagedSubagentDebtSync({
+        rootDir,
+        path: defaultRuntimeCleanupRegistryPath(rootDir),
+      })
+    : { count: 0, closeRequired: [], discovered: 0 };
+  const activeGraphClaimedSlots = countActiveGraphProviderSlots(activeGraph);
+  const providerThreadLimit = providerMaxThreads || requestedMaxConcurrency;
+  const availableProviderThreads = Math.max(0, providerThreadLimit - hostManagedCleanupDebt.count - activeGraphClaimedSlots);
+  const effectiveMaxConcurrency = Math.min(requestedMaxConcurrency, availableProviderThreads || 0);
+  const reason = schedulerPolicyReason({
+    hostManagedCleanupDebt,
+    providerThreadLimit,
+    activeGraphClaimedSlots,
+    providerMaxThreads,
+    requestedMaxConcurrency,
+  });
   return {
     providerId: provider?.id || providerId,
     providerName: provider?.name || providerId,
     requestedMaxConcurrency,
     providerMaxThreads: providerMaxThreads || null,
     providerTimeoutSeconds: providerTimeoutSeconds || null,
+    hostManagedCleanupRequired: hostManagedCleanupDebt.count,
+    hostManagedCleanupIds: hostManagedCleanupDebt.closeRequired.map((item) => item.hostInvocationId).filter(Boolean),
+    activeGraphClaimedSlots,
+    availableProviderThreads,
     effectiveMaxConcurrency,
     source: provider ? "provider-capabilities-manifest" : "cli-default",
-    reason: providerMaxThreads && providerMaxThreads < requestedMaxConcurrency
-      ? `provider max threads ${providerMaxThreads} caps requested concurrency ${requestedMaxConcurrency}`
-      : "requested concurrency is within provider limits",
+    reason,
   };
+}
+
+function schedulerPolicyReason({
+  hostManagedCleanupDebt,
+  providerThreadLimit,
+  activeGraphClaimedSlots,
+  providerMaxThreads,
+  requestedMaxConcurrency,
+} = {}) {
+  const cleanupCount = Number(hostManagedCleanupDebt?.count || 0);
+  if (cleanupCount >= providerThreadLimit) {
+    return `completed Codex subagent cleanup requires closing ${cleanupCount} host-managed thread(s) before new spawns`;
+  }
+  const reductions = [];
+  if (cleanupCount > 0) reductions.push(`${cleanupCount} completed Codex subagent(s) awaiting close/reset`);
+  if (activeGraphClaimedSlots > 0) reductions.push(`${activeGraphClaimedSlots} active graph claim(s) already consuming provider slots`);
+  if (reductions.length > 0) return `provider threads reduced by ${reductions.join(" and ")}`;
+  if (providerMaxThreads && providerMaxThreads < requestedMaxConcurrency) {
+    return `provider max threads ${providerMaxThreads} caps requested concurrency ${requestedMaxConcurrency}`;
+  }
+  return "requested concurrency is within provider limits";
+}
+
+function countActiveGraphProviderSlots(graph = null, now = new Date().toISOString()) {
+  if (!graph || typeof graph !== "object") return 0;
+  const activeTaskIds = new Set();
+  for (const claim of Array.isArray(graph.claims) ? graph.claims : []) {
+    if (!isActiveGraphProviderClaim(claim, now)) continue;
+    const taskId = claim.taskId || claim.itemId || claim.id;
+    if (taskId) activeTaskIds.add(taskId);
+  }
+  const activeClaimedTaskIds = new Set(activeTaskIds);
+  for (const entry of [...(graph.items || []), ...(graph.tasks || [])]) {
+    if (!entry || entry.type === "epic") continue;
+    const taskId = entry.itemId || entry.taskId || entry.id;
+    if (!taskId) continue;
+    if (activeClaimedTaskIds.size > 0 && !activeClaimedTaskIds.has(taskId)) continue;
+    if (isProviderSlotStatus(entry.status)) activeTaskIds.add(taskId);
+  }
+  if (activeClaimedTaskIds.size === 0) {
+    for (const entry of [...(graph.items || []), ...(graph.tasks || [])]) {
+      if (!entry || entry.type === "epic") continue;
+      const taskId = entry.itemId || entry.taskId || entry.id;
+      if (taskId && isProviderSlotStatus(entry.status)) activeTaskIds.add(taskId);
+    }
+  }
+  return activeTaskIds.size;
+}
+
+function isActiveGraphProviderClaim(claim = {}, now = new Date().toISOString()) {
+  if (!isProviderSlotStatus(claim.status)) return false;
+  if (!claim.expiresAt) return true;
+  const expiresAt = Date.parse(claim.expiresAt);
+  if (!Number.isFinite(expiresAt)) return true;
+  return expiresAt > Date.parse(now);
+}
+
+function isProviderSlotStatus(status) {
+  return ["active", "claimed", "in_progress", "running"].includes(String(status || "").toLowerCase());
 }
 
 function formatSchedulerPolicy(policy = {}) {
@@ -2886,6 +3224,10 @@ function formatSchedulerPolicy(policy = {}) {
     `REQUESTED_MAX_CONCURRENCY: ${policy.requestedMaxConcurrency || 0}`,
     `PROVIDER_MAX_THREADS: ${policy.providerMaxThreads ?? "unknown"}`,
     `PROVIDER_TIMEOUT_SECONDS: ${policy.providerTimeoutSeconds ?? "unknown"}`,
+    `HOST_MANAGED_CLEANUP_REQUIRED: ${policy.hostManagedCleanupRequired || 0}`,
+    `HOST_MANAGED_CLEANUP_IDS: ${(policy.hostManagedCleanupIds || []).join(",") || "none"}`,
+    `ACTIVE_GRAPH_CLAIMED_SLOTS: ${policy.activeGraphClaimedSlots || 0}`,
+    `AVAILABLE_PROVIDER_THREADS: ${policy.availableProviderThreads ?? "unknown"}`,
     `EFFECTIVE_MAX_CONCURRENCY: ${policy.effectiveMaxConcurrency || 0}`,
     `SOURCE: ${policy.source || "unknown"}`,
     `REASON: ${policy.reason || "not evaluated"}`,
@@ -3017,6 +3359,7 @@ Primary:
   supervibe-loop --watch --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --claim <task-id> --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --claim-ready --file .supervibe/memory/work-items/<epic-id>/graph.json
+  supervibe-loop --dispatch-wave --apply --file .supervibe/memory/work-items/<epic-id>/graph.json --max-concurrency 4
   supervibe-loop --close <task-id> --reason "verified" --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --validate-completion --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --validate-completion --file .supervibe/memory/work-items/<epic-id>/graph.json --require-trusted-evidence --trusted-receipts <id,id>
@@ -3050,6 +3393,7 @@ Primary:
   supervibe-loop --summarize-changes --task task-123 --file src/example.ts --summary "Changed parser"
   supervibe-loop --plan-waves .supervibe/artifacts/plans/example.md
   supervibe-loop --assign-ready --explain --file .supervibe/memory/loops/<run-id>/state.json
+  supervibe-loop --dispatch-wave --json --file .supervibe/memory/work-items/<epic-id>/graph.json --max-concurrency 4
   supervibe-loop --setup-worker-presets
   supervibe-loop --provider-matrix
   supervibe-loop --require-user-acceptance --request "validate integrations"

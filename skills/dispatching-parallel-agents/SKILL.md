@@ -1,11 +1,7 @@
 ---
 name: dispatching-parallel-agents
 namespace: process
-description: >-
-  Use WHEN facing 2+ independent tasks BEFORE starting them sequentially to
-  determine if parallel subagent dispatch saves time without coordination cost.
-  Triggers: 'parallel dispatch', 'fan-out', 'параллельно агентов', 'разнеси
-  задачи'.
+description: 'Use WHEN facing 2+ independent tasks BEFORE starting them sequentially to determine if parallel subagent dispatch saves time without coordination cost. Triggers: ''parallel dispatch'', ''fan-out'', ''параллельно агентов'', ''разнеси задачи''.'
 allowed-tools:
   - Read
   - Grep
@@ -21,7 +17,11 @@ last-verified: 2026-05-02T00:00:00.000Z
 
 # Dispatching Parallel Agents
 
-## When to invoke
+## Overview
+
+Dispatching Parallel Agents provides a reusable Supervibe operating method for Use WHEN facing 2+ independent tasks BEFORE starting them sequentially to determine if parallel subagent dispatch saves time without coordination cost. Triggers: 'parallel dispatch', 'fan-out', 'параллельно агентов', 'разнеси задачи'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
+## When to Use
 
 WHEN you have 2+ tasks to do AND you're about to start them. BEFORE you go sequential by default.
 
@@ -103,6 +103,12 @@ If parallel OK, count tasks:
 
 - Use when a graph has disjoint work items: group by write scope, dispatch independent workers concurrently, and keep the controller responsible for progress and handoffs.
 - Do not split tightly coupled edits that would force workers to overwrite or wait on each other.
+- Use for documentation/template connectivity work: one worker audits
+  references, another checks command routing, while the controller patches only
+  the confirmed gaps and runs `npm run validate:artifact-links`.
+- Anti-example: do not send two workers into the same validator file and ask
+  both to "improve quality"; split read-only analysis from the single writer or
+  serialize the edits.
 
 ## When not to use
 
@@ -112,15 +118,24 @@ If parallel OK, count tasks:
 
 ## Common rationalizations
 
-- "This is small, so no source check is needed" - reject when the skill changes code, config, or durable artifacts.
-- "The user asked for speed, so skip receipts" - reject when durable work, delegation, or review is claimed.
-- "Existing prose is enough evidence" - reject when validators or command output are required.
+- "More agents always means faster delivery" fails when work shares files,
+  decisions, migrations, generated state, or a single release gate; split by
+  independent write set or serialize.
+- "Read-only analysis does not need a packet" fails because explorers still
+  need a bounded question, source paths, stop condition, and output shape to
+  avoid duplicate or irrelevant work.
+- "The first worker found the answer, so the wave is done" fails when other
+  ready tasks remain, receipts are missing, or aggregation has not reconciled
+  conflicting outputs.
 
 ## Red flags
 
-- A durable artifact changes without a command, receipt, or verification path.
-- The skill is used outside its phase without an explicit handoff.
-- Claims of completion appear before evidence and confidence scoring.
+- Two active workers own the same file, generated artifact, graph node, or
+  release decision without an explicit conflict exception.
+- A worker prompt lacks write scope, verification command, expected output
+  fields, or "not alone in the codebase" coordination language.
+- The controller waits idly for workers while non-overlapping local work or
+  another independent wave is ready.
 
 ## Checklist
 
@@ -138,10 +153,17 @@ If parallel OK, count tasks:
 
 ## Output contract
 
-Returns:
-- Task list with parallel/sequential decision
-- If parallel: dispatch confirmation, per-agent outcome, host invocation ids, aggregated result
-- Combined confidence score
+Return:
+
+- `dispatchMode`: `parallel`, `sequential`, `mixed`, or `blocked`.
+- `wavePlan`: task ids, dependencies, write sets, and why each task can share a
+  wave.
+- `workerPackets`: per-worker scope, sources, expected output, verification,
+  receipt need, and stop condition.
+- `hostInvocations`: host invocation ids for claimed workers/reviewers.
+- `aggregation`: accepted outputs, conflicts, rejected work, and next wave.
+- `verification`: exact commands or validators run after aggregation.
+- `confidence`: score and residual risk for the dispatch decision.
 
 ## Guard rails
 
@@ -155,10 +177,14 @@ Returns:
 
 ## Verification
 
-- Decision documented (sequential or parallel)
-- If parallel: per-agent outputs collected and shown
-- Aggregated result meets original goal
-- No subagent's output overwrote another's
+- Run `npm run validate:agent-producer-receipts` when delegated worker or
+  reviewer output is claimed as durable evidence.
+- Run the task-specific targeted validator, for example
+  `npm run validate:agent-skill-coverage` for ownership edits or
+  `npm run validate:artifact-links` for reference changes.
+- Confirm every worker output has an owning packet, host invocation id when
+  required, and no overlapping write-set mutation.
+- Confirm aggregation resolved conflicts before a completion claim.
 
 ## Related
 

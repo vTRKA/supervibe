@@ -2,12 +2,12 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
   detectFrameworkDevServers, findFreePort, registerServer, unregisterServer, listServers,
-  isPidAlive, killServer, killAllServers, REGISTRY_PATH_FOR_TEST
+  isPidAlive, killServer, killAllServers, killStaleServers, REGISTRY_PATH_FOR_TEST
 } from '../scripts/lib/preview-server-manager.mjs';
 
 const sandbox = join(tmpdir(), `supervibe-preview-mgr-${Date.now()}`);
@@ -132,6 +132,29 @@ test('killAllServers kills managed process even when registry port has drifted',
   } finally {
     if (child.exitCode === null && child.signalCode === null) child.kill();
   }
+});
+
+test('killStaleServers dry-run targets only stale old preview entries', async () => {
+  const server = createServer();
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = server.address().port;
+  await new Promise((resolve) => server.close(resolve));
+  await registerServer({
+    port,
+    pid: process.pid,
+    root: sandbox,
+    label: 'old-drift',
+    feedbackOverlay: false,
+  });
+  const before = await readFile(join(sandbox, '.supervibe', 'memory', 'preview-servers.json'), 'utf8');
+  const results = await killStaleServers({
+    dryRun: true,
+    olderThanMinutes: 0,
+  });
+  const after = await readFile(join(sandbox, '.supervibe', 'memory', 'preview-servers.json'), 'utf8');
+  assert.ok(results.some((result) => result.wouldKill && result.port === port));
+  assert.equal(after, before);
+  await unregisterServer(port);
 });
 
 test('detectFrameworkDevServers finds unmanaged framework dev ports', async () => {

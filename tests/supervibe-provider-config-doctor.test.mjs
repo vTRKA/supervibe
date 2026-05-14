@@ -91,6 +91,8 @@ test("Codex provider config template includes documented goals and excludes unsa
   assert.match(template, /\[\[tool_suggest\.discoverables\]\][\s\S]*type = "plugin"[\s\S]*supervibe@supervibe-marketplace/);
   assert.match(template, /\[mcp_servers\.openaiDeveloperDocs\]/);
   assert.doesNotMatch(template, /plugins\s*=\s*true/);
+  assert.doesNotMatch(template, /\[permissions\.workspace\.(filesystem|network)\]/);
+  assert.doesNotMatch(template, /glob_scan_max_depth|":project_roots"|mode\s*=\s*"limited"/);
 
   assert.match(doc, /key: features\.goals/);
   assert.match(doc, /sourceKind: codex-use-case-doc/);

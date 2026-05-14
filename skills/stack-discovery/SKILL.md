@@ -1,10 +1,7 @@
 ---
 name: stack-discovery
 namespace: process
-description: >-
-  Use WHEN session starts in unfamiliar project OR WHEN user mentions new stack
-  to scan manifests, ask gap questions, build stack-fingerprint. Triggers:
-  'определи стек', 'stack discovery', 'какой тут стек', 'разведай проект'.
+description: 'Use WHEN session starts in unfamiliar project OR WHEN user mentions new stack to scan manifests, ask gap questions, build stack-fingerprint. Triggers: ''определи стек'', ''stack discovery'', ''какой тут стек'', ''разведай проект''.'
 allowed-tools:
   - Read
   - Grep
@@ -21,7 +18,11 @@ last-verified: 2026-05-06T00:00:00.000Z
 
 # Stack Discovery
 
-## When to invoke
+## Overview
+
+Stack Discovery provides a reusable Supervibe operating method for Use WHEN session starts in unfamiliar project OR WHEN user mentions new stack to scan manifests, ask gap questions, build stack-fingerprint. Triggers: 'определи стек', 'stack discovery', 'какой тут стек', 'разведай проект'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
+## When to Use
 
 AT SESSION START in unfamiliar project, OR WHEN user mentions a stack the framework doesn't yet have configured. Output is consumed by `supervibe:genesis` and `supervibe:requirements-intake`.
 

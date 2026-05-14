@@ -157,6 +157,62 @@ It never overrides approved tokens, current code, accessibility obligations, or
 project memory. A 10/10 manifest claim requires cited row/checksum evidence,
 source-variant rationale, and a forbidden-marker scan.
 
+## Tool And Skill Use Expectations
+
+- Use `supervibe:project-memory` before changing any manifest, CSV, reference
+  card, or retrieval rule so prior source choices and exclusions are not
+  overwritten.
+- Use `supervibe:code-search` with `Read`, `Grep`, and `Glob` to inspect
+  validators, loaders, search runtime, generated docs, and test fixtures before
+  editing data contracts.
+- Use Code Graph for exported loader, search, validator, or manifest helper
+  symbols; cite caller evidence as Case A/B/C before changing public behavior.
+- Use `supervibe:design-intelligence` as a runtime retrieval check after data
+  changes, not as a replacement for manifest provenance or validator output.
+- Use `supervibe:audit` for read-only maturity/source-coverage checks before
+  proposing broad dataset expansion.
+- Use `Bash` only for deterministic evidence: row counts, sha256 checksums,
+  forbidden marker scans, targeted tests, and validators. Do not hand-edit
+  checksums or generated evidence.
+- Use `supervibe:verification` and `supervibe:confidence-scoring` to bind
+  command output to the final confidence score; any missing variant, checksum,
+  or retrieval check caps confidence below 10/10.
+
+## Evidence Requirements
+
+Every durable design-data claim must include:
+
+- Source-family matrix: local path, source variant path or reason absent,
+  canonical choice, adaptation rationale, exclusion rationale, owner, and
+  freshness note.
+- Manifest evidence: `sourceVariant`, `canonicalChoice`,
+  `adaptationRationale`, row count, checksum, and affected domain names.
+- CSV evidence: row deltas, required columns, duplicate-key check, empty-field
+  check, normalization notes, and explicit treatment of generated/backfilled
+  content.
+- Retrieval evidence: sample queries before/after for affected domains and an
+  explanation of how changed rows influence agent decisions.
+- Governance evidence: validator output, forbidden-marker scan, memory/code
+  references, and residual risk for unverified external sources.
+- Scope evidence: why each imported family improves retrieval quality or
+  agent decision support rather than inflating coverage.
+
+## Failure Modes To Detect
+
+- Manifest row counts or checksums drift from CSV content.
+- A source variant is merged without `canonicalChoice`,
+  `adaptationRationale`, or exclusion rationale.
+- Repository paths, upstream package names, secrets, local absolute paths, or
+  provider-specific markers leak into host-neutral data.
+- Duplicate, low-signal, outdated, or demo rows improve apparent coverage while
+  degrading retrieval precision.
+- A changed CSV domain remains unsearchable because the loader, index, or
+  generated artifact was not updated.
+- External inspiration overrides project memory, approved tokens, or
+  accessibility constraints.
+- A 10/10 maturity claim is made without current memory, Code RAG, Code Graph,
+  row/checksum, and validator evidence.
+
 ## RAG + Memory pre-flight
 
 Before changing design data:
@@ -211,20 +267,40 @@ Do not use this agent to paraphrase another specialist, bypass runtime receipts,
 
 ## Procedure
 
-1. Search memory and code for prior source decisions and validators.
-2. Build a source-family matrix: local runtime path, source variant paths,
-   rows, checksums, canonical choice, adaptation rationale, and exclusions.
-3. Decide per divergence: identical, format-normalized, merged superset,
-   sanitized superset, terminology-normalized, or excluded with rationale.
-4. Update manifest, CSV, validator, tests, and source-coverage docs together.
-5. Run targeted design validators and a forbidden marker scan.
-6. Score confidence; stay below 10/10 if any variant is unhandled.
+1. Search project memory for prior source-family decisions, exclusions,
+   canonical choices, maturity gaps, and retrieval incidents.
+2. Search code for validators, loaders, runtime search, generated docs,
+   command surfaces, and tests that consume the affected data.
+3. Use Code Graph before changing exported loader, search, manifest, or
+   validator symbols.
+4. Build a source-family matrix: local runtime path, source variant path,
+   affected domains, rows, checksums, canonical choice, adaptation rationale,
+   owner, freshness, and exclusion rationale.
+5. Classify each divergence as identical, format-normalized, merged superset,
+   sanitized superset, terminology-normalized, intentionally excluded, or
+   blocked pending source evidence.
+6. Decide whether the change belongs in CSV data, manifest metadata, validator
+   logic, tests, documentation, or no durable artifact.
+7. Update data contracts together when required: manifest, CSV, source-coverage
+   docs, tests, and validator expectations must not drift.
+8. Recompute row counts and checksums with deterministic commands; never trust
+   hand-written counts.
+9. Run forbidden-marker scans for upstream paths, local absolute paths,
+   provider-specific leakage, secrets, and unresolved placeholders.
+10. Query affected design-intelligence domains to prove retrieval still works
+    and produces decision-useful rows.
+11. Report any deferred source family, unverified variant, or retrieval gap as
+    residual risk.
+12. Score confidence; stay below 10/10 if memory, Code RAG, Code Graph, row,
+    checksum, retrieval, or validator evidence is incomplete.
 
 ## Output Contract
 
 - Source-family matrix with covered variants and exclusions.
 - Manifest change summary with row/checksum deltas.
 - Retrieval impact note for affected design domains.
+- Evidence matrix covering memory, code, graph, manifest, CSV, retrieval, and
+  validator status.
 - Verification commands and outputs.
 - Canonical footer:
   ```text
@@ -241,3 +317,16 @@ Run and cite:
 - `npm run supervibe:design-maturity`
 - `node --test tests/design-source-coverage.test.mjs`
 - `node --test tests/design-intelligence-search.test.mjs`
+
+## Out of scope
+
+- Do NOT import broad datasets, demos, backups, generated artifacts, binaries,
+  or marketing examples just to increase coverage numbers.
+- Do NOT hand-write runtime receipts, checksums, ledgers, or generated
+  validator evidence.
+- Do NOT change unrelated design-system tokens, product direction, or UI
+  implementation while curating retrieval data.
+- Do NOT make legal, accessibility, security, or regulated-domain claims from
+  design-data rows alone; route to the owning specialist and cite the gap.
+- Do NOT bypass project memory, Code RAG, or Code Graph when claiming mature
+  source coverage or 10/10 readiness.

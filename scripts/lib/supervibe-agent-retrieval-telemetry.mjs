@@ -310,10 +310,17 @@ function detectGlobalRetrievalTelemetryWarnings({
 
 function isRetrievalTelemetryScoredInvocation(entry = {}) {
   const usage = normalizeSubtoolUsage(entry.subtool_usage);
-  if (usage.memory > 0 || usage.rag > 0 || usage.codegraph > 0) return true;
+  const policy = entry.retrievalPolicy || entry.retrieval_policy;
+  const evidence = entry.evidence || {};
+  const hasSourceEvidence = Boolean(
+    evidence.memoryIds?.length
+    || evidence.ragChunkIds?.length
+    || evidence.graphSymbols?.length
+  );
+  if (usage.memory > 0 || usage.rag > 0 || usage.codegraph > 0 || hasSourceEvidence) return true;
+  if (isExplicitlyUnprovidedRetrievalPolicy(policy)) return false;
   if (hasProvidedRetrievalEnforcement(entry.retrieval_enforcement)) return true;
-  if (entry.evidence_gate || entry.evidence_contract) return true;
-  if (hasProvidedRetrievalPolicy(entry.retrievalPolicy || entry.retrieval_policy)) return true;
+  if (hasProvidedRetrievalPolicy(policy)) return true;
   return false;
 }
 
@@ -455,6 +462,10 @@ function hasProvidedRetrievalEnforcement(enforcement = {}) {
     || enforcement.receiptId
     || enforcement.receiptPath
   );
+}
+
+function isExplicitlyUnprovidedRetrievalPolicy(policy = {}) {
+  return Boolean(policy && typeof policy === "object" && policy.provided === false);
 }
 
 function hasProvidedRetrievalPolicy(policy = {}) {

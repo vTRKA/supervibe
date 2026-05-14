@@ -123,6 +123,114 @@ test("command agent plan reports Codex logical fallback as non-strict proof", ()
   }
 });
 
+test("command agent plan suppresses Codex spawn payloads when completed subagents need cleanup", () => {
+  const root = mkdtempSync(join(tmpdir(), "supervibe-command-cleanup-debt-"));
+  try {
+    const registryPath = join(root, ".supervibe", "memory", "runtime-cleanup-registry.json");
+    mkdirSync(dirname(registryPath), { recursive: true });
+    writeFileSync(registryPath, JSON.stringify({
+      schemaVersion: 1,
+      targets: [{
+        id: "subagent:codex-spawn-agent:old-worker",
+        kind: "subagent",
+        stopMode: "host-managed",
+        host: "codex",
+        hostInvocationSource: "codex-spawn-agent",
+        hostInvocationId: "old-worker",
+        agentId: "supervibe-orchestrator",
+        status: "completed",
+      }],
+    }, null, 2), "utf8");
+
+    const report = buildRuntimeCommandAgentPlan({
+      command: "/supervibe-plan",
+      projectRoot: root,
+      pluginRoot: ROOT,
+      host: "codex",
+      enforceHostProof: false,
+    });
+
+    assert.equal(report.pass, false);
+    assert.equal(report.plan.executionMode, "agent-required-blocked");
+    assert.equal(report.plan.hostManagedCleanupDebt.count, 1);
+    assert.deepEqual(report.plan.codexSpawnPayloads, []);
+    assert.match(report.plan.qualityImpact, /old-worker/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("command agent plan suppresses Codex spawn payloads for invocation-log-only cleanup debt", () => {
+  const root = mkdtempSync(join(tmpdir(), "supervibe-command-cleanup-log-debt-"));
+  try {
+    const invocationLog = join(root, ".supervibe", "memory", "agent-invocations.jsonl");
+    mkdirSync(dirname(invocationLog), { recursive: true });
+    writeFileSync(invocationLog, `${JSON.stringify({
+      ts: "2026-05-14T00:00:00.000Z",
+      agent_id: "supervibe-orchestrator",
+      host: "codex",
+      host_invocation_source: "codex-spawn-agent",
+      host_invocation_id: "old-worker",
+      invocation_id: "old-worker",
+      status: "completed",
+    })}\n`, "utf8");
+
+    const report = buildRuntimeCommandAgentPlan({
+      command: "/supervibe-plan",
+      projectRoot: root,
+      pluginRoot: ROOT,
+      host: "codex",
+      enforceHostProof: false,
+    });
+
+    assert.equal(report.pass, false);
+    assert.equal(report.plan.executionMode, "agent-required-blocked");
+    assert.equal(report.plan.hostManagedCleanupDebt.count, 1);
+    assert.deepEqual(report.plan.codexSpawnPayloads, []);
+    assert.match(report.plan.qualityImpact, /old-worker/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("command agent cleanup debt does not block inline diagnostics", () => {
+  const root = mkdtempSync(join(tmpdir(), "supervibe-command-cleanup-inline-"));
+  try {
+    const registryPath = join(root, ".supervibe", "memory", "runtime-cleanup-registry.json");
+    mkdirSync(dirname(registryPath), { recursive: true });
+    writeFileSync(registryPath, JSON.stringify({
+      schemaVersion: 1,
+      targets: [{
+        id: "subagent:codex-spawn-agent:old-worker",
+        kind: "subagent",
+        stopMode: "host-managed",
+        host: "codex",
+        hostInvocationSource: "codex-spawn-agent",
+        hostInvocationId: "old-worker",
+        agentId: "supervibe-orchestrator",
+        status: "completed",
+      }],
+    }, null, 2), "utf8");
+
+    const report = buildRuntimeCommandAgentPlan({
+      command: "/supervibe-plan",
+      projectRoot: root,
+      pluginRoot: ROOT,
+      host: "codex",
+      requestedExecutionMode: "inline",
+      enforceHostProof: false,
+    });
+
+    assert.equal(report.pass, true);
+    assert.equal(report.plan.executionMode, "inline");
+    assert.equal(report.plan.hostManagedCleanupDebt.count, 1);
+    assert.equal(report.plan.codexSpawnBlockedByCleanup, undefined);
+    assert.deepEqual(report.plan.codexSpawnPayloads || [], []);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("command agent strict readiness accepts Codex logical roles after trusted scoped receipts", () => {
   const report = {
     pass: true,
@@ -142,6 +250,72 @@ test("command agent strict readiness accepts Codex logical roles after trusted s
   };
 
   assert.equal(commandAgentPlanStrictReady(report), true);
+});
+
+test("command-scoped strict plan ignores unrelated global receipt drift", () => {
+  const root = mkdtempSync(join(tmpdir(), "supervibe-command-scoped-receipts-"));
+  try {
+    const badReceiptPath = join(root, ".supervibe", "artifacts", "_workflow-invocations", "supervibe-design", "stale", "bad-agent.json");
+    mkdirSync(dirname(badReceiptPath), { recursive: true });
+    writeFileSync(badReceiptPath, JSON.stringify({
+      receiptId: "bad-agent",
+      command: "/supervibe-design",
+      stage: "stage-1-brand-direction",
+      subjectType: "agent",
+      subjectId: "creative-director",
+      agentId: "creative-director",
+      status: "completed",
+      outputArtifacts: [".supervibe/artifacts/brandbook/direction.md"],
+    }, null, 2), "utf8");
+
+    for (const agentId of ["supervibe-orchestrator", "systems-analyst", "architect-reviewer", "quality-gate-reviewer"]) {
+      const invocationId = `scoped-${agentId}`;
+      execFileSync("node", [
+        "scripts/agent-invocation.mjs",
+        "log",
+        "--root",
+        root,
+        "--agent",
+        agentId,
+        "--host",
+        "codex",
+        "--host-invocation-id",
+        invocationId,
+        "--task",
+        `${agentId} scoped command proof`,
+        "--confidence",
+        "8.8",
+        "--issue-receipt",
+        "--command",
+        "/supervibe-plan",
+        "--stage",
+        "command-agent-plan",
+        "--handoff-id",
+        "command-agent-plan-supervibe-plan",
+        "--output-artifacts",
+        `.supervibe/artifacts/_agent-outputs/${invocationId}/agent-output.json`,
+        "--redaction-status",
+        "not-needed",
+      ], { cwd: ROOT, stdio: "pipe" });
+    }
+
+    const report = buildRuntimeCommandAgentPlan({
+      command: "/supervibe-plan",
+      projectRoot: root,
+      pluginRoot: ROOT,
+      host: "codex",
+      workflowContext: {
+        commandScopedReceiptGate: true,
+      },
+    });
+
+    assert.equal(report.plan.scopedReceiptGateActive, true);
+    assert.equal(report.plan.receiptGate, "trusted-scoped-runtime-agent-receipts");
+    assert.equal(report.plan.globalReceiptTrustIgnoredForActiveScope, false);
+    assert.equal(commandAgentPlanStrictReady(report), true);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("command agent plan discovers nested Codex host-callable agent files", () => {

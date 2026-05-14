@@ -4,7 +4,7 @@ import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REQUIRED_SECTIONS = Object.freeze([
-  { code: "when-to-invoke", pattern: /^##\s+When to invoke\b/im },
+  { code: "when-to-use", pattern: /^##\s+When (?:to Use|to invoke)\b/im },
   { code: "procedure", pattern: /^##\s+Procedure\b/im },
   { code: "output-contract", pattern: /^##\s+Output contract\b/im },
   { code: "guard-rails", pattern: /^##\s+Guard rails\b/im },

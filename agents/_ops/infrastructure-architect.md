@@ -394,6 +394,9 @@ Do NOT decide on: schema or query design (defer to db-reviewer / postgres-archit
 - `supervibe:_ops:postgres-architect` — deep Postgres-specific patterns (indexes, vacuum, replication tuning)
 - `supervibe:_core:security-auditor` — reviews attack surface implications of network topology and managed-service choices
 - `supervibe:_core:architect-reviewer` — reviews application architecture that the infra topology must support
+- [Decision Brief](../../docs/templates/decision-brief-template.md) - durable
+  decision record for topology, alternatives, failure modes, cost, DR, and
+  verification evidence.
 
 ## Skills
 

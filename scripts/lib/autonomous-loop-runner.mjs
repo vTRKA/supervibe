@@ -542,6 +542,7 @@ export async function runAutonomousLoop(options = {}) {
           defaultCommitBehavior: commitPerTask ? "commit-after-green-opt-in" : "no-auto-commit",
         },
         allowSpawn: Boolean(allowSpawn),
+        cwd: options.worktreeSession?.worktreePath || options.cwd || null,
         approvalLeaseId: preflight.approval_lease.scope,
         permissionAudit,
         noProgressTimeoutMs: options.noProgressTimeoutMs ?? preflight.no_progress_timeout_ms,

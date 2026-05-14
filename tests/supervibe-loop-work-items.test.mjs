@@ -326,6 +326,47 @@ test("loop CLI status prints selected epic task list with statuses and blockers"
   }
 });
 
+test("loop CLI status does not recommend dispatch when ready work overlaps active claim locks", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-status-claim-locks-"));
+  try {
+    const graphPath = join(temp, "graph.json");
+    await writeFile(graphPath, JSON.stringify({
+      kind: "supervibe-work-item-graph",
+      epicId: "epic-status-locks",
+      items: [
+        { itemId: "epic-status-locks", type: "epic", status: "open", title: "Claim locks" },
+        { itemId: "task-active", type: "task", status: "claimed", title: "Active", parentId: "epic-status-locks", blockedBy: [], blocks: [], writeScope: [{ action: "modify", path: "docs/shared.md" }] },
+        { itemId: "task-ready", type: "task", status: "ready", title: "Ready conflict", parentId: "epic-status-locks", blockedBy: [], blocks: [], writeScope: [{ action: "modify", path: "docs/shared.md" }] },
+      ],
+      tasks: [
+        { id: "task-active", status: "claimed", dependencies: [], writeScope: [{ action: "modify", path: "docs/shared.md" }] },
+        { id: "task-ready", status: "ready", dependencies: [], writeScope: [{ action: "modify", path: "docs/shared.md" }] },
+      ],
+      claims: [
+        {
+          claimId: "claim-active",
+          taskId: "task-active",
+          agentId: "codex-wave",
+          status: "claimed",
+          writeSet: ["docs/shared.md"],
+        },
+      ],
+    }, null, 2), "utf8");
+
+    const { stdout } = await execFileAsync(process.execPath, [
+      join(ROOT, "scripts", "supervibe-loop.mjs"),
+      "--status",
+      "--file",
+      graphPath,
+    ], { cwd: temp });
+
+    assert.match(stdout, /NEXT_ACTION: wait for current claimed wave or complete\/recover active claims before dispatching ready items; blocked ready items: task-ready/);
+    assert.doesNotMatch(stdout, /NEXT_ACTION: claim task-ready/);
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
 test("loop CLI status recommends archive for completed epic", async () => {
   const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-status-archive-"));
   try {

@@ -138,6 +138,8 @@ test("supervibe-loop readiness command supports JSON output", () => {
     "scripts/supervibe-loop.mjs",
     "--readiness",
     "--json",
+    "--tool",
+    "generic-shell-stub",
     "--request",
     "validate integrations",
   ], { encoding: "utf8" });

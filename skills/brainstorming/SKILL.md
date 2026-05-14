@@ -2,11 +2,10 @@
 name: brainstorming
 namespace: process
 description: >-
-  Use BEFORE any creative work OR WHEN the user starts brainstorm, has finished
-  brainstorm, or asks for the next planning step TO clarify intent, produce an
-  approved spec, and hand off with Next: /supervibe-plan. Triggers:
-  'brainstorm', 'next step', 'брейншторм', 'брейншторм готов', 'я сделал
-  брейншторм', 'план'.
+  Use BEFORE creative or feature work, or when the user asks to brainstorm,
+  clarify intent, produce an approved requirements spec, and hand off to
+  /supervibe-plan without implementing early. Triggers: 'brainstorm',
+  'next step', 'брейншторм', 'брейншторм готов', 'я сделал брейншторм', 'план'.
 allowed-tools:
   - Read
   - Grep
@@ -19,378 +18,227 @@ prerequisites: []
 emits-artifact: requirements-spec
 confidence-rubric: confidence-rubrics/requirements.yaml
 gate-on-exit: true
-version: 1.2
-last-verified: 2026-05-06T00:00:00.000Z
+version: 1.3
+last-verified: 2026-05-14T00:00:00.000Z
 ---
 
 # Brainstorming
 
-## When to invoke
+## Overview
 
-BEFORE any creative work — creating features, building components, adding functionality, or modifying behavior. Triggered when user says: "let's add X", "I want to build Y", "how should we approach Z", "design a feature for...".
+This skill turns an ambiguous idea into an approved requirements spec before
+planning or implementation. It is a gate, not a shortcut to code: it clarifies
+purpose, scope, options, risks, kill criteria, production readiness, and
+verification evidence, then hands off to `supervibe:writing-plans`.
 
-NOT for: bug fixes (use systematic-debugging), routine refactors (skip to writing-plans), documentation tweaks.
+For design-heavy brainstorms, use this skill for requirements and then route
+brand/prototype specifics through `supervibe:brandbook` and `supervibe:prototype`.
+Their reusable design examples live in `references/skills/brandbook-examples.md`
+and `references/skills/prototype-examples.md`.
+
+## When to Use
+
+Use this skill when the user says they want to brainstorm, add a feature, design
+a new capability, explore approaches, or decide what to build next.
+
+Use a minimal brainstorm for clear, small work with fewer than three acceptance
+criteria and a narrow file area. Use the full workflow for multi-step products,
+design systems, migrations, integrations, user-facing workflows, or anything
+with meaningful uncertainty.
+
+Do not use it for bug fixes, incident response, routine refactors, or requests
+that already point at an approved implementation plan.
 
 ## Expert Operating Standard
 
-Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+Follow `docs/references/skill-expert-operating-standard.md`: start from source
+of truth, preserve retrieval evidence, apply scope safety, use real producers
+with runtime receipts for durable delegated outputs, verify before completion
+claims, and keep confidence below gate when evidence is partial.
 
-## Step 0 — Read source of truth (required)
+## Step 0 - Read source of truth
 
-Before asking any question, read:
-- The active host instruction file (the active host instruction file, `AGENTS.md`, `GEMINI.md`, Cursor rule, or `opencode.json`) for architecture, conventions, and scope boundaries
-- Most recent commits (`git log -10 --oneline`) for active context
-- Any related existing specs in `.supervibe/artifacts/specs/`
-- Project memory under `.supervibe/memory/` and any legacy `MEMORY.md` if present
-- `docs/references/scope-safety-standard.md` for the mandatory Scope Safety Gate
+Before asking questions:
+1. Read the active host instruction file for project rules and write scope.
+2. Read the most recent commits with `git log -10 --oneline`.
+3. Inspect related specs under `.supervibe/artifacts/specs/`.
+4. Check project memory under `.supervibe/memory/` and legacy `MEMORY.md` when
+   present.
+5. Read `docs/references/scope-safety-standard.md`.
+6. For work that will later change code, record which Code RAG, CodeGraph, or
+   `supervibe-context-pack` query the planner must run.
 
-Do NOT skip this — uninformed questions waste user time.
-
-## HARD GATE
-
-Do NOT invoke any implementation skill, write any code, scaffold anything until design is approved AND requirements-spec scores ≥9.
+Do not write a durable spec until the Documentation Approval Gate is answered.
 
 ## Continuation Contract
 
-Do not stop after individual brainstorm sections. Once the user has invoked brainstorming, complete the full requirements package before the planning handoff unless the user explicitly stops/pauses, a single blocking ambiguity prevents the next section, or the user requests manual review of a specific section.
+Do not stop after individual brainstorm sections. Continue until you complete the full requirements package, then show a Pre-documentation summary, Documentation Approval Gate, and Post-documentation summary. The user-facing recap must be a text-first summary and must expose `NEXT_USER_ACTIONS[]` with choices including approve spec and write plan and revise idea/spec. Emit `NEXT_STEP_HANDOFF` only after the Documentation Approval Gate is answered.
 
-Use assumptions for non-blocking gaps, label them clearly in the spec, and keep moving through first-principles, options, risks, kill criteria, decision matrix, Scope Safety Gate, production readiness, and the 10/10 scorecard. Section-level feedback is welcome, but it is not a default hard stop.
+Do not write the spec until the user explicitly approves the documentation gate.
 
 ## Topic Drift / Resume Contract
 
-If the user shifts topic while a brainstorm is incomplete or a `NEXT_STEP_HANDOFF` exists, preserve the current phase instead of silently switching. Surface the saved phase, artifact path, next command, and blocker, then ask one `Step N/M` or `Step N/M` resume question: continue current brainstorm, skip/delegate safe non-final decisions to the agent and continue, pause current brainstorm and switch topic, or stop/archive the current state.
-
-Skipped or delegated decisions must be recorded in the spec assumptions or explicit delegation notes. They cannot satisfy final spec approval, safety/policy gates, production approvals, or destructive-operation consent.
+If a saved brainstorm, `NEXT_STEP_HANDOFF`, or workflow state exists and the user changes topic, surface the saved phase and ask whether to continue, skip/delegate safe non-final decisions, pause and switch topic, or stop/archive.
 
 ## Decision tree
 
-```
-Is this multiple independent subsystems?
-├─ YES → flag scope; propose decomposition into sub-projects; brainstorm first sub-project only
-└─ NO → continue with single brainstorm
-
-Is the user request clear and small (<3 acceptance criteria, single file area)?
-├─ YES → minimal brainstorm (1-2 clarifying questions, design in 1 message)
-└─ NO → full brainstorm (multiple questions, multi-section design)
-```
+- User request spans multiple independent subsystems -> decompose and
+  brainstorm one bounded sub-project first.
+- Request is clear and small -> run a minimal brainstorm with one or two
+  questions, explicit assumptions, and a compact spec.
+- Request is unclear, cross-team, user-facing, risky, or creative -> run the full
+  workflow.
+- User shifts topic while a brainstorm or `NEXT_STEP_HANDOFF` exists -> surface
+  saved phase and ask whether to continue, delegate safe decisions, pause and
+  switch, or stop/archive.
+- User asks to implement before spec approval -> stop and explain that
+  requirements approval and plan handoff are still required.
 
 ## Procedure
 
-1. **Context scan** (Step 0)
-2. **Scope check** — multi-subsystem? Decompose first.
-3. **Clarifying questions** — one at a time, multiple-choice preferred when applicable. Focus: purpose, constraints, success criteria, edge cases. State why the question matters, what decision it unlocks, and what assumption you will use if the user skips it.
-4. **Stack-aware evidence loading** — if `questionnaires/*.yaml` matches detected stack, treat it as internal reference only; synthesize one contextual agent-owned question from current project evidence instead of showing raw questionnaire rows or option lists.
-5. **Propose 2-3 approaches** with tradeoffs and your recommendation.
-6. **Map product and MVP readiness path** — classify the work as MVP, production feature, migration, experiment, refactor, or incident follow-up; define launch model, staged rollout, owner, support path, and what "production-ready" means.
-7. **Scope Safety Gate** - list candidate additions, classify them as include/defer/reject/spike, explain why risky extras should not be added now, and define the smallest production-safe alternative.
-8. **Present design** in sections scaled to complexity (architecture, components, data flow, contracts, error handling, testing, observability, security/privacy, rollout). Do not stop after individual brainstorm sections; ask for section approval only when the user requested manual review or the next section is genuinely blocked.
-9. **Pre-documentation summary** - before writing any durable brainstorm documentation, show a compact human-readable summary of the proposed spec: problem, recommended option, included scope, deferred/rejected scope, key risks, evidence plan, and visual explanation mode.
-10. **Documentation Approval Gate** - ask one explicit `documentation_approval` question and wait. Do not write the spec until the user chooses **Create brainstorm documentation**. Other visible choices are revise before documentation, show visual preview first, compare or research deeper, and keep summary and stop.
-11. **Write spec** to `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-brainstorm.md` only after the Documentation Approval Gate. Include locked decisions, contracts, acceptance criteria, accepted limitations, Scope Safety Gate, out-of-scope list, production readiness contract, 10/10 scorecard, and `Documentation approval source`.
-12. **Self-review spec** — placeholder scan, internal consistency, scope check, ambiguity check, MVP readiness completeness, production readiness gaps. Fix inline.
-13. **Machine-validate spec** — run `node <resolved-supervibe-plugin-root>/scripts/validate-spec-artifacts.mjs --file .supervibe/artifacts/specs/YYYY-MM-DD-<topic>-brainstorm.md`. Fix every reported gap before scoring.
-14. **Score** — invoke `supervibe:confidence-scoring` with artifact-type=requirements-spec; gap remediation if <9, and do not claim 10/10 unless every scorecard row has evidence.
-15. **Post-documentation summary** - after saving and validation, summarize the artifact path, recommendation, included/deferred/rejected scope, validation result, confidence score, and next actions in normal language.
-15a. **Mandatory next user actions** - after the brainstorm result, print `NEXT_USER_ACTIONS[]` in command-output mode and wait for one choice: approve spec and write plan, revise idea/spec, compare or research deeper, exclude/defer items, or keep spec draft and stop. In normal conversational summaries, translate the same choices into a short human-readable next-step sentence instead of exposing the raw marker.
-16. **Handoff** to `supervibe:writing-plans`.
-17. **No-silent-stop contract** - include a `NEXT_STEP_HANDOFF` block. If the block cannot be produced, the brainstorm is not complete.
+1. Restate the request and identify the actual problem behind it.
+2. List constraints, success criteria, failure modes, and explicit non-goals.
+3. Ask one clarifying question at a time, preferring multiple-choice questions
+   that explain what decision they unlock and what assumption applies if skipped.
+4. Generate two or three viable approaches, including "do nothing" or "minimal
+   patch" when useful, and document tradeoffs.
+5. Map product readiness: MVP/production/migration/experiment/refactor,
+   launch model, owner, support path, and what production-ready means.
+6. Run the Scope Safety Gate: include, defer, reject, or spike candidate
+   additions with concrete why-not rationale.
+7. Enumerate at least three non-obvious risks and at least two kill criteria.
+8. Build a decision matrix with weights set before scoring.
+9. Present a pre-documentation summary: problem, recommended option, included
+   scope, deferred/rejected scope, key risks, evidence plan, and visual
+   explanation mode.
+10. Ask the Documentation Approval Gate and wait. Visible choices must include
+    create documentation, revise first, show visual preview first, compare or
+    research deeper, and keep summary/stop.
+11. After approval, write
+    `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-brainstorm.md` using
+    `docs/templates/brainstorm-output-template.md`.
+12. Self-review for placeholders, consistency, scope creep, ambiguity, MVP
+    readiness, and production-readiness gaps.
+13. Run
+    `node scripts/validate-spec-artifacts.mjs --file <spec-path>` and fix
+    reported gaps.
+14. Score with the requirements confidence rubric; do not claim 10/10 unless
+    every scorecard row has evidence or an explicit blocker.
+15. Print a post-documentation summary and `NEXT_STEP_HANDOFF` to
+    `supervibe:writing-plans`; wait for the user's next-action choice.
 
-## Evidence and visual explanation gates
+## Examples
 
-Every brainstorm artifact must include:
-
-- **Evidence and retrieval plan**: project-memory entries checked, Code RAG queries needed for planning, whether CodeGraph evidence is mandatory, and external primary sources used for current best practices.
-- **Visual explanation plan**: text-first summary with a compact stage map, table, or improvised ASCII scheme, plus plain-language text fallback and no color-only status. Browser preview paths are optional only for actual UI/prototype/browser evidence. Mermaid is allowed only as a fallback/export and must include `accTitle`, `accDescr`, and the same text fallback per `docs/references/visual-explanation-standard.md`.
-- **RAG/CodeGraph quality handoff**: if the next step changes code, name the exact `search-code --context`, `--callers`, `--impact`, or `supervibe-context-pack` command the planner should run.
+- New feature: decompose the problem, compare minimal/standard/ambitious
+  options, pick an MVP path, write the spec after approval, validate it, then
+  hand off to `/supervibe-plan --from-brainstorm <spec>`.
+- Design workflow: clarify audience, trust posture, information density,
+  reference borrow/avoid, and acceptance evidence, then route visual-system
+  material to `supervibe:brandbook` after the spec is approved.
+- Existing-system refactor: emphasize callers, migration windows, rollback,
+  regression risk, and the smallest production-safe change.
 
 ## When not to use
 
-- Do not use this skill to bypass the command or workflow that owns durable artifacts.
-- Do not use it when source evidence, RAG/CodeGraph, or required verification is missing.
-- Do not use it to replace a specialist producer, worker, or reviewer that must issue runtime evidence.
+- Do not implement, scaffold, or modify behavior before requirements approval.
+- Do not replace `/supervibe-plan` with an inline implementation plan after the
+  brainstorm.
+- Do not use this skill when source evidence, RAG/CodeGraph expectations, or
+  required validation are missing and the output would claim certainty.
+- Do not treat "ok" as approval for durable documentation or next-stage work.
 
 ## Common rationalizations
 
-- "This is small, so no source check is needed" - reject when the skill changes code, config, or durable artifacts.
-- "The user asked for speed, so skip receipts" - reject when durable work, delegation, or review is claimed.
-- "Existing prose is enough evidence" - reject when validators or command output are required.
+- "There is only one viable option." Reject; include at least one minimal,
+  deferred, or do-nothing comparator so tradeoffs are visible.
+- "The user wants speed." Reject premature implementation; use a minimal
+  brainstorm but keep approval and handoff gates.
+- "Open questions can be empty." Reject; every real idea has unknowns, accepted
+  assumptions, or evidence still needed.
+- "Competitive examples are enough." Reject cargo-culting; record borrow,
+  avoid, and fit rationale.
 
 ## Red flags
 
-- A durable artifact changes without a command, receipt, or verification path.
-- The skill is used outside its phase without an explicit handoff.
-- Claims of completion appear before evidence and confidence scoring.
+- The spec lacks non-goals, kill criteria, or Scope Safety Gate decisions.
+- Optional extras enter accepted scope without owner, tradeoff, rollout, and
+  verification.
+- Production readiness omits security/privacy, observability, rollback, or
+  release verification.
+- The handoff does not name the next command, next skill, artifact path, and
+  stop condition.
+- The conversation moves from brainstorm to implementation without an approved
+  spec and plan.
 
 ## Checklist
 
-- Source of truth read.
-- Scope and owner confirmed.
-- RAG/CodeGraph/memory requirement decided.
-- Evidence artifact or command recorded.
-- Stop condition and next handoff clear.
+- Source of truth checked before questions.
+- One question at a time.
+- First-principle decomposition completed.
+- Scope Safety Gate included.
+- Non-obvious risks and kill criteria documented.
+- Decision matrix weights set before scoring.
+- Documentation Approval Gate answered before file write.
+- Spec validator passed.
+- Confidence score and evidence recorded.
+- `NEXT_STEP_HANDOFF` printed and next user action awaited.
 
 ## Failure modes
 
-- Inline emulation replaces a required producer or reviewer.
-- Broad use of the skill slows delivery without improving evidence.
-- Missing verification lets stale assumptions pass as production-ready.
+- The brainstorm becomes a feature buffet instead of a scoped decision.
+- The spec records conclusions without evidence or accepted assumptions.
+- A partial brainstorm is silently abandoned when topic drift occurs.
+- Planning starts without user approval of the spec.
+- The handoff omits RAG/CodeGraph evidence requirements for future code work.
 
 ## Output contract
 
-Returns: path to approved spec at `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-brainstorm.md` with confidence score ≥9, `Documentation approval source`, and explicit user approval recorded in conversation before the durable spec write.
-
-After saving the spec, ALWAYS print a one-line hand-off so the user knows the next command:
-
-```
-Spec saved to .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-brainstorm.md
-Post-documentation summary: recommendation, included scope, deferred/rejected scope, validator result, score, and next choices.
-Next: /supervibe-plan --from-brainstorm .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-brainstorm.md
-Step 1/1: write the plan?
-NEXT_USER_ACTIONS[]: approve spec and write plan | revise idea/spec | compare or research deeper | exclude/defer items | keep spec draft and stop
-```
-
-`NEXT_USER_ACTIONS[]` is a machine-readable command/artifact marker. Outside the command output block, summarize it as natural language and do not leave the raw marker in the user-facing prose.
-
-Also include the machine-readable handoff block:
-
-```text
-NEXT_STEP_HANDOFF
-Current phase: brainstorm
-Artifact: .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-brainstorm.md
-Next phase: plan
-Next command: /supervibe-plan --from-brainstorm .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-brainstorm.md
-Next skill: supervibe:writing-plans
-Stop condition: ask-before-plan
-Why: Brainstorm output must become a reviewed implementation plan before execution.
-Question: Step 1/1: writing the implementation plan?
-Choices:
-- Approve spec and write plan - run `/supervibe-plan --from-brainstorm .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-brainstorm.md`.
-- Revise idea/spec - update requirements before planning.
-- Compare or research deeper - gather more evidence before approval.
-- Exclude/defer items - prevent unapproved scope from entering the plan.
-- Keep spec draft and stop - no next workflow stage runs.
-END_NEXT_STEP_HANDOFF
-```
+Return these fields:
+- `artifact`: approved spec path.
+- `recommendation`: selected option and rationale.
+- `scope`: included, deferred, rejected, and spike items.
+- `evidencePlan`: memory, Code RAG, CodeGraph, and external sources needed for
+  planning.
+- `readiness`: MVP/production model, owner, support, rollout, rollback, and
+  verification.
+- `validation`: spec validator command and result.
+- `confidence`: numeric score, override flag, and requirements rubric.
+- `handoff`: `NEXT_STEP_HANDOFF` with next command, next skill, stop condition,
+  and visible next-action choices.
 
 ## Guard rails
 
-- DO NOT: implement, scaffold, write code before design approved
-- DO NOT: offer direct implementation after brainstorm unless the user explicitly cancels planning
-- DO NOT: finish without `NEXT_STEP_HANDOFF`
-- DO NOT: write durable brainstorm documentation until the user answers the Documentation Approval Gate
-- DO NOT: continue from brainstorm to planning until the user chooses one `NEXT_USER_ACTIONS[]` item
-- DO NOT: ask multi-part questions (one at a time)
-- DO NOT: surface raw `questionnaires/*.yaml` prompts, fallback seeds, or catalog option lists as visible questions; the active agent must compose the question from current context.
-- DO NOT: assume the user agrees if they say "ok" — require explicit documentation approval before durable spec creation and explicit next-action approval before planning
-- DO NOT: rubber-stamp confidence ≥9; honestly assess each dimension
-- DO NOT: add broad optional functionality just because it is related, modern, or possible
-- DO NOT: stop at a vague plan; every accepted requirement needs acceptance evidence, verification path, owner or fallback decision
-- ALWAYS: scale design depth to complexity (3 sentences for trivial, 200-300 words for nuanced)
-- ALWAYS: decompose multi-subsystem requests before deep-diving any one
-- ALWAYS: explain deferred/rejected additions with concrete project harm and a safer alternative
-- ALWAYS: keep a visible readiness scorecard and close every gap needed for 10/10 product-readiness before handoff
+- Ask one question per message.
+- Do not write durable brainstorm documentation before explicit approval.
+- Do not continue to planning until the user chooses a next action.
+- Do not add broad optional scope just because it is related or modern.
+- Always decompose multi-subsystem work before deep-diving.
+- Always preserve accepted assumptions and unresolved blockers in the spec.
+- Always hand off to `supervibe:writing-plans` rather than implementing.
 
 ## Verification
 
-This skill's correct application is verifiable by:
-- A spec file exists at the documented path
-- `node <resolved-supervibe-plugin-root>/scripts/validate-spec-artifacts.mjs --file <spec>` exits 0
-- Spec frontmatter contains date and topic
-- Scope Safety Gate is present with include/defer/reject/spike decisions and tradeoffs
-- User approval is quoted in the conversation immediately before transition to writing-plans
-- Confidence-scoring result ≥9 is recorded
+- Spec exists at `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-brainstorm.md`.
+- `node scripts/validate-spec-artifacts.mjs --file <spec-path>` exits 0.
+- Spec contains problem statement, decomposition, options, readiness,
+  non-obvious risks, kill criteria, decision matrix, Scope Safety Gate,
+  recommendation, production readiness, scorecard, and open questions.
+- Documentation approval source is recorded.
+- Confidence score is at least 9 or blockers are explicit.
+- `NEXT_STEP_HANDOFF` names the next command and stop condition.
+
+## Supporting references
+
+- `docs/templates/brainstorm-output-template.md`
+- `docs/references/scope-safety-standard.md`
+- `docs/references/visual-explanation-standard.md`
+- `references/skills/brandbook-examples.md`
+- `references/skills/prototype-examples.md`
 
 ## Related
 
-- `supervibe:requirements-intake` — entry-gate that decides if brainstorming is needed
-- `supervibe:writing-plans` — the only skill invoked AFTER brainstorming completes
-
-## First-principle decomposition (mandatory before option generation)
-
-Before listing solutions, decompose the problem:
-
-1. **Restate user request in your own words** — confirm understanding
-2. **Identify the actual problem behind the request** (5-Whys: ask "why" five times to reach root)
-3. **List constraints**: time, budget, team skills, existing tech, compliance
-4. **List success criteria**: what makes this "done well"
-5. **List failure modes**: what makes this "done poorly" — at least 3 entries
-6. **List explicit non-goals**: what we're NOT solving here (prevents scope creep)
-
-Skip this section ONLY if user explicitly says "I just need a quick brainstorm."
-
-## Competitive scan (when applicable)
-
-When the problem has known industry analogues (auth flows, billing, onboarding, design patterns):
-
-1. Invoke `supervibe:mcp-discovery` to check if Firecrawl/Playwright MCP available
-2. If yes: scan 3–5 reference products. Take screenshots OR text excerpts.
-3. If no MCP: list reference products by name + ask user "have you seen these? what works/doesn't?"
-4. Document findings as "Competitive scan" section in output — DO NOT cargo-cult; flag what's stale
-
-Skip if problem is greenfield/internal (no public analogues exist).
-
-## Stakeholder map (mandatory for cross-team work)
-
-Identify who's affected:
-
-| Stakeholder | Concern | Influence (1-5) | Notify when |
-|-------------|---------|-----------------|-------------|
-| <name>      | <what they care about> | <number> | <decision phase> |
-
-If solo project: skip this step.
-
-## Non-obvious risks enumeration
-
-After option exploration, list ≥3 NON-OBVIOUS risks (not "what could go wrong" — that's table stakes). Examples:
-- "If we pick option B, our memory budget on mobile drops by ~40MB; users on 2GB-RAM phones may OOM"
-- "Option C requires Postgres 15+; ours is 13; upgrade window is 6 weeks"
-- "Option A's vendor recently changed pricing; cost projection assumes old tier — invalid"
-
-These are facts that aren't in the original spec but matter for the decision.
-
-## Kill criteria (mandatory before deciding)
-
-Before committing to an option, write down what would make us KILL the project (not just iterate):
-- "If user research shows < 30% interest by week 2, we kill"
-- "If integration with existing X breaks invariant Y, we kill"
-- "If estimated effort exceeds 6 dev-weeks, we kill"
-
-This forces honesty about the bar.
-
-## Decision matrix
-
-For each finalist option, score on weighted dimensions:
-
-| Dimension | Weight | Option A | Option B | Option C |
-|-----------|--------|----------|----------|----------|
-| User impact | 3 | 8 | 6 | 9 |
-| Effort | -2 | 4 | 2 | 7 |
-| Risk | -2 | 3 | 5 | 6 |
-| Strategic fit | 2 | 7 | 9 | 5 |
-| **Weighted total** | | (calc) | (calc) | (calc) |
-
-Document weights BEFORE scoring (prevents post-hoc rationalization).
-
-## Output contract template
-
-Save brainstorm output to `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-brainstorm.md`. Use template at `docs/templates/brainstorm-output-template.md`.
-
-Required sections (in order):
-1. **Problem statement** (1 paragraph)
-2. **First-principle decomposition** (constraints / success / failure / non-goals)
-3. **Competitive scan** (if applicable)
-4. **Stakeholder map** (if applicable)
-5. **Options explored** (≥3, each with 1 paragraph)
-6. **Product and MVP readiness fit** (MVP path, launch path, production owner, rollout model)
-7. **Non-obvious risks** (≥3 bullets)
-8. **Kill criteria** (≥2 bullets)
-9. **Decision matrix** (table with weights set BEFORE scoring)
-10. **Scope Safety Gate** (include/defer/reject/spike decisions and why-not rationale)
-11. **Recommended option** (with rationale)
-12. **Production readiness contract** (functional/data/security/observability/rollback contracts)
-13. **Acceptance and 10/10 scorecard** (evidence required for user outcome, contracts, verification and release)
-14. **Open questions** (what's still unknown — must NOT be empty)
-
-## Anti-patterns
-
-- **Skip first-principle decomposition** — produces "obvious" solutions that miss real constraints
-- **List options without weights** — invites post-hoc rationalization to favor preferred option
-- **Skip kill criteria** — leads to sunk-cost projects that should have died at week 2
-- **Skip Scope Safety Gate** — lets brainstorm output become a feature buffet instead of a focused product decision
-- **Cargo-cult competitive scan** — copying without understanding why
-- **Empty "Open questions"** — means you didn't probe hard enough; SOMETHING is unknown
-- **Single-stakeholder thinking** — missing impact on adjacent teams / future maintainers
-- **Premature option lock-in** — committing to a solution before exploring alternatives
-
-## Common workflows
-
-### Workflow: New feature brainstorm (greenfield)
-
-1. First-principle decomposition (required)
-2. Competitive scan (3 reference products)
-3. Stakeholder map
-4. Generate ≥3 options (lean on `supervibe:explore-alternatives` for matrix)
-5. Risks + kill criteria
-6. Decision matrix → recommend
-7. Save to `.supervibe/artifacts/specs/`
-
-### Workflow: Refactor brainstorm (existing system)
-
-1. First-principle decomposition (constraints heavy: existing callers, deploy windows)
-2. Skip competitive scan (system-specific)
-3. Stakeholder map (existing API consumers)
-4. Generate options ranging from "minimal patch" to "rewrite"
-5. Risks emphasize regression / rollback
-6. Kill criteria: "if migration > 4 weeks, freeze"
-7. Decision matrix biased toward low-risk
-
-### Workflow: Brand / design brainstorm
-
-1. First-principle: who is the user, what feeling
-2. Competitive scan (mood boards from 5 brands)
-3. Skip stakeholder map (creative director is sole owner)
-4. Generate 3 directions (with mood boards)
-5. Risks: brand misalignment, accessibility issues
-6. Kill criteria: "if user testing shows top-2 are equal, we don't pick the riskier"
-7. Decision matrix scored by creative director + PM
-
-## Verification
-
-- Output saved to `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-brainstorm.md`
-- All required sections present, including MVP readiness fit, Scope Safety Gate, production readiness contract, and 10/10 scorecard
-- Scope Safety Gate lists included, deferred, rejected, or spiked additions with evidence, harm, and tradeoff
-- Decision matrix weights documented BEFORE scores
-- ≥3 non-obvious risks listed
-- Kill criteria has at least 1 quantitative threshold
-- Open questions is non-empty
-- Production readiness contract covers data, security/privacy, observability, rollback, and release verification
-- 10/10 scorecard has evidence or explicit blocker for every row
-- Confidence rubric: `requirements` or custom; score ≥ 9
-- Machine validator: `validate-spec-artifacts.mjs --file <spec>` exits 0
-
-## Related
-
-- `supervibe:writing-plans` — next step after brainstorm picks a direction
-- `supervibe:explore-alternatives` — sub-skill for decision matrix
-- `supervibe:requirements-intake` — predecessor when intake hasn't happened yet
-- `supervibe:prd` — when brainstorm output IS an architectural decision
-- `supervibe:mcp-discovery` — for competitive scan tools
-
-## FAQ
-
-**Q: Can I skip the decision matrix if there's only one viable option?**
-A: No — if only one option is viable, you haven't brainstormed. Generate at least two
-straw-man alternatives ("do nothing", "minimal patch") to make the matrix meaningful.
-
-**Q: What if the user resists structured output?**
-A: Honor their preference for the conversation, but still record the decomposition
-internally and produce the spec file. The spec is for future maintainers, not the user.
-
-**Q: How do I handle a brainstorm that spans multiple sessions?**
-A: Save partial progress to `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-brainstorm.md` after each
-session. Mark unresolved sections with `TBD: <what's missing>` and surface them at the
-top of the file so the next session resumes without re-discovery.
-
-**Q: When should I escalate to `supervibe:prd` instead of finishing here?**
-A: If the recommended option locks in a long-term architectural choice (DB engine,
-runtime, framework, vendor), the output should also produce a PRD decision section. Brainstorm captures
-exploration; PRD decision section captures the binding decision with reversal cost.
-
-## Failure recovery
-
-If a previous brainstorm shipped a flawed recommendation, do NOT silently re-brainstorm.
-Instead: open the original spec, add a "Postmortem" section with what was missed
-(usually: a non-obvious risk that surfaced too late, or a stakeholder who wasn't
-mapped), then start a fresh brainstorm that explicitly references the prior file.
-This preserves the decision audit trail and prevents repeating the same blind spot.
-
-## Telemetry hooks
-
-When `supervibe:telemetry` is enabled, this skill emits:
-- `brainstorm.started` — with topic and detected workflow variant
-- `brainstorm.gate.passed` — confidence score and section count
-- `brainstorm.gate.failed` — score and failing dimensions, for trend analysis
-- `brainstorm.spec.written` — file path and byte count
-
-Use these signals to detect drift (e.g., specs trending shorter over time often means
-decomposition is being skipped).
+- `supervibe:requirements-intake` decides whether brainstorming is needed.
+- `supervibe:writing-plans` is the next stage after spec approval.
+- `supervibe:explore-alternatives` can support decision matrix exploration.
+- `supervibe:prd` handles long-term architectural/product decisions.
+- `supervibe:mcp-discovery` checks available tools for reference scans.

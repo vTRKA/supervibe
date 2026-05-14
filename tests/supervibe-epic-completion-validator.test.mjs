@@ -483,6 +483,7 @@ function addCoveredPlanStepSubtask(graph, parent) {
     parentId: parent.itemId,
     type: "subtask",
     title: "Covered plan-step subtask",
+    blocks: [],
     verificationEvidence: [],
     discoveredFrom: {
       type: "plan-step",
@@ -499,6 +500,16 @@ function addCoveredPlanStepSubtask(graph, parent) {
     status: subtask.status,
     verificationEvidence: [],
   });
+  graph.dependencyEdges.push({
+    from: parent.itemId,
+    to: subtask.itemId,
+    type: "parent-child",
+  });
+  const totals = graph.metadata?.taskBudgetPolicy?.report?.totals;
+  if (totals) {
+    totals.childItems += 1;
+    totals.implementationItems += 1;
+  }
   return subtask;
 }
 

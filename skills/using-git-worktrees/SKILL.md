@@ -1,20 +1,28 @@
 ---
 name: using-git-worktrees
 namespace: process
-description: "Use BEFORE feature work, autonomous session, or plan execution that needs isolation TO create or validate a git worktree, register active session ownership, keep the main workspace clean, heartbeat/status the session, and cleanup only after merge/PR. Trigger phrases: git worktree, isolated workspace, autonomous worktree, separate session, active session registry, heartbeat, cleanup."
-allowed-tools: [Read, Grep, Glob, Bash]
+description: 'Use BEFORE feature work, autonomous session, or plan execution that needs isolation TO create or validate a git worktree, register active session ownership, keep the main workspace clean, heartbeat/status the session, and cleanup only after merge/PR. Trigger phrases: git worktree, isolated workspace, autonomous worktree, separate session, active session registry, heartbeat, cleanup.'
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
 phase: exec
 prerequisites: []
 emits-artifact: agent-output
 confidence-rubric: confidence-rubrics/agent-delivery.yaml
 gate-on-exit: false
-version: 1.0
-last-verified: 2026-04-27
+version: 1
+last-verified: 2026-04-27T00:00:00.000Z
 ---
 
 # Using Git Worktrees
 
-## When to invoke
+## Overview
+
+Using Git Worktrees provides a reusable Supervibe operating method for Use BEFORE feature work, autonomous session, or plan execution that needs isolation TO create or validate a git worktree, register active session ownership, keep the main workspace clean, heartbeat/status the session, and cleanup only after merge/PR. Trigger phrases: git worktree, isolated workspace, autonomous worktree, separate session, active session registry, heartbeat, cleanup.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
+## When to Use
 
 BEFORE starting feature work or executing a plan, IF current workspace has uncommitted changes that should NOT be polluted, OR plan execution risks broken intermediate state.
 

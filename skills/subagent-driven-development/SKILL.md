@@ -1,20 +1,31 @@
 ---
 name: subagent-driven-development
 namespace: process
-description: "Use WHEN executing an implementation plan, epic, or atomic task wave with independent tasks AND subagents are available TO dispatch fresh subagent per task in isolated worktree/session with active session registry, heartbeat, stop/resume/status controls, and final-sweep review. Trigger phrases: parallel subagents, fan-out, subagent-driven, atomic tasks, epic worktree, goal-until-complete autonomous, active session registry."
-allowed-tools: [Read, Grep, Glob, Write, Edit, Bash]
+description: 'Use WHEN executing an implementation plan, epic, or atomic task wave with independent tasks AND subagents are available TO dispatch fresh subagent per task in isolated worktree/session with active session registry, heartbeat, stop/resume/status controls, and final-sweep review. Trigger phrases: parallel subagents, fan-out, subagent-driven, atomic tasks, epic worktree, goal-until-complete autonomous, active session registry.'
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Write
+  - Edit
+  - Bash
 phase: exec
-prerequisites: [implementation-plan]
+prerequisites:
+  - implementation-plan
 emits-artifact: agent-output
 confidence-rubric: confidence-rubrics/agent-delivery.yaml
 gate-on-exit: true
 version: 1.1
-last-verified: 2026-05-02
+last-verified: 2026-05-02T00:00:00.000Z
 ---
 
 # Subagent-Driven Development
 
-## When to invoke
+## Overview
+
+Subagent Driven Development provides a reusable Supervibe operating method for Use WHEN executing an implementation plan, epic, or atomic task wave with independent tasks AND subagents are available TO dispatch fresh subagent per task in isolated worktree/session with active session registry, heartbeat, stop/resume/status controls, and final-sweep review. Trigger phrases: parallel subagents, fan-out, subagent-driven, atomic tasks, epic worktree, goal-until-complete autonomous, active session registry.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
+## When to Use
 
 WHEN executing a plan AND subagent dispatch is available AND plan has 5+ independent tasks. Preferred over `supervibe:executing-plans` (inline) when both apply.
 
@@ -137,15 +148,24 @@ Per task: which subagent type?
 
 ## Common rationalizations
 
-- "This is small, so no source check is needed" - reject when the skill changes code, config, or durable artifacts.
-- "The user asked for speed, so skip receipts" - reject when durable work, delegation, or review is claimed.
-- "Existing prose is enough evidence" - reject when validators or command output are required.
+- "The subagent is just helping, so a generic prompt is enough" fails because a
+  worker without write scope, context packet, expected output, and stop
+  condition can duplicate work or damage another worker's files.
+- "The controller can write the reviewer result faster" fails whenever the
+  workflow claims independent specialist provenance; use the real host
+  invocation or mark the output as controller-authored diagnostic work.
+- "A finished subagent means the task is done" fails until the controller reads
+  the diff/output, checks receipts, verifies commands, and reconciles residual
+  risk against the original acceptance criteria.
 
 ## Red flags
 
-- A durable artifact changes without a command, receipt, or verification path.
-- The skill is used outside its phase without an explicit handoff.
-- Claims of completion appear before evidence and confidence scoring.
+- A claimed worker or reviewer has no `hostInvocation.invocationId` when the
+  active workflow requires real host-agent proof.
+- The subagent prompt does not say the worker is not alone in the codebase or
+  does not define owned files/modules.
+- A worker edits outside its packet, reverts unrelated changes, or marks a task
+  complete without targeted verification evidence.
 
 ## Checklist
 
@@ -163,16 +183,18 @@ Per task: which subagent type?
 
 ## Output contract
 
-Returns wave-by-wave execution log:
-```
-Wave 1 (parallel, N tasks):
-  Assignment model: <worker-preset>/<subagent-type> + final-sweep reviewer policy, with why-worker, rejected alternatives, required evidence, and wave/block reason
-  - Task 1: <subagent-type> → SUCCESS / REJECTED+reason
-  - Task 2: ...
-Wave 2 (parallel, N tasks):
-  ...
-Final: combined deliverable + per-wave confidence score
-```
+Return:
+
+- `waveId`: current wave id and dispatch mode.
+- `assignments`: task id, logical role, owned files/modules, expected output,
+  and stop condition.
+- `hostInvocations`: real invocation ids for claimed workers or reviewers.
+- `workerResults`: changed paths, evidence, verification, blockers, and
+  residual risks from each worker.
+- `controllerReconciliation`: accepted changes, conflicts, rejected output,
+  next wave, and remaining blockers.
+- `receiptStatus`: runtime receipt ids and validation status.
+- `confidence`: per-wave and final confidence with capped reasons.
 
 ## Guard rails
 

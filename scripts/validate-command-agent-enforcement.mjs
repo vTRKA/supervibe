@@ -68,12 +68,17 @@ export function validateCommandAgentEnforcement(rootDir = process.cwd(), options
 
   const syntheticChecks = [];
   if (options.syntheticActiveProbe !== false) {
+    const syntheticReceiptTrust = options.syntheticReceiptTrust === undefined
+      ? syntheticUntrustedReceiptTrust()
+      : options.syntheticReceiptTrust;
     for (const profile of profiles) {
       const report = buildRuntimeCommandAgentPlan({
         command: profile.commandId,
         projectRoot: rootDir,
         pluginRoot: options.pluginRoot || PLUGIN_ROOT,
         host: options.host || "codex",
+        receiptTrust: syntheticReceiptTrust,
+        skipScopedReceiptTrustInspection: true,
         workflowContext: syntheticWorkflowContext(profile.commandId),
       });
       const strictReady = commandAgentPlanStrictReady(report);
@@ -217,6 +222,21 @@ function syntheticWorkflowContext(commandId = "") {
     memoryWrites: false,
   };
   return context;
+}
+
+function syntheticUntrustedReceiptTrust() {
+  return {
+    pass: false,
+    trustedHostAgentReceipts: 0,
+    agentInvocations: 0,
+    loggedAgentInvocations: 0,
+    minHostAgentReceipts: 1,
+    minAgentInvocations: 1,
+    issues: [{
+      code: "synthetic-active-probe",
+      message: "synthetic active command probe intentionally skips runtime receipt scanning",
+    }],
+  };
 }
 
 function listAvailableAgentIds(rootDir) {

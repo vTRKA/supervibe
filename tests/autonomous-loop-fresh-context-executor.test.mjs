@@ -92,6 +92,45 @@ test("fresh-context attempt completes with stub adapter and writes attempt outpu
   assert.match(await readFile(ledgerPath, "utf8"), /generic-shell-stub/);
 });
 
+test("fresh-context attempt passes worktree cwd into adapter execution", async () => {
+  const attemptDir = await mkdtemp(join(tmpdir(), "supervibe-attempt-cwd-"));
+  let observedCwd = null;
+  const adapter = {
+    id: "cwd-adapter",
+    async run(_packet, options = {}) {
+      observedCwd = options.cwd;
+      return {
+        adapterId: "cwd-adapter",
+        status: "completed",
+        spawned: false,
+        processId: null,
+        output: [
+          "SUPERVIBE_TASK_COMPLETE: true",
+          "SUPERVIBE_EVIDENCE_SUMMARY: cwd propagated",
+          "SUPERVIBE_CHANGED_FILES: scripts/lib/autonomous-loop-fresh-context-executor.mjs",
+        ].join("\n"),
+      };
+    },
+    extractCompletionSignal() {
+      return { present: true, completed: true };
+    },
+    extractChangedFiles() {
+      return ["scripts/lib/autonomous-loop-fresh-context-executor.mjs"];
+    },
+  };
+
+  const attempt = await runFreshContextAttempt({
+    task,
+    adapter,
+    attemptId: "T7.1-attempt-cwd",
+    attemptDir,
+    cwd: join(attemptDir, "worktree"),
+  });
+
+  assert.equal(attempt.status, "completed");
+  assert.equal(observedCwd, join(attemptDir, "worktree"));
+});
+
 test("fresh-context attempt creates failure packet when signal or evidence is missing", async () => {
   const attemptDir = await mkdtemp(join(tmpdir(), "supervibe-attempt-fail-"));
   const adapter = createShellStubAdapter({ output: "I changed files but forgot the signal." });

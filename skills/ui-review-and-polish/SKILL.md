@@ -1,24 +1,33 @@
 ---
 name: ui-review-and-polish
 namespace: process
-description: "Use AFTER a UI mockup, prototype, desktop/mobile shell, browser extension view, or implemented screen exists TO review layout, visual hierarchy, responsiveness, accessibility basics, interaction states, copy fit, and design-system adherence before handoff or implementation."
-allowed-tools: [Read, Grep, Glob, Bash]
+description: 'Use AFTER a UI mockup, prototype, desktop/mobile shell, browser extension view, or implemented screen exists TO review layout, visual hierarchy, responsiveness, accessibility basics, interaction states, copy fit, and design-system adherence before handoff or implementation.'
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
 phase: review
-prerequisites: [ui-artifact]
+prerequisites:
+  - ui-artifact
 emits-artifact: ui-polish-report
 confidence-rubric: confidence-rubrics/prototype.yaml
 gate-on-exit: true
 version: 1.2
-last-verified: 2026-05-10
+last-verified: 2026-05-10T00:00:00.000Z
 ---
 
 # UI Review And Polish
 
+## Overview
+
+Ui Review And Polish provides a reusable Supervibe operating method for Use AFTER a UI mockup, prototype, desktop/mobile shell, browser extension view, or implemented screen exists TO review layout, visual hierarchy, responsiveness, accessibility basics, interaction states, copy fit, and design-system adherence before handoff or implementation.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
 Review an existing UI artifact and produce a prioritized polish report. This
 skill is review-only: it identifies issues and concrete fixes, but it does not
 rewrite the UI unless the user explicitly asks for implementation after review.
 
-## When to invoke
+## When to Use
 
 Use after a UI mockup, prototype, desktop/mobile shell, browser extension view,
 or implemented screen exists and needs review before approval, handoff, or

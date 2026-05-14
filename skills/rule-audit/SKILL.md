@@ -1,10 +1,7 @@
 ---
 name: rule-audit
 namespace: process
-description: >-
-  Use WHEN rules-curator needs to detect contradictions/redundancy/gaps across
-  host adapter rules OR after sync-rules. Triggers: 'аудит правил', 'rules
-  check', 'проверь правила', 'rule audit'.
+description: 'Use WHEN rules-curator needs to detect contradictions/redundancy/gaps across host adapter rules OR after sync-rules. Triggers: ''аудит правил'', ''rules check'', ''проверь правила'', ''rule audit''.'
 allowed-tools:
   - Read
   - Grep
@@ -21,7 +18,11 @@ last-verified: 2026-04-27T00:00:00.000Z
 
 # Rule Audit
 
-## When to invoke
+## Overview
+
+Rule Audit provides a reusable Supervibe operating method for Use WHEN rules-curator needs to detect contradictions/redundancy/gaps across host adapter rules OR after sync-rules. Triggers: 'аудит правил', 'rules check', 'проверь правила', 'rule audit'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
+## When to Use
 
 - After adding/modifying any rule
 - After `supervibe:sync-rules` completes

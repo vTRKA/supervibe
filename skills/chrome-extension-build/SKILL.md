@@ -1,12 +1,7 @@
 ---
 name: chrome-extension-build
 namespace: process
-description: >-
-  Use WHEN setting up or modifying the build pipeline for a Chrome MV3 extension
-  to choose bundler (Vite-CRXJS / WXT / Plasmo / vanilla), wire HMR for popup,
-  generate icons, lint manifest, and produce a CWS-ready zip. Triggers: 'настрой
-  сборку расширения', 'сделай build для chrome extension', 'добавь HMR в popup',
-  'упакуй для CWS', 'web-ext lint'.
+description: 'Use WHEN setting up or modifying the build pipeline for a Chrome MV3 extension to choose bundler (Vite-CRXJS / WXT / Plasmo / vanilla), wire HMR for popup, generate icons, lint manifest, and produce a CWS-ready zip. Triggers: ''настрой сборку расширения'', ''сделай build для chrome extension'', ''добавь HMR в popup'', ''упакуй для CWS'', ''web-ext lint''.'
 allowed-tools:
   - Read
   - Grep
@@ -25,9 +20,13 @@ last-verified: 2026-04-28T00:00:00.000Z
 
 # Chrome Extension Build
 
+## Overview
+
+Chrome Extension Build provides a reusable Supervibe operating method for Use WHEN setting up or modifying the build pipeline for a Chrome MV3 extension to choose bundler (Vite-CRXJS / WXT / Plasmo / vanilla), wire HMR for popup, generate icons, lint manifest, and produce a CWS-ready zip. Triggers: 'настрой сборку расширения', 'сделай build для chrome extension', 'добавь HMR в popup', 'упакуй для CWS', 'web-ext lint'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
 Set up or fix the build / lint / package pipeline for a Chrome MV3 extension. Outcome: `npm run build` produces a CWS-ready `dist/` (or `web-ext-artifacts/*.zip`) that passes `web-ext lint` with zero warnings.
 
-## When to invoke
+## When to Use
 
 - Bootstrapping a new Chrome MV3 extension after `chrome-extension-architect` has approved the manifest design.
 - Adding HMR to a popup that currently requires manual rebuild.

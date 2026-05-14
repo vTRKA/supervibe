@@ -17,6 +17,10 @@ import {
 } from "./lib/agent-producer-contract.mjs";
 import { selectHostAdapter } from "./lib/supervibe-host-detector.mjs";
 import { buildEvidencePacket, evidencePacketSummary } from "./lib/supervibe-evidence-packet.mjs";
+import {
+  defaultRuntimeCleanupRegistryPath,
+  summarizeHostManagedSubagentDebtSync,
+} from "./lib/runtime-cleanup-registry.mjs";
 
 const PLUGIN_ROOT = resolve(fileURLToPath(new URL("../", import.meta.url)));
 
@@ -116,6 +120,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         apply: options.apply === true,
         generateApps: options.generateApps === true || options["generate-apps"] === true,
         verifyAgents: options.verifyAgents === true || options["verify-agents"] === true,
+        commandScopedReceiptGate: options.strictExit === true,
         active: options.active === true,
         slug: options.slug || null,
         handoffId: options.handoffId || null,
@@ -186,6 +191,10 @@ export function buildRuntimeCommandAgentPlan({
   installedOnly = false,
   workflowContext = {},
   env = process.env,
+  receiptTrust = undefined,
+  scopedReceiptTrust = undefined,
+  skipScopedReceiptTrustInspection = false,
+  evidencePacket = undefined,
 } = {}) {
   const resolvedProjectRoot = resolve(projectRoot);
   const resolvedPluginRoot = resolve(pluginRoot);
@@ -213,7 +222,9 @@ export function buildRuntimeCommandAgentPlan({
   });
   const availableAgentIds = [...availableAgentSources.keys()];
   const callableAgentIds = [...callableAgentSources.keys()];
-  const baseReceiptTrust = inspectReceiptTrust(resolvedProjectRoot);
+  const baseReceiptTrust = receiptTrust === undefined
+    ? inspectReceiptTrust(resolvedProjectRoot)
+    : receiptTrust;
   const preliminaryPlan = buildCommandAgentPlan(command, {
     requestedExecutionMode,
     availableAgentIds,
@@ -225,14 +236,18 @@ export function buildRuntimeCommandAgentPlan({
     receiptTrust: baseReceiptTrust,
     workflowContext: normalizedContext,
   });
-  const scopedReceiptTrust = shouldInspectScopedReceiptTrust(normalizedContext)
-    ? inspectScopedReceiptTrust(resolvedProjectRoot, {
-      command,
-      workflowContext: normalizedContext,
-      requiredAgentIds: preliminaryPlan.requiredAgentIds,
-    })
+  const effectiveCommand = preliminaryPlan.commandId || command;
+  const scopedContext = withDefaultCommandScopedHandoff(normalizedContext, effectiveCommand);
+  const effectiveScopedReceiptTrust = shouldInspectScopedReceiptTrust(scopedContext)
+    ? scopedReceiptTrust === undefined && skipScopedReceiptTrustInspection !== true
+      ? inspectScopedReceiptTrust(resolvedProjectRoot, {
+        command: effectiveCommand,
+        workflowContext: scopedContext,
+        requiredAgentIds: preliminaryPlan.requiredAgentIds,
+      })
+      : (scopedReceiptTrust ?? null)
     : null;
-  const plan = buildCommandAgentPlan(command, {
+  const plan = buildCommandAgentPlan(effectiveCommand, {
     requestedExecutionMode,
     availableAgentIds,
     availableAgentSources,
@@ -241,39 +256,61 @@ export function buildRuntimeCommandAgentPlan({
     hostAdapterId: hostSelection.adapter.id,
     enforceHostProof,
     receiptTrust: baseReceiptTrust,
-    scopedReceiptTrust,
-    workflowContext: normalizedContext,
+    scopedReceiptTrust: effectiveScopedReceiptTrust,
+    workflowContext: scopedContext,
   });
-  const evidencePacket = buildEvidencePacket({
-    rootDir: resolvedProjectRoot,
-    commandId: command,
-    task: {
-      id: command,
-      goal: [
-        command,
-        normalizedContext.intent,
-        normalizedContext.artifactType,
-        normalizedContext.stage,
-        normalizedContext.stackTags,
-        normalizedContext.riskDomains,
-      ].filter(Boolean).join(" "),
-    },
-  });
+  const packet = evidencePacket === undefined
+    ? buildEvidencePacket({
+      rootDir: resolvedProjectRoot,
+      commandId: effectiveCommand,
+      task: {
+        id: effectiveCommand,
+        goal: [
+          effectiveCommand,
+          scopedContext.intent,
+          scopedContext.artifactType,
+          scopedContext.stage,
+          scopedContext.stackTags,
+          scopedContext.riskDomains,
+        ].filter(Boolean).join(" "),
+      },
+    })
+    : evidencePacket;
   const verificationPolicy = buildCommandAgentVerificationPolicy({
-    command,
-    workflowContext: normalizedContext,
+    command: effectiveCommand,
+    workflowContext: scopedContext,
   });
+  const codexCleanupDebt = hostSelection.adapter.id === "codex"
+    ? summarizeHostManagedSubagentDebtSync({
+        rootDir: resolvedProjectRoot,
+        path: defaultRuntimeCleanupRegistryPath(resolvedProjectRoot),
+      })
+    : { count: 0, closeRequired: [] };
+  const codexSpawnBlockedByCleanup = codexCleanupDebt.count > 0 && Array.isArray(plan.codexSpawnPayloads) && plan.codexSpawnPayloads.length > 0;
   const enrichedPlan = {
     ...plan,
-    evidencePacket,
+    ...(codexCleanupDebt.count > 0 ? {
+      hostManagedCleanupDebt: codexCleanupDebt,
+    } : {}),
+    ...(codexSpawnBlockedByCleanup ? {
+      executionMode: "agent-required-blocked",
+      codexSpawnBlockedByCleanup: true,
+      codexSpawnPayloads: [],
+      codexSpawnPayloadRules: [],
+      qualityImpact: [
+        plan.qualityImpact,
+        `completed Codex subagents must be closed/reset before new spawn payloads: ${codexCleanupDebt.closeRequired.map((item) => item.hostInvocationId).filter(Boolean).join(", ")}`,
+      ].filter(Boolean).join("; "),
+    } : {}),
+    evidencePacket: packet,
     verificationPolicy,
-    ...(plan.codexSpawnPayloads
+    ...(!codexSpawnBlockedByCleanup && plan.codexSpawnPayloads
       ? {
         codexSpawnPayloads: plan.codexSpawnPayloads.map((payload) => ({
           ...payload,
           payload: {
             ...payload.payload,
-            evidence_packet: evidencePacket,
+            evidence_packet: packet,
             verification_policy: verificationPolicy,
           },
         })),
@@ -440,11 +477,39 @@ function inspectScopedReceiptTrust(projectRoot, { command, workflowContext = {},
 
 function shouldInspectScopedReceiptTrust(workflowContext = {}) {
   return Boolean(
-    workflowContext.active === true
+    workflowContext.commandScopedReceiptGate === true
+    || workflowContext.active === true
     || workflowContext.handoffId
     || workflowContext.workflowRunId
     || workflowContext.slug
   );
+}
+
+function withDefaultCommandScopedHandoff(workflowContext = {}, command = "") {
+  if (
+    workflowContext.commandScopedReceiptGate !== true
+    || workflowContext.active === true
+    || workflowContext.handoffId
+    || workflowContext.handoff
+    || workflowContext.workflowRunId
+    || workflowContext.slug
+  ) {
+    return workflowContext;
+  }
+  return {
+    ...workflowContext,
+    handoffId: defaultCommandScopedHandoffId(command),
+  };
+}
+
+function defaultCommandScopedHandoffId(command = "") {
+  const segment = String(command || "command")
+    .trim()
+    .replace(/^\//, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/^-|-$/g, "") || "command";
+  return `command-agent-plan-${segment}`;
 }
 
 function parseBoolean(value) {

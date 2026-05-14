@@ -17,23 +17,136 @@ const FOUNDATIONAL_SKILLS = Object.freeze(new Set([
   "supervibe:tdd",
 ]));
 
-const CRITICAL_SKILL_OWNER_POLICY = Object.freeze({
-  "supervibe:autonomous-agent-loop": { minOwners: 2, class: "foundational-workflow" },
-  "supervibe:subagent-driven-development": { minOwners: 2, class: "foundational-workflow" },
-  "supervibe:dispatching-parallel-agents": { minOwners: 2, class: "foundational-workflow" },
-  "supervibe:executing-plans": { minOwners: 2, class: "foundational-workflow" },
-  "supervibe:verification": { minOwners: 2, class: "foundational" },
-  "supervibe:code-review": { minOwners: 2, class: "review" },
-  "supervibe:source-driven-development": { minOwners: 2, class: "lifecycle" },
-  "supervibe:doubt-driven-development": { minOwners: 2, class: "review" },
-  "supervibe:browser-runtime-verification": { minOwners: 2, class: "specialist" },
-  "supervibe:using-supervibe-skills": { minOwners: 2, class: "support" },
+const OWNERSHIP_CLASSES = Object.freeze(new Set([
+  "foundational",
+  "specialist",
+  "command-only",
+  "support",
+  "experimental",
+]));
+
+const INVENTORY_PATH = Object.freeze([".supervibe", "artifacts", "evidence", "agent-skill-normalization-gap-inventory.json"]);
+
+const INVENTORY_CLASS_TO_OWNERSHIP_CLASS = Object.freeze({
+  "command-only": "command-only",
+  "context-evidence": "foundational",
+  "design-ui": "specialist",
+  "foundational": "foundational",
+  "lifecycle": "foundational",
+  "quality-risk": "specialist",
+  "specialist": "specialist",
+  "support": "support",
 });
 
-export function validateAgentSkillCoverage(rootDir = process.cwd()) {
+const COMMAND_ONLY_SKILLS = Object.freeze(new Set([
+  "supervibe:adapt",
+  "supervibe:audit",
+  "supervibe:genesis",
+  "supervibe:preview-server",
+  "supervibe:presentation-deck",
+  "supervibe:strengthen",
+]));
+
+const SUPPORT_SKILLS = Object.freeze(new Set([
+  "supervibe:add-memory",
+  "supervibe:browser-feedback",
+  "supervibe:mcp-discovery",
+  "supervibe:mock-data-contract",
+  "supervibe:stack-discovery",
+  "supervibe:using-git-worktrees",
+  "supervibe:using-supervibe-skills",
+]));
+
+const EXPERIMENTAL_SKILLS = Object.freeze(new Set([
+  "supervibe:experiment",
+]));
+
+const CRITICAL_SKILL_OWNER_POLICY = Object.freeze({
+  "supervibe:autonomous-agent-loop": { minOwners: 2, ownershipClass: "support", role: "foundational workflow" },
+  "supervibe:subagent-driven-development": { minOwners: 2, ownershipClass: "support", role: "foundational workflow" },
+  "supervibe:dispatching-parallel-agents": { minOwners: 2, ownershipClass: "support", role: "foundational workflow" },
+  "supervibe:executing-plans": { minOwners: 2, ownershipClass: "foundational", role: "plan execution" },
+  "supervibe:verification": { minOwners: 2, ownershipClass: "foundational", role: "verification" },
+  "supervibe:code-review": { minOwners: 2, ownershipClass: "foundational", role: "review" },
+  "supervibe:source-driven-development": { minOwners: 2, ownershipClass: "foundational", role: "source evidence" },
+  "supervibe:doubt-driven-development": { minOwners: 2, ownershipClass: "support", role: "review hardening" },
+  "supervibe:browser-runtime-verification": { minOwners: 2, ownershipClass: "foundational", role: "runtime verification" },
+  "supervibe:using-supervibe-skills": { minOwners: 2, ownershipClass: "support", role: "skill routing" },
+  "supervibe:receiving-code-review": {
+    minOwners: 2,
+    ownershipClass: "specialist",
+    role: "review intake",
+    allowedOwnerPatterns: [
+      /^agents\/_core\/(code-reviewer|quality-gate-reviewer|architect-reviewer|security-auditor|refactoring-specialist)\.md$/,
+      /^agents\/_ops\/release-governance-reviewer\.md$/,
+    ],
+  },
+  "supervibe:requesting-code-review": {
+    minOwners: 2,
+    ownershipClass: "specialist",
+    role: "review request",
+    allowedOwnerPatterns: [
+      /^agents\/_core\/(code-reviewer|quality-gate-reviewer|architect-reviewer|security-auditor|refactoring-specialist)\.md$/,
+      /^agents\/_ops\/release-governance-reviewer\.md$/,
+    ],
+  },
+  "supervibe:rule-audit": {
+    minOwners: 2,
+    ownershipClass: "specialist",
+    role: "rule audit",
+    allowedOwnerPatterns: [
+      /^agents\/_meta\/(rules-curator|supervibe-orchestrator)\.md$/,
+      /^agents\/_core\/(repo-researcher|quality-gate-reviewer)\.md$/,
+    ],
+  },
+  "supervibe:seo-audit": {
+    minOwners: 2,
+    ownershipClass: "specialist",
+    role: "SEO audit",
+    allowedOwnerPatterns: [
+      /^agents\/_product\/(seo-specialist|product-manager|systems-analyst)\.md$/,
+      /^agents\/_design\/(copywriter|ux-ui-designer)\.md$/,
+      /^agents\/_ops\/(performance-reviewer|release-governance-reviewer)\.md$/,
+    ],
+  },
+  "supervibe:trigger-diagnostics": {
+    minOwners: 2,
+    ownershipClass: "foundational",
+    role: "trigger diagnostics",
+    allowedOwnerPatterns: [
+      /^agents\/_meta\/supervibe-orchestrator\.md$/,
+      /^agents\/_core\/(repo-researcher|quality-gate-reviewer)\.md$/,
+      /^agents\/_ops\/(ai-agent-orchestrator|llm-evals-engineer)\.md$/,
+    ],
+  },
+  "supervibe:sync-rules": {
+    minOwners: 2,
+    ownershipClass: "specialist",
+    role: "rule sync",
+    allowedOwnerPatterns: [
+      /^agents\/_meta\/(rules-curator|supervibe-orchestrator)\.md$/,
+      /^agents\/_core\/(repo-researcher|quality-gate-reviewer)\.md$/,
+    ],
+  },
+  "supervibe:evaluate": {
+    minOwners: 2,
+    ownershipClass: "experimental",
+    role: "effectiveness evaluation",
+    allowedOwnerPatterns: [
+      /^agents\/_meta\/supervibe-orchestrator\.md$/,
+      /^agents\/_ops\/(llm-evals-engineer|release-governance-reviewer)\.md$/,
+      /^agents\/_core\/quality-gate-reviewer\.md$/,
+      /^agents\/_product\/(product-manager|systems-analyst)\.md$/,
+    ],
+  },
+});
+
+export function validateAgentSkillCoverage(rootDir = process.cwd(), options = {}) {
   const issues = [];
   const availableSkills = readAvailableSkillIds(rootDir);
-  const agentSkillOwners = new Map([...availableSkills].map((skill) => [skill, []]));
+  const skillInventory = loadSkillInventory(rootDir);
+  const criticalSkillOwnerPolicy = options.criticalSkillOwnerPolicy || CRITICAL_SKILL_OWNER_POLICY;
+  const agentSkillOwners = new Map([...availableSkills].map((skill) => [skill, new Map()]));
   const files = walkMarkdown(join(rootDir, "agents"));
 
   for (const file of files) {
@@ -72,7 +185,7 @@ export function validateAgentSkillCoverage(rootDir = process.cwd()) {
       if (!availableSkills.has(skill)) {
         issues.push(issue(rel, "unknown-skill", `Unknown skill id in frontmatter: ${skill}`));
       } else {
-        agentSkillOwners.get(skill).push(rel);
+        agentSkillOwners.get(skill).set(rel, { file: rel, agentName: String(parsed.data.name || "") });
       }
       if (skillsSection && !skillsSection.includes(skill)) {
         issues.push(issue(rel, "skill-not-explained", `Skill ${skill} is in frontmatter but missing from ## Skills.`));
@@ -80,13 +193,49 @@ export function validateAgentSkillCoverage(rootDir = process.cwd()) {
     }
   }
 
-  for (const [skill, owners] of agentSkillOwners) {
+  const checkedSkillClasses = emptySkillClassCounts();
+  const skillOwnership = [];
+
+  for (const [skill, ownerMap] of agentSkillOwners) {
+    const owners = [...ownerMap.values()];
+    const ownershipClass = classifySkillOwnership(skill, skillInventory.byName.get(skillIdName(skill)));
+    checkedSkillClasses[ownershipClass] += 1;
+    const policy = criticalSkillOwnerPolicy[skill];
+    const supportedOwners = policy
+      ? owners.filter((owner) => isSupportedCriticalOwner(owner.file, policy))
+      : owners;
+
+    skillOwnership.push({
+      skill,
+      class: policy?.ownershipClass || ownershipClass,
+      owners: owners.map((owner) => owner.file),
+      supportedOwners: supportedOwners.map((owner) => owner.file),
+      minOwners: policy?.minOwners || 1,
+      exception: normalizeSingleOwnerException(policy, owners),
+    });
+
     if (owners.length === 0) {
       issues.push(issue(skill, "skill-unowned-by-agent", "Skill exists under skills/ but no agent declares it in frontmatter."));
     }
-    const policy = CRITICAL_SKILL_OWNER_POLICY[skill];
-    if (policy && owners.length < policy.minOwners) {
-      issues.push(issue(skill, "fragile-critical-skill-ownership", `Critical ${policy.class} skill needs at least ${policy.minOwners} independent owning agents or an explicit policy exception.`));
+
+    if (policy) {
+      for (const owner of owners) {
+        if (!isSupportedCriticalOwner(owner.file, policy)) {
+          issues.push(issue(
+            owner.file,
+            "unrelated-critical-skill-owner",
+            `Agent declares critical skill ${skill}, but that agent is outside the supported ${policy.role || "critical"} ownership boundary.`,
+          ));
+        }
+      }
+
+      if (supportedOwners.length < policy.minOwners && !hasDocumentedSingleOwnerException(policy, supportedOwners)) {
+        issues.push(issue(
+          skill,
+          "fragile-critical-skill-ownership",
+          `Critical ${policy.role || policy.ownershipClass || "skill"} skill has ${supportedOwners.length}/${policy.minOwners} supported independent owning agents; add a related owner or a documented single-owner exception.`,
+        ));
+      }
     }
   }
 
@@ -94,6 +243,8 @@ export function validateAgentSkillCoverage(rootDir = process.cwd()) {
     pass: issues.length === 0,
     checked: files.length,
     checkedSkills: availableSkills.size,
+    checkedSkillClasses,
+    skillOwnership,
     issues,
   };
 }
@@ -104,6 +255,7 @@ export function formatAgentSkillCoverageReport(report = {}) {
     `PASS: ${report.pass === true}`,
     `CHECKED: ${report.checked || 0}`,
     `CHECKED_SKILLS: ${report.checkedSkills || 0}`,
+    `SKILL_CLASSES: ${formatSkillClassCounts(report.checkedSkillClasses)}`,
     `ISSUES: ${report.issues?.length || 0}`,
   ];
   for (const item of report.issues || []) {
@@ -120,6 +272,74 @@ function readAvailableSkillIds(rootDir) {
       .filter((entry) => entry.isDirectory())
       .map((entry) => `supervibe:${entry.name}`),
   );
+}
+
+function loadSkillInventory(rootDir) {
+  const inventoryPath = join(rootDir, ...INVENTORY_PATH);
+  const byName = new Map();
+  if (!existsSync(inventoryPath)) return { exists: false, byName };
+  try {
+    const inventory = JSON.parse(readFileSync(inventoryPath, "utf8"));
+    for (const entry of inventory.skills || []) {
+      if (entry?.name) byName.set(String(entry.name), entry);
+    }
+    return { exists: true, byName };
+  } catch {
+    return { exists: true, byName };
+  }
+}
+
+function classifySkillOwnership(skill, inventoryEntry) {
+  if (FOUNDATIONAL_SKILLS.has(skill)) return "foundational";
+  if (EXPERIMENTAL_SKILLS.has(skill)) return "experimental";
+  if (COMMAND_ONLY_SKILLS.has(skill)) return "command-only";
+  if (SUPPORT_SKILLS.has(skill)) return "support";
+  const inventoryClass = inventoryEntry?.class ? INVENTORY_CLASS_TO_OWNERSHIP_CLASS[inventoryEntry.class] : null;
+  if (inventoryClass && OWNERSHIP_CLASSES.has(inventoryClass)) return inventoryClass;
+  return "specialist";
+}
+
+function isSupportedCriticalOwner(owner, policy = {}) {
+  const patterns = policy.allowedOwnerPatterns || [];
+  if (patterns.length === 0) return true;
+  return patterns.some((pattern) => pattern.test(owner));
+}
+
+function hasDocumentedSingleOwnerException(policy = {}, owners = []) {
+  const exception = normalizeSingleOwnerException(policy, owners);
+  return exception?.valid === true;
+}
+
+function normalizeSingleOwnerException(policy = {}, owners = []) {
+  const exception = policy.singleOwnerException;
+  if (!exception || owners.length !== 1) return null;
+  const owner = owners[0]?.file;
+  const rationale = String(exception.rationale || "").trim();
+  return {
+    owner,
+    rationale,
+    valid: exception.owner === owner && rationale.split(/\s+/).filter(Boolean).length >= 6,
+  };
+}
+
+function emptySkillClassCounts() {
+  return {
+    foundational: 0,
+    specialist: 0,
+    "command-only": 0,
+    support: 0,
+    experimental: 0,
+  };
+}
+
+function formatSkillClassCounts(counts = {}) {
+  return [...OWNERSHIP_CLASSES]
+    .map((classification) => `${classification}=${counts[classification] || 0}`)
+    .join(" ");
+}
+
+function skillIdName(skill) {
+  return String(skill).replace(/^supervibe:/, "");
 }
 
 function extractSkillsSection(body) {

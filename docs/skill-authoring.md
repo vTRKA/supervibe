@@ -35,7 +35,7 @@ last-verified: 2026-04-27
 
 ### `# <Skill Name>`
 
-### `## When to invoke`
+### `## When to Use`
 Concrete trigger conditions. NOT vague "when needed" — specific user phrases or system events.
 
 ### `## Step 0 — Read source of truth (MANDATORY)`

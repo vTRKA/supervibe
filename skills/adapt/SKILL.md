@@ -1,10 +1,7 @@
 ---
 name: adapt
 namespace: process
-description: >-
-  Use WHEN stack changed (new modules, renamed files, removed files, new major
-  dependencies) to sync agents/skills with new state. Triggers: 'sync проектные
-  агенты', 'подтяни upstream', 'обнови агентов под новый стек', 'adapt'.
+description: 'Use WHEN stack changed (new modules, renamed files, removed files, new major dependencies) to sync agents/skills with new state. Triggers: ''sync проектные агенты'', ''подтяни upstream'', ''обнови агентов под новый стек'', ''adapt''.'
 allowed-tools:
   - Read
   - Grep
@@ -23,7 +20,11 @@ last-verified: 2026-04-27T00:00:00.000Z
 
 # Adapt
 
-## When to invoke
+## Overview
+
+Adapt provides a reusable Supervibe operating method for Use WHEN stack changed (new modules, renamed files, removed files, new major dependencies) to sync agents/skills with new state. Triggers: 'sync проектные агенты', 'подтяни upstream', 'обнови агентов под новый стек', 'adapt'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
+## When to Use
 
 - New directory in `src/modules/` or `src/commands/`
 - New major dependency in package.json/composer.json/Cargo.toml

@@ -2,7 +2,10 @@
 // Session-start hook: emits system-reminders if artifacts are stale OR override-rate is high.
 // Output to stdout becomes a system-reminder visible to the main agent.
 
-import { resolveExplicitSupervibePluginRoot } from './lib/supervibe-plugin-root.mjs';
+import {
+  resolveExplicitSupervibePluginRoot,
+  resolveSupervibeProjectRoot,
+} from './lib/supervibe-plugin-root.mjs';
 import { readFile, readdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
@@ -11,7 +14,63 @@ import { migratePrototypeConfigs } from "./migrate-prototype-configs.mjs";
 import { getHostAdapterMatrix } from "./lib/supervibe-host-adapters.mjs";
 import { artifactRel, artifactRoot } from "./lib/supervibe-artifact-roots.mjs";
 
-const PROJECT_ROOT = process.cwd();
+export const SESSION_START_CONTEXT_POLICY = Object.freeze({
+  lifecycle: "session-start",
+  intent: "context-bootstrap",
+  acceptedReasons: Object.freeze(["startup", "clear", "compact"]),
+  requiredPluginRootEnv: "SUPERVIBE_PLUGIN_ROOT",
+  optionalProjectRootEnv: Object.freeze(["SUPERVIBE_PROJECT_ROOT", "SUPERVIBE_PROJECT_DIR"]),
+  failureMode: "non-fatal-diagnostic-or-noop",
+  compactContext: Object.freeze({
+    requiredForReasons: Object.freeze(["compact"]),
+    maxTaskTrackerChars: 6000,
+    disallowConversationHistory: true,
+    nextActionOnPressure: "fresh-context-handoff",
+  }),
+  receipts: Object.freeze({
+    issueAtSessionStart: false,
+    hookOutputIsWorkflowProof: false,
+  }),
+  cleanup: Object.freeze({
+    allowedScope: ".supervibe runtime state",
+    requireRuntimeApi: true,
+  }),
+});
+
+export function normalizeSessionStartReason(value = "startup") {
+  const normalized = String(value || "startup").trim().toLowerCase();
+  return SESSION_START_CONTEXT_POLICY.acceptedReasons.includes(normalized)
+    ? normalized
+    : "startup";
+}
+
+export function createSessionStartContextBootstrapPlan({
+  env = process.env,
+  reason = env.SUPERVIBE_SESSION_START_REASON || env.SUPERVIBE_CONTEXT_BOOTSTRAP_REASON || "startup",
+  hostId = env.SUPERVIBE_HOST || "unknown",
+} = {}) {
+  const normalizedReason = normalizeSessionStartReason(reason);
+  const compactContext = SESSION_START_CONTEXT_POLICY.compactContext.requiredForReasons.includes(normalizedReason) ||
+    env.SUPERVIBE_CONTEXT_BOOTSTRAP === "1";
+  return {
+    lifecycle: SESSION_START_CONTEXT_POLICY.lifecycle,
+    intent: SESSION_START_CONTEXT_POLICY.intent,
+    reason: normalizedReason,
+    hostId,
+    compactContext,
+    pluginRootEnv: SESSION_START_CONTEXT_POLICY.requiredPluginRootEnv,
+    pluginRootPresent: Boolean(env[SESSION_START_CONTEXT_POLICY.requiredPluginRootEnv]),
+    failureMode: SESSION_START_CONTEXT_POLICY.failureMode,
+    receiptPolicy: SESSION_START_CONTEXT_POLICY.receipts,
+    cleanupPolicy: SESSION_START_CONTEXT_POLICY.cleanup,
+  };
+}
+
+export function shouldRunSessionStartBootstrap({ env = process.env } = {}) {
+  return env.SUPERVIBE_SESSION_START_DISABLED !== "1";
+}
+
+const PROJECT_ROOT = resolveSupervibeProjectRoot();
 const STALE_DAYS = 30;
 const OVERRIDE_RATE_THRESHOLD = 0.05;
 
@@ -64,8 +123,19 @@ async function checkOverrideRate() {
   return { rate: overrides.length / recent.length, count: recent.length };
 }
 
+export function createMissingCodeIndexDiagnostic(projectRoot = PROJECT_ROOT) {
+  const dbPath = join(projectRoot, ".supervibe", "memory", "code.db");
+  return {
+    action: "missing",
+    dbPath,
+    error: "code RAG/graph index missing. Repair with node scripts/build-code-index.mjs --root . --force --health --no-embeddings",
+  };
+}
+
 // === Phase D: code RAG + graph index health ===
-async function ensureCodeIndexFresh(projectRoot) {
+export async function ensureCodeIndexFresh(projectRoot, {
+  allowBuild = process.env.SUPERVIBE_SESSION_START_ALLOW_INDEX_BUILD === "1",
+} = {}) {
   const { CodeStore } = await import("./lib/code-store.mjs");
 
   const dbPath = join(projectRoot, ".supervibe", "memory", "code.db");
@@ -73,6 +143,7 @@ async function ensureCodeIndexFresh(projectRoot) {
 
   let action = "skip";
   if (!indexExists) {
+    if (!allowBuild) return createMissingCodeIndexDiagnostic(projectRoot);
     action = "full";
   }
   // For incremental refresh we rely on the file watcher (memory:watch).
@@ -247,7 +318,13 @@ async function autoMigratePrototypeConfigs() {
   return null;
 }
 
-async function main() {
+export async function main({ env = process.env } = {}) {
+  if (!shouldRunSessionStartBootstrap({ env })) return;
+  const bootstrapPlan = createSessionStartContextBootstrapPlan({ env });
+  if (bootstrapPlan.compactContext) {
+    process.env.SUPERVIBE_CONTEXT_BOOTSTRAP = "1";
+  }
+
   const stale = await checkStaleArtifacts();
   const overrideStats = await checkOverrideRate();
   const migrationReminder = await autoMigratePrototypeConfigs();
@@ -379,7 +456,11 @@ async function main() {
   await reportUnderperformers();
 }
 
-main().catch((err) => {
+export function isSessionStartCheckEntrypoint(argv = process.argv) {
+  return String(argv[1] || "").replaceAll("\\", "/").endsWith("scripts/session-start-check.mjs");
+}
+
+if (isSessionStartCheckEntrypoint()) main().catch((err) => {
   console.error("session-start-check error:", err.message);
   process.exit(0);
 });

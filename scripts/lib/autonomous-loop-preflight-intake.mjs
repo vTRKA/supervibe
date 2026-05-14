@@ -13,6 +13,10 @@ import {
 } from "./autonomous-loop-tool-adapters.mjs";
 import { createPermissionAudit } from "./autonomous-loop-permission-audit.mjs";
 import { loadProviderCapabilities } from "./supervibe-provider-config-doctor.mjs";
+import {
+  defaultRuntimeCleanupRegistryPath,
+  summarizeHostManagedSubagentDebtSync,
+} from "./runtime-cleanup-registry.mjs";
 
 export function classifyPreflight({ request = "", tasks = [] } = {}) {
   const text = `${request} ${tasks.map((task) => `${task.goal} ${task.category}`).join(" ")}`.toLowerCase();
@@ -349,20 +353,36 @@ function resolveProviderLimitPolicy({ adapterId = "generic-shell-stub", options 
   const provider = findProviderLimitEntry(providerId, options);
   const limits = provider?.providerLimits || {};
   const providerMaxThreads = positiveInt(limits.defaultMaxThreads, null);
+  const rootDir = options.projectRoot || options.rootDir || process.cwd();
+  const cleanupDebt = providerId === "codex"
+    ? summarizeHostManagedSubagentDebtSync({
+        rootDir,
+        path: defaultRuntimeCleanupRegistryPath(rootDir),
+      })
+    : { count: 0, closeRequired: [] };
+  const providerThreadLimit = providerMaxThreads || requested || fallbackDefault;
+  const availableThreads = Math.max(0, providerThreadLimit - cleanupDebt.count);
   const effective = providerMaxThreads
-    ? Math.min(requested || providerMaxThreads, providerMaxThreads)
-    : requested || fallbackDefault;
+    ? Math.min(requested || providerMaxThreads, availableThreads)
+    : Math.min(requested || fallbackDefault, availableThreads);
   return {
     schemaVersion: 1,
     providerId: provider?.id || providerId,
     source: provider ? "provider-capabilities-manifest" : "preflight-default",
     maxThreadsKey: limits.maxThreadsKey || null,
     providerMaxThreads,
+    hostManagedCleanupRequired: cleanupDebt.count,
+    hostManagedCleanupIds: cleanupDebt.closeRequired.map((item) => item.hostInvocationId).filter(Boolean),
+    availableProviderThreads: availableThreads,
     requestedMaxConcurrentAgents: requested,
-    effectiveMaxConcurrentAgents: Math.max(1, effective),
+    effectiveMaxConcurrentAgents: Math.max(0, effective),
     defaultMaxConcurrentAgents: providerMaxThreads || fallbackDefault,
     capped: Boolean(providerMaxThreads && requested && requested > providerMaxThreads),
-    reason: providerMaxThreads
+    reason: cleanupDebt.count >= providerThreadLimit
+      ? `completed Codex subagent cleanup requires closing ${cleanupDebt.count} host-managed thread(s) before new spawns`
+      : cleanupDebt.count > 0
+        ? `provider threads reduced by ${cleanupDebt.count} completed Codex subagent(s) awaiting close/reset`
+        : providerMaxThreads
       ? requested && requested > providerMaxThreads
         ? `provider max threads ${providerMaxThreads} caps requested concurrency ${requested}`
         : `provider max threads ${providerMaxThreads} sets loop concurrency`

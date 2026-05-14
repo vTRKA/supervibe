@@ -1,10 +1,7 @@
 ---
 name: explore-alternatives
 namespace: process
-description: >-
-  Use BEFORE committing to any non-trivial decision (complexity ≥5) to enumerate
-  ≥2 alternatives with tradeoffs and explicit chosen-rationale. Triggers:
-  'варианты', 'decision matrix', 'alternatives', 'сравни подходы'.
+description: 'Use BEFORE committing to any non-trivial decision (complexity ≥5) to enumerate ≥2 alternatives with tradeoffs and explicit chosen-rationale. Triggers: ''варианты'', ''decision matrix'', ''alternatives'', ''сравни подходы''.'
 allowed-tools:
   - Read
   - Grep
@@ -23,7 +20,11 @@ last-verified: 2026-04-27T00:00:00.000Z
 
 # Explore Alternatives
 
-## When to invoke
+## Overview
+
+Explore Alternatives provides a reusable Supervibe operating method for Use BEFORE committing to any non-trivial decision (complexity ≥5) to enumerate ≥2 alternatives with tradeoffs and explicit chosen-rationale. Triggers: 'варианты', 'decision matrix', 'alternatives', 'сравни подходы'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
+## When to Use
 
 BEFORE committing to ANY decision with complexity ≥5 (per `supervibe:requirements-intake` complexity score). Specifically:
 - Library / framework choice

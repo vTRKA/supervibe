@@ -1,11 +1,7 @@
 ---
 name: mock-data-contract
 namespace: process
-description: >-
-  Use WHEN a prototype, frontend handoff, or backend integration needs
-  realistic mock data TO create schema-tied mock contracts and scenario
-  fixtures before frontend implementation. Triggers: 'mock data contract',
-  'prepare mocks', 'data-fed prototype', 'frontend before backend'.
+description: 'Use WHEN a prototype, frontend handoff, or backend integration needs realistic mock data TO create schema-tied mock contracts and scenario fixtures before frontend implementation. Triggers: ''mock data contract'', ''prepare mocks'', ''data-fed prototype'', ''frontend before backend''.'
 allowed-tools:
   - Read
   - Grep
@@ -25,9 +21,13 @@ last-verified: 2026-05-07T00:00:00.000Z
 
 # Mock Data Contract
 
+## Overview
+
+Mock Data Contract provides a reusable Supervibe operating method for Use WHEN a prototype, frontend handoff, or backend integration needs realistic mock data TO create schema-tied mock contracts and scenario fixtures before frontend implementation. Triggers: 'mock data contract', 'prepare mocks', 'data-fed prototype', 'frontend before backend'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
 Create a contract-backed mock data bundle for data-fed prototypes and frontend-before-backend work. The output makes mock data useful for design, frontend implementation, API design, and backend integration without pretending local JSON is the backend.
 
-## When to invoke
+## When to Use
 
 - The prototype interaction depth is `data-fed`.
 - A screen spec includes loading, empty, error, permission, validation, partial, pagination, or large-list data states.
@@ -36,6 +36,12 @@ Create a contract-backed mock data bundle for data-fed prototypes and frontend-b
 - A stack developer receives a prototype handoff and needs to know how mocks map to the eventual backend.
 
 Do not invoke for purely visual prototypes, static marketing pages with no API state, or production seed data.
+
+## When to invoke
+
+Invoke this skill before data-fed prototype fetch logic, before approved
+prototype handoff, and whenever mock data must become a durable contract instead
+of informal fixture JSON.
 
 ## Expert Operating Standard
 

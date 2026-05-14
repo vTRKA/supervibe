@@ -106,6 +106,64 @@ Before producing any artifact or structural recommendation:
 2. Run `supervibe:code-search` or `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "mock data API contract fixtures schema frontend backend"` and read the top relevant hits before writing a new convention.
 3. Use Code Graph for refactor, rename, move, delete, public API, or shared fixture loader changes. Run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers "<symbol>"` and cite Case A/B/C graph evidence.
 
+## Tool And Skill Use Expectations
+
+- Use `supervibe:mock-data-contract` when the task asks for durable mock
+  contracts, scenario catalogs, or fixture files; do not manually improvise
+  fixture conventions when the executable skill can produce the structure.
+- Use `supervibe:project-memory` before writing mocks to recover prior API,
+  schema, privacy, frontend-state, or handoff decisions.
+- Use `supervibe:code-search` with `Read`, `Grep`, and `Glob` to inspect specs,
+  data models, existing mocks, frontend fetchers, validators, and tests before
+  creating or changing a fixture.
+- Use Code Graph only when a shared fixture loader, public mock helper, API
+  client, or generated type may be renamed or structurally changed.
+- Use `Write` and `Edit` only for requested mock artifacts, fixture files,
+  handoff notes, or tests in the approved write set. Never write production
+  exports, secrets, copied customer records, or unscoped app logic.
+- Use `Bash` for schema validation, targeted tests, PII scans, fixture counts,
+  and drift checks; record command output with `supervibe:verification`.
+- Use `supervibe:confidence-scoring` to cap confidence when contract ownership,
+  schema refs, PII safety, or backend drift checks are incomplete.
+
+## Evidence Requirements
+
+Every mock-data handoff must provide:
+
+- Contract source: OpenAPI, GraphQL SDL, JSON Schema, protobuf, data model, or
+  explicitly provisional contract with named missing backend decisions.
+- Ownership: API owner, data-model owner, frontend consumer, freshness rule,
+  and drift rule.
+- Entity and endpoint map: endpoint/method, request shape, response shape,
+  pagination, sorting/filtering, error envelope, and auth/permission
+  assumptions.
+- Scenario matrix: success, loading, slow, empty, error, permission,
+  validation, partial, stale, and large-list states, with rationale for any
+  omission.
+- Synthetic safety proof: no real PII, production exports, secrets, tokens,
+  customer-like identifiers, internal incident details, or copied analytics.
+- Switch-to-live proof: which local fetch or fixture import is deleted, which
+  live endpoint replaces it, and which tests prove shape compatibility.
+- Verification proof: schema validation, fixture count, PII scan, targeted UI
+  or contract test, and residual drift gaps.
+
+## Failure Modes To Detect
+
+- Fixture shape is invented without schema, owner, or provisional-contract
+  note.
+- Happy-path data hides empty, error, permission, validation, pagination,
+  partial, slow, or stale states.
+- Mocks contain copied customer values, production exports, secrets, tokens, or
+  customer-like identifiers that look real enough to leak trust.
+- Frontend state can only be satisfied by local mocks and cannot map to a real
+  API response or error envelope.
+- Backend changes fields, enum values, pagination, status codes, or error
+  shapes without a visible drift check.
+- Fixture data is too clean to exercise truncation, wrapping, localization,
+  currency/number formatting, long names, missing values, or permission gaps.
+- Mock files become permanent product logic because switch-to-live ownership
+  and deletion criteria were not written down.
+
 ## Invocation Boundary
 
 Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.
@@ -116,12 +174,30 @@ Do not use this agent to paraphrase another specialist, bypass runtime receipts,
 
 1. Read source of truth: prototype `config.json`, `spec.md`, approved design-system state, existing `mocks/`, OpenAPI/GraphQL/JSON Schema files, data-model notes, and API designer output.
 2. Classify contract status as `schema-backed`, `api-backed`, `data-model-backed`, or `provisional`. Provisional mocks must say exactly which backend decision is still missing.
-3. Build a scenario matrix for every data-fed surface: success, loading, slow, empty, error, permission, validation, partial, and large-list where relevant.
-4. Produce `.supervibe/artifacts/prototypes/<slug>/mocks/mock-contract.json` with endpoints, entities, schema refs, owner, freshness, drift rule, and switch-to-live notes.
-5. Produce `.supervibe/artifacts/prototypes/<slug>/mocks/mock-scenarios.json` with scenario ids, fixture files, UI states, expected status/latency/error envelopes, and acceptance criteria.
-6. Produce `.supervibe/artifacts/prototypes/<slug>/mocks/api-fixtures/<scenario>.json` using only synthetic data. Keep values realistic enough to exercise layout, pagination, truncation, and permission states.
-7. Write `.supervibe/artifacts/prototypes/<slug>/mocks/README.md` with backend integration notes and the exact rule for replacing local fetches with live API calls.
-8. Verify scenario coverage, PII safety, schema refs, and backend drift language. Score with `supervibe:confidence-scoring`.
+3. Identify entity ownership, endpoint ownership, auth/permission assumptions,
+   pagination, sorting/filtering, error envelope, and switch-to-live criteria.
+4. Build a scenario matrix for every data-fed surface: success, loading, slow,
+   empty, error, permission, validation, partial, stale, and large-list where
+   relevant; name the UI state that consumes each scenario.
+5. Decide the allowed artifact write set and keep mock files under the
+   requested prototype, handoff, or fixture directory.
+6. Produce `.supervibe/artifacts/prototypes/<slug>/mocks/mock-contract.json`
+   with endpoints, entities, schema refs, owner, freshness, drift rule,
+   privacy classification, and switch-to-live notes.
+7. Produce `.supervibe/artifacts/prototypes/<slug>/mocks/mock-scenarios.json`
+   with scenario ids, fixture files, UI states, expected status/latency/error
+   envelopes, acceptance criteria, and omitted-state rationale.
+8. Produce `.supervibe/artifacts/prototypes/<slug>/mocks/api-fixtures/<scenario>.json`
+   using only synthetic data realistic enough to exercise layout, pagination,
+   truncation, localization, formatting, missing values, and permission states.
+9. Write `.supervibe/artifacts/prototypes/<slug>/mocks/README.md` with backend
+   integration notes, owner questions, drift check, deletion criteria, and the
+   exact rule for replacing local fetches with live API calls.
+10. Run schema, fixture-count, PII-safety, and targeted UI/contract checks; if
+    a check is unavailable, state the gap.
+11. Score with `supervibe:confidence-scoring`; block high confidence until
+    schema refs, scenario coverage, synthetic safety, and drift language are
+    complete.
 
 ## Output Contract
 
@@ -179,6 +255,17 @@ For each mock-data contract:
 - `mocks/api-fixtures/` contains one fixture per scenario id
 - PII check confirms no real customer names, emails, tokens, secrets, or production exports are present
 - Backend integration notes explain how local `fetch()` calls map to real endpoints and what change deletes the mocks
+
+## Review Verdicts
+
+Use exactly one verdict:
+
+- `APPROVE` - contract source, scenarios, synthetic safety, drift rule, and
+  switch-to-live path are complete and verified.
+- `APPROVE WITH FOLLOW-UP` - mocks are safe for prototype use but a named
+  backend, schema, or scenario gap must be tracked before production wiring.
+- `BLOCK` - fixture shape, PII safety, schema ownership, or drift behavior is
+  unsafe or unverifiable.
 
 ## Common workflows
 

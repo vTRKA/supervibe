@@ -113,35 +113,12 @@ test("command resolver treats no-slash update/adapt requests as command invocati
   }
 });
 
-test("command resolver maps short lifecycle aliases to canonical Supervibe workflows", () => {
-  const cases = [
-    ["/spec", "/supervibe-brainstorm"],
-    ["/plan", "/supervibe-plan"],
-    ["/build", "/supervibe-execute-plan"],
-    ["/test", "/supervibe-loop --validate-completion"],
-    ["/review", "/supervibe-loop --final-review-sweep"],
-    ["/ship", "/supervibe-loop --final-review-sweep --validate-completion"],
-  ];
-
-  for (const [request, expectedCommand] of cases) {
-    const match = resolveCommandRequest(request, {
-      pluginRoot: ROOT,
-      projectRoot: ROOT,
-    });
-
-    assert.equal(match.command, expectedCommand, request);
-    assert.equal(match.doNotSearchProject, true, request);
-    assert.equal(match.directRoute, true, request);
-  }
-});
-
-test("command resolver does not hijack normal review requests with lifecycle aliases", () => {
+test("command resolver does not hijack normal review requests with final sweep routing", () => {
   const match = resolveCommandRequest("review the architecture diff for hidden coupling", {
     pluginRoot: ROOT,
     projectRoot: ROOT,
   });
 
-  assert.notEqual(match?.id, "lifecycle-review");
   assert.notEqual(match?.command, "/supervibe-loop --final-review-sweep");
 });
 
@@ -1487,6 +1464,29 @@ test("command resolver preserves available project npm scripts instead of scanni
     assert.equal(match.projectScriptStatus, "present");
     assert.equal(match.command, "npm run dev");
     assert.equal(match.doNotSearchProject, true);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("command resolver routes npm run check policy questions to audit instead of executing the script", () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-command-project-"));
+  try {
+    writeFileSync(join(projectRoot, "package.json"), JSON.stringify({
+      scripts: {
+        check: "node --test",
+      },
+    }, null, 2), "utf8");
+
+    const match = resolveCommandRequest("audit whether npm run check should be reserved for release gate", {
+      pluginRoot: ROOT,
+      projectRoot,
+    });
+
+    assert.equal(match.command, "/supervibe-audit");
+    assert.equal(match.intent, "supervibe_audit");
+    assert.notEqual(match.id, "project-npm-script:check");
+    assert.equal(match.requestedCommand, undefined);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }

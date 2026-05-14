@@ -1018,6 +1018,8 @@ export function formatCommandAgentPlan(plan = {}) {
     `HOST_TOOL: ${plan.hostDispatch?.nativeTool || "unspecified"}`,
     `HOST_PROOF: ${plan.hostDispatch?.invocationProof || "unspecified"}`,
     `HOST_EVIDENCE: ${plan.hostDispatch?.evidencePath || "unspecified"}`,
+    `CODEX_COMPLETED_SUBAGENT_CLEANUP_REQUIRED: ${plan.hostManagedCleanupDebt?.count || 0}`,
+    `CODEX_CLOSE_COMPLETED_SUBAGENTS: ${(plan.hostManagedCleanupDebt?.closeRequired || []).map((item) => item.hostInvocationId).filter(Boolean).join(", ") || "none"}`,
     `QUALITY_IMPACT: ${plan.qualityImpact || "none"}`,
     `EMULATION_ALLOWED: false`,
   ];
@@ -1287,7 +1289,8 @@ function nextActionForPlan(plan = {}) {
 
 function shouldUseScopedReceiptTrust(workflowContext = {}) {
   return Boolean(
-    workflowContext.active === true
+    workflowContext.commandScopedReceiptGate === true
+    || workflowContext.active === true
     || workflowContext.handoffId
     || workflowContext.handoff
     || workflowContext.workflowRunId

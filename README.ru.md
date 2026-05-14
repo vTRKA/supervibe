@@ -6,7 +6,7 @@ Supervibe превращает Claude Code, Codex, Gemini, Cursor и OpenCode в
 
 Работает локально. Docker не нужен. Windows, macOS и Linux.
 
-**v2.1** - текущий плагин `v2.1.20` - MIT - 1710 тестов
+**v2.1** - текущий плагин `v2.1.31` - MIT - 2102 тестов
 
 > **Compliance notice:** Supervibe предназначен только для помощи в разработке. Используя его, вы отвечаете за соблюдение Terms of Service (ToS) и Acceptable Use Policy (AUP) всех сервисов, включая Anthropic. Неразрешенная автоматизация, злоупотребление OAuth-токенами или нарушение правил сторонних сервисов остаются ответственностью пользователя.
 
@@ -57,6 +57,55 @@ flowchart LR
 | Команды установки | В терминале вашей ОС | `irm ... | iex` |
 
 > **Важно:** Не вводите `/supervibe-adapt` в PowerShell, bash или zsh. Команды с `/` работают в AI CLI-чате.
+
+## Memory-safe запуск Node
+
+Для крупных локальных проверок, особенно на Windows, используйте npm-алиасы с
+ограничением памяти:
+
+```powershell
+npm run check:memory-safe
+npm run test:memory-safe
+npm run code:index:memory-safe
+```
+
+Общая обертка работает с любой командой:
+
+```powershell
+npm run node:memory-safe -- --max-old-space-size 6144 -- npm run check
+```
+
+Обертка добавляет только те `NODE_OPTIONS`, которые поддерживает текущий
+runtime Node.js через `process.allowedNodeEnvironmentFlags`. Неподдерживаемые
+флаги печатаются как skipped и не ломают запуск на версии Node.js пользователя.
+По умолчанию используются `--max-old-space-size=4096` и
+`--heapsnapshot-near-heap-limit=3`.
+
+## Очистка runtime-процессов
+
+Daemon-команды Supervibe регистрируют PID в `.supervibe/servers/` и в
+`.supervibe/memory/runtime-cleanup-registry.json`. Чтобы сначала посмотреть,
+какие старые локальные daemon-процессы будут затронуты:
+
+```powershell
+npm run supervibe:cleanup:unused:dry-run
+```
+
+Чтобы остановить неиспользуемые managed daemon-процессы старше стандартного
+порога в 60 минут:
+
+```powershell
+npm run supervibe:cleanup:unused
+```
+
+Порог можно настроить через низкоуровневую команду:
+
+```powershell
+node scripts/supervibe-runtime-cleanup.mjs --unused --older-than-minutes 15 --dry-run
+```
+
+На Windows cleanup останавливает дерево managed Node-процесса, чтобы дочерние
+процессы не оставались висеть после остановки родителя.
 
 ## Установка
 

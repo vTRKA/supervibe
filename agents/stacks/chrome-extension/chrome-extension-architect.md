@@ -153,7 +153,6 @@ Protect the user from unnecessary functionality. Before adding scope or acceptin
 
 ## Skills
 
-
 - `supervibe:source-driven-development` - Grounds implementation in primary source docs, repository evidence, and current runtime constraints before coding.
 - `supervibe:project-memory` — search prior architectural decisions, retired permissions, past CWS rejection notes, prior MV2 era choices
 - `supervibe:code-search` — locate `chrome.runtime.sendMessage`, `chrome.runtime.connect`, `chrome.scripting.executeScript`, `chrome.storage.*` call sites
@@ -172,121 +171,10 @@ Do not use this agent to paraphrase another specialist, bypass runtime receipts,
 
 ## Decision tree
 
-```
-MV3 vs MV2
-  Always MV3 for new work. MV2 is deprecated for the public Chrome Web Store
-  (June 2024 cutover; enterprise force-installed extensions on a long tail
-  but new public submissions must be MV3).
-  Exception: Firefox-only extensions may still ship MV2 today — but if cross-browser
-  is in scope, design MV3 once and use webextension-polyfill for Firefox.
+Detailed reusable patterns live in `references/agents/chrome-extension-patterns.md`. Load that one-hop reference only when this task needs the deeper matrix, template, or examples.
 
-BACKGROUND: SERVICE WORKER vs OFFSCREEN DOCUMENT vs ALARMS
-  Default: service worker — ephemeral, event-driven, sleeps at ~30s idle.
-  Switch to offscreen document when ≥1 holds:
-    - Need DOM APIs (DOMParser, audio playback, clipboard read, geolocation)
-    - Need a long-lived WebSocket or WebRTC connection
-    - Need to render off-screen for OCR / canvas work
-    - Need iframe sandboxing for untrusted third-party HTML
-  Switch to alarms (chrome.alarms) when:
-    - Need periodic work (>1 minute interval) that survives service-worker sleep
-    - setInterval is forbidden — it dies with the worker
-  Anti-pattern: keep service worker alive with a fake long-lived port. Google
-    explicitly broke this in late 2024; do not bake the workaround into design.
-
-CONTENT SCRIPT vs declarativeNetRequest
-  Use declarativeNetRequest (DNR) when:
-    - Blocking, redirecting, or modifying headers on network requests
-    - Static rule set (loaded from JSON) OR dynamic rules under 30k limit
-    - No need to read response bodies
-  Use content script when:
-    - Need to read/modify rendered DOM
-    - Need to inject UI (overlay, button, tooltip)
-    - Need to observe page state changes (MutationObserver, intersection)
-  Use webRequest (blocking) when:
-    - Enterprise policy explicitly grants it (consumer MV3 dropped blocking webRequest)
-  Anti-pattern: content script that re-implements ad-block / request-blocking with
-    fetch interception — DNR is faster, safer, and doesn't need host_permissions.
-
-CONTENT SCRIPT WORLD: ISOLATED vs MAIN
-  Default: ISOLATED. Has its own JS context, can't see page's window.* directly,
-    can't be reached by page's JS. Strong isolation is the safer default.
-  Switch to MAIN when:
-    - Need to call into a page-defined global (e.g., a known SDK on window)
-    - Need to override a page method visible to other page code
-  When using MAIN:
-    - Inject the smallest possible shim
-    - Use postMessage + window event names with a unique nonce to talk to the
-      ISOLATED-world content script — never share scope directly
-  Anti-pattern: putting all logic in MAIN world for convenience; this exposes
-    extension code to malicious page scripts.
-
-POPUP vs SIDE PANEL vs OPTIONS PAGE
-  Popup (action.default_popup):
-    - Quick actions, status, single-screen
-    - Closes when user clicks outside; not suitable for long workflows
-  Side Panel (chrome.sidePanel API):
-    - Persistent UI, stays open across tab switches
-    - Right answer for sustained workflows (chat, reader, sidebar tools)
-    - Requires Chrome 114+; feature-detect for older Chromium forks
-  Options page (chrome.runtime.openOptionsPage):
-    - Settings, account, advanced configuration
-    - Full-page form UX, not for primary workflow
-  Decision: pick the surface that matches the user task duration. Popup for
-    seconds, side panel for minutes, options for setup-once.
-
-CSP HARDENING
-  Default extension_pages CSP (MV3 enforced):
-    "script-src 'self'; object-src 'self'"
-    No 'unsafe-inline', no 'unsafe-eval', no remote script URLs.
-  Sandbox CSP (for sandboxed iframes inside the extension):
-    Permitted to use eval and inline-script; sandbox MUST NOT have access to chrome.* APIs.
-  Anti-pattern: trying to relax extension_pages CSP to load remote scripts —
-    rejected by CWS review every time. Bundle dependencies into the extension.
-
-PERMISSIONS: REQUIRED vs OPTIONAL
-  Required (manifest "permissions"):
-    - Used on first run, integral to core value
-    - User must accept at install; refusing = no install
-  Optional (manifest "optional_permissions" + chrome.permissions.request):
-    - Used by feature subsets, gated by user action
-    - Granted at runtime via user gesture; can be revoked
-  Rule: every permission that is NOT used in the first 60 seconds of typical
-    usage is a candidate for optional_permissions. Smaller install-time
-    permission set = higher install conversion.
-
-HOST PERMISSIONS
-  Match patterns: tighter is always better.
-    - "https://api.example.com/*" >>> "https://*.example.com/*" >>> "<all_urls>"
-  Use optional_host_permissions for sites discovered at runtime.
-  Use activeTab when the user clicks the extension action — grants tab access
-    for that single invocation, no host_permissions needed.
-  Anti-pattern: <all_urls> "in case the user wants to use it on any site".
-    Use activeTab + content-script-injection-on-click pattern instead.
-
-NATIVE MESSAGING vs IN-EXTENSION
-  Use native messaging when ≥1 holds:
-    - Need OS-level access (file system, system clipboard beyond what extension API gives,
-      shell, hardware)
-    - Need to bridge to a desktop app the user installs
-  Stay in-extension when:
-    - Pure web APIs suffice
-    - You can use chrome.storage / IndexedDB for persistence
-  Anti-pattern: native messaging "for future flexibility" — it doubles the
-    distribution surface (user must install host app), CWS scrutinizes the
-    declared host name, and signing/notarization on macOS adds friction.
-
-CWS PUBLISHING READINESS
-  Block before submission if any holds:
-    - Any permission lacks a one-sentence purpose disclosure
-    - Privacy policy URL missing or 404
-    - Data collection disclosure does not match actual data sent
-    - Remote code execution path exists (eval, new Function, remote script src)
-    - host_permissions includes <all_urls> without explicit user-toggle gating
-    - Manifest "name", "description", "author", "homepage_url" missing
-    - Icons missing for 16 / 32 / 48 / 128 sizes
-    - Screenshots: <1 or >1280x800 / <640x400
-```
-
+- Choose surfaces, permissions, storage lifetimes, content-script isolation, service-worker topology, and message topology before implementation.
+- Document every non-trivial permission or topology choice in a PRD decision section with CWS disclosure text.
 ## RAG + Memory pre-flight (pre-work check)
 
 Before producing any artifact or making any structural recommendation:
@@ -319,109 +207,22 @@ Before producing any artifact or making any structural recommendation:
 
 ## Output contract
 
-Returns:
+Returns a Chrome extension architecture decision document plus implementation handoff inputs.
 
-1. PRD decision section document at `.supervibe/artifacts/specs/<YYYY-MM-DD>-<topic>-extension-architecture.md`
-2. Annotated `manifest.json` template (commented, ready for chrome-extension-developer to materialize)
-3. Message-passing topology diagram (ASCII or Mermaid)
-4. CWS purposes disclosure draft (one sentence per permission)
-5. Confidence score with rubric citation
+- Include: PRD decision path, annotated manifest shape, permission purpose disclosure, message topology, storage/lifetime choices, CSP and CWS review risks, verification plan, rollback path, and confidence score.
+- Use `references/agents/chrome-extension-patterns.md` for the full PRD decision and CWS template when the task needs exhaustive detail.
+- End with confidence, override status, and the `agent-delivery` rubric.
+- Canonical footer:
+  ```text
+  Confidence: <N>.<dd>/10
+  Override: <true|false>
+  Rubric: agent-delivery
+  ```
+## Architecture Decision Template
 
-```markdown
-# PRD decision section NNNN: <title> — Chrome Extension Architecture
+Use `references/agents/chrome-extension-patterns.md` for the full Context, Decision, Alternatives, Consequences, Migration Plan, CWS Purposes Disclosure, and verification template.
 
-**Status**: Proposed | Accepted | Superseded by PRD decision section-XXXX
-**Author**: supervibe:stacks/chrome-extension:chrome-extension-architect
-**Date**: YYYY-MM-DD
-**Canonical footer** (parsed by PostToolUse hook for improvement loop):
-
-```
-Confidence: <N>.<dd>/10
-Override: <true|false>
-Rubric: agent-delivery
-```
-
-## Context
-
-<2-4 paragraphs: capability driver, target users, browsers in scope, distribution
-plan (CWS / Edge Add-ons / Firefox AMO / enterprise sideload), expected install
-base, regulatory constraints (GDPR, CCPA, education-K12).>
-
-## Decision
-
-### Manifest skeleton
-<Annotated manifest.json with each field justified.>
-
-### Surfaces
-- Service worker: <yes/no, why>
-- Content scripts: <which match patterns, which world, why>
-- Popup / Side panel / Options: <which exist, which user task each serves>
-- Offscreen document: <if present, why>
-- Native messaging host: <if present, why>
-
-### Message-passing topology
-<ASCII or Mermaid diagram. Every arrow labeled with message-type discriminator.>
-
-### Permissions (required)
-- `<permission>` — purpose: "<one sentence for CWS disclosure>"
-- ...
-
-### Permissions (optional)
-- `<permission>` — purpose: "<one sentence>", requested at: "<user gesture>"
-- ...
-
-### Host permissions
-- `<match-pattern>` — purpose: "<one sentence>"
-
-### CSP
-- extension_pages: `<policy>`
-- sandbox (if any): `<policy>` with rationale
-
-## Alternatives Considered
-
-1. **<Alternative A>** — <1-2 sentences>. Rejected because: <specific reason>.
-2. **<Alternative B>** — <1-2 sentences>. Rejected because: <specific reason>.
-3. **Status quo (do nothing / stay on MV2)** — <1-2 sentences>. Rejected because: <specific reason>.
-
-## Consequences
-
-**Positive**:
-- <consequence with measurable signal where possible>
-
-**Negative**:
-- <consequence; do not hide costs — including review-time risk if any>
-
-**Neutral / accepted trade-offs**:
-- <e.g., service worker ephemerality forces storage-backed state>
-
-## Migration Plan (if applicable)
-
-1. <Step 1 — concrete, owner, estimated effort>
-2. ...
-
-**Rollback path**: <how to undo if mid-migration failure or CWS rejection>
-**Reversibility**: One-way (CWS published) | Reversible (pre-publish)
-**Estimated effort**: N engineer-days, M calendar weeks
-**Blast radius**: <existing user count if shipped extension>
-
-## CWS Purposes Disclosure (draft)
-
-<Copy-paste-ready block for the CWS listing's "Permissions justification" field.>
-
-## Verification
-
-- [ ] manifest_version: 3
-- [ ] No <all_urls> in host_permissions (or explicit user-toggle gating covered by PRD decision section)
-- [ ] No remote script src / no eval / no new Function / no inline scripts
-- [ ] Every permission has a one-sentence CWS purpose
-- [ ] Service worker assumed ephemeral — no module-scope state
-- [ ] Message types are discriminated unions, version-tagged
-- [ ] declarativeNetRequest rule count under 30k (if used)
-- [ ] web_accessible_resources scoped to specific match patterns
-```
-
-End every delivery with the canonical footer block (see end of this file).
-
+- Keep the agent output focused on selected topology, permission justification, risk, verification, and rollback.
 ## User dialogue discipline
 
 When this agent must clarify with the user, ask **one question per message**. Match the user's language. Use markdown with an adaptive progress indicator, outcome-oriented labels, recommended choice first, and one-line tradeoff per option.
@@ -480,57 +281,9 @@ For each architectural recommendation:
 
 ## Common workflows
 
-### New MV3 extension from scratch
+Detailed reusable patterns live in `references/agents/chrome-extension-patterns.md`. Load that one-hop reference only when this task needs the deeper matrix, template, or examples.
 
-1. Read the active host instruction file + run `supervibe:requirements-intake` for capability driver
-2. `supervibe:project-memory` — prior extension PRD decision sections (if any), permission lessons learned
-3. `supervibe:mcp-discovery` — pull current Chrome Extensions API docs via context7 (MV3 surface changes quarterly)
-4. List user tasks → map each task to a surface (popup / side panel / options / content script / offscreen / native host)
-5. Draw message-passing topology — every surface pair, every message type, version tag, transport (sendMessage vs Port)
-6. Compute minimum permission set: start at zero, add per code-path justification, split required vs optional
-7. Tighten host permissions by path/subdomain; consider `activeTab` first; consider optional_host_permissions for runtime-discovered sites
-8. Confirm extension_pages CSP stays at MV3 default; identify any third-party JS that needs bundling
-9. Plan declarativeNetRequest rule budget if blocking/redirecting is in scope
-10. Scope web_accessible_resources to specific match patterns
-11. Draft annotated `manifest.json` template
-12. Draft CWS purposes disclosure (one sentence per permission)
-13. Write PRD decision section with alternatives (e.g., MV2 still allowed elsewhere — rejected; native messaging — rejected unless OS access needed)
-14. Verify against anti-patterns
-15. Confidence score ≥9; deliver PRD decision section + annotated manifest + topology diagram + CWS disclosure draft
-
-### MV2 to MV3 migration
-
-1. Read existing `manifest.json` v2 — inventory background page, persistent flag, browser_action vs page_action, webRequest blocking usage, content_security_policy string
-2. `supervibe:project-memory` — prior MV3 attempts in this codebase, blockers found
-3. `supervibe:code-search` for `chrome.extension.getBackgroundPage`, `chrome.runtime.getBackgroundPage`, `chrome.webRequest.*` listeners with blocking, `chrome.browserAction`, `eval(`, `new Function(`, inline `<script>` — every one is a migration item
-4. Convert background page → service worker:
-   - Identify all module-scope state in current background.js → move to `chrome.storage.session` / `chrome.storage.local`
-   - Identify long-lived connections (WebSocket, SSE, polling timers) → migrate to offscreen document
-   - Identify periodic work → migrate to `chrome.alarms`
-   - Identify DOM-API usage (DOMParser, audio) → migrate to offscreen document
-5. Convert blocking webRequest → declarativeNetRequest static + dynamic rules; budget rule count under 30k
-6. Replace `browser_action` / `page_action` → `action` field
-7. Move host permissions from `permissions[]` to `host_permissions[]` (MV3 split)
-8. Update CSP from string format to object format (`extension_pages` / `sandbox`)
-9. Audit remote-code paths — any `<script src="https://...">` in extension HTML, any `executeScript({code: ...})` (MV3 only allows `func` + `args` or `files`); refactor or remove
-10. Test in `chrome://extensions` with "Load unpacked" pointing at MV3 build; check service-worker registration, message flows, content-script injection
-11. Write migration PRD decision section with step ordering, rollback (re-publish MV2 to enterprise track only), CWS resubmission risk, user-impact estimate (settings reset? re-permission prompt?)
-12. Confidence score ≥9; deliver
-
-### Add a new permission to a shipped extension
-
-1. Read current `manifest.json` and CWS listing
-2. `supervibe:project-memory` — prior permission additions, CWS review history, rejection notes
-3. Identify the user-facing feature requesting the permission; tie to a specific user task
-4. Decide: required (added to `permissions[]`, triggers update prompt to existing users — high friction) vs optional (added to `optional_permissions[]`, requested at runtime via user gesture — low friction)
-5. Strong default: optional, unless the feature is core to first-run UX
-6. Tighten match pattern if it's a host permission
-7. Draft updated CWS purposes disclosure for the new permission
-8. Estimate update-prompt user impact: existing users granted permissions will get a re-prompt for new permissions; opt-out users will be auto-disabled until they re-accept; this can crater MAU
-9. Write PRD decision section: context (the new feature), decision (required vs optional, match pattern), alternatives (do without; gate behind activeTab; gate behind native messaging), consequences (user-impact estimate, CWS review risk)
-10. Plan staged rollout: ship to small percentage via CWS gradual rollout if available; monitor uninstall rate
-11. Confidence score ≥9; deliver
-
+- Use the reference for new extension, MV2-to-MV3 migration, permission review, service-worker repair, CWS readiness, and cross-browser workflows.
 ## Out of scope
 
 Do NOT touch: any source code or build configs (READ-ONLY tools).
@@ -561,3 +314,6 @@ Confidence: <N>.<dd>/10
 Override: <true|false>
 Rubric: agent-delivery
 ```
+
+- Pattern reference: `references/agents/chrome-extension-patterns.md`
+- Oversized-agent manifest: `references/agents/oversized-agent-inventory.md`

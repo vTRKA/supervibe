@@ -2,11 +2,9 @@
 name: landing-page
 namespace: process
 description: >-
-  Use WHEN building a marketing or product landing page as a native HTML/CSS/JS
-  prototype to scaffold with SEO meta, analytics hooks, copy review,
-  accessibility, and explicit approval lifecycle for stack-agnostic handoff.
-  Triggers: 'сделай лендинг', 'нужна landing страница', 'построй landing',
-  'дизайн посадочной'.
+  Use when building a marketing or product landing page as a native HTML/CSS/JS
+  prototype to deliver design-system grounding, SEO, analytics hooks,
+  accessibility, preview feedback, approval lifecycle, and handoff readiness.
 allowed-tools:
   - Read
   - Grep
@@ -20,282 +18,239 @@ prerequisites:
 emits-artifact: prototype
 confidence-rubric: confidence-rubrics/prototype.yaml
 gate-on-exit: true
-version: 2
-last-verified: 2026-04-28T00:00:00.000Z
+version: 2.1
+last-verified: 2026-05-14T00:00:00.000Z
 ---
 
 # Landing Page
 
-## Design Intelligence Preflight
+## Overview
 
-Before section order, CTA, style, typography, conversion, or visual treatment decisions, run project memory, code search, and internal `supervibe:design-intelligence` lookup for product, landing, style, color, typography, UX, and stack evidence.
+This skill builds a marketing or product landing page as a native HTML/CSS/JS
+prototype. It shares the prototype lifecycle but adds landing-specific SEO,
+analytics, conversion, performance, copy, and public-surface review discipline.
+
+Detailed file layouts, SEO snippets, analytics examples, landing structure
+patterns, capability-plan fields, review matrices, and handoff evidence live in
+[Loop Evidence Patterns](../../references/skills/loop-evidence-patterns.md#landing-page-evidence-patterns).
 
 ## Local Design Expert Reference
 
-Read `docs/references/design-expert-knowledge.md` before building. Start with Design Pass Triage from the `Eight-Pass Expert Routine` and classify each pass as `required | reuse | delegated | skipped | N/A`. For landing work inside an approved design system, reuse preference intake and visual-system decisions; run only the relevant local evidence, reference, IA/user-flow, responsive/platform, quality, and prototype/review/feedback passes. A candidate or needs_revision design system must resume approval review and cannot unlock landing prototype work. Do not force all eight passes for every landing prototype. Full eight-pass coverage is for new products, rebrands, missing systems, or material direction changes. If the landing needs a missing token, component, asset, or conversion interaction, ask one narrow design-system extension question instead of restarting the full system. External references are supplemental; use the internet only for current references or official platform evidence after local data has been checked.
+Read `docs/references/design-expert-knowledge.md` before design-facing output. Use `supervibe:design-intelligence`, `designContextPreflight()`, or `searchDesignIntelligence()` before external lookup. Start with Design Pass Triage from the `Eight-Pass Expert Routine` and classify evidence as `required | reuse | delegated | skipped | N/A`.
 
-Build a marketing landing page as a **native HTML / CSS / JS** prototype with SEO + analytics + accessibility baked in from the start. Sibling of `supervibe:prototype` — same lifecycle and discipline, but with extra concerns specific to public-facing marketing surfaces.
+Do not force all eight passes when an approved design system already covers the surface. If the design system is candidate or needs_revision, resume approval instead of treating it as production-ready. If a missing token, component, asset, or interaction is found, request a narrow design-system extension instead of a full restart.
 
-## When to invoke
+External references are supplemental; local project memory, approved tokens, accessibility, and code evidence win. Preview and feedback flows should run through the preview server with `--daemon` when a live review URL is required.
 
-User asks for a landing page. English examples include "build a landing" and "marketing page". The brief usually specifies the audience (B2B / B2C / dev-tool / consumer) and competitor reference.
+## When to Use
 
-NOT for:
-- In-product flows (login, dashboard, settings) — that's `supervibe:prototype`
-- Brand work without a target page — that's `supervibe:brandbook` first
+Use when the user asks for a landing page, marketing page, campaign page, product
+launch page, or conversion page and an approved design system exists.
 
-## Hard constraints (same as `supervibe:prototype`)
+Do not use for in-product flows, dashboards, settings, or brand work without a
+target page. Route those to prototype or brandbook workflows first.
 
-1. **Capability-aware page output.** Default to `native-static` or `enhanced-native` HTML/CSS/JS. Use `bundled-dependency`, `framework-sandbox`, or `handoff-only` only when a written `Prototype Capability Plan` proves the dependency or sandbox materially improves charts, 3D, advanced animation, maps, code editors, data visualization, or media fidelity. No unapproved CDN/runtime imports.
-2. **Design system is source of truth.** All visuals come through approved `.supervibe/artifacts/prototypes/_design-system/tokens.css`.
-3. **Two viewports default** — `375px` mobile + `1440px` desktop. Ask user before adding more.
-4. **One question at a time** in markdown with progress.
-5. **Explicit approval lifecycle**: draft → review → revisions → approved → handoff.
+## Design Intelligence Preflight
 
-Plus landing-specific:
-
-6. **SEO scaffolding from day one.** `<title>`, meta description, Open Graph, Twitter card, canonical, structured-data JSON-LD — all present from the first commit, not added later.
-7. **Analytics hooks defined.** Even if the analytics provider isn't wired yet, every CTA + form submit + scroll-depth milestone must have a `data-analytics-event` attribute the future stack can hook into.
-8. **Lighthouse-ready.** Performance budget: LCP < 2.5s on slow 4G mobile. Image strategy AVIF/WebP with explicit width/height. No layout shifts (`aspect-ratio`).
-9. **Existing artifact mode is explicit.** Same as `supervibe:prototype`: if old `.supervibe/artifacts/prototypes/`, `.supervibe/artifacts/mockups/`, or `.supervibe/artifacts/presentations/` artifacts exist and the brief is ambiguous, ask continue existing vs new from scratch vs alternative before opening old files.
-10. **Preview feedback button is mandatory.** Same as `supervibe:prototype`: the served preview must show the `Feedback` button and must not use `--no-feedback`. The browser feedback overlay is supplemental and not an approval gate; it captures region comments, while the post-delivery approve/revise/alternative/stop prompt remains the lifecycle gate.
-11. **Landing WOW effects are planned.** Motion, 3D, Lottie/Rive, Canvas/WebGL, charts, maps, generated imagery, or heavy media require `.supervibe/artifacts/prototypes/<slug>/decisions/prototype-capability-plan.md` with library/API, reason, rejected native alternative, artifact scope, license/security, bundle/performance, accessibility, reduced-motion, and verification evidence.
+Before section order, CTA, style, typography, conversion, or visual treatment
+decisions, check project memory, code search, and internal
+`supervibe:design-intelligence` evidence for product, landing, style, color,
+typography, UX, and stack history. For regulated-trust briefs, gather domain
+evidence before creative defaults.
 
 ## Expert Operating Standard
 
-Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+Follow `docs/references/skill-expert-operating-standard.md`: start from source
+of truth, preserve retrieval evidence, apply scope safety, use real producers
+with runtime receipts for durable delegated outputs, verify before completion
+claims, and keep confidence below gate when evidence is partial.
 
-## Step 0 — Read source of truth (required)
+## Step 0 - Read source of truth
 
-1. **Design system check** — same as `supervibe:prototype`. Required: `.supervibe/artifacts/prototypes/_design-system/design-flow-state.json` with `design_system.status = "approved"` and all required sections approved, plus `{tokens.css, components/, voice.md}`. STOP if missing, candidate, needs_revision, or incomplete.
-2. **Brand direction check** — `.supervibe/artifacts/brandbook/direction.md` (mood-board, palette intent, tone). Reference but don't reinvent.
-3. **Artifact mode check** — run `node "<resolved-supervibe-plugin-root>/scripts/lib/design-artifact-intake.mjs" --json --brief "<brief>"`. If `needsQuestion: true`, ask whether to continue an existing artifact, create a new landing from scratch, or create an alternative. Do not open old landing prototype files as source until the user chooses.
-4. **Memory check** — `supervibe:project-memory --query "landing"` for prior landing decisions, A/B test results, conversion data.
-5. **Competitive/reference page** — if brief named a competitor or external page, invoke `supervibe:mcp-discovery` for `web-crawl`. Use Firecrawl to scrape the reference when available. Extract: hero structure, section count, navigation, CTA placement, proof blocks, content hierarchy, state/capability inventory, and explicit avoid-list. If the user says to follow the same structure, treat it as IA borrow only: keep section order and hierarchy evidence, but do not copy visual style, palette, typography, imagery, motion, or copy voice unless visual inspiration was explicitly approved. Do NOT clone — extract patterns, then apply through OUR design system.
+1. Confirm `.supervibe/artifacts/prototypes/_design-system/design-flow-state.json`
+   has `design_system.status = "approved"` and required sections approved; STOP
+   for candidate, missing, needs-revision, or incomplete systems.
+2. Read `_design-system/tokens.css`, `components/`, and `voice.md`.
+3. Read `.supervibe/artifacts/brandbook/direction.md` for palette intent, mood,
+   and tone without reinventing it.
+4. Run design artifact intake for the brief. If old artifacts exist and the brief
+   is ambiguous, ask continue existing, new from scratch, or alternative before
+   opening old prototype files.
+5. Check project memory for prior landing, conversion, A/B, copy, and design
+   decisions.
+6. If the brief names competitor or reference URLs, use approved web-crawl
+   tooling when available, extract IA and evidence, and avoid copying visual
+   style, copy, palette, typography, imagery, or motion unless explicitly
+   approved as inspiration.
 
-## Decision tree — landing structure
+## Prototype Capability Policy
+
+Landing pages are capability-aware artifacts. Use `native-static` or `enhanced-native` for normal HTML/CSS/JS output. Escalate to `bundled-dependency`, `framework-sandbox`, or `handoff-only` only with a written Prototype Capability Plan that names scope, security, performance, accessibility, reduced-motion fallback, and verification.
+
+## Decision tree
 
 ```
-What landing kind is this?
-├─ Hero → features → social proof → CTA
-│   → Classic SaaS landing (default)
-├─ Hero → demo video → feature deep-dive → pricing → CTA
-│   → Product-focused (typical when product is visual)
-├─ Hero → problem → solution → testimonials → FAQ → CTA
-│   → Conversion-optimized (lead gen, signup-driven)
-├─ Storytelling scroll → reveal-on-scroll narrative
-│   → Editorial (brand-heavy, high motion)
-└─ Single big CTA, ≤2 sections
-    → Squeeze page (campaign, paid traffic landing)
+Approved design system is missing
+  -> STOP and resume design-system approval.
 
-ASK: "What structure is needed?" - multiple choice in markdown
+Existing artifact mode is ambiguous
+  -> ask one artifact-mode question before reading old files.
+
+Landing needs heavy media, charts, 3D, maps, editors, or runtime dependency
+  -> write a Prototype Capability Plan before implementation.
+
+Landing structure is unspecified
+  -> ask one structure question, then record the choice in config.
+
+Draft is delivered
+  -> show feedback prompt and wait for approve/revise/alternative/review/stop.
 ```
+
+## Hard constraints
+
+- Default output is native static or enhanced native HTML/CSS/JS. Dependencies
+  require a written Prototype Capability Plan with scope, security, performance,
+  accessibility, reduced-motion, and verification evidence.
+- All visuals come through approved design-system tokens and components.
+- Default viewports are 375px mobile and 1440px desktop; ask before adding more.
+- Ask one question at a time with progress.
+- Draft to review to revision to approval to handoff is explicit; do not skip
+  lifecycle gates.
+- SEO scaffolding, analytics hooks, image dimensions, reduced motion, preview
+  feedback button, and Lighthouse budgets are required from the start.
 
 ## Procedure
 
-### Stage 1 — Setup + viewport question
+1. Pick slug `.supervibe/artifacts/prototypes/landing-<topic>/`.
+2. Ask one viewport question, then one landing-structure question, then one tone
+   question, then one competitor/reference question. Save answers to `config.json`.
+3. Classify prototype mode. If dependency or production-only effect is needed,
+   write `decisions/prototype-capability-plan.md` before file creation.
+4. Create the landing file layout with `index.html`, token-backed styles,
+   analytics stub, assets, copy, SEO metadata, and review outputs.
+5. Build semantic HTML with title, description, canonical, Open Graph, Twitter
+   card, structured data, analytics attributes on CTAs/forms/scroll milestones,
+   explicit image sizes, LCP priority for hero media, and reduced-motion
+   fallbacks.
+6. Run live preview only after design-flow state allows prototype work. Serve
+   with mandatory feedback overlay and verify the visible Feedback button before
+   presenting the URL.
+7. After URL delivery, show one feedback prompt with choices:
+   approve, revise, alternative, run reviews, or stop. Wait for explicit choice.
+8. If approved, write `.approval.json`, update `config.json`, and stop. Handoff
+   is performed by the owning design workflow or `prototype-handoff`.
 
-1. Pick slug: `.supervibe/artifacts/prototypes/landing-<topic>/`.
-2. **Single question on viewports** (markdown formatted):
-   ```markdown
-   **Step N/M: Viewports.**
-   Default - 375px mobile and 1440px desktop. What viewport set should be used?
-   - Use defaults
-   - ➕ + 768px (tablet)
-   - ➕ + 1920px (wide)
-   - Custom
-   ```
-3. **Single question on landing structure** (after viewports answered).
-4. **Single question on tone** using localized, non-bilingual options such as businesslike, warm, provocative, brutalist, or minimalist.
-5. **Single question on competitor references** (zero, one, or up-to-three URLs).
+## Feedback prompt
 
-Each question waits for explicit answer. Save all to `.supervibe/artifacts/prototypes/landing-<topic>/config.json`.
+After presenting the landing preview URL, show exactly one lifecycle prompt and
+wait:
 
-### Stage 1a — Prototype Capability Plan
+- ✅ Approve - write approval metadata and stop before implementation handoff.
+- ✎ Revise - collect one focused landing-page change request.
+- 🔀 Alternative - create a meaningfully different section/order/visual variant.
+- 📊 Run reviews - dispatch conversion, accessibility, SEO, and visual checks.
+- 🛑 Stop - archive current draft state without approval.
 
-Classify the landing prototype mode before file creation: `native-static`, `enhanced-native`, `bundled-dependency`, `framework-sandbox`, or `handoff-only`. If the page needs a dependency or production-only effect, copy `templates/design-decisions/prototype-capability-plan.md.tpl` to `.supervibe/artifacts/prototypes/landing-<topic>/decisions/prototype-capability-plan.md` and fill purpose, library/API, artifact scope, license/security, bundle/performance, accessibility fallback, reduced-motion fallback, and verification commands.
+## Required anti-patterns
 
-### Stage 2 — File layout
-
-```
-.supervibe/artifacts/prototypes/landing-<topic>/
-├── config.json                  { "viewports": [375, 1440], "structure": "saas-classic", "tone": "warm", ... }
-├── index.html                   landing entry — has full SEO + OG + JSON-LD + analytics scaffolding
-├── styles/
-│   ├── reset.css
-│   ├── system.css               imports ../../_design-system/tokens.css
-│   └── landing.css              section composition (no token literals)
-├── scripts/
-│   └── analytics-stub.js        empty hooks ready to wire to GA/Plausible/Posthog
-├── assets/
-│   └── images/                  AVIF/WebP only, with .webp fallback
-├── content/
-│   └── copy.md                  raw text content (so copywriter agent can review separately)
-├── seo/
-│   ├── og-image.png             1200x630 social card
-│   └── meta.json                site title, description, canonical, structured-data
-└── _reviews/                    ui-polish + a11y + seo audit reports
-```
-
-### Stage 3 — Build
-
-1. Read design system tokens, write semantic HTML5 (`<header>`, `<main>`, `<section>`, `<article>`, `<footer>`).
-2. SEO scaffolding in `<head>`:
-   ```html
-   <title>{{tone-appropriate title, ≤60 chars}}</title>
-   <meta name="description" content="{{≤160 chars, single sentence value prop}}">
-   <link rel="canonical" href="{{TBD}}">
-   <meta property="og:title" content="...">
-   <meta property="og:description" content="...">
-   <meta property="og:image" content="seo/og-image.png">
-   <meta property="og:type" content="website">
-   <meta name="twitter:card" content="summary_large_image">
-   <script type="application/ld+json">{ "@context": "https://schema.org", ... }</script>
-   ```
-3. Analytics hooks on every CTA + form + scroll milestone:
-   ```html
-   <a href="#signup" data-analytics-event="hero-cta-click" data-analytics-section="hero">Get started</a>
-   ```
-4. Image discipline: explicit width/height, `loading="lazy"` below the fold, `loading="eager" fetchpriority="high"` on LCP image, `aspect-ratio` on parent to avoid CLS.
-5. Animations from `.supervibe/artifacts/prototypes/_design-system/motion.css` only. Reduced-motion respected.
-
-### Stage 4 — Live preview
-
-Same as `supervibe:prototype` — only after design-flow state allows `prototype.requested`, run `supervibe:preview-server --root .supervibe/artifacts/prototypes/landing-<topic>/ --daemon` with mandatory feedback overlay and no attached console. Verify `#supervibe-fb-toggle` / visible `Feedback` button before presenting the URL.
-
-### Stage 5 — Feedback loop (required)
-
-After URL delivered:
-
-```markdown
-**Landing page ready:** http://localhost:3047
-**Viewports:** 375 / 1440
-**Structure:** {{chosen}}
-**SEO + analytics hooks:** wired
-**State:** draft
-
-What should happen next?
-
-- **Approve** - write `approved`, copy to `.supervibe/artifacts/prototypes/landing-<topic>/handoff/`
-- **Revise** - describe one change; apply one iteration
-- **Alternative** - propose two other structures/tones
-- **Run reviews** - accessibility-reviewer + ui-polish-reviewer + seo-specialist in parallel
-- **Stop** - keep as draft
-```
-
-Wait for explicit choice. Do NOT proceed without explicit choice.
-
-### Stage 6 — Approval marker
-
-When the user explicitly approves:
-
-1. Write `.supervibe/artifacts/prototypes/landing-<topic>/.approval.json`:
-   ```json
-   {
-     "status": "approved",
-     "approvedAt": "<ISO>",
-     "approvedBy": "<user>",
-     "viewports": [375, 1440],
-     "structure": "saas-classic",
-     "tone": "warm",
-     "designSystemVersion": "<sha>",
-     "previewUrl": "http://localhost:3047",
-     "lighthouseTarget": { "lcp": "2.5s", "cls": "0.1", "tbt": "200ms" },
-     "approvalScope": "full"
-   }
-   ```
-2. Update `config.json`: `"approval": "approved"`.
-3. Stop here — handoff to ready-for-development handled by `/supervibe-design` Stage 7.
+- `asking-multiple-questions-at-once` - bundling structure, copy, visual, and
+  approval decisions into one prompt.
+- `advancing-without-feedback-prompt` - moving from preview into approval or
+  handoff without the explicit lifecycle choice above.
+- `random-regen-instead-of-tradeoff-alternatives` - generating another landing
+  direction without named conversion, hierarchy, copy, or visual tradeoffs.
+- `unapproved-dependency-coupling` - adding analytics runtimes, animation
+  libraries, forms, maps, charts, or media dependencies before a capability plan.
+- `silent-viewport-expansion` - adding unapproved breakpoints or device targets.
+- `silent-existing-artifact-reuse` - reusing an old landing artifact without the
+  artifact-mode question.
+- `missing-preview-feedback-button` - presenting a preview URL without a visible
+  feedback overlay and lifecycle prompt.
 
 ## When not to use
 
-- Do not use this skill to bypass the command or workflow that owns durable artifacts.
-- Do not use it when source evidence, RAG/CodeGraph, or required verification is missing.
-- Do not use it to replace a specialist producer, worker, or reviewer that must issue runtime evidence.
+- Do not bypass the command or workflow that owns durable prototype artifacts.
+- Do not build from a candidate, missing, or needs-revision design system.
+- Do not replace copy, SEO, accessibility, or polish reviewers with controller
+  summaries when reviewer evidence is required.
 
 ## Common rationalizations
 
-- "This is small, so no source check is needed" - reject when the skill changes code, config, or durable artifacts.
-- "The user asked for speed, so skip receipts" - reject when durable work, delegation, or review is claimed.
-- "Existing prose is enough evidence" - reject when validators or command output are required.
+- "SEO can be added after design" - reject; metadata and structured data are
+  part of the first landing scaffold.
+- "The visual reference should be cloned because the user likes it" - reject;
+  extract IA and apply the approved design system unless copying was explicitly
+  authorized and legally safe.
+- "The feedback overlay is optional for a draft" - reject; preview feedback is a
+  lifecycle gate for landing prototypes.
+
+## User Approval Gate
+
+Preview feedback button is mandatory: verify `#supervibe-fb-toggle` is visible before presenting the URL. The browser feedback overlay is supplemental and cannot approve the artifact. Do not use `--no-feedback` for approval flows. Wait for explicit choice from the chat-level feedback prompt. Do NOT proceed without explicit choice.
 
 ## Red flags
 
-- A durable artifact changes without a command, receipt, or verification path.
-- The skill is used outside its phase without an explicit handoff.
-- Claims of completion appear before evidence and confidence scoring.
+- Landing work starts before approved design-system state is confirmed.
+- CTA or form elements lack `data-analytics-event`.
+- Images lack width/height or a stable aspect ratio.
+- External runtime dependencies appear without a Prototype Capability Plan.
+- A preview URL is shown without a visible Feedback button and lifecycle prompt.
 
 ## Checklist
 
-- Source of truth read.
-- Scope and owner confirmed.
-- RAG/CodeGraph/memory requirement decided.
-- Evidence artifact or command recorded.
-- Stop condition and next handoff clear.
+- Approved design system, brand direction, artifact mode, memory, and references
+  checked.
+- Viewports, structure, tone, and references recorded in `config.json`.
+- SEO, analytics, accessibility, performance, image, and reduced-motion evidence
+  included.
+- Preview feedback overlay verified.
+- Approval marker written only after explicit approval.
 
 ## Failure modes
 
-- Inline emulation replaces a required producer or reviewer.
-- Broad use of the skill slows delivery without improving evidence.
-- Missing verification lets stale assumptions pass as production-ready.
+- Old artifact reuse silently overrides the user's current brief.
+- Marketing polish bypasses approved tokens and creates one-off visuals.
+- Placeholder copy ships past Stage 1 without copywriter/user source.
+- The prototype is approved without review evidence for public-surface risks.
 
 ## Output contract
 
-```
-=== Landing Page ===
-Slug:           landing-<topic>
-Location:       .supervibe/artifacts/prototypes/landing-<topic>/
-Viewports:      [375, 1440]
-Structure:      <saas-classic | product | conversion | editorial | squeeze>
-SEO scaffolding: ✓ title + description + OG + Twitter + JSON-LD + canonical
-Analytics hooks: <count> data-analytics-event attributes wired
-Lighthouse target: LCP <2.5s, CLS <0.1, TBT <200ms (mobile slow-4G)
-Preview URL:    http://localhost:NNNN
-Approval:       <draft | approved>     ← .supervibe/artifacts/prototypes/<slug>/.approval.json
+Fields: `Slug`, `Location`, `Viewports`, `Structure`, `SEO scaffolding`,
+`Analytics hooks`, `Lighthouse target`, `Preview URL`, `Approval`,
+`Confidence`, `Override`, and `Rubric`.
 
-Confidence: <N>.<dd>/10
-Override:   <true|false>
-Rubric:     prototype
-```
+`Approval` is `draft` until `.approval.json` with `status: "approved"` exists.
 
 ## Guard rails
 
-Same as `supervibe:prototype`, plus:
-- DO NOT skip SEO meta tags. Even on a draft, scaffolding must be present.
-- DO NOT inline analytics provider code. Just `data-analytics-event` attributes; provider wiring is downstream's job.
-- DO NOT use placeholder Lorem Ipsum past Stage 1. Actual copy from copywriter (or user-provided) must be in by Stage 3.
-- DO NOT exceed Lighthouse mobile budgets without justification PRD decision section.
-- DO NOT reuse or edit an old landing artifact without the artifact-mode question when the brief is ambiguous.
-- DO NOT disable preview feedback overlay for landing previews.
-- DO NOT build or preview from a candidate or needs_revision design system.
+- Do not skip SEO meta tags or structured data.
+- Do not inline analytics provider code; use `data-analytics-event` hooks.
+- Do not use placeholder copy past Stage 1.
+- Do not exceed Lighthouse mobile budgets without a documented product tradeoff.
+- Do not reuse old landing artifacts before the artifact-mode question.
+- Do not disable preview feedback overlay.
 
 ## Verification
 
-- `grep -E 'meta name="description"|og:title|og:image|application/ld\+json' .supervibe/artifacts/prototypes/landing-*/index.html` → all present
-- `grep -rE 'data-analytics-event=' .supervibe/artifacts/prototypes/landing-*/` → ≥3 hits (hero CTA, primary CTA, footer CTA at minimum)
-- All `<img>` have `width=` AND `height=` (no CLS)
-- Reduced-motion respected (no entrance animation longer than 100ms when `prefers-reduced-motion: reduce`)
-- Lighthouse mobile-slow-4G: LCP <2.5s, CLS <0.1
-- `find . -name '*.html' -path '*/.supervibe/artifacts/prototypes/landing-*'` opens cleanly in browser without console errors
+- SEO grep finds description, Open Graph image/title, canonical, Twitter card,
+  and `application/ld+json` in `index.html`.
+- Analytics grep finds at least hero CTA, primary CTA, and footer CTA events.
+- All images have width, height, and stable aspect ratio.
+- Reduced motion is respected.
+- Lighthouse mobile-slow-4G target: LCP under 2.5s, CLS under 0.1, TBT under
+  200ms, or a documented blocker/tradeoff exists.
+- Browser preview opens without console errors and visible Feedback button exists.
 
-## Anti-patterns (skill-level — fail conditions)
+## Supporting references
 
-- `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
-- `advancing-without-feedback-prompt` — concluding delivery without printing the 5-choice feedback block (✅ / ✎ / 🔀 / 📊 / 🛑) and waiting for explicit user choice.
-- `unapproved-dependency-coupling` — emitting `import from`, `require()`, `<script src="...cdn...">`, `<script src="...unpkg...">`, or any `node_modules/` reference without a `Prototype Capability Plan`, local bundle strategy, and reviewer-approved scope.
-- `silent-viewport-expansion` — adding viewport widths beyond what `.supervibe/artifacts/prototypes/<slug>/config.json` declares without re-asking the user.
-- `silent-existing-artifact-reuse` — reading or modifying a prior design artifact before the user chose continue existing vs new from scratch.
-- `missing-preview-feedback-button` — presenting a preview URL without the visible `Feedback` overlay button.
-- `random-regen-instead-of-tradeoff-alternatives` — when user dislikes a direction, re-rolling without producing 2-3 documented alternatives via `templates/alternatives/tradeoff.md.tpl`.
+- [Landing page evidence patterns](../../references/skills/loop-evidence-patterns.md#landing-page-evidence-patterns)
+  - landing structures, file layout, SEO/analytics snippets, review and approval
+  matrices.
 
 ## Related
 
-- `supervibe:prototype` — sibling for in-product flows (no SEO/analytics concerns)
-- `supervibe:brandbook` — produces the design system both consume
-- `supervibe:preview-server` — auto-spawns the live URL
-- `supervibe:tokens-export` — when approved, exports tokens to whichever framework downstream picks
-- `agents/_design/copywriter` — invoked at Stage 3 if user-provided copy is incomplete
-- `agents/_design/prototype-builder` — implements the HTML/CSS/JS
-- `agents/_design/ui-polish-reviewer` + `accessibility-reviewer` — Stage 5 reviews
-- `agents/_product/seo-specialist` — Stage 5 SEO audit
-- `commands/supervibe-design.md` — full orchestrator
+- `supervibe:prototype` - sibling for in-product flows.
+- `supervibe:brandbook` - design-system source.
+- `supervibe:preview-server` - live URL and feedback overlay.
+- `supervibe:tokens-export` - downstream token conversion.
+- `supervibe:prototype-handoff` - approved prototype packaging.

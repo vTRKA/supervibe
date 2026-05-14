@@ -6,12 +6,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node --input-type=module -e \"import{pathToFileURL}from'node:url';import{join}from'node:path';const r=process.env.SUPERVIBE_PLUGIN_ROOT||process.env['CLAUDE'+'_PLUGIN_ROOT'];if(!r)process.exit(0);await import(pathToFileURL(join(r,process.argv[1])).href)\" scripts/session-start-check.mjs",
+            "command": "node --input-type=module -e \"import{pathToFileURL}from'node:url';import{join}from'node:path';const r=process.env.SUPERVIBE_PLUGIN_ROOT;if(!r)process.exit(0);await import(pathToFileURL(join(r,process.argv[1])).href)\" scripts/session-start-check.mjs",
             "async": false
           },
           {
             "type": "command",
-            "command": "node --input-type=module -e \"import{pathToFileURL}from'node:url';import{join}from'node:path';const r=process.env.SUPERVIBE_PLUGIN_ROOT||process.env['CLAUDE'+'_PLUGIN_ROOT'];if(!r)process.exit(0);await import(pathToFileURL(join(r,process.argv[1])).href)\" scripts/hooks/task-tracker-prime.mjs --text",
+            "command": "node --input-type=module -e \"import{pathToFileURL}from'node:url';import{join}from'node:path';const r=process.env.SUPERVIBE_PLUGIN_ROOT;if(!r)process.exit(0);await import(pathToFileURL(join(r,process.argv[1])).href)\" scripts/hooks/task-tracker-prime.mjs --text --compact-context",
             "async": false
           }
         ]
@@ -23,12 +23,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node --input-type=module -e \"import{pathToFileURL}from'node:url';import{join}from'node:path';const r=process.env.SUPERVIBE_PLUGIN_ROOT||process.env['CLAUDE'+'_PLUGIN_ROOT'];if(!r)process.exit(0);await import(pathToFileURL(join(r,process.argv[1])).href)\" scripts/hooks/pre-write-prototype-guard.mjs",
+            "command": "node --input-type=module -e \"import{pathToFileURL}from'node:url';import{join}from'node:path';const r=process.env.SUPERVIBE_PLUGIN_ROOT;if(!r)process.exit(0);await import(pathToFileURL(join(r,process.argv[1])).href)\" scripts/hooks/pre-write-prototype-guard.mjs",
             "async": false
           },
           {
             "type": "command",
-            "command": "node --input-type=module -e \"import{pathToFileURL}from'node:url';import{join}from'node:path';const r=process.env.SUPERVIBE_PLUGIN_ROOT||process.env['CLAUDE'+'_PLUGIN_ROOT'];if(!r)process.exit(0);await import(pathToFileURL(join(r,process.argv[1])).href)\" scripts/hooks/pre-tool-use-refactor-advisory.mjs",
+            "command": "node --input-type=module -e \"import{pathToFileURL}from'node:url';import{join}from'node:path';const r=process.env.SUPERVIBE_PLUGIN_ROOT;if(!r)process.exit(0);await import(pathToFileURL(join(r,process.argv[1])).href)\" scripts/hooks/pre-tool-use-refactor-advisory.mjs",
             "async": false
           }
         ]
@@ -39,17 +39,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node --input-type=module -e \"import{pathToFileURL}from'node:url';import{join}from'node:path';const r=process.env.SUPERVIBE_PLUGIN_ROOT||process.env['CLAUDE'+'_PLUGIN_ROOT'];if(!r)process.exit(0);await import(pathToFileURL(join(r,process.argv[1])).href)\" scripts/hooks/user-prompt-submit-feedback.mjs",
+            "command": "node --input-type=module -e \"import{pathToFileURL}from'node:url';import{join}from'node:path';const r=process.env.SUPERVIBE_PLUGIN_ROOT;if(!r)process.exit(0);await import(pathToFileURL(join(r,process.argv[1])).href)\" scripts/hooks/user-prompt-submit-feedback.mjs",
             "async": true
           },
           {
             "type": "command",
-            "command": "node --input-type=module -e \"import{pathToFileURL}from'node:url';import{join}from'node:path';const r=process.env.SUPERVIBE_PLUGIN_ROOT||process.env['CLAUDE'+'_PLUGIN_ROOT'];if(!r)process.exit(0);await import(pathToFileURL(join(r,process.argv[1])).href)\" scripts/hooks/user-prompt-submit-memory-preflight.mjs",
+            "command": "node --input-type=module -e \"import{pathToFileURL}from'node:url';import{join}from'node:path';const r=process.env.SUPERVIBE_PLUGIN_ROOT;if(!r)process.exit(0);await import(pathToFileURL(join(r,process.argv[1])).href)\" scripts/hooks/user-prompt-submit-memory-preflight.mjs",
             "async": true
           },
           {
             "type": "command",
-            "command": "node --input-type=module -e \"import{pathToFileURL}from'node:url';import{join}from'node:path';const r=process.env.SUPERVIBE_PLUGIN_ROOT||process.env['CLAUDE'+'_PLUGIN_ROOT'];if(!r)process.exit(0);await import(pathToFileURL(join(r,process.argv[1])).href)\" scripts/hooks/task-tracker-prime.mjs",
+            "command": "node --input-type=module -e \"import{pathToFileURL}from'node:url';import{join}from'node:path';const r=process.env.SUPERVIBE_PLUGIN_ROOT;if(!r)process.exit(0);await import(pathToFileURL(join(r,process.argv[1])).href)\" scripts/hooks/task-tracker-prime.mjs",
             "async": true
           }
         ]
@@ -61,7 +61,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node --input-type=module -e \"import{pathToFileURL}from'node:url';import{join}from'node:path';const r=process.env.SUPERVIBE_PLUGIN_ROOT||process.env['CLAUDE'+'_PLUGIN_ROOT'];if(!r)process.exit(0);await import(pathToFileURL(join(r,process.argv[1])).href)\" scripts/post-edit-stack-watch.mjs",
+            "command": "node --input-type=module -e \"import{pathToFileURL}from'node:url';import{join}from'node:path';const r=process.env.SUPERVIBE_PLUGIN_ROOT;if(!r)process.exit(0);await import(pathToFileURL(join(r,process.argv[1])).href)\" scripts/post-edit-stack-watch.mjs",
             "async": true
           }
         ]
@@ -71,7 +71,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node --input-type=module -e \"import{pathToFileURL}from'node:url';import{join}from'node:path';const r=process.env.SUPERVIBE_PLUGIN_ROOT||process.env['CLAUDE'+'_PLUGIN_ROOT'];if(!r)process.exit(0);await import(pathToFileURL(join(r,process.argv[1])).href)\" scripts/hooks/post-tool-use-log.mjs",
+            "command": "node --input-type=module -e \"import{pathToFileURL}from'node:url';import{join}from'node:path';const r=process.env.SUPERVIBE_PLUGIN_ROOT;if(!r)process.exit(0);await import(pathToFileURL(join(r,process.argv[1])).href)\" scripts/hooks/post-tool-use-log.mjs",
             "async": true
           }
         ]
@@ -83,7 +83,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node --input-type=module -e \"import{pathToFileURL}from'node:url';import{join}from'node:path';const r=process.env.SUPERVIBE_PLUGIN_ROOT||process.env['CLAUDE'+'_PLUGIN_ROOT'];if(!r)process.exit(0);await import(pathToFileURL(join(r,process.argv[1])).href)\" scripts/effectiveness-tracker.mjs",
+            "command": "node --input-type=module -e \"import{pathToFileURL}from'node:url';import{join}from'node:path';const r=process.env.SUPERVIBE_PLUGIN_ROOT;if(!r)process.exit(0);await import(pathToFileURL(join(r,process.argv[1])).href)\" scripts/effectiveness-tracker.mjs",
             "async": true
           }
         ]

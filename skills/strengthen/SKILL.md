@@ -1,11 +1,7 @@
 ---
 name: strengthen
 namespace: process
-description: >-
-  Use WHEN audit flagged weak/stale artifacts to deepen them from project
-  context AND fresh research (consults research-agents for stale
-  best-practices/dependency/security/infra/design). Triggers: 'усиль агента',
-  'strengthen <agent>', 'докрути артефакт', 'усилить'.
+description: 'Use WHEN audit flagged weak/stale artifacts to deepen them from project context AND fresh research (consults research-agents for stale best-practices/dependency/security/infra/design). Triggers: ''усиль агента'', ''strengthen <agent>'', ''докрути артефакт'', ''усилить''.'
 allowed-tools:
   - Read
   - Grep
@@ -24,7 +20,11 @@ last-verified: 2026-04-27T00:00:00.000Z
 
 # Strengthen
 
-## When to invoke
+## Overview
+
+Strengthen provides a reusable Supervibe operating method for Use WHEN audit flagged weak/stale artifacts to deepen them from project context AND fresh research (consults research-agents for stale best-practices/dependency/security/infra/design). Triggers: 'усиль агента', 'strengthen <agent>', 'докрути артефакт', 'усилить'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
+## When to Use
 
 WHEN `supervibe:audit` flagged weak or stale artifacts, OR user runs `/supervibe-strengthen`. Loops over each flagged artifact.
 

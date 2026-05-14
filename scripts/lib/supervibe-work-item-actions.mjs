@@ -1,5 +1,6 @@
 import { copyFile, mkdir, open, readFile, unlink, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
+import { evaluateTaskBudgetPolicy } from "./supervibe-task-budget-policy.mjs";
 import { deferWorkItemInGraph } from "./supervibe-work-item-scheduler.mjs";
 import { inferRootDirFromGraphPath, updateActiveWorkItemGraph } from "./supervibe-work-item-registry.mjs";
 import { createWorkItemComment } from "./supervibe-work-item-comments.mjs";
@@ -70,6 +71,7 @@ export function mutateWorkItemGraph(graph = {}, action = {}) {
   else if (type === "recover-stale" || type === "recover-stale-claim") result = recoverStaleWorkItemClaim(graph, action);
   else if (type === "reopen") result = updateStatus(graph, action, action.status || "ready", { clearTerminal: true });
   else if (type === "claim") result = claimWorkItem(graph, action);
+  else if (type === "claim-wave") result = claimWorkItemWave(graph, action);
   else if (type === "edit") result = editWorkItem(graph, action);
   else if (type === "delete" || type === "remove") result = deleteWorkItem(graph, action);
   else if (type === "reparent") result = reparentWorkItem(graph, action);
@@ -140,9 +142,19 @@ function updateStatus(graph, action, status, options = {}) {
     }
     return next;
   };
+  const claimTargets = !options.clearTerminal && isTerminalWorkItemStatus(status)
+    ? new Set([action.itemId, ...coveredSubstepIds])
+    : new Set();
+  const claimRetirement = retireWorkItemClaims(graph.claims || [], claimTargets, {
+    now,
+    actor: action.actor || "user",
+    status,
+    reason: action.reason || null,
+  });
   const nextGraph = {
     ...graph,
     updatedAt: now,
+    claims: claimRetirement.claims,
     items: (graph.items || []).map(update),
     tasks: (graph.tasks || []).map(update),
   };
@@ -153,6 +165,7 @@ function updateStatus(graph, action, status, options = {}) {
     action: status,
     changed,
     autoClosedCoveredItems: [...coveredSubstepIds],
+    retiredClaims: claimRetirement.retiredClaims,
   };
 }
 
@@ -328,13 +341,17 @@ function recoverStaleWorkItemClaim(graph, action) {
   const expiredClaims = expireWorkItemClaims(graph.claims || [], now);
   const recoveredClaims = [];
   const claims = expiredClaims.map((claim) => {
-    if (claim.taskId !== action.itemId || claim.status !== "expired") return claim;
+    const matchesTarget = claim.taskId === action.itemId;
+    const shouldRecover = matchesTarget && (
+      claim.status === "expired" || (action.force && isPotentiallyActiveClaim(claim))
+    );
+    if (!shouldRecover) return claim;
     const recovered = {
       ...claim,
       status: "recovered",
       recoveredAt: now,
       recoveredBy: action.actor || "user",
-      recoveryReason: action.reason || "stale claim recovered",
+      recoveryReason: action.reason || (claim.status === "expired" ? "stale claim recovered" : "active claim force-recovered"),
     };
     recoveredClaims.push(recovered);
     return recovered;
@@ -403,6 +420,9 @@ function claimWorkItem(graph, action) {
     expiresAt,
     leaseTtlMinutes,
     worktreeSessionId: action.worktreeSessionId || null,
+    waveId: action.waveId || null,
+    writeSet: normalizeStringList(action.writeSet),
+    writeSetLock: action.writeSetLock || null,
     reason: action.reason || "claimed from Supervibe UI",
   };
   let changed = false;
@@ -426,6 +446,73 @@ function claimWorkItem(graph, action) {
   };
   if (!changed) throw new Error(`work item not found: ${action.itemId}`);
   return { graph: nextGraph, itemId: action.itemId, action: "claim", claim, changed: true };
+}
+
+function claimWorkItemWave(graph, action) {
+  const entries = normalizeClaimWaveEntries(action);
+  if (entries.length === 0) throw new Error("claim-wave requires claims or itemIds");
+  const now = action.now || new Date().toISOString();
+  const existingClaims = expireWorkItemClaims(graph.claims || [], now);
+  const conflicts = entries
+    .map((entry) => {
+      const activeClaim = existingClaims.find((candidate) => candidate.taskId === entry.itemId && isActiveWorkItemClaim(candidate, now));
+      return activeClaim ? {
+        itemId: entry.itemId,
+        reason: "work-item-already-claimed",
+        claimId: activeClaim.claimId,
+        agentId: activeClaim.agentId,
+      } : null;
+    })
+    .filter(Boolean);
+  if (conflicts.length > 0 && !action.force) {
+    return {
+      graph: { ...graph, claims: existingClaims },
+      itemId: entries[0].itemId,
+      action: "claim-wave-blocked",
+      changed: false,
+      conflicts,
+      nextAction: "wait for claim expiry, refresh heartbeat, or retry with force after manual review",
+    };
+  }
+
+  let current = { ...graph, claims: existingClaims };
+  const claimResults = [];
+  for (const [index, entry] of entries.entries()) {
+    const result = claimWorkItem(current, {
+      ...action,
+      ...entry,
+      type: "claim",
+      now,
+      claimId: entry.claimId || `${entry.itemId}-${Date.parse(now) || Date.now()}-${index + 1}`,
+    });
+    current = result.graph;
+    claimResults.push({
+      itemId: entry.itemId,
+      claimId: result.claim?.claimId || null,
+      changed: result.changed,
+    });
+  }
+  return {
+    graph: current,
+    itemId: entries[0].itemId,
+    action: "claim-wave",
+    changed: claimResults.some((item) => item.changed),
+    claimResults,
+    waveId: action.waveId || null,
+  };
+}
+
+function normalizeClaimWaveEntries(action = {}) {
+  if (Array.isArray(action.claims)) {
+    return action.claims
+      .map((entry) => ({
+        ...entry,
+        itemId: entry.itemId || entry.id || entry.taskId,
+      }))
+      .filter((entry) => entry.itemId);
+  }
+  return normalizeStringList(action.itemIds || action.items || action.itemId)
+    .map((itemId) => ({ itemId }));
 }
 
 function editWorkItem(graph, action) {
@@ -686,20 +773,22 @@ function splitWorkItem(graph, action) {
       updatedAt: now,
     };
   });
+  const nextGraph = refreshDerivedGraphMetadata({
+    ...graph,
+    updatedAt: now,
+    items: [...nextItems, ...createdItems],
+    tasks: [...nextTasks, ...createdItems.map(itemToTask)],
+    dependencyEdges: createdItems.reduce((edges, item) => addEdge(addEdge(addEdge(
+      edges,
+      { from: action.itemId, to: item.itemId, type: "parent-child" },
+    ), { from: item.itemId, to: action.itemId, type: "blocks" }), {
+      from: action.itemId,
+      to: item.itemId,
+      type: "discovered-from",
+    }), graph.dependencyEdges || []),
+  }, { createdItems });
   return {
-    graph: {
-      ...graph,
-      updatedAt: now,
-      items: [...nextItems, ...createdItems],
-      tasks: [...nextTasks, ...createdItems.map(itemToTask)],
-      dependencyEdges: [
-        ...(graph.dependencyEdges || []),
-        ...createdItems.flatMap((item) => [
-          { from: action.itemId, to: item.itemId, type: "parent-child" },
-          { from: item.itemId, to: action.itemId, type: "blocks" },
-        ]),
-      ],
-    },
+    graph: nextGraph,
     itemId: action.itemId,
     action: "split",
     changed: true,
@@ -732,6 +821,25 @@ function isActiveWorkItemClaim(claim, now = new Date().toISOString()) {
 
 function isPotentiallyActiveClaim(claim = {}) {
   return ACTIVE_CLAIM_STATUSES.has(String(claim.status || "").toLowerCase());
+}
+
+function retireWorkItemClaims(claims = [], targetIds = new Set(), { now = new Date().toISOString(), actor = "user", status = "closed", reason = null } = {}) {
+  if (!targetIds.size) return { claims, retiredClaims: [] };
+  const retiredClaims = [];
+  const nextClaims = claims.map((claim) => {
+    if (!targetIds.has(claim.taskId) || !isPotentiallyActiveClaim(claim)) return claim;
+    const retired = {
+      ...claim,
+      status: "completed",
+      completedAt: now,
+      completedBy: actor,
+      completionStatus: status,
+      completionReason: reason,
+    };
+    retiredClaims.push(retired);
+    return retired;
+  });
+  return { claims: nextClaims, retiredClaims };
 }
 
 async function withGraphFileLock(graphPath, action, fn) {
@@ -802,6 +910,11 @@ function appendAuditEvent(result, action, requestedType) {
   };
   if (result.conflict) event.conflict = result.conflict;
   if (result.claim?.claimId) event.claimId = result.claim.claimId;
+  if (result.claimResults?.length) event.claimResults = result.claimResults.map((claim) => ({
+    itemId: claim.itemId,
+    claimId: claim.claimId,
+  }));
+  if (result.waveId) event.waveId = result.waveId;
   if (result.blocker) event.blocker = result.blocker;
   if (result.comment?.commentId) event.commentId = result.comment.commentId;
   if (result.handoff?.handoffId) event.handoffId = result.handoff.handoffId;
@@ -810,6 +923,7 @@ function appendAuditEvent(result, action, requestedType) {
   }
   if (result.tombstone) event.tombstone = { itemId: result.tombstone.itemId, deletedAt: result.tombstone.deletedAt };
   if (result.recoveredClaims?.length) event.recoveredClaims = result.recoveredClaims.map((claim) => claim.claimId);
+  if (result.retiredClaims?.length) event.retiredClaims = result.retiredClaims.map((claim) => claim.claimId);
   if (result.autoClosedCoveredItems?.length) event.autoClosedCoveredItems = result.autoClosedCoveredItems;
   const verificationEvidence = normalizeVerificationEvidence(action.verificationEvidence || action.evidence, event.itemId || event.taskId, {
     now: event.at,
@@ -984,7 +1098,10 @@ function normalizeSplitTitles(value) {
 }
 
 function createSubtaskFromParent(parent, { title, index, actor, now }) {
-  const itemId = `${parent.itemId || parent.id}.sub${index}`;
+  const parentId = parent.itemId || parent.id;
+  const itemId = `${parentId}.sub${index}`;
+  const parentSource = parent.discoveredFrom || {};
+  const parentExecutionHints = parent.executionHints || {};
   return {
     ...parent,
     itemId,
@@ -993,11 +1110,26 @@ function createSubtaskFromParent(parent, { title, index, actor, now }) {
     type: "subtask",
     status: "open",
     priority: parent.priority || "medium",
-    parentId: parent.itemId || parent.id,
-    blocks: [parent.itemId || parent.id],
+    parentId,
+    blocks: [parentId],
     blockedBy: [],
     related: [],
-    discoveredFrom: { type: "split", itemId: parent.itemId || parent.id },
+    discoveredFrom: {
+      type: "split",
+      itemId: parentId,
+      parentItemId: parentId,
+      path: parentSource.path || parentExecutionHints.sourcePlan || null,
+      line: parentSource.line || null,
+      taskRef: parentSource.taskRef || parentExecutionHints.sourceTaskRef || null,
+      source: parentSource,
+    },
+    executionHints: {
+      ...parentExecutionHints,
+      splitParentItemId: parentId,
+      splitIndex: index,
+      sourceTaskRef: parentExecutionHints.sourceTaskRef || parentSource.taskRef || null,
+      sourcePlanPath: parentSource.path || parentExecutionHints.sourcePlan || null,
+    },
     owner: null,
     updatedAt: now,
     createdAt: now,
@@ -1047,6 +1179,57 @@ function sameEdge(left, right) {
 
 function uniqueStrings(values) {
   return [...new Set((values || []).map(String).filter(Boolean))];
+}
+
+function refreshDerivedGraphMetadata(graph, { createdItems = [] } = {}) {
+  const metadata = graph.metadata || {};
+  const nextMetadata = { ...metadata };
+  if (metadata.taskBudgetPolicy) {
+    const report = evaluateTaskBudgetPolicy({
+      items: graph.items || [],
+      policy: metadata.taskBudgetPolicy.policy || metadata.taskBudgetPolicy.report?.policy,
+      decision: metadata.taskBudgetPolicy.decision || metadata.taskBudgetPolicy.report?.decision,
+    });
+    nextMetadata.taskBudgetPolicy = {
+      ...metadata.taskBudgetPolicy,
+      policy: report.policy,
+      decision: report.decision,
+      report,
+    };
+  }
+  if (metadata.semanticEpicGrouping || Array.isArray(metadata.semanticEpics)) {
+    const candidates = (graph.items || []).filter((item) => !["epic", "gate", "followup"].includes(item.type));
+    const nextSemanticEpics = Array.isArray(metadata.semanticEpics)
+      ? metadata.semanticEpics.map((epic) => ({
+        ...epic,
+        taskIds: [...(epic.taskIds || [])],
+      }))
+      : [];
+    for (const item of createdItems) {
+      const parentId = item.discoveredFrom?.parentItemId || item.parentId;
+      const parent = (graph.items || []).find((candidate) => (candidate.itemId || candidate.id) === parentId);
+      const semanticEpicId = item.executionHints?.semanticEpicId || parent?.executionHints?.semanticEpicId;
+      const semanticEpic = nextSemanticEpics.find((entry) => entry.id === semanticEpicId)
+        || nextSemanticEpics.find((entry) => (entry.taskIds || []).includes(parentId));
+      if (!semanticEpic) continue;
+      if (!semanticEpic.taskIds.includes(item.itemId)) semanticEpic.taskIds.push(item.itemId);
+      semanticEpic.taskCount = semanticEpic.taskIds.length;
+    }
+    const averageConfidence = nextSemanticEpics.length
+      ? Number((nextSemanticEpics.reduce((sum, epic) => sum + Number(epic.confidence || 0), 0) / nextSemanticEpics.length).toFixed(2))
+      : 0;
+    nextMetadata.semanticEpicGrouping = {
+      ...(metadata.semanticEpicGrouping || {}),
+      taskCount: candidates.length,
+      epicCount: nextSemanticEpics.length,
+      averageConfidence,
+    };
+    if (nextSemanticEpics.length > 0) nextMetadata.semanticEpics = nextSemanticEpics;
+  }
+  return {
+    ...graph,
+    metadata: nextMetadata,
+  };
 }
 
 function normalizeStringList(value) {

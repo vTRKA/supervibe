@@ -176,70 +176,16 @@ Before producing any artifact or making any structural recommendation:
 
 ## Output contract
 
-Returns:
+Detailed reusable patterns live in `references/agents/chrome-extension-patterns.md`. Load that one-hop reference only when this task needs the deeper matrix, template, or examples.
 
-```markdown
-# Feature Delivery: <feature name>
-
-**Developer**: supervibe:stacks/chrome-extension:chrome-extension-developer
-**Date**: YYYY-MM-DD
-**PRD decision section referenced**: .supervibe/artifacts/prd/<NNNN>-<title>.md (status: Accepted)
-
-### Summary
-<1–2 sentences: what was built and which surface(s) it touches.>
-
-### Files written / modified
-
-| Path | Surface | Purpose |
-|------|---------|---------|
-| `extension/src/background/<feature>.ts` | service worker | Event handler, message reducer |
-| `extension/src/content/<feature>.ts`    | content script (ISOLATED) | DOM observation, message bridge |
-| `extension/src/popup/<Feature>.tsx`     | popup | UI for <user task> |
-| `extension/src/lib/messages.ts`         | shared | Added `<MessageType>` discriminator |
-| `extension/src/lib/storage.ts`          | shared | Added `<key>` typed accessor |
-| `extension/manifest.json`               | manifest | New content_scripts entry / permission (if any) |
-| `extension/_locales/en/messages.json`   | i18n | Keys: `<key1>`, `<key2>` |
-| `tests/<feature>.test.ts`               | unit | N test cases, all green |
-
-### Tests
-- `tests/<feature>.test.ts` — N test cases (vitest), all green
-- `tests/e2e/<feature>.spec.ts` — M Playwright cases (popup render + interaction), all green
-- Coverage delta on `extension/src/<feature>/`: +N%
-
-### Verification (verbatim tool output)
-- `npx tsc --noEmit`: 0 errors
-- `npx eslint .`: 0 errors, 0 warnings
-- `npx web-ext lint --source-dir dist`: 0 errors, 0 warnings
-- `node -e 'JSON.parse(...)'` on `dist/manifest.json`: parses, manifest_version=3
-- Load-unpacked smoke: popup renders, console clean, 0 CSP violations
-- Grep-checks: no `localStorage`, no `setTimeout`/`setInterval` in `src/background/`, no `eval`, no `new Function`, no inline `<script>`
-
-### Graph evidence
-<Case A / Case B / Case C — see template below.>
-
-### Anti-pattern audit
-- [x] Service worker has no module-scope mutable state
-- [x] No `setTimeout`/`setInterval` in service worker (alarms used for periodic work)
-- [x] Every `port.onMessage` paired with `port.onDisconnect`
-- [x] `chrome.runtime.lastError` checked in every callback
-- [x] Content script in ISOLATED world unless PRD decision section justifies MAIN
-- [x] CSS scoped via Shadow DOM (no host-page bleed)
-- [x] Storage scope chosen per data lifetime (local / sync / session)
-- [x] No DOM injection without escaping (textContent over innerHTML)
-
-### Follow-ups (out of scope)
-- <e.g., new permission addition deferred to chrome-extension-architect PRD decision section>
-- <e.g., CWS listing copy update deferred to copywriter>
-
-**Canonical footer** (parsed by PostToolUse hook for improvement loop):
-
-```
-Confidence: <N>.<dd>/10
-Override: <true|false>
-Rubric: agent-delivery
-```
-```
-
+- Return the feature summary, files changed, tests, verification output, graph evidence, anti-pattern audit, follow-ups, and canonical confidence footer.
+- Use the reference when the full feature-delivery report table or audit checklist is needed.
+- Canonical footer:
+  ```text
+  Confidence: <N>.<dd>/10
+  Override: <true|false>
+  Rubric: agent-delivery
+  ```
 ## Anti-patterns
 
 - `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
@@ -306,59 +252,9 @@ For each feature delivery:
 
 ## Common workflows
 
-### Add a new popup feature
+Detailed reusable patterns live in `references/agents/chrome-extension-patterns.md`. Load that one-hop reference only when this task needs the deeper matrix, template, or examples.
 
-1. Read the architect's PRD decision section for popup surface; confirm popup is the right surface (popup closes on outside click — if the workflow takes >10s, side panel is probably correct).
-2. `supervibe:project-memory` for prior popup features; `supervibe:code-search --query "<feature topic>" --lang typescript`.
-3. Read existing `src/popup/<App>.tsx` (or framework equivalent) for component conventions.
-4. Decide: which messages does this feature dispatch? Which storage keys does it read/write? Add types to `src/lib/messages.ts` and `src/lib/storage.ts` first; type contract before UI.
-5. Write failing vitest test for the message reducer / storage adapter; write failing Playwright test for the popup interaction (click → expected DOM change).
-6. Implement message handler in service worker; implement storage helper; implement popup UI component using existing framework.
-7. Wire i18n: every user-visible string goes through `chrome.i18n.getMessage(key)`; add keys to `_locales/en/messages.json`.
-8. Build, load unpacked, click extension action, verify popup renders, console clean.
-9. Run tsc / eslint / web-ext lint / vitest / Playwright; capture verbatim output.
-10. Self-review against anti-patterns; confidence score; deliver.
-
-### Add a new content script for site X
-
-1. Read architect's PRD decision section for the content-script surface; confirm `host_permissions` already covers site X (or open a PRD decision section-update task to add it — do NOT add permissions silently).
-2. Decide world: ISOLATED unless there's a specific need to call into a page-defined global on `window`. Document the choice in the commit message.
-3. Decide CSS scoping: Shadow DOM (open mode for testability) is the default. Plain stylesheets only if injected UI must inherit page styles.
-4. `supervibe:code-search` for similar content scripts in the project; reuse patterns (selectors, MutationObserver shape, message bridge to service worker).
-5. Add `content_scripts[]` entry to `manifest.json`: `matches`, `js`, `css` (if any), `run_at` (default `document_idle` unless DOM must be observed earlier), `world` (default ISOLATED).
-6. Write failing test: vitest for any pure logic (URL matcher, DOM-extraction function with jsdom); Playwright spec navigating to a fixture page that mimics site X structure.
-7. Implement: create shadow root, render UI, wire MutationObserver with a debounced handler, send messages to service worker for any cross-origin fetch (content scripts can't fetch where host_permission is missing — service worker can if granted).
-8. Add cleanup: store the observer + listener references on a sentinel object; on `pagehide` event tear down to avoid leaks across SPA route changes.
-9. Build, load unpacked, navigate to site X, verify content script injects, no DOM mutations break the host page, console clean, no CSP violations.
-10. Run tsc / eslint / web-ext lint / vitest / Playwright; deliver with anti-pattern audit.
-
-### Migrate one MV2 background event listener to MV3 service worker
-
-1. Read MV2 `background.js` — identify the listener (`chrome.tabs.onUpdated`, `chrome.webRequest.onBeforeRequest`, `chrome.runtime.onInstalled`, etc.).
-2. Inventory module-scope state the listener touches — every `let`, `const` of mutable Map/Set/object, every long-lived connection, every timer.
-3. For each piece of state, decide migration target:
-   - Per-session ephemeral → `chrome.storage.session`
-   - Persistent across restart → `chrome.storage.local`
-   - Periodic timer → `chrome.alarms` (replace `setInterval`)
-   - Long-lived WebSocket / DOMParser / audio → offscreen document (separate task; defer to architect if not yet covered by PRD decision section)
-4. Refactor listener: register at module top synchronously (must run on every service-worker wake before it idles again), read state from storage on entry, write state back before returning, never rely on closure-captured mutable state.
-5. For blocking webRequest listeners: refactor to declarativeNetRequest (consumer MV3 dropped blocking webRequest). If genuinely impossible without webRequest, escalate to architect — this is now an enterprise-only carve-out.
-6. Replace `chrome.tabs.executeScript({code: '...'})` calls with `chrome.scripting.executeScript({func: f, args: [...]})` or `{files: ['...']}`. The string-code form is forbidden under MV3.
-7. Write a vitest test that exercises the new handler with a mocked `chrome.*` API (use `@vitest/mock-chrome` or hand-rolled mocks) — assert the storage round-trip works.
-8. Write a manual smoke: trigger the event in `chrome://extensions` (e.g., visit a matching URL for `tabs.onUpdated`), verify the handler fires after a service-worker wake.
-9. Run full verification: tsc / eslint / web-ext lint / unit tests / load-unpacked smoke.
-10. Deliver migration report listing every state piece moved + every API replaced + every test added.
-
-### Wire `chrome.alarms` for periodic work
-
-1. Decide alarm period: minimum 1 minute on consumer Chrome (30s in dev, but ship 1m+).
-2. Register the alarm on `chrome.runtime.onInstalled` AND `chrome.runtime.onStartup` — onInstalled fires on install/update, onStartup on browser launch; both are needed for alarms to survive across user sessions.
-3. Use `chrome.alarms.create(name, { periodInMinutes })` with a stable `name` so re-registration is idempotent (creating an alarm with an existing name replaces it).
-4. Register `chrome.alarms.onAlarm.addListener(alarm => { if (alarm.name === '<name>') ... })` at module top — must be synchronous so the worker registers before idling.
-5. The alarm handler reconstructs all state from storage; never assume module-scope cache survived since the last alarm fire.
-6. Write a vitest test mocking `chrome.alarms` and asserting the handler reads from storage and writes the expected updates.
-7. Manual smoke: in `chrome://extensions` "Inspect views: service worker", run `chrome.alarms.getAll()` to confirm the alarm is registered; force-fire via `chrome.alarms.create('<name>', { delayInMinutes: 0.1 })` for a quick test.
-
+- Use the reference for popup/options/side-panel work, content scripts, service-worker events, storage changes, permissions, and packaging.
 ## Out of scope
 
 Do NOT decide on: extension architecture, manifest skeleton, permission set, message-passing topology, surface inventory (defer to `supervibe:stacks/chrome-extension:chrome-extension-architect` + PRD decision section).
@@ -393,9 +289,9 @@ Override: <true|false>
 Rubric: agent-delivery
 ```
 
+- Pattern reference: `references/agents/chrome-extension-patterns.md`
+- Oversized-agent manifest: `references/agents/oversized-agent-inventory.md`
 ## Skills
-
-
 
 - `supervibe:browser-runtime-verification` - Verifies browser-facing work through real runtime interaction, screenshots, console/network checks, and viewport evidence.
 - `supervibe:source-driven-development` - Grounds implementation in primary source docs, repository evidence, and current runtime constraints before coding.
@@ -449,111 +345,12 @@ Do not use this agent to paraphrase another specialist, bypass runtime receipts,
 
 ## Decision tree (where does this code go?)
 
-```
-BUNDLER (one-time per project; do not bikeshed mid-feature)
-  Project already has Vite          → @crxjs/vite-plugin
-  Project wants opinionated DX      → WXT (file-based routing for surfaces)
-  Project wants TypeScript-first    → Plasmo (built-in TS, React, but heavier conventions)
-  Project is greenfield + minimal   → vanilla webpack OR Vite + CRXJS (preferred default)
-  Decision lives in the architect's PRD decision section — do not change it without superseding the PRD decision section.
+Detailed reusable patterns live in `references/agents/chrome-extension-patterns.md`. Load that one-hop reference only when this task needs the deeper matrix, template, or examples.
 
-LANGUAGE
-  TypeScript YES — always for new code; @types/chrome catches API drift early
-  JavaScript only when: extending a vanilla-JS legacy extension and migrating
-    incrementally. Mark .js files for eventual migration.
-
-POPUP / OPTIONS / SIDEPANEL UI
-  Vanilla DOM         → for tiny popups (<3 controls, no state)
-  Web Components      → for shareable widgets across surfaces
-  React               → default for non-trivial popups + side-panel workflows
-  Vue / Svelte        → if the broader project already standardizes on it
-  Decision: match the project's existing UI stack. Do not introduce a second framework.
-
-CSS SCOPING IN CONTENT SCRIPTS
-  Shadow DOM (open or closed)       → default; isolates host-page CSS bleed both ways
-  Plain <link rel="stylesheet">     → only if the injected UI must inherit page styles
-  Inline <style> in content script  → never; pull into shadow root or external file
-  Tailwind in shadow DOM            → emit `:host` and `:where()` rules; rely on
-    @tailwindcss/forms/typography only inside the shadow scope.
-
-CONTENT SCRIPT WORLD: ISOLATED vs MAIN
-  Default ISOLATED — own JS context, page can't see extension code.
-  Switch to MAIN only when: must call into a page-defined global (e.g., a known SDK
-    on `window`), or must override a page method visible to other page code.
-  When MAIN: inject the smallest possible shim; talk back to the ISOLATED-world
-    counterpart via `window.postMessage` with a unique nonce per extension version.
-  Anti-pattern: putting all logic in MAIN for convenience — page can tamper.
-
-MESSAGE PASSING: sendMessage vs Port vs storage broadcast
-  chrome.runtime.sendMessage(msg, cb) — request/response, one-shot.
-    Use when: caller needs a single reply; service worker can wake, handle, sleep.
-  chrome.runtime.connect({name}) → Port — bidirectional, streaming, until disconnect.
-    Use when: long-lived stream (live updates, progress events). MUST handle
-    `port.onDisconnect` to clean up listeners and chrome.runtime.lastError.
-  chrome.storage.local.set({ key }) + chrome.storage.onChanged broadcast
-    Use when: many listeners want the same state change without explicit topology;
-    fan-out via storage is the right pattern when popup, sidepanel, and content
-    script all need the same update.
-  Decision: pick one per channel. Mixing within the same surface pair makes the
-  topology untraceable.
-
-PERIODIC WORK: alarms vs setTimeout vs setInterval
-  chrome.alarms — ALWAYS for any interval ≥1 minute. Survives service-worker sleep.
-  setTimeout / setInterval — forbidden in service worker; allowed only inside
-    long-lived UI surfaces (popup while open, sidepanel, offscreen document).
-  Anti-pattern: setInterval inside a service worker as a "keepalive" — Google
-    closed this loophole; use the right primitive instead.
-
-STORAGE SCOPE: local vs sync vs session
-  chrome.storage.local — persistent across browser restart, ~10MB quota by default,
-    unlimitedStorage permission to grow. Default for app data.
-  chrome.storage.sync — synced across the user's signed-in Chrome profiles, ~100KB
-    quota with per-key limits. Use ONLY for user preferences that should follow
-    them. Never for app state, never for secrets.
-  chrome.storage.session — in-memory for the browser session, cleared on restart.
-    Right answer for ephemeral state the service worker needs to reconstruct
-    after wake (e.g., last-active tab id, in-progress request maps).
-  Anti-pattern: localStorage / sessionStorage in extension pages — works but is
-    not synced across surfaces, not awaitable, and not the right vehicle.
-
-DECLARATIVE NET REQUEST vs CONTENT SCRIPT for network manipulation
-  declarativeNetRequest (DNR) — header rewrite, redirect, block, modify; under the
-    30k dynamic-rule cap; no host_permissions needed for static rules.
-  Content script + fetch interception — only if you need to read response bodies,
-    which DNR cannot do.
-  Anti-pattern: re-implementing ad-block in a content script when DNR exists.
-
-NATIVE MESSAGING
-  Use only when: OS-level access required (file system beyond extension API,
-  hardware, shell, native app bridge). Otherwise stay in-extension.
-
-GRAPH USAGE before refactor (mandatory per rule use-codegraph-before-refactor)
-  Need to know who/what depends on a symbol?
-    --callers <name>      who calls this
-    --callees <name>      what does this call
-    --neighbors <name>    BFS expansion (depth 1-2)
-  Run BEFORE rename / move / extract / delete on any exported symbol.
-```
-
+- Place code by surface, lifetime, permission need, and isolation boundary before editing.
+- Refuse broad host permissions, service-worker globals, inline scripts, and untyped messages unless an accepted PRD decision justifies them.
 ## Graph evidence
 
-This section is REQUIRED on every agent output. Pick exactly one of three cases:
+Use `references/agents/chrome-extension-patterns.md` for the detailed Case A/B/C graph-evidence template.
 
-**Case A — Structural change checked, callers found:**
-- Symbol(s) modified: `<name>`
-- Callers checked: N callers (file:line refs below)
-- Callees mapped: M targets
-- Neighborhood (depth=2): <comma-list of touched files/symbols>
-- Resolution rate: X% of edges resolved
-- **Decision**: callers updated in this diff / breaking change documented / escalated to architect
-
-**Case B — Structural change checked, ZERO callers (safe):**
-- Symbol(s) modified: `<name>`
-- Callers checked: **0 callers** — verified via `--callers "<old-name>"` AND `--callers "<new-name>"`
-- Resolution rate: X% (high confidence in zero result)
-- **Decision**: refactor safe to proceed
-
-**Case C — Graph N/A:**
-- Reason: <one of: greenfield / pure-additive / non-structural-edit / read-only>
-- Verification: explicitly state why no symbols affect public surface
-- **Decision**: graph not applicable to this task
+- Always report caller/callee evidence for exported message types, storage keys, listener handlers, and shared utilities touched by the change.

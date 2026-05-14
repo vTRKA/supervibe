@@ -46,6 +46,20 @@ test("parallel front respects priority, source order, and max concurrency", () =
   assert.deepEqual(result.parallel.map((task) => task.id), ["critical", "medium"]);
 });
 
+test("parallel front excludes overlapping write sets from the parallel lane", () => {
+  const result = calculateReadyFront({
+    tasks: [
+      { id: "a", goal: "A", priority: "critical", writeScope: [{ path: "src/shared.ts", action: "modify" }] },
+      { id: "b", goal: "B", priority: "medium", writeScope: [{ path: "src/other.ts", action: "modify" }] },
+      { id: "c", goal: "C", priority: "low", writeScope: [{ path: "src/shared.ts", action: "modify" }] },
+    ],
+  }, { maxConcurrentAgents: 3 });
+
+  assert.deepEqual(result.parallel.map((task) => task.id), ["a", "b"]);
+  assert.ok(result.serialized.some((item) => item.taskId === "c" && /write-set conflict/.test(item.reason)));
+  assert.deepEqual(result.writeSetConflicts, [{ filePath: "src/shared.ts", taskIds: ["a", "c"] }]);
+});
+
 test("parallel front respects risk and defers reviewers to final sweep by default", () => {
   const highRisk = calculateReadyFront({
     tasks: [

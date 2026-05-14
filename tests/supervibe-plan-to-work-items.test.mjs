@@ -365,6 +365,47 @@ test("atomization creates one epic, child tasks, blocker edges, gates, and follo
   assert.ok(t2.tenOfTenChecklist.some((item) => /Contract coverage/.test(item)));
 });
 
+test("plan parser extracts inline file scopes and final gates block on prior tasks", () => {
+  const graph = atomizePlanToWorkItems(`# Inline Scope Plan
+
+## Task T001: Skill foundation
+**Files:** Create: \`docs/skill-anatomy.md\`; Create: \`references/templates/skill-template.md\`; Modify: \`docs/supervibe-workflow-hardening.md\`; Test: \`tests/skill-template-quality.test.mjs\`
+**Acceptance Criteria:**
+- Inline file scope is parsed.
+
+## Task T002: Independent workflow policy
+**Files required:** Create: \`docs/workflow-command-policy.md\`; Modify: \`.supervibe/artifacts/evidence/t016-workflow-policy-proposed-links.md\`
+**Acceptance Criteria:**
+- Inline files required scope is parsed.
+
+## Task T028: Final self-review 10/10 gate
+**Files:** Test: \`tests/final-gate.test.mjs\`
+**Acceptance Criteria:**
+- Final gate waits for all executable siblings.
+`, {
+    planPath: ".supervibe/artifacts/plans/inline-scope.md",
+    epicId: "epic-inline-scope",
+    planReviewPassed: true,
+  });
+
+  const t001 = graph.items.find((item) => item.itemId === "epic-inline-scope-t001");
+  const t002 = graph.items.find((item) => item.itemId === "epic-inline-scope-t002");
+  const t028 = graph.items.find((item) => item.itemId === "epic-inline-scope-t028");
+
+  assert.deepEqual(t001.writeScope.map((entry) => `${entry.action}:${entry.path}`), [
+    "create:docs/skill-anatomy.md",
+    "create:references/templates/skill-template.md",
+    "modify:docs/supervibe-workflow-hardening.md",
+    "test:tests/skill-template-quality.test.mjs",
+  ]);
+  assert.deepEqual(t002.writeScope.map((entry) => `${entry.action}:${entry.path}`), [
+    "create:docs/workflow-command-policy.md",
+    "modify:.supervibe/artifacts/evidence/t016-workflow-policy-proposed-links.md",
+  ]);
+  assert.ok(t028.blockedBy.includes(t001.itemId));
+  assert.ok(t028.blockedBy.includes(t002.itemId));
+});
+
 test("atomization expands checkbox steps into subtask work items", () => {
   const graph = atomizePlanToWorkItems(PLAN_WITH_STEPS, {
     planPath: ".supervibe/artifacts/plans/steps.md",

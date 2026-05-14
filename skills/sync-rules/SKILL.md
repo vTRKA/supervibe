@@ -1,10 +1,7 @@
 ---
 name: sync-rules
 namespace: process
-description: >-
-  Use WHEN rules-curator updated rule in one project to propagate change to
-  other projects of same stack (opt-in, with diff confirm). Triggers:
-  'синхронизируй правила', 'rules sync', 'разнеси правило', 'sync rules'.
+description: 'Use WHEN rules-curator updated rule in one project to propagate change to other projects of same stack (opt-in, with diff confirm). Triggers: ''синхронизируй правила'', ''rules sync'', ''разнеси правило'', ''sync rules''.'
 allowed-tools:
   - Read
   - Grep
@@ -23,7 +20,11 @@ last-verified: 2026-04-27T00:00:00.000Z
 
 # Sync Rules
 
-## When to invoke
+## Overview
+
+Sync Rules provides a reusable Supervibe operating method for Use WHEN rules-curator updated rule in one project to propagate change to other projects of same stack (opt-in, with diff confirm). Triggers: 'синхронизируй правила', 'rules sync', 'разнеси правило', 'sync rules'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
+## When to Use
 
 WHEN `rules-curator` updated a rule in one project AND multi-project sync is configured (opt-in via `.supervibe/sync-config.yaml`).
 

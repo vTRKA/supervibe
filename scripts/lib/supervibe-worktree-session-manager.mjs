@@ -34,6 +34,7 @@ export function createWorktreeSessionRecord(options = {}) {
     staleAt: options.staleAt || null,
     resumedAt: options.resumedAt || null,
     baselineCommit: options.baselineCommit || null,
+    materializedAt: options.materializedAt || null,
     baselineChecks: options.baselineChecks || [],
     activeAgentIds: [...new Set(options.activeAgentIds || [])],
     assignedWaveId: options.assignedWaveId || null,

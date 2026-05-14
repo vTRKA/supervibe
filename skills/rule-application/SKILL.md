@@ -1,24 +1,33 @@
 ---
 name: rule-application
 namespace: process
-description: "Use WHEN validating, applying, or dry-running Supervibe project rules against a codebase or host artifact set TO prove the rules load, match intended files, produce actionable findings, and do not generate broad false positives."
-allowed-tools: [Read, Grep, Glob, Bash]
+description: 'Use WHEN validating, applying, or dry-running Supervibe project rules against a codebase or host artifact set TO prove the rules load, match intended files, produce actionable findings, and do not generate broad false positives.'
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
 phase: review
-prerequisites: [ruleset]
+prerequisites:
+  - ruleset
 emits-artifact: rule-application-report
 confidence-rubric: confidence-rubrics/rule-quality.yaml
 gate-on-exit: true
 version: 1.1
-last-verified: 2026-05-02
+last-verified: 2026-05-02T00:00:00.000Z
 ---
 
 # Rule Application
 
+## Overview
+
+Rule Application provides a reusable Supervibe operating method for Use WHEN validating, applying, or dry-running Supervibe project rules against a codebase or host artifact set TO prove the rules load, match intended files, produce actionable findings, and do not generate broad false positives.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
 Dry-run a Supervibe ruleset against a project and report whether the rules are
 loadable, scoped, and useful. This skill is read-only unless the user explicitly
 asks to update rules after the report.
 
-## When to invoke
+## When to Use
 
 Use when validating, applying, or dry-running Supervibe project rules against a
 codebase or host artifact set. Prefer this before claiming a rule is useful,
@@ -56,14 +65,21 @@ What is being checked?
 3. For each rule, identify intended target files from `applies-to`, stack tags,
    and path globs.
 4. Use grep/search over representative target files to estimate hit behavior.
-5. Classify each rule:
+5. If the rule application proposes simplification, bulk cleanup, or refactor
+   edits, inspect proposed touched line ranges with
+   `scripts/lib/protected-block-simplification.mjs` and
+   `references/protected-block-simplification.md`. Stop instead of applying the
+   rule when markers are malformed or any edit overlaps a protected block,
+   including generated, vendored, migration, security, legal, compatibility, or
+   user-owned spans.
+6. Classify each rule:
    - `active`: applicable and produces useful guidance.
    - `silent`: applicable but no evidence it can affect this project.
    - `overbroad`: likely to match unrelated work or cause noisy advice.
    - `missing`: expected from stack/profile but absent.
    - `stale`: references paths, tooling, or agents no longer present.
-6. Report only actionable findings. Avoid restating every passing rule.
-7. If changes are needed, produce a dry-run plan first and require approval
+7. Report only actionable findings. Avoid restating every passing rule.
+8. If changes are needed, produce a dry-run plan first and require approval
    before editing rules.
 
 ## Output Contract
@@ -83,6 +99,8 @@ Findings:
 ## Guard Rails
 
 - Do not apply rules to user-owned host instruction text outside managed blocks.
+- Do not simplify, rewrite, or delete protected simplification blocks; malformed
+  `supervibe-simplify-ignore-*` markers are blockers, not warnings to ignore.
 - Do not mark a rule useful without evidence from project files or registry data.
 - Do not delete or retire rules automatically.
 - Do not add broad mandatory rules for niche project concerns.

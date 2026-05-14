@@ -1,12 +1,7 @@
 ---
 name: browser-feedback
 namespace: supervibe
-description: >-
-  Use WHEN browser-feedback system-reminder appears with click-region context
-  AND active prototype, mockup, or presentation is open in preview server TO
-  triage the comment, route to designer/deck/layout agent, and respond. Closes
-  the user-to-browser-to-agent loop in real time. Triggers: 'browser-feedback
-  received', 'кликнул на компонент', 'из браузера пришло', 'feedback overlay'.
+description: 'Use WHEN browser-feedback system-reminder appears with click-region context AND active prototype, mockup, or presentation is open in preview server TO triage the comment, route to designer/deck/layout agent, and respond. Closes the user-to-browser-to-agent loop in real time. Triggers: ''browser-feedback received'', ''кликнул на компонент'', ''из браузера пришло'', ''feedback overlay''.'
 allowed-tools:
   - Read
   - Edit
@@ -23,11 +18,15 @@ last-verified: 2026-04-28T00:00:00.000Z
 
 # Browser Feedback
 
+## Overview
+
+Browser Feedback provides a reusable Supervibe operating method for Use WHEN browser-feedback system-reminder appears with click-region context AND active prototype, mockup, or presentation is open in preview server TO triage the comment, route to designer/deck/layout agent, and respond. Closes the user-to-browser-to-agent loop in real time. Triggers: 'browser-feedback received', 'кликнул на компонент', 'из браузера пришло', 'feedback overlay'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
 ## Design Intelligence Preflight
 
 When feedback affects design quality, run project memory, code search, and internal `supervibe:design-intelligence` lookup before proposing fixes. Findings should cite token, UX, accessibility, chart, or stack evidence when lookup influenced the recommendation.
 
-## When to invoke
+## When to Use
 Trigger source: `<system-reminder>` containing `[supervibe] browser-feedback received:`. The reminder includes prototypeSlug, viewport, selector, comment, type, suggested-agent, entry-id. Slugs can be plain prototype slugs, `mockup:<slug>`, or `presentation:<slug>`.
 
 Design previews must expose the visible `Feedback` button from the preview overlay. If the user says there was no button, treat that as a preview setup bug: restart `supervibe:preview-server --root .supervibe/artifacts/prototypes/<slug>/ --daemon` without `--no-feedback`, verify `#supervibe-fb-toggle` appears in served HTML, and only then continue design review.

@@ -2,10 +2,10 @@
 name: writing-plans
 namespace: process
 description: >-
-  Use AFTER an approved spec OR WHEN a plan is ready TO produce a phased
-  implementation plan, require review loop, then split into atomic tasks and
-  epic before execution. Triggers: 'составь план', 'сделал план', 'review plan',
-  'ревью луп', 'atomic', 'атомарные задачи', 'epic'.
+  Use after an approved spec or approved requirements intake to write a reviewed
+  implementation plan, preserve scope safety, require user gates, and hand off
+  to review before atomic atomization or execution for epic-scale work; covers
+  plan and review expectations. Triggers: 'план', 'ревью'.
 allowed-tools:
   - Read
   - Grep
@@ -18,359 +18,203 @@ prerequisites:
 emits-artifact: implementation-plan
 confidence-rubric: confidence-rubrics/plan.yaml
 gate-on-exit: true
-version: 1.1
-last-verified: 2026-05-02T00:00:00.000Z
+version: 1.2
+last-verified: 2026-05-14T00:00:00.000Z
 ---
 
 # Writing Plans
 
-## When to invoke
+## Overview
 
-AFTER `supervibe:brainstorming` produces an approved spec, OR AFTER `supervibe:requirements-intake` decides complexity 3-6 (skip brainstorm direct to plan).
+This skill turns an approved spec or approved requirements-intake outcome into a
+durable implementation plan. The planner owns scope control, retrieval evidence,
+visual/text-first explanation, review handoff, and the stop conditions that block
+atomization or execution until review passes.
 
-NOT for: still-vague requirements (go back to brainstorming), trivial one-line changes (skip to executing).
+Keep this file as the entrypoint contract. Detailed task patterns, templates,
+critical-path examples, rollback/risk examples, and phase-gate matrices live in
+[Plan Task Patterns](../../references/skills/plan-task-patterns.md).
+
+## When to Use
+
+Use after `supervibe:brainstorming` produces an approved spec, or after
+`supervibe:requirements-intake` routes a complexity 3-6 request directly to
+planning.
+
+Do not use for vague requirements, speculative extras outside the approved spec,
+one-line changes that can safely execute directly, or plans that would cover
+multiple independent subsystems without decomposition.
 
 ## Expert Operating Standard
 
-Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+Follow `docs/references/skill-expert-operating-standard.md`: start from source
+of truth, preserve retrieval evidence, apply scope safety, use real producers
+with runtime receipts for durable delegated outputs, verify before completion
+claims, and keep confidence below gate when evidence is partial.
 
-## Step 0 — Read source of truth (required)
+## Step 0 - Read source of truth
 
-1. Read the approved spec at `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-design.md`. **If no spec exists at all** -> STOP and tell the user: "No approved spec exists in `.supervibe/artifacts/specs/`. Run `/supervibe-brainstorm <topic>` to create one, or pass an explicit existing spec path: `/supervibe-plan <path>`." Do not proceed with planning vapor.
-2. Read the active host instruction file for project's verification commands (typecheck, test, lint)
-3. Read existing patterns the plan must follow (skim related code via Glob)
-4. Check `package.json` / `composer.json` / `Cargo.toml` for available scripts
-5. Read `docs/references/scope-safety-standard.md` and preserve the approved scope boundary
-
-## Scope check
-
-If spec covers multiple independent subsystems → STOP, return to brainstorming for decomposition. One plan = one coherent subsystem.
-
-If the plan includes functionality not present in the approved spec, Scope Safety Gate, or explicit user-approved change request → STOP and either remove it, defer it, or record a scope-change tradeoff. Do not let "nice to have" work enter implementation tasks silently.
+1. Read the approved spec at `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-design.md`.
+   If no approved spec exists, STOP and tell the user to create one or pass an
+   explicit existing spec path.
+2. Read the active host instruction file and available verification scripts.
+3. Inspect related files/modules enough to map real file responsibilities.
+4. Read dependency manifests such as `package.json`, `composer.json`, or
+   `Cargo.toml` for test and build commands.
+5. Read `docs/references/scope-safety-standard.md` and preserve the approved
+   scope boundary.
 
 ## Continuation Contract
 
-Do not stop after individual plan phases, the first task list, or a draft review-gate section. Show a compact plan-scope preview, wait for an explicit approve/revise/exclude-or-defer/stop choice, then write the full plan before handoff unless the user explicitly stops/pauses, the spec is missing or unapproved, scope must be decomposed, or one blocking ambiguity prevents a production-safe plan.
+Do not stop after individual plan phases. Produce a compact plan-scope preview, ask the approve/revise/exclude-or-defer/stop choice through `plan_delivery`, then continue to Post-plan summary and text-first summary. Let the user exclude or defer items, then write the full plan before handoff. Expose `NEXT_USER_ACTIONS[]` with run plan review and revise plan first, then emit `NEXT_STEP_HANDOFF`.
 
-Internal phase review gates are instructions for executors later; they are not chat-level stop points for the planner. Use conservative assumptions for non-blocking gaps, document them, and continue through file mapping, critical path, tasks, rollback, verification, production readiness, final 10/10 acceptance, and the mandatory review handoff.
+## Plan Scope Approval Gate
 
-## Hard Planning User Gate
-
-Every plan or preliminary plan surface is blocked by a current explicit user answer. The plan-scope preview, durable plan save, post-plan review handoff, post-review atomization handoff, and execution handoff are separate gates. Each one must show one visible question and wait for one user choice after the question is shown.
-
-Earlier broad consent such as "continue", "execute when ready", or "finish the whole plan" does not answer a later gate. Do not save the durable plan, invoke review, atomize tasks, create epics, start execution, delete plan artifacts, bump versions, commit, or push from plan/pre-plan work while the active gate is unanswered.
+Ask one `plan_delivery` question. Do not save the durable plan, atomize work items, or offer execution until this gate is answered. Record Current explicit user answer, then continue from plan to review until the user chooses the next action. Delegated decisions cannot satisfy the final user gate.
 
 ## Topic Drift / Resume Contract
 
-If the user shifts topic while a plan is incomplete or a `NEXT_STEP_HANDOFF` exists, preserve the current phase instead of silently switching. Surface the saved phase, spec/plan artifact path, next command, and blocker, then ask one `Step N/M` or `Step N/M` resume question: continue current plan, skip/delegate safe non-final decisions to the agent and continue, pause current plan and switch topic, or stop/archive the current state.
-
-Skipped or delegated decisions must be recorded in plan assumptions, Scope Safety Gate, or review handoff. They cannot bypass mandatory plan review, safety/policy gates, production approvals, or destructive-operation consent.
-
-## Evidence and visual plan gate
-
-Every implementation plan must add `## Retrieval, CodeGraph, And Visual Evidence` before file-structure tasks:
-
-- project-memory and Code RAG commands the executor must run before edits;
-- CodeGraph mode and Case A/B/C expectation for structural tasks;
-- expected source citations, graph warnings, and fallback handling;
-- one compact text-first summary for critical path, state flow, architecture, or release gate, using a stage map, compact table, or improvised ASCII scheme, with text fallback and no color-only status. Browser preview URLs are optional only for actual UI/prototype/browser evidence. Mermaid is allowed only as fallback/export and must include `accTitle` and `accDescr`.
+If a saved plan, `NEXT_STEP_HANDOFF`, or workflow state exists and the user changes topic, surface the saved phase and ask whether to continue, skip/delegate safe non-final decisions, pause and switch topic, or stop/archive.
 
 ## Decision tree
 
 ```
-How many phases does this need?
-├─ 1 phase, ≤10 tasks → single-phase plan, bite-sized TDD per task
-├─ 2-4 phases, 20-60 tasks → multi-phase plan with phase-completion gates
-└─ 5+ phases, 100+ tasks → mega-plan with master phase index, compact format for late phases
+No approved spec, unapproved scope, or multiple independent subsystems
+  -> STOP for spec creation, scope repair, or decomposition.
 
-Per task: TDD applicable?
-├─ YES (logic, transformation, parsing) → red-green-refactor steps
-└─ NO (config files, scaffolding) → write + verify steps
+One coherent subsystem, <=10 tasks
+  -> single-phase plan with task-level verification and rollback.
+
+Two to four phases, roughly 20-60 tasks
+  -> multi-phase plan with review gates and critical path.
+
+Five or more phases, broad production path, or high regression risk
+  -> mega-plan format with compact late phases, owner gates, and risk controls.
 ```
 
 ## Procedure
 
-Before the numbered steps, run the **Plan Scope Approval Gate**: print a compact preview of proposed phases, task groups, files/modules, approved/deferred/rejected/excluded scope, risks, verification strategy, and what will not be implemented. Ask one `plan_delivery` question with approve plan for review, revise plan scope, exclude or defer items, audit plan deeper, and keep plan draft. Free-form answers such as "exclude analytics", "defer phase 3", or "split mobile into a later plan" must update the preview and be recorded in the Scope Safety Gate. Do not save the durable plan, atomize work items, or offer execution until this gate is answered.
+1. Run the Plan Scope Approval Gate before saving anything. Show one compact
+   preview covering phases, task groups, files/modules, included/deferred/rejected
+   scope, risks, verification, rollback, and what will not ship. Ask one visible
+   question and wait for the current user answer.
+2. Map file structure: every create/modify path, owner, responsibility, and
+   expected test or verification surface.
+3. Add `## Retrieval, CodeGraph, And Visual Evidence` before implementation
+   tasks. Require project memory, Code RAG, CodeGraph mode/quality, citations,
+   graph warnings/fallbacks, and one text-first stage map or compact table.
+4. Decompose phases and tasks. Each behavioral task needs failing-test-first or
+   an explicit non-TDD reason, bite-sized steps, verification command with
+   expected signal, rollback, estimate confidence, risk notes when public
+   contracts change, and commit guidance unless commits are suppressed.
+5. Add Scope Safety Gate, Delivery Strategy, and Production Readiness sections:
+   approved/deferred/rejected scope, MVP slice, anti-bloat boundary, rollout,
+   security/privacy/performance/observability, runbook/migration/release notes,
+   support owner, and post-release learning.
+6. Identify critical path, off-path parallel opportunities, and any receipt-backed
+   real-agent waves. Do not claim delegated output unless runtime receipts bind
+   real host invocations.
+7. Add Final Acceptance, Self-Review, and machine validation steps. Validate with
+   `node "<resolved-supervibe-plugin-root>/scripts/validate-plan-artifacts.mjs" --file <plan>`.
+8. Score with `supervibe:confidence-scoring` for `implementation-plan`; score at
+   least 9 before handoff. Reserve 10/10 for complete final-acceptance evidence.
+9. Save the durable plan only after the save gate is answered. Then summarize
+   artifact path, phases, critical path, scope decisions, top risks, validation,
+   confidence, and next actions.
+10. Emit `NEXT_STEP_HANDOFF` for plan review and ask one user question. Review is
+    mandatory before atomization. After review passes, ask one separate question
+    before splitting into atomic work items and an epic.
 
-1. **File structure mapping** — list every file to Create/Modify, with one-line responsibility per file.
-2. **Phase decomposition** — group tasks into phases with clear goal + success criteria + prerequisites.
-3. **Scope Safety Gate** — create approved/deferred/rejected scope lists; require user outcome, evidence, complexity cost, tradeoff, owner, verification, rollout and rollback for every accepted scope expansion.
-4. **Delivery strategy** — define MVP production slice, user value, anti-bloat boundary, staged rollout, production target, owner/support path, and how the plan reaches production rather than stopping at a partial implementation.
-5. **Production readiness contract** — specify test pyramid, security/privacy checks, performance/SLO gates, observability, rollback, release notes, migration/runbook needs, and post-release learning.
-6. **Per-task breakdown** with:
-   - Files (Create/Modify list)
-   - Bite-sized steps (2-5 min each) showing exact commands and code
-   - Verification command + expected output
-   - Commit step (or note if commits suppressed)
-7. **Final 10/10 acceptance gate** — define exact evidence needed to call the work production-ready; include "no open blockers" and plan reread requirements.
-8. **Self-review** — placeholder scan, type consistency across tasks, spec coverage matrix, MVP delivery completeness, production-readiness coverage.
-9. **Machine-validate plan** — run `node "<resolved-supervibe-plugin-root>/scripts/validate-plan-artifacts.mjs" --file .supervibe/artifacts/plans/YYYY-MM-DD-<feature>.md`. Fix every reported readiness gap before scoring.
-10. **Score** — `supervibe:confidence-scoring` with artifact-type=implementation-plan; ≥9 required, 10/10 only when final acceptance evidence is complete.
-11. **Save** to `.supervibe/artifacts/plans/YYYY-MM-DD-<feature>.md`.
-11a. **Post-plan summary** - after saving and validation, summarize artifact path, phases, critical path, included scope, deferred/rejected scope, highest risks, validation result, confidence score, and next actions in normal language.
-11b. **No-silent-stop contract** - include a `NEXT_STEP_HANDOFF` block pointing at `/supervibe-plan --review`. If the block cannot be produced, the plan is not complete.
-11c. **Mandatory next user actions** - after showing the plan result, print `NEXT_USER_ACTIONS[]` in command-output mode and wait for one choice: run plan review, revise plan first, audit plan deeper, exclude/defer items, or keep plan draft and stop. In normal conversational summaries, translate the same choices into a short human-readable next-step sentence instead of exposing the raw marker.
-12. **Handoff** to the mandatory review loop. Do not hand off directly to execution. Print `Step 1/1: run the plan review loop?`.
-12a. **Plan review receipt gate** - the plan-review artifact is a durable reviewer-owned output. It must be produced by the named real host reviewer agents and each reviewer output must have a runtime-issued scoped workflow receipt with `hostInvocation.source` and `hostInvocation.invocationId`. Inline review notes, controller summaries, command receipts, skill receipts, or subagent batch summaries are diagnostic only and cannot unlock atomization or execution.
-13. **After review passes**, hand off to atomic work item and epic creation before execution. Print `Step 1/1: split the plan into atomic work items and an epic?`.
+## User Gates
+
+Each gate requires a current explicit answer after the question is shown:
+plan-scope preview, durable save, post-plan review handoff, post-review
+atomization handoff, and execution handoff. Earlier broad consent never answers a
+later gate.
+
+If the user changes topic while a plan is incomplete or a `NEXT_STEP_HANDOFF`
+exists, surface the saved phase, artifact path, next command, and blocker, then
+ask one resume/pause/switch/stop question. Delegated decisions must be recorded
+in assumptions, scope safety, or review handoff.
 
 ## When not to use
 
-- Do not use this skill to bypass the command or workflow that owns durable artifacts.
-- Do not use it when source evidence, RAG/CodeGraph, or required verification is missing.
-- Do not use it to replace a specialist producer, worker, or reviewer that must issue runtime evidence.
+- Do not bypass the command or workflow that owns durable plan artifacts.
+- Do not proceed when source evidence, RAG/CodeGraph status, or required
+  verification is missing without recording the blocker and lowered confidence.
+- Do not replace a specialist producer, worker, or reviewer that must issue
+  runtime evidence.
 
 ## Common rationalizations
 
-- "This is small, so no source check is needed" - reject when the skill changes code, config, or durable artifacts.
-- "The user asked for speed, so skip receipts" - reject when durable work, delegation, or review is claimed.
-- "Existing prose is enough evidence" - reject when validators or command output are required.
+- "The spec is obvious, so a source read is unnecessary" - reject; plans start
+  from approved artifacts and current repo evidence.
+- "The user said continue, so save/review/atomize in one pass" - reject; each
+  gate needs its own current answer.
+- "This polish task is harmless" - reject unless it maps to approved scope or a
+  recorded scope-change tradeoff.
 
 ## Red flags
 
-- A durable artifact changes without a command, receipt, or verification path.
-- The skill is used outside its phase without an explicit handoff.
-- Claims of completion appear before evidence and confidence scoring.
+- A plan adds files, features, providers, migrations, or launch steps not present
+  in approved scope.
+- `NEXT_STEP_HANDOFF` is missing, points to execution, or skips mandatory review.
+- Critical path, rollback, verification, or final acceptance evidence is absent.
+- Real-agent waves are described without runtime receipt requirements.
 
 ## Checklist
 
-- Source of truth read.
-- Scope and owner confirmed.
-- RAG/CodeGraph/memory requirement decided.
-- Evidence artifact or command recorded.
-- Stop condition and next handoff clear.
+- Approved source of truth read and cited.
+- Scope boundary, deferred/rejected items, and owner decisions recorded.
+- Memory, Code RAG, CodeGraph, and visual/text-first evidence requirements set.
+- Every task has files, steps, verification, rollback, and stop condition.
+- Review handoff blocks atomization and execution until review passes.
 
 ## Failure modes
 
-- Inline emulation replaces a required producer or reviewer.
-- Broad use of the skill slows delivery without improving evidence.
-- Missing verification lets stale assumptions pass as production-ready.
+- Planning vapor from an unapproved or missing spec.
+- Hidden optional work enters the task graph without a scope decision.
+- Inline review notes are treated as reviewer-owned evidence.
+- Plan confidence is scored before validation and self-review.
 
 ## Output contract
 
-Returns: plan file with header (Goal/Architecture/Tech Stack), File Structure, Critical Path, Scope Safety Gate, Delivery Strategy, Production Readiness, numbered Tasks with bite-sized steps, text-first visual summary evidence, Final 10/10 Acceptance Gate, Self-Review, post-plan summary, mandatory Review Handoff, post-review Atomic/Epic Handoff, and a machine-readable `NEXT_STEP_HANDOFF`.
+Returns a plan file with these fields/sections: `Goal`, `Architecture`,
+`Tech Stack`, `Constraints`, `File Structure`, `Retrieval, CodeGraph, And Visual
+Evidence`, `Critical Path`, `Scope Safety Gate`, `Delivery Strategy`,
+`Production Readiness`, numbered tasks, `Final Acceptance Gate`, `Self-Review`,
+post-plan summary, mandatory review handoff, post-review atomization handoff,
+and machine-readable `NEXT_STEP_HANDOFF`.
 
-Required handoff block after saving the plan:
-
-```text
-NEXT_STEP_HANDOFF
-Current phase: plan
-Artifact: .supervibe/artifacts/plans/YYYY-MM-DD-<slug>.md
-Next phase: plan-review
-Next command: /supervibe-plan --review .supervibe/artifacts/plans/YYYY-MM-DD-<slug>.md
-Next skill: supervibe:requesting-code-review
-Stop condition: ask-before-plan-review
-Why: Execution and atomization are blocked until plan review passes.
-Question: Step 1/1: the plan review loop?
-Choices:
-- Run plan review - invoke `/supervibe-plan --review .supervibe/artifacts/plans/YYYY-MM-DD-<slug>.md`.
-- Revise plan first - update scope, tasks, risks, or verification before review.
-- Audit plan deeper - expand dependency, coverage, or risk review before approval.
-- Exclude/defer items - keep unapproved scope out of atomization and execution.
-- Keep plan draft and stop - no review, atomization, or execution starts.
-END_NEXT_STEP_HANDOFF
-```
-
-`NEXT_USER_ACTIONS[]` is a machine-readable command/artifact marker. Outside the command output block, summarize it as natural language and do not leave the raw marker in the user-facing prose.
+The handoff must name: `Current phase`, `Artifact`, `Next phase`, `Next command`,
+`Next skill`, `Stop condition`, `Why`, `Question`, and `Choices`.
 
 ## Guard rails
 
-- DO NOT: write tasks with placeholders ("TBD", "implement later", "similar to Task N")
-- DO NOT: skip verification commands — every task ends with one
-- DO NOT: bundle multiple unrelated changes in one task
-- DO NOT: call types/functions not defined elsewhere in the plan
-- DO NOT: offer `/supervibe-execute-plan` before review passes and atomic work items exist
-- DO NOT: finish without `NEXT_STEP_HANDOFF`
-- DO NOT: continue from plan to review until the user chooses one `NEXT_USER_ACTIONS[]` item
-- DO NOT: add tasks that implement unapproved extras, speculative framework parity, protocol work, or polish without a Scope Safety tradeoff
-- ALWAYS: show exact code for code steps (engineer reads tasks out of order)
-- ALWAYS: include rollback safety (commit per task or per green test)
-- ALWAYS: map every task to approved scope or an explicit user-approved scope change
+- Do not write placeholders such as `TBD`, `implement later`, or `similar to`.
+- Do not offer execution before review passes and atomic work items exist.
+- Do not continue from plan to review until the current user choice is recorded.
+- Always include rollback safety, task-level verification, and approved-scope
+  mapping.
 
 ## Verification
 
-- Plan file exists at documented path
-- `node "<resolved-supervibe-plugin-root>/scripts/validate-plan-artifacts.mjs" --file <plan>` exits 0
-- Scope Safety Gate lists approved, deferred, and rejected scope with tradeoffs
-- Spec coverage matrix maps every spec section to ≥1 task
-- Confidence-scoring(implementation-plan) ≥9 recorded
+- Plan exists at `.supervibe/artifacts/plans/YYYY-MM-DD-<feature>.md`.
+- `node "<resolved-supervibe-plugin-root>/scripts/validate-plan-artifacts.mjs" --file <plan>` exits 0.
+- Scope Safety Gate lists approved, deferred, and rejected scope with tradeoffs.
+- Spec coverage maps every approved spec section to at least one task.
+- Confidence score for `implementation-plan` is at least 9 with no open blockers
+  for completion claims.
+
+## Supporting references
+
+- [Plan Task Patterns](../../references/skills/plan-task-patterns.md) - task
+  templates, critical path examples, rollback/risk matrices, output examples,
+  and phase-gate patterns.
 
 ## Related
 
-- `supervibe:brainstorming` — produces input spec
-- `supervibe:executing-plans` — consumes this output
-- `supervibe:executing-plans` — consumes reviewed, atomized, receipt-backed work items
-
-## Critical path identification (required)
-
-After listing all tasks, identify which tasks block which:
-1. Build dependency graph: task A → task B means A must complete before B starts
-2. Find the **critical path**: longest chain of dependencies
-3. Mark tasks on critical path with `[CRITICAL-PATH]` in plan
-4. Off-critical-path tasks are candidates for parallelization
-
-Example output (in plan body):
-```
-Critical path: T1 → T3 → T5 → T8 → T-FINAL (5 tasks, est. 6h sequential)
-Parallelizable: T2 || T4 (off-path); T6 || T7 (after T5)
-```
-
-## Real-agent handoff opportunities (required)
-
-Identify which tasks can run as independent real host-agent work:
-- Independent file modifications with disjoint write scopes
-- Independent test suites with isolated verification commands
-- Independent doc updates with no merge conflicts
-
-In the Execution Handoff section at the end, list receipt-backed real-agent waves:
-```
-Real host-agent invocation waves:
-- Wave 1 (foundation, sequential): T1, T2, T3
-- Wave 2 (parallel, 5 named host-agent invocations): T4, T5, T6, T7, T8
-- Wave 3 (sequential): T9, T-FINAL
-```
-
-This can reduce wall-clock execution time only when each worker/reviewer output can be bound to a real host invocation id and scoped runtime receipt. If the host cannot provide those receipts, keep the wave as a sequential diagnostic plan and do not claim durable delegated output. Do not represent subagent batches or inline controller output as durable producer/reviewer evidence.
-
-## Rollback plan per task (required)
-
-Each task gets a one-line "rollback" entry:
-
-```markdown
-### Task N: <name>
-
-**Rollback**: `git revert <commit-sha>` OR `git checkout HEAD~1 -- <files>` — verifies via re-running test from Step 1 of original task.
-```
-
-This forces clarity about whether a task is reversible. Tasks that aren't reversible (e.g., DB schema changes) get explicit "irreversible — extra review" tag.
-
-## Risk register per task
-
-For tasks touching public surface (API, schema, contracts), include:
-
-```markdown
-**Risks:**
-- **R1 (severity: high)**: <what could break>; mitigation: <how to detect / undo>
-- **R2 (severity: medium)**: <secondary risk>; mitigation: <...>
-```
-
-Skip for purely-internal tasks (variable rename inside a function, etc.).
-
-## Honest scope estimation
-
-For each task, write:
-- **Estimated time**: `5min` / `15min` / `1h` / `half-day` (no precise hour estimates — they're always wrong)
-- **Confidence in estimate**: `high` / `medium` / `low`
-- **If estimate doubles, the plan still works** OR `if estimate doubles, escalate`
-
-Tasks marked `low` confidence + `escalate` are flagged for extra brainstorming before execute.
-
-## Review gates between phases
-
-For multi-phase plans (>15 tasks), insert REVIEW GATE markers:
-
-```markdown
----
-
-### REVIEW GATE 1 (after Phase A)
-
-Before starting Phase B, verify:
-- [ ] All Phase A tasks committed and tests green
-- [ ] No regressions in unrelated tests
-- [ ] User approved Phase A output (if user gate)
-
-If gate fails: STOP and escalate; do not proceed to Phase B.
-
----
-```
-
-This prevents cascading failures.
-
-## Output contract template
-
-Save plans to `.supervibe/artifacts/plans/YYYY-MM-DD-<feature-name>.md`. Reference template at `docs/templates/plan-template.md`.
-
-Required header:
-```markdown
-# <Feature> Implementation Plan
-> For agentic workers: REQUIRED SUB-SKILL ...
-**Goal:** <one sentence>
-**Architecture:** <2-3 sentences>
-**Tech Stack:** <key libs>
-**Constraints:** <hard rules>
-```
-
-Required sections per task:
-- Files (Create / Modify with line ranges / Test path)
-- Bite-sized steps (2-5 min each)
-- Failing test FIRST (TDD red)
-- Verification command + expected output
-- Rollback plan
-- Commit step
-
-Required at end:
-- Scope Safety Gate with approved/deferred/rejected scope and tradeoffs
-- Delivery Strategy and Production Readiness sections
-- Final 10/10 Acceptance Gate with no-open-blockers rule
-- Self-Review (spec coverage / placeholders / type consistency)
-- Execution Handoff (real-agent receipt-backed waves only; inline/controller notes are diagnostic)
-
-## Anti-patterns
-
-- **Steps not bite-sized** ("implement the feature" is not a step; "write failing test for X" is)
-- **No failing-test-first** for behavioral tasks (TDD red phase missing)
-- **No verification command** ("should work" is not verification; `npm test` is)
-- **No commit per task** (lumping commits hides regressions)
-- **No critical path** (engineer doesn't know which task to start when)
-- **No Scope Safety Gate** (hidden extras can enter the plan without a product decision)
-- **No rollback plan** (task fails midway → unclear how to recover)
-- **Estimates with false precision** ("3h 17min" lies; "1h ± 2x" is honest)
-- **Empty self-review** (failure to scan own work for placeholders)
-
-## Common workflows
-
-### Workflow: Feature plan (5–15 tasks)
-
-1. Read brainstorm output (`.supervibe/artifacts/specs/...-brainstorm.md`) if exists
-2. List ALL tasks in dependency order
-3. Mark critical path
-4. Identify receipt-backed real-agent waves for handoff
-5. Per task: failing test, impl, verify, rollback, commit
-6. Self-review: coverage / placeholders / type consistency
-7. Save to `.supervibe/artifacts/plans/`
-
-### Workflow: Multi-phase plan (>15 tasks, >1 day)
-
-1. Same as feature plan PLUS:
-2. Insert review gates between phases
-3. Each phase has its own receipt-backed real-agent waves
-4. Final task is always release-prep (CHANGELOG / version / final tests)
-
-### Workflow: Refactor plan (high regression risk)
-
-1. Each task has explicit rollback (often `git revert`)
-2. Review gate after every 5 tasks
-3. Risk register heavier
-4. Conservative time estimates
-
-## Verification
-
-- Plan saved to `.supervibe/artifacts/plans/YYYY-MM-DD-<feature>.md`
-- Every task has bite-sized steps + failing test + verify command + commit
-- Critical path documented
-- Scope Safety Gate documents approved, deferred, rejected, and spiked scope with evidence and tradeoffs
-- Delivery Strategy covers MVP value, anti-bloat scope control, phases, launch, and production target
-- Production Readiness covers test, security/privacy, performance, observability, rollback, and release
-- Final 10/10 Acceptance Gate requires verification evidence and no open blockers
-- Receipt-backed real-agent waves in Handoff section
-- Rollback plan per task
-- Self-Review section completed before saving
-- Machine validator: `validate-plan-artifacts.mjs --file <plan>` exits 0
-
-## Related
-
-- `supervibe:brainstorming` — predecessor; provides recommended option as input
-- `supervibe:executing-plans` — consumer; this skill writes what that skill executes
-- `supervibe:explore-alternatives` — for risk-register options
-- `supervibe:confidence-scoring` — gate before saving plan (≥9 required)
-- `supervibe:requirements-intake` — alternative entry point for complexity 3-6 plans
+- `supervibe:brainstorming` - produces the approved input spec.
+- `supervibe:requirements-intake` - alternate entry point for complexity 3-6.
+- `supervibe:executing-plans` - consumes reviewed, atomized, receipt-backed work.
+- `supervibe:confidence-scoring` - plan confidence gate.

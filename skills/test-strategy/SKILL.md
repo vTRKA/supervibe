@@ -1,11 +1,7 @@
 ---
 name: test-strategy
 namespace: app-excellence
-description: >-
-  Use BEFORE designing tests for a new feature TO establish pyramid
-  (unit/integration/e2e ratios), fixture isolation policy, flake budget,
-  coverage triangulation strategy. Triggers: 'test strategy', 'покрытие
-  тестами', 'тестовая пирамида', 'стратегия тестов'.
+description: 'Use BEFORE designing tests for a new feature TO establish pyramid (unit/integration/e2e ratios), fixture isolation policy, flake budget, coverage triangulation strategy. Triggers: ''test strategy'', ''покрытие тестами'', ''тестовая пирамида'', ''стратегия тестов''.'
 allowed-tools:
   - Read
   - Grep
@@ -22,7 +18,11 @@ last-verified: 2026-04-27T00:00:00.000Z
 
 # Test Strategy
 
-## When to invoke
+## Overview
+
+Test Strategy provides a reusable Supervibe operating method for Use BEFORE designing tests for a new feature TO establish pyramid (unit/integration/e2e ratios), fixture isolation policy, flake budget, coverage triangulation strategy. Triggers: 'test strategy', 'покрытие тестами', 'тестовая пирамида', 'стратегия тестов'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
+## When to Use
 
 BEFORE writing the first test for a new feature. BEFORE adding a new test layer (e.g. introducing Playwright into a project that only had Jest). WHEN flake rate breaches the project SLO. WHEN a coverage report shows numerically high coverage but bugs still ship.
 

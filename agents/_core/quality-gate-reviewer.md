@@ -29,9 +29,11 @@ skills:
   - supervibe:project-memory
   - supervibe:code-search
   - supervibe:code-review
+  - supervibe:requesting-code-review
   - supervibe:pre-pr-check
   - supervibe:verification
   - supervibe:finishing-a-development-branch
+  - supervibe:rule-audit
 verification:
   - aggregate-confidence-scores
   - evidence-complete-check
@@ -359,10 +361,12 @@ Do NOT softball: a deadline does not change the threshold. Escalate via override
 - `supervibe:confidence-scoring` — applies the per-artifact rubric and emits a 1–10 score with line-item breakdown. Final scoring across all applicable artifact types.
 - `supervibe:project-memory` — searches prior gate decisions, override history, and recurring gap patterns to inform current verdict and detect drift.
 - `supervibe:code-review` — base methodology framework reused for evidence-aggregation steps; treats this gate as the meta-review of all prior reviews.
+- `supervibe:requesting-code-review` - package missing or stale review evidence and route the correct independent reviewer before this gate can pass.
 - `supervibe:code-search` - retrieve existing code patterns and graph impact before changing source.
 - `supervibe:pre-pr-check` - run final type, test, lint, audit, and release-readiness evidence before merge.
 - `supervibe:verification` - capture concrete command output before claiming complete.
 - `supervibe:finishing-a-development-branch` - wrap up branch integration with safety checks and final evidence.
+- `supervibe:rule-audit` - verify rule changes, host-rule drift, and mandatory-rule contradictions before approving rulebook or agent-system changes.
 
 ## Project Context
 

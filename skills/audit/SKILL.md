@@ -1,11 +1,7 @@
 ---
 name: audit
 namespace: process
-description: >-
-  Use WHEN session starts in existing project OR WHEN agent reports
-  stale-context to health-check artifacts: stale references, coverage gaps, weak
-  artifacts, agent-freshness, override-rate, effectiveness signals. Triggers:
-  'health check', 'audit плагина', 'stale agents', 'аудит проекта'.
+description: 'Use WHEN session starts in existing project OR WHEN agent reports stale-context to health-check artifacts: stale references, coverage gaps, weak artifacts, agent-freshness, override-rate, effectiveness signals. Triggers: ''health check'', ''audit плагина'', ''stale agents'', ''аудит проекта''.'
 allowed-tools:
   - Read
   - Grep
@@ -22,7 +18,11 @@ last-verified: 2026-04-27T00:00:00.000Z
 
 # Audit
 
-## When to invoke
+## Overview
+
+Audit provides a reusable Supervibe operating method for Use WHEN session starts in existing project OR WHEN agent reports stale-context to health-check artifacts: stale references, coverage gaps, weak artifacts, agent-freshness, override-rate, effectiveness signals. Triggers: 'health check', 'audit плагина', 'stale agents', 'аудит проекта'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
+## When to Use
 
 - AT SESSION START if `last-verified` of any artifact >30 days
 - After ≥10 files changed in session

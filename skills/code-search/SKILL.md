@@ -1,10 +1,7 @@
 ---
 name: code-search
 namespace: process
-description: >-
-  Use BEFORE making non-trivial changes to source code to find relevant existing
-  code, similar patterns, and callers via hybrid keyword+semantic search.
-  Triggers: 'найди код', 'кто вызывает', 'callers <symbol>', 'где используется'.
+description: 'Use BEFORE making non-trivial changes to source code to find relevant existing code, similar patterns, and callers via hybrid keyword+semantic search. Triggers: ''найди код'', ''кто вызывает'', ''callers <symbol>'', ''где используется''.'
 allowed-tools:
   - Read
   - Grep
@@ -21,12 +18,16 @@ last-verified: 2026-05-02T00:00:00.000Z
 
 # Code Search
 
+## Overview
+
+Code Search provides a reusable Supervibe operating method for Use BEFORE making non-trivial changes to source code to find relevant existing code, similar patterns, and callers via hybrid keyword+semantic search. Triggers: 'найди код', 'кто вызывает', 'callers <symbol>', 'где используется'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
 Retrieval policy: code RAG is mandatory for code changes, unfamiliar code, bug
 fixes, implementation planning and stack discovery. Codegraph is mandatory for
 rename, move, delete, extract, public API change, dependency impact analysis,
 architecture review and multi-file refactor.
 
-## When to invoke
+## When to Use
 
 BEFORE any non-trivial code change. Specifically:
 - "How does X work in this codebase?" — agent searches semantically before reading

@@ -1,10 +1,7 @@
 ---
 name: seo-audit
 namespace: process
-description: >-
-  Use WHEN auditing or building public pages for SEO to verify technical SEO +
-  content SEO using best-practices-researcher for current 2026 patterns.
-  Triggers: 'SEO audit', 'мета-теги', 'проверь SEO', 'seo чеклист'.
+description: 'Use WHEN auditing or building public pages for SEO to verify technical SEO + content SEO using best-practices-researcher for current 2026 patterns. Triggers: ''SEO audit'', ''мета-теги'', ''проверь SEO'', ''seo чеклист''.'
 allowed-tools:
   - Read
   - Grep
@@ -21,7 +18,11 @@ last-verified: 2026-04-27T00:00:00.000Z
 
 # SEO Audit
 
-## When to invoke
+## Overview
+
+Seo Audit provides a reusable Supervibe operating method for Use WHEN auditing or building public pages for SEO to verify technical SEO + content SEO using best-practices-researcher for current 2026 patterns. Triggers: 'SEO audit', 'мета-теги', 'проверь SEO', 'seo чеклист'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
+## When to Use
 
 - Before publishing landing page / blog post / product page
 - After major content restructure

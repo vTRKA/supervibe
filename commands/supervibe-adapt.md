@@ -189,6 +189,9 @@ managed block.
 - `CHANGELOG.md` — see what upstream changed before adapting
 - `/supervibe-genesis` — for projects without a Supervibe host adapter scaffold yet
 - `/supervibe-audit` — to discover drift in the first place
+- [Migration And Deprecation Template](../references/templates/migration-deprecation.md)
+  records compatibility, rollout, communication, and rollback evidence when
+  Adapt moves an artifact contract.
 
 ## Agent Orchestration Contract
 

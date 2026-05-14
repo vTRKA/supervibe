@@ -1,10 +1,7 @@
 ---
 name: feature-flag-rollout
 namespace: app-excellence
-description: >-
-  Use BEFORE shipping a risky feature TO design staged rollout (kill-switch /
-  percentage / cohort), define rollback criteria, plan flag debt cleanup.
-  Triggers: 'feature flag', 'staged rollout', 'постепенный релиз', 'фича-флаг'.
+description: 'Use BEFORE shipping a risky feature TO design staged rollout (kill-switch / percentage / cohort), define rollback criteria, plan flag debt cleanup. Triggers: ''feature flag'', ''staged rollout'', ''постепенный релиз'', ''фича-флаг''.'
 allowed-tools:
   - Read
   - Grep
@@ -21,7 +18,11 @@ last-verified: 2026-04-27T00:00:00.000Z
 
 # Feature Flag Rollout
 
-## When to invoke
+## Overview
+
+Feature Flag Rollout provides a reusable Supervibe operating method for Use BEFORE shipping a risky feature TO design staged rollout (kill-switch / percentage / cohort), define rollback criteria, plan flag debt cleanup. Triggers: 'feature flag', 'staged rollout', 'постепенный релиз', 'фича-флаг'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
+## When to Use
 
 BEFORE merging the first commit that gates new behaviour behind a flag. BEFORE expanding an existing flag to a wider audience. WHEN an incident requires emergency disable. WHEN flag debt is suspected (flag count rising, cleanup PRs absent).
 
@@ -148,3 +149,7 @@ Storage backend: <platform / repo path> (NOT env vars)
 - `supervibe:incident-response` — consumes the kill-switch + runbook designed here.
 - `supervibe:prd` — capture the rollout decision as an architecture decision record.
 - `supervibe:audit` — periodic flag-debt sweep.
+- [Decision Brief](../../docs/templates/decision-brief-template.md) - record
+  rollout-shape decisions that affect long-lived architecture or support policy.
+- [Migration And Deprecation](../../references/templates/migration-deprecation.md) —
+  plan flag cleanup, replacement rollout, compatibility, and user communication.

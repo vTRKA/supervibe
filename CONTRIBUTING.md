@@ -16,7 +16,7 @@
 2. Fill in all placeholders
 3. Frontmatter must include all fields in `REQUIRED_SKILL_FIELDS`
 4. Description MUST follow format: `Use {WHEN|BEFORE|AFTER} <trigger> TO <verb-led purpose> [GATES <scoring>]`
-5. Body must include: When to invoke, Step 0 (mandatory), Decision tree, Procedure, Output contract, Guard rails, Verification
+5. Body must include: Overview, When to Use, Step 0 (mandatory), Decision tree, Procedure, Output contract, Guard rails, Verification
 6. Run `npm run lint:descriptions` — must show OK
 7. Score with `/supervibe-score skill-quality skills/<name>/SKILL.md` — must be ≥9
 

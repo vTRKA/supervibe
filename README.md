@@ -9,9 +9,35 @@ Runs locally. No Docker. Windows, macOS, and Linux.
 
 Supervibe commands are agent-gated by default: every `/supervibe-*` workflow has required specialist agents, active durable work is blocked until scoped runtime receipts exist, and inline/controller-only output stays diagnostic. Design and prototype flows additionally require their producer and reviewer agents before completion can be claimed.
 
-**v2.1** - current plugin `v2.1.30` - MIT - 1980 tests
+**v2.1** - current plugin `v2.1.31` - MIT - 2102 tests
 
 > **Compliance notice:** This tool is designed exclusively for development assistance. By using it, you agree to comply with the Terms of Service (ToS) and Acceptable Use Policy (AUP) of all involved services, including Anthropic. Unauthorized automated usage, OAuth token abuse, or violation of third-party policies is the sole responsibility of the end user.
+
+## Supervibe Lifecycle
+
+Most Supervibe work follows one simple loop:
+
+```mermaid
+flowchart LR
+  A["Install or refresh"] --> B["Connect the project"]
+  B --> C["Discover context"]
+  C --> D["Create a reviewed plan"]
+  D --> E["Run gated execution"]
+  E --> F["Verify and review"]
+  F --> G["Record memory and status"]
+```
+
+| Stage | Normal entry point | Evidence Supervibe expects |
+|---|---|---|
+| Install or refresh | `/supervibe-update`, `/supervibe-adapt` | Installer or adapt dry-run, host registration, managed-block diff |
+| Connect the project | `/supervibe-genesis` | Stack detection, selected agents/rules/skills, memory and index setup |
+| Discover context | `/supervibe`, `/supervibe-brainstorm <topic>`, `/supervibe-design <brief>` | Project memory, Code RAG, Code Graph readiness, domain evidence when needed |
+| Create a reviewed plan | `/supervibe-plan [<source-artifact>]` | Acceptance criteria, risk map, verification matrix, command-owned agent proof |
+| Run gated execution | `/supervibe-execute-plan <plan-path>` or `/supervibe-loop --guided --file <graph.json>` | Work item state, scoped write set, receipts, targeted verification |
+| Verify and review | `/supervibe-status`, `/supervibe-security-audit`, reviewer agents | Validator output, reviewer findings, confidence gate status, residual risks |
+| Record memory and status | `/supervibe-status` | Durable memory, context-pack citations, close or resume action |
+
+For the deeper system map, use [agent roster](docs/agent-roster.md) for specialist boundaries, [workflow hardening](docs/supervibe-workflow-hardening.md) for command and evidence gates, [reference packs](docs/reference-packs.md) for context loading, [confidence gates](docs/confidence-gates-spec.md) for score behavior, and [multi-agent orchestration](docs/multi-agent-orchestration.md) for parallel work.
 
 ## Pick Your Starting Point
 
@@ -61,6 +87,52 @@ This is the rule that prevents most confusion.
 
 > **Warning:** Do not type slash commands like `/supervibe-adapt` in PowerShell, bash, or zsh. Slash commands belong in the AI CLI chat.
 
+## Memory-Safe Node Runs
+
+For large local checks, especially on Windows, use the memory-safe npm aliases:
+
+```powershell
+npm run check:memory-safe
+npm run test:memory-safe
+npm run code:index:memory-safe
+```
+
+The generic wrapper works with any command:
+
+```powershell
+npm run node:memory-safe -- --max-old-space-size 6144 -- npm run check
+```
+
+The wrapper adds only `NODE_OPTIONS` flags supported by the current Node.js
+runtime via `process.allowedNodeEnvironmentFlags`. Unsupported flags are
+reported and skipped instead of breaking the user's Node version. Defaults are
+`--max-old-space-size=4096` and `--heapsnapshot-near-heap-limit=3`.
+
+## Runtime Cleanup
+
+Supervibe daemon commands register their PID under `.supervibe/servers/` and in
+`.supervibe/memory/runtime-cleanup-registry.json`. To inspect old local daemons
+before stopping anything:
+
+```powershell
+npm run supervibe:cleanup:unused:dry-run
+```
+
+To stop unused managed daemons older than the default 60 minute threshold:
+
+```powershell
+npm run supervibe:cleanup:unused
+```
+
+Use the lower-level command to tune the threshold:
+
+```powershell
+node scripts/supervibe-runtime-cleanup.mjs --unused --older-than-minutes 15 --dry-run
+```
+
+On Windows, cleanup uses a process-tree stop for managed Node daemons so child
+processes do not remain behind after the parent exits.
+
 ## Install
 
 Requirements:
@@ -97,7 +169,7 @@ The installer:
 After restart, you should see something like:
 
 ```text
-[supervibe] welcome  plugin v2.1.30 initialized for this project
+[supervibe] welcome  plugin v2.1.31 initialized for this project
 [supervibe] code RAG  N files / M chunks (fresh)
 [supervibe] code graph  N symbols / M edges (X% resolved)
 ```
@@ -299,6 +371,7 @@ Most users only need these five ideas:
 | Project memory | Reuses decisions instead of asking again |
 | Code search and code graph | Finds related files and callers before changes |
 | Confidence gates | Requires evidence before claiming work is done |
+| Reference packs | Loads only the docs, memory, RAG, graph, and templates needed for the active branch |
 | Local workflows | Runs project setup, design, review, preview, and status checks locally |
 
 <details>

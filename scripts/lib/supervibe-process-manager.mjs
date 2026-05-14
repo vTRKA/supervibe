@@ -1,7 +1,11 @@
 import { spawn } from 'node:child_process';
-import { appendFileSync, mkdirSync } from 'node:fs';
+import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { inspect } from 'node:util';
+import {
+  defaultRuntimeCleanupRegistryPath,
+  registerRuntimeCleanupTargetSync,
+} from './runtime-cleanup-registry.mjs';
 
 export function resolveServerLogPaths({ rootDir = process.cwd(), name = 'server', port = 0 } = {}) {
   const safeName = String(name || 'server')
@@ -14,6 +18,7 @@ export function resolveServerLogPaths({ rootDir = process.cwd(), name = 'server'
   return {
     stdout: `${base}.out.log`,
     stderr: `${base}.err.log`,
+    pid: `${base}.pid`,
   };
 }
 
@@ -94,12 +99,47 @@ export function startBackgroundNodeScript({
     env,
     logs,
   }));
+  registerBackgroundChild({
+    child,
+    scriptPath,
+    args: buildDaemonChildArgs(args),
+    cwd,
+    name,
+    port,
+    logs,
+  });
   child.unref();
   return {
     pid: child.pid,
     logs,
     args: buildDaemonChildArgs(args),
   };
+}
+
+function registerBackgroundChild({ child, scriptPath, args = [], cwd, name, port, logs }) {
+  if (!child?.pid) return;
+  try {
+    writeFileSync(logs.pid, `${child.pid}\n`, 'utf8');
+    registerRuntimeCleanupTargetSync({
+      id: `${name}:${port || child.pid}`,
+      kind: 'daemon',
+      pid: child.pid,
+      port,
+      label: name,
+      stopMode: 'process-tree',
+      rootDir: cwd,
+      scriptPath,
+      args,
+      logs,
+      pidFile: logs.pid,
+    }, {
+      path: defaultRuntimeCleanupRegistryPath(cwd),
+    });
+  } catch (error) {
+    try {
+      appendFileSync(logs.stderr, `[supervibe] failed to register daemon cleanup target: ${error.message}\n`);
+    } catch {}
+  }
 }
 
 export function buildWatcherDaemonConfig({ rootDir = process.cwd(), noEmbeddings = false } = {}) {

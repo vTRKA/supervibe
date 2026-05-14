@@ -1,22 +1,32 @@
 ---
 name: design-intelligence
 namespace: internal
-description: "Use WHEN design-facing agents need retrieval-backed style, UX, brand, deck, chart, collateral, or stack UI evidence TO ground decisions in project memory, code facts, approved design-system tokens, and the internal design intelligence data pack. Internal support only; no user-facing slash command."
-allowed-tools: [Read, Grep, Glob, Bash]
+description: 'Use WHEN design-facing agents need retrieval-backed style, UX, brand, deck, chart, collateral, or stack UI evidence TO ground decisions in project memory, code facts, approved design-system tokens, and the internal design intelligence data pack. Internal support only; no user-facing slash command.'
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
 phase: support
-prerequisites: [project-memory-preflight, code-search-preflight]
+prerequisites:
+  - project-memory-preflight
+  - code-search-preflight
 emits-artifact: design-intelligence-evidence
 confidence-rubric: confidence-rubrics/design-intelligence.yaml
 gate-on-exit: true
 version: 2.1
-last-verified: 2026-05-02
+last-verified: 2026-05-02T00:00:00.000Z
 ---
 
 # Design Intelligence
 
+## Overview
+
+Design Intelligence provides a reusable Supervibe operating method for Use WHEN design-facing agents need retrieval-backed style, UX, brand, deck, chart, collateral, or stack UI evidence TO ground decisions in project memory, code facts, approved design-system tokens, and the internal design intelligence data pack. Internal support only; no user-facing slash command.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
 Internal lookup and synthesis support for Supervibe design work. This skill does not own brand direction, UX specs, prototypes, presentation decks, accessibility review, or stack implementation. It supplies cited evidence so those agents make better decisions.
 
-## When to invoke
+## When to Use
 
 Use this skill only as internal evidence support for design-facing agents and
 commands that need retrieval-backed product, style, UX, chart, deck, collateral,

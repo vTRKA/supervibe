@@ -53,6 +53,7 @@ export function atomizePlanToWorkItems(markdown, options = {}) {
   const gateItems = createGateItems(parsed, epicId, childItems, options);
   const followupItems = createFollowupItems(parsed, epicId, childItems, options);
   applyCriticalPathBlocks(childItems, parsed.criticalPath);
+  applyFinalGateBlocks(childItems);
   const taskBudgetPolicy = options.taskBudgetPolicy
     ? { ...parsed.globalMetadata.taskBudgetPolicy, ...options.taskBudgetPolicy }
     : parsed.globalMetadata.taskBudgetPolicy;
@@ -65,7 +66,7 @@ export function atomizePlanToWorkItems(markdown, options = {}) {
     type: "epic",
     priority: "critical",
     parentId: null,
-    blocks: childItems.filter((item) => item.type !== "gate").slice(0, 1).map((item) => item.itemId),
+    blocks: [],
     related: [],
     discoveredFrom: { type: "plan", path: planPath },
     acceptanceCriteria: [
@@ -209,9 +210,14 @@ export function parsePlanForWorkItems(markdown, planPath = ".supervibe/artifacts
       }
     }
 
-    const fileMatch = /^\s*-\s*(Create|Modify|Test):\s+`([^`]+)`/i.exec(line);
+    const inlineFiles = /^\*\*(?:Files?|Files required|Files required\/owned|Files required\/modified):\*\*\s*(.+)$/i.exec(line.trim());
+    if (inlineFiles) {
+      current.writeScope.push(...parseFileScopeEntries(inlineFiles[1]));
+    }
+
+    const fileMatch = /^\s*-\s*(Create|Modify|Test|Delete|Remove|Read):\s+`([^`]+)`/i.exec(line);
     if (fileMatch) {
-      current.writeScope.push({ action: fileMatch[1].toLowerCase(), path: normalizePath(fileMatch[2]) });
+      current.writeScope.push({ action: normalizeFileScopeAction(fileMatch[1]), path: normalizePath(fileMatch[2]) });
     }
 
     const rollback = /^\*\*Rollback:\*\*\s*(.+)$/i.exec(line.trim());
@@ -352,6 +358,7 @@ export function validateWorkItemGraph(graph = {}) {
       issues.push(...score);
     }
   }
+  issues.push(...validateWorkItemGraphConsistency(graph, items, ids));
   const budgetReport = graph.metadata?.taskBudgetPolicy?.report;
   if (budgetReport?.exceeded && budgetReport.pass === false) {
     issues.push(issue(
@@ -997,6 +1004,26 @@ function applyCriticalPathBlocks(items, criticalPath) {
   }
 }
 
+function applyFinalGateBlocks(items = []) {
+  const executable = items.filter((item) => item?.itemId && !["epic", "gate", "followup", "subtask", "step", "checklist"].includes(item.type));
+  const finalItems = executable.filter(isFinalGateWorkItem);
+  for (const finalItem of finalItems) {
+    for (const blocker of executable) {
+      if (blocker.itemId === finalItem.itemId) continue;
+      if (blocker.parentId !== finalItem.parentId) continue;
+      if (!blocker.blocks.includes(finalItem.itemId)) blocker.blocks.push(finalItem.itemId);
+      finalItem.blockedBy = uniqueStrings([...(finalItem.blockedBy ?? []), blocker.itemId]);
+    }
+  }
+}
+
+function isFinalGateWorkItem(item = {}) {
+  const title = String(item.title || "").toLowerCase();
+  if (/\b10\s*\/\s*10\b|\bten\s+of\s+ten\b/.test(title)) return true;
+  return /\b(final|release)\b/.test(title)
+    && /\b(review|gate|proof|verification|check|sweep|handoff)\b/.test(title);
+}
+
 function parseCriticalPath(markdown) {
   const match = /Critical path:\s*([^\n]+)/i.exec(String(markdown ?? ""));
   if (!match) return [];
@@ -1004,6 +1031,39 @@ function parseCriticalPath(markdown) {
     .split(/(?:->|→|,|\|)/)
     .map((item) => normalizeTaskRef(item.replace(/\[.*?\]/g, "").trim(), 0))
     .filter(Boolean);
+}
+
+function parseFileScopeEntries(value = "") {
+  const entries = [];
+  const pattern = /\b(Create|Modify|Test|Delete|Remove|Read):\s*(?:`([^`]+)`|([^;,]+))/gi;
+  let match = pattern.exec(String(value || ""));
+  while (match) {
+    const rawPath = (match[2] || match[3] || "").trim();
+    const path = normalizePath(rawPath.replace(/[.]+$/u, ""));
+    if (path && !["none", "n/a", "na", "-"].includes(path.toLowerCase())) {
+      entries.push({ action: normalizeFileScopeAction(match[1]), path });
+    }
+    match = pattern.exec(String(value || ""));
+  }
+  return uniqueWriteScopeEntries(entries);
+}
+
+function normalizeFileScopeAction(action = "") {
+  const value = String(action || "").toLowerCase();
+  if (value === "remove") return "delete";
+  return value;
+}
+
+function uniqueWriteScopeEntries(entries = []) {
+  const seen = new Set();
+  const out = [];
+  for (const entry of entries) {
+    const key = `${entry.action || "touch"}\u0000${entry.path || ""}`;
+    if (!entry.path || seen.has(key)) continue;
+    seen.add(key);
+    out.push(entry);
+  }
+  return out;
 }
 
 function parseParallelGroups(markdown) {
@@ -1155,7 +1215,10 @@ function createDependencyEdges(items = []) {
   };
   for (const item of items) {
     if (item.parentId) add(item.parentId, item.itemId, "parent-child");
-    for (const blocked of item.blocks || []) add(item.itemId, blocked, "blocks");
+    if (item.type !== "epic") {
+      for (const blocked of item.blocks || []) add(item.itemId, blocked, "blocks");
+    }
+    for (const blocker of item.blockedBy || []) add(blocker, item.itemId, "blocks");
     for (const related of item.related || []) add(item.itemId, related, "related");
     if (item.discoveredFrom?.itemId) add(item.discoveredFrom.itemId, item.itemId, "discovered-from");
   }
@@ -1166,6 +1229,111 @@ function createDependencyEdges(items = []) {
     seen.add(key);
     return true;
   });
+}
+
+function validateWorkItemGraphConsistency(graph = {}, items = [], ids = new Set()) {
+  const issues = [];
+  const byId = new Map(items.map((item) => [item.itemId || item.id, item]));
+  const tasksById = new Map((graph.tasks || []).map((task) => [task.id || task.itemId, task]));
+  const edgeSet = new Set((graph.dependencyEdges || []).map(edgeKey));
+
+  for (const edge of graph.dependencyEdges || []) {
+    if (!ids.has(edge.from)) issues.push(issue("unknown-edge-source", edge.from, `Dependency edge source is unknown: ${edge.from}.`, { edge }));
+    if (!ids.has(edge.to)) issues.push(issue("unknown-edge-target", edge.to, `Dependency edge target is unknown: ${edge.to}.`, { edge }));
+    const fromItem = byId.get(edge.from);
+    const toItem = byId.get(edge.to);
+    if (edge.type === "parent-child" && toItem?.parentId !== edge.from) {
+      issues.push(issue("stale-parent-child-edge", edge.to, `${edge.from}->${edge.to} parent-child edge is not represented by target parentId.`, { edge }));
+    }
+    if (edge.type === "blocks" && fromItem?.type === "epic") {
+      issues.push(issue("epic-blocks-child", edge.from, "Epic items must not create runtime blocking edges to child tasks.", { edge }));
+    }
+    if (edge.type === "blocks" && fromItem?.type !== "epic") {
+      const represented = (fromItem?.blocks || []).includes(edge.to)
+        || (toItem?.blockedBy || []).includes(edge.from)
+        || (tasksById.get(edge.to)?.dependencies || []).includes(edge.from);
+      if (!represented) {
+        issues.push(issue("stale-blocks-edge", edge.to, `${edge.from}->${edge.to} blocks edge is not represented by item or task dependency state.`, { edge }));
+      }
+    }
+    if (edge.type === "related" && !(fromItem?.related || []).includes(edge.to)) {
+      issues.push(issue("stale-related-edge", edge.from, `${edge.from}->${edge.to} related edge is not represented by source related list.`, { edge }));
+    }
+    if (edge.type === "discovered-from" && toItem?.discoveredFrom?.itemId !== edge.from) {
+      issues.push(issue("stale-discovered-from-edge", edge.to, `${edge.from}->${edge.to} discovered-from edge is not represented by target provenance.`, { edge }));
+    }
+  }
+
+  for (const item of items) {
+    const itemId = item.itemId || item.id;
+    if (item.parentId && !edgeSet.has(edgeKey({ from: item.parentId, to: itemId, type: "parent-child" }))) {
+      issues.push(issue("missing-parent-child-edge", itemId, `${itemId} is missing parent-child edge from ${item.parentId}.`));
+    }
+    if (item.type !== "epic") {
+      for (const blocked of item.blocks || []) {
+        if (!edgeSet.has(edgeKey({ from: itemId, to: blocked, type: "blocks" }))) {
+          issues.push(issue("missing-blocks-edge", itemId, `${itemId} blocks ${blocked} but dependencyEdges does not record it.`));
+        }
+      }
+    }
+    for (const blocker of item.blockedBy || []) {
+      if (!edgeSet.has(edgeKey({ from: blocker, to: itemId, type: "blocks" }))) {
+        issues.push(issue("missing-blocked-by-edge", itemId, `${itemId} is blocked by ${blocker} but dependencyEdges does not record it.`));
+      }
+      const task = tasksById.get(itemId);
+      if (task && !(task.dependencies || []).includes(blocker)) {
+        issues.push(issue("task-dependency-mismatch", itemId, `${itemId} is blocked by ${blocker} but loop task dependencies omit it.`));
+      }
+    }
+    if (item.discoveredFrom?.type === "split") {
+      const parent = byId.get(item.discoveredFrom.parentItemId || item.discoveredFrom.itemId || item.parentId);
+      const parentSource = parent?.discoveredFrom || {};
+      if (!item.discoveredFrom.parentItemId) {
+        issues.push(issue("split-provenance-missing-parent", itemId, `${itemId} split provenance must include parentItemId.`));
+      }
+      if (parentSource.path && item.discoveredFrom.path !== parentSource.path) {
+        issues.push(issue("split-provenance-missing-plan-path", itemId, `${itemId} split provenance must preserve source plan path.`));
+      }
+      if (parentSource.taskRef && item.discoveredFrom.taskRef !== parentSource.taskRef) {
+        issues.push(issue("split-provenance-missing-task-ref", itemId, `${itemId} split provenance must preserve source task ref.`));
+      }
+      if (!edgeSet.has(edgeKey({ from: item.discoveredFrom.itemId, to: itemId, type: "discovered-from" }))) {
+        issues.push(issue("missing-discovered-from-edge", itemId, `${itemId} split provenance is missing discovered-from edge.`));
+      }
+    }
+  }
+
+  const childItems = items.filter((item) => item?.type !== "epic");
+  const implementationItems = items.filter((item) => !["epic", "gate", "followup"].includes(item?.type));
+  const totals = graph.metadata?.taskBudgetPolicy?.report?.totals;
+  if (totals) {
+    if (totals.childItems !== childItems.length) {
+      issues.push(issue("stale-task-budget-child-count", graph.epicId ?? null, `Task budget childItems is stale: ${totals.childItems} != ${childItems.length}.`));
+    }
+    if (totals.implementationItems !== implementationItems.length) {
+      issues.push(issue("stale-task-budget-implementation-count", graph.epicId ?? null, `Task budget implementationItems is stale: ${totals.implementationItems} != ${implementationItems.length}.`));
+    }
+  }
+  if (graph.metadata?.semanticEpicGrouping) {
+    const taskCount = graph.metadata.semanticEpicGrouping.taskCount;
+    if (taskCount !== implementationItems.length) {
+      issues.push(issue("stale-semantic-task-count", graph.epicId ?? null, `Semantic grouping taskCount is stale: ${taskCount} != ${implementationItems.length}.`));
+    }
+  }
+  for (const semanticEpic of graph.metadata?.semanticEpics || []) {
+    const taskIds = semanticEpic.taskIds || [];
+    if (semanticEpic.taskCount !== taskIds.length) {
+      issues.push(issue("stale-semantic-epic-task-count", semanticEpic.id, `${semanticEpic.id} taskCount is stale: ${semanticEpic.taskCount} != ${taskIds.length}.`));
+    }
+    for (const taskId of taskIds) {
+      if (!ids.has(taskId)) issues.push(issue("unknown-semantic-task", semanticEpic.id, `${semanticEpic.id} references unknown task ${taskId}.`, { taskId }));
+    }
+  }
+  return issues;
+}
+
+function edgeKey(edge = {}) {
+  return `${edge.from}\u0000${edge.to}\u0000${edge.type}`;
 }
 
 function findByTaskRef(items, taskRef) {

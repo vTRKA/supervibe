@@ -2,10 +2,10 @@
 name: pre-pr-check
 namespace: process
 description: >-
-  Use BEFORE opening any PR or merging to main to run mandatory checks
-  (typecheck, test, lint, dep audit, security scan) and capture evidence.
-  Triggers: 'перед PR', 'pre-merge check', 'check before PR', 'пред-PR
-  проверки'.
+  Use BEFORE opening a PR, requesting review, merging, or handing off a release
+  candidate to prove the diff is scoped, intentional, verified, linked to
+  artifacts, reviewer-ready, and honest about residual risk. Triggers: pre-PR
+  check, pre-merge check, check before PR, reviewer readiness, release readiness.
 allowed-tools:
   - Read
   - Grep
@@ -17,117 +17,210 @@ emits-artifact: agent-output
 confidence-rubric: confidence-rubrics/agent-delivery.yaml
 gate-on-exit: true
 version: 1
-last-verified: 2026-04-27T00:00:00.000Z
+last-verified: 2026-05-14T00:00:00.000Z
 ---
 
 # Pre-PR Check
 
-## When to invoke
+## Overview
 
-BEFORE opening a PR, BEFORE merging to main, BEFORE pushing to a tracked branch. Invoked by `supervibe:finishing-a-development-branch` and `supervibe:requesting-code-review`.
+Run this skill as the last engineering check before a PR, review request, merge,
+or release handoff. It proves that the change set matches the stated intent,
+that verification is scoped to the changed surfaces, that durable artifacts are
+linked, and that the reviewer receives enough context to evaluate risk without
+reconstructing the whole task.
+
+The skill emits an evidence bundle. It does not replace the workflow, reviewer,
+or specialist that owns the change; it makes the pre-review state explicit.
+
+## When to Use
+
+- Use before opening or updating a PR when implementation appears complete and
+  the next action is review, merge, or release handoff.
+- Use before merging to a protected branch when the project requires a final
+  human-readable verification and residual-risk record.
+- Use when a worker hands off a diff and needs to prove changed files, intent,
+  checks, artifacts, and reviewer readiness in one bounded packet.
+- Use after a requested fix when the PR description or release readiness record
+  must be refreshed with current verification evidence.
 
 ## Expert Operating Standard
 
-Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+Follow `docs/references/skill-expert-operating-standard.md`: start from source
+of truth, preserve retrieval evidence, apply scope safety, use real producers
+with runtime receipts for durable delegated outputs, verify before completion
+claims, and keep confidence below gate when evidence is partial.
 
-## Step 0 — Read source of truth (required)
+## Step 0 - Read source of truth
 
-1. Read project's check command(s) from the active host instruction file or `package.json`/`composer.json`/`Cargo.toml`/`Makefile`
-2. Identify stack (decides which checks apply)
-3. Note any project-specific gates (e.g., bundle size budget, coverage threshold)
+1. Read the active user request, task contract, plan artifact, issue, PR
+   template, or release gate that defines the intended change.
+2. Read `git status --short` and the relevant diff or commit range. Separate
+   owned changes, user changes, generated artifacts, and unrelated work.
+3. Read project check commands from the active host instructions, `package.json`,
+   `Makefile`, language manifests, CI config, or command docs.
+4. Check project memory, Code RAG, and CodeGraph readiness when the change is
+   non-trivial or when a maturity, release, or architectural claim depends on
+   repository context. Record stale or unavailable evidence rather than hiding it.
+5. Identify required durable artifacts: receipts, review notes, screenshots,
+   release readiness records, ADRs, migrations, test reports, or handoff files.
+
+## When not to use
+
+- Do not use while implementation work is still open or the diff is expected to
+  change materially.
+- Do not use to bypass a command, reviewer, specialist producer, or workflow
+  that owns durable artifacts or approvals.
+- Do not use when required source evidence, artifact links, or verification
+  commands are missing; return `NOT-READY` with the blocker.
+- Do not use as an inner-loop test shortcut. Run narrow implementation checks
+  directly during development and reserve this skill for the pre-review gate.
 
 ## Decision tree
 
-```
-What stack determines which checks?
-├─ Node.js → tsc --noEmit + npm test + npm run lint + npm audit + bundle-size (if applicable); never auto-apply `npm audit fix --force` when it downgrades a framework major/minor line
-├─ Python → mypy + pytest + ruff + pip-audit + safety check
-├─ PHP → phpstan + pest/phpunit + pint + composer audit
-├─ Go → go vet + go test + golangci-lint + govulncheck
-├─ Rust → cargo check + cargo test + cargo clippy + cargo audit
-└─ Mixed → all above for each detected stack
+```text
+Diff contains unrelated or unexplained files?
+  -> NOT-READY: isolate, explain, or get owner approval before review.
+Intent cannot be tied to task, issue, plan, or user request?
+  -> NOT-READY: recover the intent source or create a bounded handoff.
+Required artifact, receipt, screenshot, or decision link is missing?
+  -> NOT-READY: produce or link the artifact before asking for review.
+Changed surface maps to specific checks?
+  -> Run targeted checks plus any project-mandated full gate.
+Checks pass and reviewer context is complete?
+  -> READY with residual risk and exact evidence.
+Checks fail, are skipped, or are stale?
+  -> NOT-READY unless the owner explicitly accepts a documented exception.
 ```
 
 ## Procedure
 
-1. **Run stack-appropriate checks** sequentially (parallel risks output mixing)
-2. **Capture each output verbatim** (no paraphrasing)
-3. **Decide pass/fail per check**:
-   - Typecheck: 0 errors
-   - Tests: 0 failures, 0 regressions
-   - Lint: 0 errors (warnings may be allowed per project)
-   - Audit: 0 high+critical vulns
-4. **If ANY fail** → STOP, return failure with output; caller must fix
-5. **If ALL pass** → emit evidence bundle
-6. **Score** — `supervibe:confidence-scoring` artifact-type=agent-output; ≥9 required
-
-## Examples
-
-- Use before PR or release handoff: inspect status, run the agreed final checks, verify receipts/evidence, and document residual risk.
-- Do not run as repeated inner-loop validation that slows active implementation work.
-
-## When not to use
-
-- Do not use this skill to bypass the command or workflow that owns durable artifacts.
-- Do not use it when source evidence, RAG/CodeGraph, or required verification is missing.
-- Do not use it to replace a specialist producer, worker, or reviewer that must issue runtime evidence.
+1. Inventory the diff: list changed paths, generated files, deleted files, test
+   files, docs, configuration, and artifacts. Mark anything outside the owned
+   scope as user-owned, parallel-worker-owned, or blocked.
+2. State intent: connect each changed area to the task goal, issue, plan line,
+   reviewer finding, or user decision. Flag any change that lacks a clear reason.
+3. Select targeted checks from the changed surfaces:
+   - Code paths: typecheck or compile, relevant unit tests, lint, and affected
+     integration tests.
+   - Public API, schema, migration, auth, security, dependency, or release
+     paths: run the project-approved validator or reviewer path for that risk.
+   - UI or browser-facing paths: include runtime, screenshot, console, network,
+     accessibility, or visual checks required by the project.
+   - Docs, prompts, agents, skills, templates, or generated artifacts: run the
+     matching content, link, contract, or artifact validator.
+4. Run checks sequentially when output ordering matters. Capture exact command,
+   exit code, and concise result for each check. Preserve verbatim failure lines
+   when a check fails.
+5. Validate artifact links: confirm every referenced artifact, receipt, report,
+   screenshot, template, or handoff path exists or is explicitly unavailable
+   with an owner and next action.
+6. Prepare reviewer readiness: summarize scope, intent, changed files, commands,
+   artifacts, approvals, unresolved comments, known omissions, and how to review.
+7. Record residual risk: name untested surfaces, stale indexes, skipped checks,
+   accepted exceptions, dependency or environment uncertainty, and owner of the
+   next safe action.
+8. Score with `supervibe:confidence-scoring` when the active workflow requires
+   a confidence artifact. Keep the verdict below ready when evidence is partial.
 
 ## Common rationalizations
 
-- "This is small, so no source check is needed" - reject when the skill changes code, config, or durable artifacts.
-- "The user asked for speed, so skip receipts" - reject when durable work, delegation, or review is claimed.
-- "Existing prose is enough evidence" - reject when validators or command output are required.
+- "The diff is small, so changed-file intent is obvious" fails because reviewers
+  still need to know why each file changed and whether unrelated edits leaked in.
+- "One broad test command passed, so targeted checks are unnecessary" fails when
+  the diff touches docs, artifacts, security, UI, generated output, or workflow
+  state that broad tests do not inspect.
+- "The artifact exists somewhere in `.supervibe`" fails unless the PR or handoff
+  links the exact artifact path, receipt id, or report the reviewer must inspect.
+- "Residual risk makes the PR look weaker" fails because hidden risk prevents
+  reviewers from choosing the right depth and release owner.
 
 ## Red flags
 
-- A durable artifact changes without a command, receipt, or verification path.
-- The skill is used outside its phase without an explicit handoff.
-- Claims of completion appear before evidence and confidence scoring.
+- The diff includes files outside the task, owned write set, or reviewer scope
+  with no explanation or approval.
+- The check list is copied from a generic stack template and does not mention
+  the actual changed paths, artifacts, or user-facing risk.
+- A release or PR description claims readiness without artifact links,
+  approvals, reviewer instructions, or residual-risk owner.
+- Verification output is paraphrased as "looks good" while exit codes, command
+  names, or failure snippets are absent.
 
 ## Checklist
 
-- Source of truth read.
-- Scope and owner confirmed.
-- RAG/CodeGraph/memory requirement decided.
-- Evidence artifact or command recorded.
-- Stop condition and next handoff clear.
+- Diff scope, changed files, and ownership are explicit.
+- Intent is tied to the task, issue, plan, user request, or reviewer finding.
+- Targeted checks match changed surfaces and project-mandated gates.
+- Artifact links, receipts, screenshots, reports, and handoffs are exact.
+- Reviewer readiness includes review focus, approvals, omissions, and blockers.
+- Residual risk has impact, owner, trigger, and next safe action.
+- Verdict is `READY` only when evidence supports review or merge.
 
 ## Failure modes
 
-- Inline emulation replaces a required producer or reviewer.
-- Broad use of the skill slows delivery without improving evidence.
-- Missing verification lets stale assumptions pass as production-ready.
+- A worker runs only the happy-path test command and misses a changed template,
+  prompt, release artifact, or generated index that has its own validator.
+- A PR opens with unrelated user changes mixed into the diff, causing reviewers
+  to review or revert work outside the task owner.
+- A release handoff links to stale receipts or stale Code RAG/CodeGraph evidence
+  and overstates confidence.
+- A reviewer has to reconstruct intent from commit history because the evidence
+  bundle omits scope, artifact links, or residual risk.
+
+## Examples
+
+- Use before a skill-normalization PR: inspect `git status --short`, map
+  `skills/pre-pr-check/SKILL.md` and `references/templates/release-readiness.md`
+  to the task intent, run `npm run validate:skill-content-quality` and
+  `npm run validate:artifact-links`, then record artifact links and residual
+  stale-index risk for the reviewer.
+- Use before a browser-facing feature review: list UI files and screenshots,
+  run the project browser runtime verification plus targeted tests, link the
+  screenshot or console report artifact, and state any unverified viewport risk.
+- Do not accept a PR request when a generated workflow receipt is referenced in
+  prose but no runtime-issued receipt id, ledger path, or validator output is
+  attached to the evidence bundle.
 
 ## Output contract
 
-Returns evidence bundle:
-```
-✓ Typecheck: <output snippet> (exit 0)
-✓ Tests: <count passed/failed> (<output>)
-✓ Lint: <output> (exit 0)
-✓ Audit: <count vulns by severity>
-✓ Bundle size: <delta vs baseline> (if applicable)
-
-Verdict: READY / NOT-READY
-```
+- `verdict`: `READY` or `NOT-READY`.
+- `diffScope`: changed paths, ownership, generated artifacts, and excluded
+  unrelated files.
+- `intent`: task, issue, plan, reviewer finding, or user request that explains
+  the change.
+- `commands`: exact checks run, exit codes, and concise result.
+- `artifacts`: exact links to receipts, reports, screenshots, templates,
+  handoffs, approvals, or explicit missing-artifact blockers.
+- `reviewerReadiness`: review focus, approvals, unresolved comments, omissions,
+  and suggested reviewer path.
+- `residualRisk`: risks, impact, owner, trigger, mitigation, and next action.
 
 ## Guard rails
 
-- DO NOT: skip a check because "it usually passes"
-- DO NOT: paraphrase output ("looks good" without showing it)
-- DO NOT: declare ready with non-zero exit code anywhere
-- DO NOT: ignore audit findings (must fix or document override)
-- ALWAYS: capture output verbatim
-- ALWAYS: include exit codes
+- DO NOT: revert, hide, or reclassify unrelated user changes to make the diff
+  appear cleaner.
+- DO NOT: declare ready with failed, skipped, stale, or unavailable checks unless
+  the output clearly marks an approved exception.
+- DO NOT: invent artifact links or hand-write receipts.
+- DO NOT: copy external hook or command recipes into the local project gate.
+- ALWAYS: include exit codes or blocker reasons for every required check.
+- ALWAYS: keep reviewer instructions scoped to the actual diff and risk.
 
 ## Verification
 
-- Every required check ran and exit code captured
-- Output is verbatim, not summarized
-- Verdict matches results
+- Run the targeted project validators that match the changed surface, for
+  example `npm run validate:skill-content-quality` for skill edits and
+  `npm run validate:artifact-links` for artifact-reference integrity.
+- Confirm every output artifact or Markdown link referenced by the evidence
+  bundle resolves, or record the missing link as a blocker or exception.
+- Confirm the final verdict matches command outcomes, artifact availability, and
+  residual-risk severity.
 
 ## Related
 
-- `supervibe:finishing-a-development-branch` — invokes this first
-- `supervibe:requesting-code-review` — invokes this before reviewer
-- `supervibe:verification` — per-claim verification (this is per-PR)
+- `supervibe:finishing-a-development-branch` invokes this before branch closeout.
+- `supervibe:requesting-code-review` uses the evidence bundle to prepare review.
+- `supervibe:verification` verifies individual claims before this PR-level gate.
+- [Release Readiness Template](../../references/templates/release-readiness.md)
+  records release-oriented commands, artifacts, approvals, rollback, support
+  owner, and exceptions.

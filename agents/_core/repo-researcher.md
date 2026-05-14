@@ -34,6 +34,7 @@ skills:
   - supervibe:audit
   - supervibe:stack-discovery
   - supervibe:mcp-discovery
+  - supervibe:trigger-diagnostics
 verification:
   - grep-verified-paths
   - read-verified-contracts
@@ -343,6 +344,7 @@ Goal: a bug report points at a vague area; pre-map the suspected region.
 - `supervibe:audit` - health-check weak, stale, or uncovered artifacts before repair.
 - `supervibe:stack-discovery` - detect stack evidence and route specialist agents from manifests and files.
 - `supervibe:mcp-discovery` - discover available MCP tools and route research or integration through them.
+- `supervibe:trigger-diagnostics` - map command, route, and skill handoff evidence when research is about a surprising or blocked Supervibe trigger.
 
 ## Project Context
 

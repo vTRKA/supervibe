@@ -1,11 +1,7 @@
 ---
 name: verification
 namespace: process
-description: >-
-  Use BEFORE any claim of works/fixed/complete/passing/done to run a
-  verification command and show its output as evidence — bans assertion without
-  command output. Triggers: 'проверь', 'evidence', 'докажи что работает',
-  'верификация'.
+description: 'Use BEFORE any claim of works/fixed/complete/passing/done to run a verification command and show its output as evidence — bans assertion without command output. Triggers: ''проверь'', ''evidence'', ''докажи что работает'', ''верификация''.'
 allowed-tools:
   - Bash
   - Read
@@ -20,7 +16,11 @@ last-verified: 2026-04-27T00:00:00.000Z
 
 # Verification
 
-## When to invoke
+## Overview
+
+Verification provides a reusable Supervibe operating method for Use BEFORE any claim of works/fixed/complete/passing/done to run a verification command and show its output as evidence — bans assertion without command output. Triggers: 'проверь', 'evidence', 'докажи что работает', 'верификация'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
+## When to Use
 
 ALWAYS, before saying any of: "works", "fixed", "complete", "passing", "done", "ready", "shipped", "merged", "deployed".
 
@@ -83,15 +83,23 @@ What is being claimed?
 
 ## Common rationalizations
 
-- "This is small, so no source check is needed" - reject when the skill changes code, config, or durable artifacts.
-- "The user asked for speed, so skip receipts" - reject when durable work, delegation, or review is claimed.
-- "Existing prose is enough evidence" - reject when validators or command output are required.
+- "The change is obvious, so no command is needed" fails because the verifier
+  must prove the specific claim or explicitly cap confidence when proof is not
+  available.
+- "A broad check passed, so the touched behavior is covered" fails unless the
+  command actually exercises the changed files, route, artifact, or workflow
+  contract.
+- "A failed command is unrelated" fails without a pre-change baseline, changed
+  path analysis, or task evidence showing the failure predates the current work.
 
 ## Red flags
 
-- A durable artifact changes without a command, receipt, or verification path.
-- The skill is used outside its phase without an explicit handoff.
-- Claims of completion appear before evidence and confidence scoring.
+- A completion claim names no exact command, exit code, artifact, screenshot,
+  receipt, or manual evidence path.
+- Verification output is summarized as "green" while stderr, skipped tests,
+  stale indexes, or partial browser/runtime evidence are omitted.
+- Full release checks are run inside child tasks while targeted checks for the
+  edited module are missing, or the final release gate is skipped at handoff.
 
 ## Checklist
 
@@ -136,11 +144,19 @@ When verification is run after scaffold/genesis/adapt work, keep tool verificati
 - ALWAYS: include exit code in the verification record
 - ALWAYS: if there's no canonical command, ask before assuming
 
-## Verification (of this skill itself)
+## Verification
 
 This skill's correct application is itself verifiable:
-- Every "done" claim in conversation history MUST be preceded by a Bash tool call with output shown.
-- `supervibe:audit` includes a discipline check: scan transcripts for "done"/"works"/"fixed" claims and check the preceding 5 messages for verification command output.
+- Every "done" claim in conversation history MUST be preceded by a Bash tool
+  call, browser/runtime proof, receipt validator, or named manual inspection
+  with output recorded.
+- Run targeted commands such as `node --test tests/<name>.test.mjs`,
+  `npm run validate:workflow-receipts`, `npm run validate:artifact-links`, or
+  the stack-specific test command selected by the active task.
+- Run `npm run check` only at release handoff or when the task explicitly
+  requires a full gate.
+- `supervibe:audit` includes a discipline check: scan transcripts for
+  completion claims and check the preceding evidence for verification output.
 
 ## Related rules
 

@@ -1,10 +1,7 @@
 ---
 name: executing-plans
 namespace: process
-description: >-
-  Use WHEN an approved implementation-plan exists to execute it phase-by-phase
-  with mandatory verification per task and confidence-gate per phase. Triggers:
-  'выполни план', 'execute plan', 'запусти план', 'погнали по плану'.
+description: 'Use WHEN an approved implementation-plan exists to execute it phase-by-phase with mandatory verification per task and confidence-gate per phase. Triggers: ''выполни план'', ''execute plan'', ''запусти план'', ''погнали по плану''.'
 allowed-tools:
   - Read
   - Grep
@@ -24,7 +21,11 @@ last-verified: 2026-05-02T00:00:00.000Z
 
 # Executing Plans
 
-## When to invoke
+## Overview
+
+Executing Plans provides a reusable Supervibe operating method for Use WHEN an approved implementation-plan exists to execute it phase-by-phase with mandatory verification per task and confidence-gate per phase. Triggers: 'выполни план', 'execute plan', 'запусти план', 'погнали по плану'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
+## When to Use
 
 WHEN a plan exists at `.supervibe/artifacts/plans/YYYY-MM-DD-<feature>.md` with confidence-scoring ≥9, OR user explicitly says "execute the plan".
 
@@ -50,6 +51,13 @@ If a task, subtask, or agent suggestion adds functionality outside the approved
 plan scope, STOP. Either remove the addition, defer/reject it with rationale, or
 obtain explicit user approval with tradeoff, verification, rollout, and rollback
 before continuing.
+
+## Scope Safety Gate
+
+Before implementation, classify every task or proposed side effect as `include`,
+`defer`, `reject`, or `spike`. Block scope expansion until the tradeoff,
+complexity cost, concrete harm, owner, verification, rollback, and user approval
+are recorded.
 
 ## Plan User-Decision Gate
 
@@ -124,15 +132,24 @@ Per task: blocked?
 
 ## Common rationalizations
 
-- "This is small, so no source check is needed" - reject when the skill changes code, config, or durable artifacts.
-- "The user asked for speed, so skip receipts" - reject when durable work, delegation, or review is claimed.
-- "Existing prose is enough evidence" - reject when validators or command output are required.
+- "The plan exists, so every task is ready" fails when a task lacks dependencies,
+  write set, acceptance criteria, rollback, verification command, or current
+  user gate.
+- "A worker completed one phase, so execution can be marked done" fails until
+  all plan acceptance criteria, review gates, receipts, and residual risks are
+  reconciled.
+- "Fixing nearby issues is efficient while the file is open" fails unless the
+  issue maps to approved scope, has an owner, and does not expand the plan
+  without a recorded decision.
 
 ## Red flags
 
-- A durable artifact changes without a command, receipt, or verification path.
-- The skill is used outside its phase without an explicit handoff.
-- Claims of completion appear before evidence and confidence scoring.
+- A task moves to done with no command result, artifact link, receipt, or
+  reviewer decision matching its acceptance criteria.
+- Plan steps are executed out of dependency order without recording why the new
+  order is safe.
+- The executor runs broad release checks inside every child task instead of
+  targeted checks during work and the full release gate at handoff.
 
 ## Checklist
 
@@ -150,7 +167,19 @@ Per task: blocked?
 
 ## Output contract
 
-Returns: TodoWrite log of completed tasks + verification outputs + per-phase confidence scores + final delivery summary.
+Return:
+
+- `executionState`: `not-started`, `in-progress`, `blocked`, `partial`, or
+  `complete`.
+- `taskLedger`: task id, owner, status, write set, evidence, and blockers.
+- `verification`: targeted commands, exit codes, artifacts, and release-gate
+  status.
+- `scopeChanges`: approved additions, rejected extras, and deferred follow-ups.
+- `receipts`: command, worker, reviewer, validator, and external-tool receipts
+  required by the owning workflow.
+- `confidence`: per-phase score, final score, and why any score is capped.
+- `handoff`: next owner, final reviewer needs, rollback, residual risk, and
+  next action.
 
 ## Guard rails
 
@@ -165,11 +194,14 @@ Returns: TodoWrite log of completed tasks + verification outputs + per-phase con
 
 ## Verification
 
-- Every task in TodoWrite is `completed`
-- Every verification command output is shown verbatim
-- Scope Safety Gate shows zero unapproved additions shipped
-- Per-phase confidence ≥9 recorded
-- Final code-review phase invoked
+- Run the targeted `node --test ...`, `npm run validate:*`, or stack command
+  assigned to each completed task.
+- Run `npm run validate:workflow-receipts` when command/worker/reviewer
+  receipts are part of the execution claim.
+- Before release handoff, run the plan's final gate such as `npm run check`
+  only once the graph or release slice is complete.
+- Confirm every task ledger row has acceptance, evidence, scope-safety, and
+  residual-risk status before returning `complete`.
 
 ## Related
 

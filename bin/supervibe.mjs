@@ -48,7 +48,6 @@ const SUBCOMMAND_ALIASES = Object.freeze({
   gc: "supervibe-gc",
   genesis: "supervibe-genesis",
   loop: "supervibe-loop",
-  plan: "supervibe-plan",
   presentation: "supervibe-presentation",
   preview: "supervibe-preview",
   stage: "supervibe-stage",

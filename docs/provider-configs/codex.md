@@ -89,14 +89,6 @@ network_access = false
 exclude_tmpdir_env_var = false
 exclude_slash_tmp = false
 
-[permissions.workspace.filesystem]
-":project_roots" = { "." = "write", "**/*.env" = "none" }
-glob_scan_max_depth = 3
-
-[permissions.workspace.network]
-enabled = false
-mode = "limited"
-
 [mcp_servers.openaiDeveloperDocs]
 url = "https://developers.openai.com/mcp"
 enabled = true
@@ -210,16 +202,17 @@ network access.
 Supervibe-managed noninteractive loop defaults use `approval_policy = "never"`
 so workers do not stall on repeated prompts. The safety tradeoff is that this
 must be paired with `sandbox_mode = "workspace-write"`, scoped
-`default_permissions`, secret read denials, and preview-only provider-config
-application. Existing user-owned approval policies are never overwritten by
-genesis/adapt/provider doctor flows.
+`default_permissions`, external secret hygiene, and preview-only
+provider-config application. Existing user-owned approval policies are never
+overwritten by genesis/adapt/provider doctor flows. Add custom secret deny
+tables only after verifying the active Codex schema accepts those permission
+surfaces.
 
 Use `default_permissions` for reusable permission profiles. Built-in profile
 names are `:read-only`, `:workspace`, and `:danger-no-sandbox`; custom names
-must have matching `[permissions.<name>]` tables. Custom filesystem profiles can
-grant `read`, `write`, or `none` for absolute paths, globs, and special tokens
-such as `:project_roots`. Custom network profiles can enable limited or full
-network access and domain rules.
+must have matching `[permissions.<name>]` tables. Keep automatic provider
+templates on built-in profiles unless custom permission tables have been
+verified against the active Codex schema.
 
 ## Project Instructions
 

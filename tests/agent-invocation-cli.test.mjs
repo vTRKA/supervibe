@@ -88,6 +88,13 @@ test("agent invocation CLI records Codex spawn proof usable by receipts", () => 
       status: "pass",
     });
     assert.equal(record.structured_output.json, ".supervibe/artifacts/_agent-outputs/codex-agent-123/agent-output.json");
+    const cleanupRegistry = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "runtime-cleanup-registry.json"), "utf8"));
+    assert.equal(cleanupRegistry.targets.length, 1);
+    assert.equal(cleanupRegistry.targets[0].kind, "subagent");
+    assert.equal(cleanupRegistry.targets[0].stopMode, "host-managed");
+    assert.equal(cleanupRegistry.targets[0].hostInvocationSource, "codex-spawn-agent");
+    assert.equal(cleanupRegistry.targets[0].hostInvocationId, "codex-agent-123");
+    assert.equal(cleanupRegistry.targets[0].status, "completed");
     const agentOutput = JSON.parse(readFileSync(join(projectRoot, ...record.structured_output.json.split("/")), "utf8"));
     assert.equal(agentOutput.hostInvocationId, "codex-agent-123");
     assert.equal(agentOutput.retrievalPolicy.provided, true);

@@ -1,7 +1,7 @@
 ---
 name: component-library-integration
 namespace: supervibe
-description: Use AFTER design-system-approved AND BEFORE prototype-handoff TO bridge brandbook tokens into a chosen component library (MUI, shadcn/ui, Radix UI, HeadlessUI, Mantine, or fully-custom). Decides which library fits, then generates the token bridge so the library renders with project palette/typography/motion.
+description: 'Use AFTER design-system-approved AND BEFORE prototype-handoff TO bridge brandbook tokens into a chosen component library (MUI, shadcn/ui, Radix UI, HeadlessUI, Mantine, or fully-custom). Decides which library fits, then generates the token bridge so the library renders with project palette/typography/motion.'
 allowed-tools:
   - Read
   - Write
@@ -14,17 +14,21 @@ prerequisites:
 emits-artifact: .supervibe/artifacts/prototypes/_design-system/library-bridge/<library>/
 confidence-rubric: confidence-rubrics/framework.yaml
 gate-on-exit: design-system
-version: 1.0
-last-verified: 2026-04-28
+version: 1
+last-verified: 2026-04-28T00:00:00.000Z
 ---
 
 # Component Library Integration
 
+## Overview
+
+Component Library Integration provides a reusable Supervibe operating method for Use AFTER design-system-approved AND BEFORE prototype-handoff TO bridge brandbook tokens into a chosen component library (MUI, shadcn/ui, Radix UI, HeadlessUI, Mantine, or fully-custom). Decides which library fits, then generates the token bridge so the library renders with project palette/typography/motion.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
 ## Design Intelligence Preflight
 
 Before choosing or bridging a component library, run project memory, code search, and internal `supervibe:design-intelligence` lookup for stack-specific UI guidance. Do not install or switch libraries from lookup alone; use existing stack facts and user approval.
 
-## When to invoke
+## When to Use
 - AFTER `brandbook` skill produces `manifest.json` with `status: approved`.
 - BEFORE `prototype-handoff` runs, IF the target stack uses a component library.
 - WHEN user asks "use shadcn / use MUI / can we adopt <library>" — propose this skill.

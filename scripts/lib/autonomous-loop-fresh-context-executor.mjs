@@ -95,6 +95,7 @@ export async function runFreshContextAttempt({
   sideEffectRules = null,
   outputContract = null,
   allowSpawn = false,
+  cwd = null,
   approvalLeaseId = null,
   permissionAudit = null,
   contextBudgetOptions = null,
@@ -191,7 +192,7 @@ export async function runFreshContextAttempt({
 
   let runResult;
   try {
-    runResult = await withNoProgressTimeout(adapter.run(packet, { prompt, allowSpawn, attemptId, mode: executionMode }), {
+    runResult = await withNoProgressTimeout(adapter.run(packet, { prompt, allowSpawn, attemptId, mode: executionMode, cwd }), {
       adapter,
       attemptId,
       phase: "adapter.run",

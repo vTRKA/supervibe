@@ -1,10 +1,7 @@
 ---
 name: using-supervibe-skills
 namespace: process
-description: >-
-  Use when selecting, sequencing, or explaining Supervibe skills for a task.
-  Maps user intent to skill chains without bypassing commands, receipts, RAG,
-  CodeGraph, or confidence gates.
+description: 'Use when selecting, sequencing, or explaining Supervibe skills for a task. Maps user intent to skill chains without bypassing commands, receipts, RAG, CodeGraph, or confidence gates.'
 allowed-tools:
   - Read
   - Bash
@@ -19,7 +16,11 @@ last-verified: 2026-05-13T00:00:00.000Z
 
 # Using Supervibe Skills
 
-## When to invoke
+## Overview
+
+Using Supervibe Skills provides a reusable Supervibe operating method for Use when selecting, sequencing, or explaining Supervibe skills for a task. Maps user intent to skill chains without bypassing commands, receipts, RAG, CodeGraph, or confidence gates.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
+## When to Use
 
 Use this before mixing several Supervibe skills, when a user asks which workflow applies, or when an agent needs to hand off between planning, execution, review, memory, and release skills.
 
@@ -29,7 +30,7 @@ Follow `docs/references/skill-expert-operating-standard.md`: start from source o
 
 ## Step 0 - Read source of truth
 
-Read the requested command, active plan/graph state, `AGENTS.md`, and the candidate skill files. If durable artifacts or delegated work are involved, read receipt and agent-invocation rules before choosing a path.
+Read the requested command, active plan/graph state, `AGENTS.md`, and the candidate skill files. For session-start or context-bootstrap work, read `docs/session-start-context-policy.md` before choosing a path. If durable artifacts or delegated work are involved, read receipt and agent-invocation rules before choosing a path.
 
 ## When not to use
 
@@ -45,6 +46,7 @@ Need implementation? -> source-driven-development -> executing-plans -> verifica
 Need parallel work? -> dispatching-parallel-agents -> subagent-driven-development
 Need review? -> code-review or doubt-driven-development -> receiving-code-review
 Need UI/browser proof? -> browser-runtime-verification -> verification
+Need session-start/context bootstrap policy? -> source-driven-development -> verification
 Need release? -> pre-pr-check -> finishing-a-development-branch
 ```
 
@@ -53,8 +55,9 @@ Need release? -> pre-pr-check -> finishing-a-development-branch
 1. Identify the user's artifact target, mutation risk, and whether a command owns the flow.
 2. Select the smallest skill chain that preserves source evidence, receipts, and final verification.
 3. Put RAG, CodeGraph, and project memory before implementation when the task changes code.
-4. Put reviewers and full tests at the end of graph execution unless the plan explicitly requires an earlier narrow check.
-5. Emit a routing plan that names the selected skills, stop conditions, and required verification.
+4. For session-start/context bootstrap changes, preserve host-neutral wording, compact-context expectations, non-fatal initialization, runtime cleanup boundaries, and receipt neutrality from `docs/session-start-context-policy.md`.
+5. Put reviewers and full tests at the end of graph execution unless the plan explicitly requires an earlier narrow check.
+6. Emit a routing plan that names the selected skills, stop conditions, and required verification.
 
 ## Common rationalizations
 
@@ -67,6 +70,7 @@ Need release? -> pre-pr-check -> finishing-a-development-branch
 - A command, producer, reviewer, or worker is named but no runtime receipt can be issued.
 - Multiple skills are listed without ownership, order, or stop conditions.
 - The selected path skips memory, RAG, CodeGraph, or verification for a code-changing task.
+- Session-start output is treated as delegated-work proof or as a replacement for workflow receipts.
 
 ## Checklist
 
@@ -74,6 +78,7 @@ Need release? -> pre-pr-check -> finishing-a-development-branch
 - Skill sequence has no duplicate responsibility.
 - Required agents/workers/reviewers are real host invocations.
 - RAG/CodeGraph/memory requirements are explicit.
+- Session-start/context-bootstrap policy remains compact, host-neutral, and non-fatal.
 - Final verification command is named.
 
 ## Failure modes
@@ -97,9 +102,11 @@ Return a short routing plan with `selectedSkills`, `commandOwner`, `requiredRece
 - `npm run validate:agent-skill-coverage`
 - `npm run validate:skill-content-quality`
 - `npm run validate:command-agent-enforcement`
+- `node --test tests/session-start-context-policy.test.mjs` when session-start/context bootstrap behavior changes.
 
 ## Related
 
 - `supervibe:autonomous-agent-loop`
 - `supervibe:dispatching-parallel-agents`
 - `supervibe:verification`
+- `docs/session-start-context-policy.md`

@@ -24,44 +24,19 @@ export function buildExecutionWaves({
   if (lockReport.stale.length > 0) blockers.push("stale-write-set-lock");
   if (claims.some((claim) => claim.status === "active" && claim.blocked === true)) blockers.push("blocked-worker-claim");
 
-  const candidates = readyFront?.ready || readyFront?.parallel || computeReadyTasks(tasks);
-  const conflicts = detectWriteSetConflicts(candidates);
-  const conflictTaskIds = new Set(conflicts.flatMap((conflict) => conflict.taskIds.slice(1)));
-  const blocked = [];
-  const serialized = [];
-  const selected = [];
-  const usedFiles = new Set();
-
-  for (const task of candidates) {
-    const taskWriteSet = writeSet(task);
-    if (requireWriteSet && taskWriteSet.length === 0) {
-      blocked.push({ taskId: task.id, reason: "missing write-set declaration" });
-      continue;
-    }
-    const lockConflicts = findWriteSetLockConflicts({ taskId: task.id, writeSet: taskWriteSet }, lockReport.active);
-    if (lockConflicts.length > 0) {
-      blocked.push({
-        taskId: task.id,
-        reason: `write-set lock conflict: ${lockConflicts.map((lock) => lock.lockId).join(",")}`,
-        locks: lockConflicts.map((lock) => lock.lockId),
-      });
-      continue;
-    }
-    if ((RISK_ORDER[task.policyRiskLevel || "low"] ?? 1) > (RISK_ORDER[maxPolicyRiskLevel] ?? 2)) {
-      blocked.push({ taskId: task.id, reason: `risk ${task.policyRiskLevel || "low"} exceeds wave max ${maxPolicyRiskLevel}` });
-      continue;
-    }
-    if (conflictTaskIds.has(task.id) || taskWriteSet.some((file) => usedFiles.has(file))) {
-      serialized.push({ taskId: task.id, reason: `write-set conflict: ${taskWriteSet.join(",") || "unknown"}` });
-      continue;
-    }
-    if (selected.length >= maxConcurrency) {
-      serialized.push({ taskId: task.id, reason: `max concurrency ${maxConcurrency} reached` });
-      continue;
-    }
-    selected.push(task);
-    for (const file of taskWriteSet) usedFiles.add(file);
-  }
+  const candidates = Array.isArray(readyFront?.parallel) && readyFront.parallel.length > 0
+    ? readyFront.parallel
+    : Array.isArray(readyFront?.ready)
+      ? readyFront.ready
+      : computeReadyTasks(tasks);
+  const selection = selectSafeExecutionWave({
+    tasks: candidates,
+    maxConcurrency,
+    maxPolicyRiskLevel,
+    requireWriteSet,
+    writeSetLocks: lockReport.active,
+  });
+  const { selected, blocked, serialized, conflicts } = selection;
 
   const readyWorktrees = worktreeSessions.filter((session) => ["ready", "active"].includes(session.status));
   const wave = selected.length > 0 ? {
@@ -101,7 +76,7 @@ export function buildExecutionWaves({
 export function detectWriteSetConflicts(tasks = []) {
   const byFile = new Map();
   for (const task of tasks) {
-    for (const file of writeSet(task)) {
+    for (const file of taskWriteSet(task)) {
       if (!byFile.has(file)) byFile.set(file, []);
       byFile.get(file).push(task.id);
     }
@@ -109,6 +84,65 @@ export function detectWriteSetConflicts(tasks = []) {
   return [...byFile.entries()]
     .filter(([, taskIds]) => taskIds.length > 1)
     .map(([filePath, taskIds]) => ({ filePath, taskIds }));
+}
+
+export function selectSafeExecutionWave({
+  tasks = [],
+  maxConcurrency = 3,
+  maxPolicyRiskLevel = "medium",
+  requireWriteSet = false,
+  writeSetLocks = [],
+} = {}) {
+  const blocked = [];
+  const serialized = [];
+  const selected = [];
+  const usedFiles = new Map();
+  const conflicts = detectWriteSetConflicts(tasks);
+  const activeLocks = Array.isArray(writeSetLocks?.active) ? writeSetLocks.active : writeSetLocks;
+  const parsedMaxConcurrency = Number(maxConcurrency);
+  const effectiveMaxConcurrency = Number.isFinite(parsedMaxConcurrency)
+    ? Math.max(0, Math.floor(parsedMaxConcurrency))
+    : 1;
+
+  for (const task of tasks) {
+    const taskId = task.id || task.taskId || task.itemId;
+    const writeSet = taskWriteSet(task);
+    if (requireWriteSet && writeSet.length === 0) {
+      blocked.push({ taskId, reason: "missing write-set declaration" });
+      continue;
+    }
+    const lockConflicts = findWriteSetLockConflicts({ taskId, writeSet }, activeLocks);
+    if (lockConflicts.length > 0) {
+      blocked.push({
+        taskId,
+        reason: `write-set lock conflict: ${lockConflicts.map((lock) => lock.lockId).join(",")}`,
+        locks: lockConflicts.map((lock) => lock.lockId),
+      });
+      continue;
+    }
+    if ((RISK_ORDER[task.policyRiskLevel || "low"] ?? 1) > (RISK_ORDER[maxPolicyRiskLevel] ?? 2)) {
+      blocked.push({ taskId, reason: `risk ${task.policyRiskLevel || "low"} exceeds wave max ${maxPolicyRiskLevel}` });
+      continue;
+    }
+    const conflictingPath = writeSet.find((file) => usedFiles.has(file));
+    if (conflictingPath) {
+      serialized.push({ taskId, reason: `write-set conflict with ${usedFiles.get(conflictingPath)} on ${conflictingPath}` });
+      continue;
+    }
+    if (selected.length >= effectiveMaxConcurrency) {
+      serialized.push({ taskId, reason: `max concurrency ${effectiveMaxConcurrency} reached` });
+      continue;
+    }
+    selected.push(task);
+    for (const file of writeSet) usedFiles.set(file, taskId);
+  }
+
+  return {
+    selected,
+    blocked,
+    serialized,
+    conflicts,
+  };
 }
 
 export function summarizeWavePlan(plan = {}) {
@@ -149,12 +183,18 @@ function computeReadyTasks(tasks = []) {
   });
 }
 
-function writeSet(task = {}) {
+export function taskWriteSet(task = {}) {
   return [
     ...(task.targetFiles || []),
     ...(task.filesTouched || []),
     ...(task.fileImpact || []),
-    ...(task.writeScope || []).map((entry) => entry.path || entry),
+    ...(task.writeScope || [])
+      .filter((entry) => {
+        if (!entry || typeof entry !== "object") return true;
+        const action = String(entry.action || entry.mode || "modify").toLowerCase();
+        return !["test", "read", "verify", "verification"].includes(action);
+      })
+      .map((entry) => entry.path || entry),
   ].map(normalizePath).filter(Boolean).sort();
 }
 
@@ -193,7 +233,7 @@ function createReservedWriteSetLock(task = {}) {
     lockId: `write-set-${taskId}`,
     taskId,
     status: "reserved",
-    writeSet: writeSet(task),
+    writeSet: taskWriteSet(task),
   };
 }
 

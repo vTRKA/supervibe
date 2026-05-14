@@ -1,11 +1,7 @@
 ---
 name: confidence-scoring
 namespace: process
-description: >-
-  Use BEFORE exiting any process skill that emits an artifact
-  (requirements-spec, plan, agent-output, scaffold, prototype, research-output)
-  to score it against its rubric and gate progression. Triggers: 'оцени по
-  рубрике', 'confidence score', 'оцени уверенность', 'rubric check'.
+description: 'Use BEFORE exiting any process skill that emits an artifact (requirements-spec, plan, agent-output, scaffold, prototype, research-output) to score it against its rubric and gate progression. Triggers: ''оцени по рубрике'', ''confidence score'', ''оцени уверенность'', ''rubric check''.'
 allowed-tools:
   - Read
   - Bash
@@ -20,7 +16,11 @@ last-verified: 2026-04-27T00:00:00.000Z
 
 # Confidence Scoring
 
-## When to invoke
+## Overview
+
+Confidence Scoring provides a reusable Supervibe operating method for Use BEFORE exiting any process skill that emits an artifact (requirements-spec, plan, agent-output, scaffold, prototype, research-output) to score it against its rubric and gate progression. Triggers: 'оцени по рубрике', 'confidence score', 'оцени уверенность', 'rubric check'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
+## When to Use
 
 EVERY skill marked `gate-on-exit: true` MUST invoke this skill before completing.
 

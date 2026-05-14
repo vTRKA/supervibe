@@ -1,11 +1,7 @@
 ---
 name: error-envelope-design
 namespace: app-excellence
-description: >-
-  Use WHEN designing API error responses TO pick a consistent envelope (HTTP problem details
-  problem+json / GraphQL union / gRPC status), define retry semantics, partial
-  failure shapes. Triggers: 'error envelope', 'API ошибки формат', 'формат
-  ошибок', 'problem+json'.
+description: 'Use WHEN designing API error responses TO pick a consistent envelope (HTTP problem details problem+json / GraphQL union / gRPC status), define retry semantics, partial failure shapes. Triggers: ''error envelope'', ''API ошибки формат'', ''формат ошибок'', ''problem+json''.'
 allowed-tools:
   - Read
   - Grep
@@ -22,7 +18,11 @@ last-verified: 2026-04-27T00:00:00.000Z
 
 # Error Envelope Design
 
-## When to invoke
+## Overview
+
+Error Envelope Design provides a reusable Supervibe operating method for Use WHEN designing API error responses TO pick a consistent envelope (HTTP problem details problem+json / GraphQL union / gRPC status), define retry semantics, partial failure shapes. Triggers: 'error envelope', 'API ошибки формат', 'формат ошибок', 'problem+json'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
+## When to Use
 
 WHEN designing the first endpoint of a new API. WHEN extending an API whose error shape is inconsistent across endpoints. WHEN clients keep parsing error strings to decide whether to retry. WHEN a 500 response actually means a validation failure — i.e. the envelope has lost its semantics.
 

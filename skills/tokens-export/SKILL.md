@@ -1,11 +1,7 @@
 ---
 name: tokens-export
 namespace: process
-description: >-
-  Use WHEN brandbook is approved AND frontend implementation needs theme to
-  export brandbook tokens to framework-specific format (Tailwind/MUI/CSS
-  vars/Style Dictionary). Triggers: 'выгрузи токены', 'export tokens', 'tailwind
-  theme', 'нужна тема'.
+description: 'Use WHEN brandbook is approved AND frontend implementation needs theme to export brandbook tokens to framework-specific format (Tailwind/MUI/CSS vars/Style Dictionary). Triggers: ''выгрузи токены'', ''export tokens'', ''tailwind theme'', ''нужна тема''.'
 allowed-tools:
   - Read
   - Grep
@@ -25,11 +21,15 @@ last-verified: 2026-04-27T00:00:00.000Z
 
 # Tokens Export
 
+## Overview
+
+Tokens Export provides a reusable Supervibe operating method for Use WHEN brandbook is approved AND frontend implementation needs theme to export brandbook tokens to framework-specific format (Tailwind/MUI/CSS vars/Style Dictionary). Triggers: 'выгрузи токены', 'export tokens', 'tailwind theme', 'нужна тема'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
 ## Design Intelligence Preflight
 
 Before exporting or auditing tokens, run project memory, code search, and internal `supervibe:design-intelligence` lookup for brand-to-token sync, token drift, component states, and stack handoff evidence. Approved design-system tokens remain source of truth.
 
-## When to invoke
+## When to Use
 
 WHEN:
 - Approved design system exists (`.supervibe/artifacts/prototypes/_design-system/tokens.css` and `.supervibe/artifacts/prototypes/_design-system/manifest.json` exist with confidence ≥9)

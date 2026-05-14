@@ -23,11 +23,30 @@ last-verified: 2026-04-27T00:00:00.000Z
 
 # TDD
 
-## When to invoke
+## Overview
 
-BEFORE writing any production code for a new feature, bug fix, or refactor that changes behavior. Triggered when implementation step is reached in `supervibe:executing-plans`.
+TDD turns implementation work into small evidence-backed loops: write the
+behavior test first, prove it fails, implement the smallest change, prove it
+passes, then refactor behind the same behavior proof. Use it to keep features,
+bug fixes, and behavior-preserving refactors anchored to observable outcomes
+instead of implementation guesses.
 
-NOT for: pure config changes, scaffolding files, documentation updates, dependency bumps.
+## When to Use
+
+Use before writing production code for a new feature, bug fix, or refactor that
+changes behavior. Triggered when implementation step is reached in
+`supervibe:executing-plans`.
+
+Use for:
+- New behavior that can be described with executable expectations.
+- Bug fixes that need a regression test before the fix.
+- Refactors that need characterization or guard tests around public behavior.
+- Boundary behavior where an integration, contract, or e2e test can prove the
+  observable result.
+
+Not for: pure config changes, scaffolding files, documentation updates,
+dependency bumps, generated code, or exploratory spikes with no stable expected
+behavior yet.
 
 ## Expert Operating Standard
 
@@ -39,6 +58,7 @@ Follow `docs/references/skill-expert-operating-standard.md`: start from source o
 2. Identify test framework from `package.json` / `composer.json` / `Cargo.toml` (vitest/jest/pytest/phpunit/cargo test/etc.)
 3. Identify test command (`npm test`, `pytest`, etc.) and per-file invocation form
 4. Check if project has a "no mocks" rule in the selected host adapter rules folder (some projects mandate integration tests)
+5. Read `references/checklists/testing.md` for evidence and residual-risk expectations
 
 ## Decision tree
 
@@ -55,6 +75,74 @@ Mock policy?
 └─ Otherwise → test against real dependency by default
 ```
 
+## Red-green-refactor contract
+
+Use TDD as a behavior loop, not as a documentation ritual.
+
+1. Red: write the smallest executable test that describes one observable behavior
+   and fails for the expected reason before production code changes.
+2. Green: write the least production code needed to pass that behavior without
+   widening the change surface.
+3. Refactor: improve structure, names, duplication, or boundaries while keeping
+   the behavior stable and the same focused test command green.
+4. Repeat: add the next behavior only after the current red-green-refactor loop
+   has passing evidence.
+
+Evidence must show the failing-before command and the passing-after command. If
+either side cannot be produced, stop the completion claim and record explicit
+residual risk.
+
+## Test sizing and pyramid
+
+- Small tests cover pure functions, deterministic policy, parsing, formatting,
+  validation, and branch-heavy logic. They should be fast, local, and numerous.
+- Medium tests cover adapters and boundaries such as API handlers, persistence,
+  filesystem behavior, queues, and service integration using real local
+  dependencies whenever the project supports them.
+- Large tests cover browser, CLI, workflow, or multi-service behavior. Use them
+  for the user-visible contract and high-value regression paths, not for every
+  branch.
+- The test pyramid is a default shape: many small tests, fewer medium tests, and
+  a small number of large end-to-end tests. Invert only when the application
+  surface genuinely cannot be validated below the UI or workflow level.
+- One test should usually verify one behavior. Multiple assertions are acceptable
+  when they describe the same behavior and make the expected contract clearer.
+
+## DAMP vs DRY in tests
+
+Prefer DAMP tests (descriptive and meaningful phrases) over aggressively DRY
+tests when duplication improves readability. A future maintainer should
+understand the behavior by reading the test body.
+
+- Keep setup inline when it is short and clarifies the scenario.
+- Extract builders, fixtures, or helpers only when they remove noise without
+  hiding the behavior under test.
+- Avoid shared assertion helpers that make failures harder to diagnose.
+- Name tests by observable behavior, not implementation details.
+
+## Regression tests
+
+For a bug fix, first reproduce the defect with a failing test that would have
+failed before the fix. Keep the fixture as small as possible, assert the user or
+contract-visible symptom, and preserve the test after the fix so the defect
+cannot silently return. If the bug cannot be reproduced deterministically, record
+the attempted reproduction, why automation is unavailable, and the residual
+risk.
+
+## Boundary mocking policy
+
+Mock only at boundaries that are slow, nondeterministic, paid, unavailable, or
+outside the process owner. Prefer real local dependencies for code the project
+owns.
+
+- Do not mock the unit's collaborators merely to assert internal calls.
+- Do not mock databases, filesystems, clocks, queues, or HTTP clients when the
+  project has explicit real-dependency test rules for them.
+- Use fake clocks, temp directories, local test databases, in-memory queues, or
+  record-replay contracts when they make the boundary deterministic.
+- Pair mocks for external services with a contract, fixture, or recorded response
+  so the mock cannot drift from reality unnoticed.
+
 ## Procedure
 
 1. **Write failing test** — describe one observable behavior, with measurable expected value
@@ -65,6 +153,30 @@ Mock policy?
 6. **Run test again** — confirm refactor didn't break (still green)
 7. **Commit** (skip if user said no commits) with message describing behavior, not implementation
 8. **Repeat** for next behavior
+
+## Example patterns
+
+| Scenario | First failing test | Passing-after proof |
+| --- | --- | --- |
+| Pure logic | A unit test for one input/output rule, edge case, or invariant. | The same per-file unit command passes and nearby logic tests still pass. |
+| API behavior | An integration test calls the route/handler with real validation, auth, and persistence boundaries where available. | The route-level test passes and proves status, body, side effect, and error shape as needed. |
+| UI behavior | A component or e2e test performs the user action and asserts the visible state, accessibility state, or navigation result. | The browser/component command passes with the same interaction path. |
+| Bug fix | A regression test reproduces the reported symptom before editing production code. | The reproduction test passes and the final note names the defect that is now guarded. |
+| Refactor guard | A characterization test captures externally visible behavior before structural changes. | The same guard test stays green after refactor, with no assertions tied to private implementation. |
+
+## When TDD is the wrong tool
+
+- Exploratory spikes where the goal is to learn an unknown API or feasibility;
+  timebox the spike, discard or quarantine it, then resume TDD for retained code.
+- Generated code, vendored code, lockfile churn, or mechanical formatting where
+  validators are the correct proof.
+- One-off migrations or data repairs that need rehearsal, backups, and
+  post-condition checks more than unit-first design.
+- Visual exploration where the expected result is not yet known; use screenshots,
+  design review, or acceptance criteria first, then add behavior tests for stable
+  interactions.
+- Emergency mitigation where production risk requires a hotfix first; record the
+  exception and add regression coverage immediately after the system is stable.
 
 ## When not to use
 
@@ -101,6 +213,14 @@ Mock policy?
 ## Output contract
 
 Returns:
+- Failing-before evidence: command, working directory, exit code, and the
+  relevant failure line proving the test was red for the expected reason.
+- Passing-after evidence: command, working directory, exit code, and the
+  relevant pass line proving the implemented behavior is green.
+- Refactor evidence when refactoring occurred: the same targeted command remains
+  green after structure-only changes.
+- Explicit residual risk when failing-before or passing-after evidence is
+  unavailable, including why it is unavailable and what surface remains unproven.
 - Test files at `tests/...` matching project convention
 - Production code at expected location
 - Test command output showing all green
@@ -118,6 +238,8 @@ Returns:
 
 ## Verification
 
+- Failing-before evidence exists or residual risk is explicit.
+- Passing-after evidence exists or residual risk is explicit.
 - Test file exists with assertion
 - Test command output shows transition: FAIL → PASS
 - Coverage delta ≥0% (project may have higher bar)
@@ -125,5 +247,6 @@ Returns:
 
 ## Related
 
+- `references/checklists/testing.md` — testing evidence checklist
 - `supervibe:systematic-debugging` — when test fails for wrong reason
 - `supervibe:executing-plans` — invokes this skill per task that requires production code

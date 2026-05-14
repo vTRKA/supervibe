@@ -240,6 +240,9 @@ Rubric: agent-delivery
 - `/supervibe-plan`
 - `/supervibe-execute-plan`
 - `/supervibe-loop`
+- [Security Review Template](../references/templates/security-review.md)
+  defines the durable finding, threat-model, verification, and residual-risk
+  output shape for audit artifacts.
 
 ## Agent Orchestration Contract
 

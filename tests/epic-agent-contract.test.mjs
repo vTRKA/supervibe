@@ -5,6 +5,7 @@ import { dirname, join, relative } from "node:path";
 import test from "node:test";
 
 import { issueWorkflowInvocationReceipt } from "../scripts/lib/supervibe-workflow-receipt-runtime.mjs";
+import { reissueWorkflowInvocationReceipt } from "../scripts/lib/supervibe-workflow-receipt-runtime.mjs";
 import { atomizePlanToWorkItems, writeWorkItemGraph } from "../scripts/lib/supervibe-plan-to-work-items.mjs";
 import { validateEpicAgentContract } from "../scripts/lib/supervibe-epic-agent-contract.mjs";
 
@@ -217,7 +218,7 @@ test("epic-agent contract accepts a runtime-issued trusted agent receipt bound t
   }
 });
 
-test("epic-agent contract rejects recovery receipts as producer proof", async () => {
+test("epic-agent contract accepts trusted reissued receipts as producer proof", async () => {
   const root = await mkdtemp(join(tmpdir(), "epic-agent-contract-recovery-"));
   try {
     const graph = atomizePlanToWorkItems(PLAN, {
@@ -250,15 +251,21 @@ test("epic-agent contract rejects recovery receipts as producer proof", async ()
     });
 
     const receiptPath = join(root, ...issued.receiptPath.split("/"));
-    const receipt = JSON.parse(await readFile(receiptPath, "utf8"));
-    receipt.recovery = { reason: "reissued stale receipt" };
-    await writeFile(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, "utf8");
+    const savedBeforeRepair = JSON.parse(await readFile(graphPath, "utf8"));
+    savedBeforeRepair.updatedAt = "2026-05-12T00:02:00.000Z";
+    await writeFile(graphPath, `${JSON.stringify(savedBeforeRepair, null, 2)}\n`, "utf8");
+    await reissueWorkflowInvocationReceipt({
+      rootDir: root,
+      receiptPath: relative(root, receiptPath).replace(/\\/g, "/"),
+      reason: "repair stale graph receipt after workflow metadata normalization",
+    });
 
     const saved = JSON.parse(await readFile(graphPath, "utf8"));
     const report = validateEpicAgentContract({ rootDir: root, graph: saved, graphPath });
 
-    assert.equal(report.pass, false);
-    assert.ok(report.issues.some((issue) => issue.code === "missing-epic-agent-receipt"));
+    assert.equal(report.pass, true);
+    assert.equal(report.trustedReceipts.length, 1);
+    assert.equal(report.trustedReceipts[0].agentId, "stack-developer");
   } finally {
     await rm(root, { recursive: true, force: true });
   }

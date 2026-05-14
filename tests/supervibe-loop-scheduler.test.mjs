@@ -278,6 +278,22 @@ test("release full-check gate is visible and child task handoff stays targeted",
   assert.match(pending.stdout, /CHILD_TASK_REQUIRES_FULL_CHECK: false/);
   assert.match(pending.stdout, /FULL_CHECK_COMMAND: npm run check/);
 
+  graph.items[1].verificationEvidence = [{
+    command: "npm run check",
+    status: "pass",
+    taskId,
+  }];
+  await writeFile(graphPath, JSON.stringify(graph, null, 2), "utf8");
+  const childOnly = await execFileAsync(process.execPath, [
+    cliPath,
+    "--status",
+    "--file",
+    graphPath,
+    "--no-auto-ui",
+  ], { cwd: dir, maxBuffer: 1024 * 1024 });
+  assert.match(childOnly.stdout, /RELEASE_FULL_CHECK_GATE: pending/);
+  assert.match(childOnly.stdout, /CHILD_TASK_REQUIRES_FULL_CHECK: false/);
+
   const packageJson = JSON.parse(await readFile(join(ROOT, "package.json"), "utf8"));
   assert.equal(packageJson.scripts["check:release"], "npm run check:release-strict");
 
@@ -560,6 +576,188 @@ test("plan wave scheduler caps concurrency from provider manifest and explains d
   assert.match(cli.stdout, /TASK: plan-t08 DECISION: parallel/);
 });
 
+test("dispatch-wave blocks new Codex spawns when completed subagent cleanup exhausts provider threads", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "supervibe-dispatch-cleanup-debt-"));
+  const graphPath = join(dir, "graph.json");
+  const registryPath = join(dir, ".supervibe", "memory", "runtime-cleanup-registry.json");
+  await mkdir(dirname(registryPath), { recursive: true });
+  await writeFile(registryPath, JSON.stringify({
+    schemaVersion: 1,
+    targets: [{
+      id: "subagent:codex-spawn-agent:old-worker",
+      kind: "subagent",
+      stopMode: "host-managed",
+      host: "codex",
+      hostInvocationSource: "codex-spawn-agent",
+      hostInvocationId: "old-worker",
+      agentId: "stack-developer",
+      status: "completed",
+      registeredAt: "2026-05-14T00:00:00.000Z",
+      lastSeenAt: "2026-05-14T00:00:00.000Z",
+      completedAt: "2026-05-14T00:00:00.000Z",
+    }],
+  }, null, 2), "utf8");
+  await writeFile(graphPath, JSON.stringify({
+    epicId: "epic-cleanup-debt",
+    items: [{
+      itemId: "task-1",
+      id: "task-1",
+      type: "task",
+      status: "ready",
+      title: "Ready task",
+      targetFiles: ["src/task-1.mjs"],
+      blockedBy: [],
+      blocks: [],
+    }],
+    tasks: [{
+      id: "task-1",
+      status: "ready",
+      title: "Ready task",
+      targetFiles: ["src/task-1.mjs"],
+      dependencies: [],
+    }],
+  }, null, 2), "utf8");
+
+  const cli = await execFileAsync(process.execPath, [
+    join(ROOT, "scripts", "supervibe-loop.mjs"),
+    "--dispatch-wave",
+    "--json",
+    "--file",
+    graphPath,
+    "--provider",
+    "codex",
+    "--provider-max-threads",
+    "1",
+    "--max-concurrency",
+    "1",
+  ], { cwd: dir, maxBuffer: 1024 * 1024 });
+  const report = JSON.parse(cli.stdout);
+
+  assert.equal(report.schedulerPolicy.hostManagedCleanupRequired, 1);
+  assert.equal(report.schedulerPolicy.effectiveMaxConcurrency, 0);
+  assert.deepEqual(report.assignedTaskIds, []);
+  assert.equal(report.dispatches[0].status, "blocked");
+  assert.match(report.dispatches[0].blockedReason, /cleanup is required/);
+});
+
+test("plan-waves honors invocation-log cleanup debt and keeps zero-slot waves empty", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "supervibe-plan-waves-log-cleanup-debt-"));
+  const planPath = join(dir, "cleanup-debt-plan.md");
+  const invocationLog = join(dir, ".supervibe", "memory", "agent-invocations.jsonl");
+  await mkdir(dirname(invocationLog), { recursive: true });
+  await writeFile(invocationLog, `${JSON.stringify({
+    ts: "2026-05-14T00:00:00.000Z",
+    agent_id: "stack-developer",
+    host: "codex",
+    host_invocation_source: "codex-spawn-agent",
+    host_invocation_id: "old-worker",
+    invocation_id: "old-worker",
+    status: "completed",
+  })}\n`, "utf8");
+  await writeFile(planPath, [
+    "# Cleanup Debt Plan",
+    "",
+    "## Delivery Strategy",
+    "- Task budget policy: max tasks per phase=4; max child items per atomization run=20; phase-split required before graph write.",
+    "",
+    "## Task T01: First task",
+    "**Files:**",
+    "- Modify: `src/a.mjs`",
+    "**Acceptance Criteria:**",
+    "- First task is scheduled safely.",
+    "```bash",
+    "node --test tests/supervibe-loop-scheduler.test.mjs",
+    "```",
+    "",
+    "## Task T02: Second task",
+    "**Files:**",
+    "- Modify: `src/b.mjs`",
+    "**Acceptance Criteria:**",
+    "- Second task is scheduled safely.",
+    "```bash",
+    "node --test tests/supervibe-loop-scheduler.test.mjs",
+    "```",
+  ].join("\n"), "utf8");
+
+  const cli = await execFileAsync(process.execPath, [
+    join(ROOT, "scripts", "supervibe-loop.mjs"),
+    "--plan-waves",
+    planPath,
+    "--provider",
+    "codex",
+    "--provider-max-threads",
+    "1",
+    "--max-concurrency",
+    "1",
+  ], { cwd: dir, maxBuffer: 1024 * 1024 });
+
+  assert.match(cli.stdout, /HOST_MANAGED_CLEANUP_REQUIRED: 1/);
+  assert.match(cli.stdout, /EFFECTIVE_MAX_CONCURRENCY: 0/);
+  assert.match(cli.stdout, /CURRENT_TASKS: none/);
+  assert.doesNotMatch(cli.stdout, /DECISION: parallel/);
+  assert.match(cli.stdout, /DECISION: serialized REASON: max concurrency 0 reached/);
+});
+
+test("dispatch-wave subtracts active graph claims from provider thread capacity", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "supervibe-dispatch-active-claims-"));
+  const graphPath = join(dir, "graph.json");
+  await writeFile(graphPath, JSON.stringify({
+    kind: "supervibe-work-item-graph",
+    epicId: "epic-active-claims",
+    items: [
+      { itemId: "epic-active-claims", type: "epic", status: "open", title: "Active claims" },
+      { itemId: "task-active-1", type: "task", status: "claimed", title: "Active 1", parentId: "epic-active-claims", blockedBy: [], blocks: [], writeScope: [{ action: "modify", path: "docs/active-1.md" }] },
+      { itemId: "task-active-2", type: "task", status: "claimed", title: "Active 2", parentId: "epic-active-claims", blockedBy: [], blocks: [], writeScope: [{ action: "modify", path: "docs/active-2.md" }] },
+      { itemId: "task-ready-1", type: "task", status: "ready", title: "Ready 1", parentId: "epic-active-claims", blockedBy: [], blocks: [], writeScope: [{ action: "modify", path: "docs/ready-1.md" }] },
+      { itemId: "task-ready-2", type: "task", status: "ready", title: "Ready 2", parentId: "epic-active-claims", blockedBy: [], blocks: [], writeScope: [{ action: "modify", path: "docs/ready-2.md" }] },
+    ],
+    tasks: [
+      { id: "task-active-1", status: "claimed", dependencies: [], verificationCommands: ["node --test tests/active-1.test.mjs"] },
+      { id: "task-active-2", status: "claimed", dependencies: [], verificationCommands: ["node --test tests/active-2.test.mjs"] },
+      { id: "task-ready-1", status: "ready", dependencies: [], verificationCommands: ["node --test tests/ready-1.test.mjs"] },
+      { id: "task-ready-2", status: "ready", dependencies: [], verificationCommands: ["node --test tests/ready-2.test.mjs"] },
+    ],
+    claims: [
+      {
+        claimId: "claim-active-1",
+        taskId: "task-active-1",
+        agentId: "codex-wave",
+        status: "claimed",
+        writeSet: ["docs/active-1.md"],
+      },
+      {
+        claimId: "claim-active-2",
+        taskId: "task-active-2",
+        agentId: "codex-wave",
+        status: "claimed",
+        writeSet: ["docs/active-2.md"],
+      },
+    ],
+  }, null, 2), "utf8");
+
+  const cli = await execFileAsync(process.execPath, [
+    join(ROOT, "scripts", "supervibe-loop.mjs"),
+    "--dispatch-wave",
+    "--json",
+    "--file",
+    graphPath,
+    "--provider",
+    "codex",
+    "--provider-max-threads",
+    "3",
+    "--max-concurrency",
+    "3",
+  ], { cwd: dir, maxBuffer: 1024 * 1024 });
+  const report = JSON.parse(cli.stdout);
+
+  assert.equal(report.schedulerPolicy.activeGraphClaimedSlots, 2);
+  assert.equal(report.schedulerPolicy.availableProviderThreads, 1);
+  assert.equal(report.schedulerPolicy.effectiveMaxConcurrency, 1);
+  assert.deepEqual(report.assignedTaskIds, ["task-ready-1"]);
+  assert.equal(report.dispatches.find((dispatch) => dispatch.taskId === "task-ready-2").status, "serialized");
+  assert.match(report.schedulerPolicy.reason, /active graph claim/);
+});
+
 test("agent heartbeat stall detection exposes retry and manual recovery state", async () => {
   const dir = await mkdtemp(join(tmpdir(), "supervibe-agent-stall-"));
   const cliPath = join(ROOT, "scripts", "supervibe-loop.mjs");
@@ -744,6 +942,93 @@ test("assign-ready payloads carry write-set locks before worker dispatch", async
   assert.equal(blocked.assignmentBlocked, true);
   assert.match(blocked.blockedReason, /missing write-set declaration/);
   assert.equal(blocked.workerAssignmentPayload, null);
+});
+
+test("dispatch-wave reads active work-item graph items and selects disjoint write sets", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "supervibe-dispatch-wave-"));
+  await seedEvidence(dir);
+  const graphPath = join(dir, "graph.json");
+  await writeFile(graphPath, JSON.stringify({
+    kind: "supervibe-work-item-graph",
+    epicId: "epic-wave",
+    items: [
+      { itemId: "epic-wave", type: "epic", status: "open", title: "Wave" },
+      { itemId: "task-a", type: "task", status: "ready", title: "Task A", parentId: "epic-wave", blockedBy: [], blocks: [], writeScope: [{ action: "modify", path: "docs/a.md" }, { action: "test", path: "tests/shared.test.mjs" }] },
+      { itemId: "task-b", type: "task", status: "ready", title: "Task B", parentId: "epic-wave", blockedBy: [], blocks: [], writeScope: [{ action: "modify", path: "docs/b.md" }, { action: "test", path: "tests/shared.test.mjs" }] },
+      { itemId: "task-c", type: "task", status: "ready", title: "Task C", parentId: "epic-wave", blockedBy: [], blocks: [], writeScope: [{ action: "modify", path: "docs/a.md" }] },
+    ],
+    tasks: [
+      { id: "task-a", status: "ready", dependencies: [], verificationCommands: ["node --test tests/a.test.mjs"] },
+      { id: "task-b", status: "ready", dependencies: [], verificationCommands: ["node --test tests/b.test.mjs"] },
+      { id: "task-c", status: "ready", dependencies: [], verificationCommands: ["node --test tests/c.test.mjs"] },
+    ],
+    claims: [],
+  }, null, 2), "utf8");
+
+  const cli = await execFileAsync(process.execPath, [
+    join(ROOT, "scripts", "supervibe-loop.mjs"),
+    "--dispatch-wave",
+    "--json",
+    "--file",
+    graphPath,
+    "--max-concurrency",
+    "3",
+  ], { cwd: dir, maxBuffer: 1024 * 1024 });
+  const report = JSON.parse(cli.stdout);
+  assert.deepEqual(report.assignedTaskIds.sort(), ["task-a", "task-b"]);
+  assert.deepEqual(report.dispatches.find((dispatch) => dispatch.taskId === "task-a").writeSet, ["docs/a.md"]);
+  assert.deepEqual(report.dispatches.find((dispatch) => dispatch.taskId === "task-b").writeSet, ["docs/b.md"]);
+  const serialized = report.dispatches.find((dispatch) => dispatch.taskId === "task-c");
+  assert.equal(serialized.status, "serialized");
+  assert.match(serialized.blockedReason, /write-set conflict/);
+  const spawnPayload = report.dispatches.find((dispatch) => dispatch.taskId === "task-a").codexSpawnPayload;
+  assert.equal(spawnPayload.agent_type, "worker");
+  assert.equal(spawnPayload.fork_context, false);
+});
+
+test("dispatch-wave blocks ready tasks that overlap active claimed write sets", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "supervibe-dispatch-claim-lock-"));
+  await seedEvidence(dir);
+  const graphPath = join(dir, "graph.json");
+  await writeFile(graphPath, JSON.stringify({
+    kind: "supervibe-work-item-graph",
+    epicId: "epic-wave-locks",
+    items: [
+      { itemId: "epic-wave-locks", type: "epic", status: "open", title: "Wave locks" },
+      { itemId: "task-active", type: "task", status: "claimed", title: "Active", parentId: "epic-wave-locks", blockedBy: [], blocks: [], writeScope: [{ action: "modify", path: "docs/shared.md" }] },
+      { itemId: "task-conflict", type: "task", status: "ready", title: "Conflict", parentId: "epic-wave-locks", blockedBy: [], blocks: [], writeScope: [{ action: "modify", path: "docs/shared.md" }] },
+      { itemId: "task-free", type: "task", status: "ready", title: "Free", parentId: "epic-wave-locks", blockedBy: [], blocks: [], writeScope: [{ action: "modify", path: "docs/free.md" }] },
+    ],
+    tasks: [
+      { id: "task-active", status: "claimed", dependencies: [], verificationCommands: ["node --test tests/active.test.mjs"] },
+      { id: "task-conflict", status: "ready", dependencies: [], verificationCommands: ["node --test tests/conflict.test.mjs"] },
+      { id: "task-free", status: "ready", dependencies: [], verificationCommands: ["node --test tests/free.test.mjs"] },
+    ],
+    claims: [
+      {
+        claimId: "claim-active",
+        taskId: "task-active",
+        agentId: "codex-wave",
+        status: "claimed",
+        writeSet: ["docs/shared.md"],
+      },
+    ],
+  }, null, 2), "utf8");
+
+  const cli = await execFileAsync(process.execPath, [
+    join(ROOT, "scripts", "supervibe-loop.mjs"),
+    "--dispatch-wave",
+    "--json",
+    "--file",
+    graphPath,
+    "--max-concurrency",
+    "3",
+  ], { cwd: dir, maxBuffer: 1024 * 1024 });
+  const report = JSON.parse(cli.stdout);
+  assert.deepEqual(report.assignedTaskIds, ["task-free"]);
+  const blocked = report.dispatches.find((dispatch) => dispatch.taskId === "task-conflict");
+  assert.equal(blocked.status, "blocked");
+  assert.match(blocked.blockedReason, /write-set lock conflict: claim-active/);
 });
 
 test("worktree sessions record owner and write-set scope with stale recovery status", async () => {

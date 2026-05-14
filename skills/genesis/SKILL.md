@@ -1,10 +1,7 @@
 ---
 name: genesis
 namespace: process
-description: >-
-  Use WHEN bootstrapping host-aware Supervibe scaffold for a new or existing
-  project to compose stack-pack into target with confidence-gate ≥9. Triggers:
-  'scaffolding', 'первичный setup', 'init проекта', 'genesis'.
+description: 'Use WHEN bootstrapping host-aware Supervibe scaffold for a new or existing project to compose stack-pack into target with confidence-gate ≥9. Triggers: ''scaffolding'', ''первичный setup'', ''init проекта'', ''genesis''.'
 allowed-tools:
   - Read
   - Grep
@@ -24,7 +21,11 @@ last-verified: 2026-04-27T00:00:00.000Z
 
 # Genesis
 
-## When to invoke
+## Overview
+
+Genesis provides a reusable Supervibe operating method for Use WHEN bootstrapping host-aware Supervibe scaffold for a new or existing project to compose stack-pack into target with confidence-gate ≥9. Triggers: 'scaffolding', 'первичный setup', 'init проекта', 'genesis'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
+## When to Use
 
 WHEN target project has no host-specific Supervibe scaffold OR no managed routing block in the selected host instruction file AND user wants Supervibe scaffolding. Triggered by `/supervibe-genesis` command.
 

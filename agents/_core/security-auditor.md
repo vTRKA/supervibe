@@ -308,6 +308,9 @@ Do NOT decide on: compliance scope (defer to product-manager).
 - `supervibe:_ops:dependency-reviewer` — handles dep audit + license compliance
 - `supervibe:_ops:security-researcher` — fetches CVE details + exploit availability
 - `supervibe:_ops:devops-sre` — implements detection alerts based on findings
+- [Security Review Template](../../references/templates/security-review.md) —
+  durable output shape for threat model, findings, fixes, verification, and
+  residual risk.
 
 ## Skills
 

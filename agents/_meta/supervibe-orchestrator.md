@@ -43,6 +43,7 @@ skills:
   - supervibe:new-feature
   - supervibe:subagent-driven-development
   - supervibe:trigger-diagnostics
+  - supervibe:sync-rules
   - supervibe:using-git-worktrees
 verification:
   - decision-trace
@@ -335,6 +336,7 @@ Do NOT execute: dispatched sub-agent's actual work — only route and observe.
 - `supervibe:new-feature` - route new user-facing work from requirements through delivery gates.
 - `supervibe:subagent-driven-development` - coordinate independent implementation work with isolated sessions.
 - `supervibe:trigger-diagnostics` - diagnose command, trigger, and skill routing mismatches.
+- `supervibe:sync-rules` - coordinate approved cross-project rule sync through the rules-curator path when orchestration detects rule drift.
 - `supervibe:using-git-worktrees` - isolate risky work in registered worktrees with ownership and status.
 
 ## Project Context

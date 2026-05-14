@@ -1,11 +1,7 @@
 ---
 name: mcp-discovery
 namespace: process
-description: >-
-  Use WHEN session starts OR WHEN user mentions visual/browser/desktop/data task
-  to detect available MCP servers and proactively suggest agents that benefit
-  from them. Triggers: 'найди MCP', 'какие tools доступны', 'есть MCP для', 'mcp
-  discovery'.
+description: 'Use WHEN session starts OR WHEN user mentions visual/browser/desktop/data task to detect available MCP servers and proactively suggest agents that benefit from them. Triggers: ''найди MCP'', ''какие tools доступны'', ''есть MCP для'', ''mcp discovery''.'
 allowed-tools:
   - Read
   - Grep
@@ -22,7 +18,11 @@ last-verified: 2026-04-27T00:00:00.000Z
 
 # MCP Discovery
 
-## When to invoke
+## Overview
+
+Mcp Discovery provides a reusable Supervibe operating method for Use WHEN session starts OR WHEN user mentions visual/browser/desktop/data task to detect available MCP servers and proactively suggest agents that benefit from them. Triggers: 'найди MCP', 'какие tools доступны', 'есть MCP для', 'mcp discovery'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
+## When to Use
 
 BEFORE picking a tool for current-docs research / browser automation / Tauri desktop testing / design extraction / web crawling. Don't hardcode `mcp__context7__*` in agent procedures — invoke this skill to find the best available tool for the task.
 

@@ -168,6 +168,50 @@ test("public command docs do not advertise unpublished slash commands", async ()
   assert.deepStrictEqual(stale, []);
 });
 
+test("legacy short aliases stay unpublished and unroutable", async () => {
+  const externalShortNames = [
+    ["s", "pec"],
+    ["p", "lan"],
+    ["bui", "ld"],
+    ["te", "st"],
+    ["rev", "iew"],
+    ["sh", "ip"],
+    ["code", "-simplify"],
+  ].map((parts) => parts.join(""));
+  const commandDocs = new Set((await readdir(join(ROOT, "commands"))).filter((file) => file.endsWith(".md")));
+  const pkg = JSON.parse(await readFile(join(ROOT, "package.json"), "utf8"));
+  const bin = pkg.bin || {};
+
+  for (const name of externalShortNames) {
+    assert.equal(commandDocs.has(`${name}.md`), false, `${name} must not be published as a command doc`);
+    assert.equal(Object.hasOwn(bin, name), false, `${name} must not be published as a bin alias`);
+
+    for (const phrase of [`/${name}`, name]) {
+      const result = await execFileAsync(process.execPath, ["scripts/supervibe-commands.mjs", "--match", phrase], {
+        cwd: ROOT,
+      }).then(
+        ({ stdout, stderr }) => ({ code: 0, output: `${stdout}${stderr}` }),
+        (error) => ({ code: error.code ?? 1, output: `${error.stdout || ""}${error.stderr || ""}` }),
+      );
+      assert.notEqual(result.code, 0, `${phrase} must not resolve as a command`);
+      assert.match(result.output, /MATCH: none/, `${phrase} must return MATCH: none`);
+    }
+
+    const terminalResult = await execFileAsync(process.execPath, [
+      "bin/supervibe.mjs",
+      name,
+      "--help",
+    ], {
+      cwd: ROOT,
+    }).then(
+      ({ stdout, stderr }) => ({ code: 0, output: `${stdout}${stderr}` }),
+      (error) => ({ code: error.code ?? 1, output: `${error.stdout || ""}${error.stderr || ""}` }),
+    );
+    assert.doesNotMatch(terminalResult.output, /SLASH_COMMAND:\s*\/supervibe-/);
+    assert.doesNotMatch(terminalResult.output, /COMMAND:\s*supervibe-(?:audit|brainstorm|execute-plan|loop|plan|presentation|score|security-audit|strengthen)/);
+  }
+});
+
 test("package npm scripts point at existing local scripts", async () => {
   const pkg = JSON.parse(await readFile(join(ROOT, "package.json"), "utf8"));
   const scriptNames = new Set(Object.keys(pkg.scripts));

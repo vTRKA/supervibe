@@ -1,19 +1,31 @@
 ---
 name: presentation-deck
 namespace: process
-description: "Use WHEN the user asks to create, revise, approve, or export a presentation deck to build a storyboard, HTML slide preview, feedback loop, approved PPTX, and Google Drive handoff. Trigger phrases: 'make a presentation', 'prepare pitch deck', 'create pptx', 'deck for investors', 'presentation mockup'."
-allowed-tools: [Read, Grep, Glob, Bash, Write, Edit, WebFetch]
+description: 'Use WHEN the user asks to create, revise, approve, or export a presentation deck to build a storyboard, HTML slide preview, feedback loop, approved PPTX, and Google Drive handoff. Trigger phrases: ''make a presentation'', ''prepare pitch deck'', ''create pptx'', ''deck for investors'', ''presentation mockup''.'
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+  - Write
+  - Edit
+  - WebFetch
 phase: exec
-prerequisites: [brief-or-source-materials]
+prerequisites:
+  - brief-or-source-materials
 emits-artifact: presentation
 confidence-rubric: confidence-rubrics/prototype.yaml
 gate-on-exit: true
-version: 1.0
-last-verified: 2026-04-29
+version: 1
+last-verified: 2026-04-29T00:00:00.000Z
 ---
 
 # Presentation Deck
 
+## Overview
+
+Presentation Deck provides a reusable Supervibe operating method for Use WHEN the user asks to create, revise, approve, or export a presentation deck to build a storyboard, HTML slide preview, feedback loop, approved PPTX, and Google Drive handoff. Trigger phrases: 'make a presentation', 'prepare pitch deck', 'create pptx', 'deck for investors', 'presentation mockup'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
 Build a presentation deck through the same visible review loop as design prototypes: brief, storyboard, HTML preview, browser feedback, approval, `.pptx` export, and Google Drive handoff.
 
 ## Design Intelligence Preflight
@@ -24,7 +36,7 @@ Before storyboard or visual direction, run project memory, code search, and inte
 
 Read `docs/references/design-expert-knowledge.md` before deck structure or visual direction. Start with Design Pass Triage from the `Eight-Pass Expert Routine` and classify deck-owned passes as `required | reuse | delegated | skipped | N/A`. For decks inside an approved design system, reuse preference and visual-system decisions unless the deck requires a new audience posture, brand reset, or missing token/asset extension. If the system is candidate or needs_revision, resume design-system approval before treating it as reusable. Run the relevant product/audience fit, local evidence lookup, reference scan, storyboard/flow, responsive slide preview, quality review, and feedback/approval passes. External references are supplemental; use the internet only for current references or official platform evidence after local data has been checked.
 
-## When to invoke
+## When to Use
 
 Use after `/supervibe-presentation` or whenever the user asks for a pitch deck, report deck, product demo deck, sales deck, training deck, or a `.pptx` deliverable. This skill is for presentation artifacts, not production UI.
 

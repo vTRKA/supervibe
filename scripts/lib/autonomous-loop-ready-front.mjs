@@ -1,5 +1,5 @@
 import { createTaskGraph, isDependencySatisfiedStatus, validateTaskGraph } from "./autonomous-loop-task-graph.mjs";
-import { detectWriteSetConflicts } from "./supervibe-wave-controller.mjs";
+import { detectWriteSetConflicts, selectSafeExecutionWave } from "./supervibe-wave-controller.mjs";
 
 const OPEN_STATUSES = new Set(["open", "ready"]);
 const RISK_ORDER = { none: 0, low: 1, medium: 2, high: 3 };
@@ -36,12 +36,16 @@ export function calculateReadyFront(input = {}, options = {}) {
   const reviewMode = normalizeReviewMode(options.reviewMode ?? options.reviewerMode ?? options.review_mode ?? options.reviewer_mode);
   const reviewersAvailable = options.reviewersAvailable ?? options.reviewers_available ?? true;
   const reviewerBlocksParallel = reviewMode !== "final-sweep" && reviewersAvailable === false;
-  const parallel = reviewerBlocksParallel
-    ? []
-    : orderedReady
-      .filter((task) => (RISK_ORDER[task.policyRiskLevel] ?? 1) <= (RISK_ORDER[maxRisk] ?? 2))
-      .slice(0, maxConcurrent);
-  const writeSetConflicts = detectWriteSetConflicts(parallel);
+  const wave = reviewerBlocksParallel
+    ? { selected: [], serialized: [], blocked: [], conflicts: detectWriteSetConflicts(orderedReady) }
+    : selectSafeExecutionWave({
+        tasks: orderedReady,
+        maxConcurrency: maxConcurrent,
+        maxPolicyRiskLevel: maxRisk,
+        requireWriteSet: false,
+      });
+  const parallel = wave.selected;
+  const writeSetConflicts = detectWriteSetConflicts(orderedReady);
 
   return {
     valid: true,
@@ -49,10 +53,15 @@ export function calculateReadyFront(input = {}, options = {}) {
     ready: orderedReady,
     blocked: orderTasks(blocked, graph),
     parallel,
+    serialized: wave.serialized,
+    parallelBlocked: wave.blocked,
     writeSetConflicts,
     parallelizationBlockedBy: reviewerBlocksParallel
       ? ["missing-reviewer"]
-      : writeSetConflicts.map((conflict) => `write-set:${conflict.filePath}`),
+      : [
+          ...writeSetConflicts.map((conflict) => `write-set:${conflict.filePath}`),
+          ...wave.blocked.map((item) => item.reason),
+        ],
     reviewPolicy: {
       mode: reviewMode,
       reviewersAvailable,

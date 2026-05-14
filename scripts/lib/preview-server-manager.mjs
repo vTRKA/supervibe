@@ -122,7 +122,7 @@ export async function unregisterServer(port) {
 }
 
 /** Read registry and surface drift instead of hiding live-but-stale entries. */
-export async function listServers() {
+export async function listServers({ persist = true } = {}) {
   const entries = await readRegistry();
   const alive = [];
   for (const entry of entries) {
@@ -135,7 +135,7 @@ export async function listServers() {
       driftReasons: drift.reasons,
     });
   }
-  if (alive.length !== entries.length || JSON.stringify(alive) !== JSON.stringify(entries)) {
+  if (persist && (alive.length !== entries.length || JSON.stringify(alive) !== JSON.stringify(entries))) {
     await writeRegistry(alive);
   }
   return alive;
@@ -192,6 +192,34 @@ export async function killAllServers() {
   const results = [];
   for (const e of entries) {
     results.push(await killServer(e.port));
+  }
+  return results;
+}
+
+/** Kill registered preview servers that are already marked stale and old enough. */
+export async function killStaleServers({
+  dryRun = false,
+  olderThanMinutes = 60,
+  now = new Date(),
+} = {}) {
+  const servers = await listServers({ persist: !dryRun });
+  const stale = servers.filter((server) => {
+    if (server.driftStatus !== 'stale') return false;
+    return isOlderThan(server.startedAt || server.lastSeenAt, { olderThanMinutes, now });
+  });
+  const results = [];
+  for (const server of stale) {
+    if (dryRun) {
+      results.push({
+        killed: false,
+        wouldKill: true,
+        port: server.port,
+        pid: server.pid,
+        reason: `stale preview older than ${olderThanMinutes} minute threshold`,
+      });
+    } else {
+      results.push(await killServer(server.port));
+    }
   }
   return results;
 }
@@ -297,4 +325,11 @@ function deriveRegistrySlug(root = '', target = null) {
     if (match) return segment === 'prototypes' ? match[1] : `${segment.slice(0, -1)}:${match[1]}`;
   }
   return null;
+}
+
+function isOlderThan(stamp, { olderThanMinutes = 60, now = new Date() } = {}) {
+  if (!Number.isFinite(Number(olderThanMinutes)) || Number(olderThanMinutes) <= 0) return true;
+  const then = new Date(stamp || 0).getTime();
+  if (!Number.isFinite(then)) return false;
+  return now.getTime() - then >= Number(olderThanMinutes) * 60_000;
 }

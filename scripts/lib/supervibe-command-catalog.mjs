@@ -126,6 +126,30 @@ const SLASH_COMMAND_SHORTCUTS = Object.freeze([
     ],
   },
   {
+    id: "verification-policy-audit",
+    intent: "supervibe_audit",
+    title: "Audit verification policy",
+    command: "/supervibe-audit",
+    description: "Route questions about whether npm run check, full suites, or release-gate tests should be deferred to the workflow audit path instead of executing the script.",
+    agentContract: copyCommandAgentContract(),
+    agentProfile: getCommandAgentProfile("/supervibe-audit"),
+    aliases: [
+      "audit whether npm run check should be reserved for release gate",
+      "review whether npm run check should only run at the final gate",
+      "why is npm run check running before the release gate",
+    ],
+    keywordGroups: [
+      ["audit", "review", "check", "whether", "why", "policy"],
+      ["npm run check", "full suite", "tests", "verification", "release gate", "final gate"],
+      ["reserved", "defer", "deferred", "only", "final", "release"],
+    ],
+    requiredGroupIndexes: [0, 1],
+    mutationRisk: "none",
+    directRoute: true,
+    commandId: "/supervibe-audit",
+    nextAction: "Run /supervibe-audit to inspect verification policy; do not execute npm run check from a meta/audit question.",
+  },
+  {
     command: "/supervibe-brainstorm",
     title: "Brainstorm and capture a spec",
     aliases: ["брейншторм", "давай брейншторм", "start brainstorm", "brainstorm", "new feature", "давай новую фичу", "сделай брейншторм идеи", "brainstorm the feature", "обсудим идею", "придумай решение"],
@@ -249,93 +273,6 @@ const SLASH_COMMAND_SHORTCUTS = Object.freeze([
 ].map(createSlashShortcut));
 
 const COMMAND_SHORTCUTS = Object.freeze([
-  {
-    id: "lifecycle-spec",
-    intent: "lifecycle_spec",
-    title: "Capture a feature spec",
-    command: "/supervibe-brainstorm",
-    aliases: ["/spec", "spec"],
-    exactAliasOnly: true,
-    keywordGroups: [["spec", "brief", "requirements"], ["feature", "capture", "write"]],
-    requiredGroupIndexes: [0, 1],
-    mutationRisk: "delegates-to-slash-command",
-    directRoute: true,
-    commandId: "/supervibe-brainstorm",
-    nextAction: "Run /supervibe-brainstorm to capture the spec through the normal workflow and receipts.",
-  },
-  {
-    id: "lifecycle-plan",
-    intent: "lifecycle_plan",
-    title: "Create or review a plan",
-    command: "/supervibe-plan",
-    aliases: ["/plan"],
-    exactAliasOnly: true,
-    keywordGroups: [["plan", "implementation plan"], ["create", "review", "write"]],
-    requiredGroupIndexes: [0, 1],
-    mutationRisk: "delegates-to-slash-command",
-    directRoute: true,
-    commandId: "/supervibe-plan",
-    nextAction: "Run /supervibe-plan for durable planning, review gates, and graph-ready output.",
-  },
-  {
-    id: "lifecycle-build",
-    intent: "lifecycle_build",
-    title: "Execute reviewed plan work",
-    command: "/supervibe-execute-plan",
-    aliases: ["/build", "build plan"],
-    exactAliasOnly: true,
-    keywordGroups: [["build", "implement", "execute"], ["plan", "work", "tasks"]],
-    requiredGroupIndexes: [0, 1],
-    mutationRisk: "delegates-to-slash-command",
-    directRoute: true,
-    commandId: "/supervibe-execute-plan",
-    nextAction: "Run /supervibe-execute-plan against the reviewed plan; use loop graph execution for durable multi-agent work.",
-  },
-  {
-    id: "lifecycle-test",
-    intent: "lifecycle_test",
-    title: "Validate completed graph work",
-    command: "/supervibe-loop --validate-completion",
-    aliases: ["/test"],
-    exactAliasOnly: true,
-    keywordGroups: [["test", "validate"], ["graph", "completion", "work"]],
-    requiredGroupIndexes: [0, 1],
-    mutationRisk: "delegates-to-slash-command",
-    directRoute: true,
-    commandId: "/supervibe-loop",
-    commandArgs: "--validate-completion",
-    nextAction: "Run /supervibe-loop --validate-completion only after the graph work has completed.",
-  },
-  {
-    id: "lifecycle-review",
-    intent: "lifecycle_review",
-    title: "Run final reviewer sweep",
-    command: "/supervibe-loop --final-review-sweep",
-    aliases: ["/review"],
-    exactAliasOnly: true,
-    keywordGroups: [["review", "reviewer"], ["final", "sweep", "graph"]],
-    requiredGroupIndexes: [0, 1],
-    mutationRisk: "delegates-to-slash-command",
-    directRoute: true,
-    commandId: "/supervibe-loop",
-    commandArgs: "--final-review-sweep",
-    nextAction: "Run /supervibe-loop --final-review-sweep after all epics and tasks are complete.",
-  },
-  {
-    id: "lifecycle-ship",
-    intent: "lifecycle_ship",
-    title: "Prepare completed work for release",
-    command: "/supervibe-loop --final-review-sweep --validate-completion",
-    aliases: ["/ship", "ship"],
-    exactAliasOnly: true,
-    keywordGroups: [["ship", "release"], ["review", "validate", "completion"]],
-    requiredGroupIndexes: [0, 1],
-    mutationRisk: "delegates-to-slash-command",
-    directRoute: true,
-    commandId: "/supervibe-loop",
-    commandArgs: "--final-review-sweep --validate-completion",
-    nextAction: "Run the final review sweep and completion validation before release handoff.",
-  },
   {
     id: "index-rag-codegraph",
     intent: "code_index_build",
@@ -786,12 +723,15 @@ export function resolveCommandRequest(request, {
     });
   }
 
-  const explicit = parseExplicitNpmRun(request)
+  const explicitCandidate = parseExplicitNpmRun(request)
     || parseBareNpmScriptReference(request, [
       ...projectScripts.map((script) => script.name),
       ...pluginScripts.map((script) => script.name),
       ...Object.keys(KNOWN_NPM_SCRIPT_SHORTCUTS),
     ]);
+  const explicit = explicitCandidate && !looksLikePackageScriptMetaQuestion(request, explicitCandidate)
+    ? explicitCandidate
+    : null;
 
   if (explicit) {
     const projectScript = projectScripts.find((script) => script.name === explicit.script);
@@ -1434,6 +1374,7 @@ function findSemanticPackageScript(request, { projectScripts = [], pluginScripts
   const text = normalizeText(request);
   if (!text || !PACKAGE_SCRIPT_ACTION_WORDS.some((word) => includesPhrase(text, word))) return null;
   if (looksLikeFinalReviewerWorkflowRequest(text)) return null;
+  if (looksLikePackageScriptMetaQuestion(request)) return null;
 
   const candidates = [];
   const seen = new Set();
@@ -1497,6 +1438,38 @@ function findSemanticPackageScript(request, { projectScripts = [], pluginScripts
     mutationRisk: "unknown",
     nextAction: "Run the portable plugin-root command from the project root; do not search the repository for this script.",
   };
+}
+
+function looksLikePackageScriptMetaQuestion(request, explicit = {}) {
+  const text = normalizeText(request);
+  if (!text) return false;
+  const command = normalizeText(explicit.command || "");
+  const script = normalizeText(explicit.script || "");
+  if (command && text === command) return false;
+  const mentionsPackageScript = includesPhrase(text, "npm run")
+    || includesPhrase(text, "pnpm")
+    || includesPhrase(text, "yarn")
+    || includesPhrase(text, "bun")
+    || (command && includesPhrase(text, command))
+    || (script && includesPhrase(text, script));
+  if (!mentionsPackageScript) return false;
+  return [
+    "audit whether",
+    "review whether",
+    "whether",
+    "should",
+    "why",
+    "policy",
+    "reserved",
+    "defer",
+    "deferred",
+    "only run",
+    "final gate",
+    "release gate",
+    "full suite",
+    "before the release",
+    "before final",
+  ].some((phrase) => includesPhrase(text, phrase));
 }
 
 function looksLikeFinalReviewerWorkflowRequest(text) {

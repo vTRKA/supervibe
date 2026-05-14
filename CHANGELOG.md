@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.31] - 2026-05-14
+
+### Changed
+
+- Strengthened agent, skill, template, reference-pack, workflow receipt, and graph-release gates for the agent/skill normalization release.
+- Synchronized release-facing host manifests and documentation to the 2.1.31 package version.
+
+### Validation
+
+- Release gate evidence must include `npm run check`, graph completion, final reviewer sweep, workflow receipt trust, RAG/CodeGraph readiness, and release security audit.
+
 ## [2.1.30] - 2026-05-13
 
 ### Changed

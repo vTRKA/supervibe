@@ -1,11 +1,7 @@
 ---
 name: project-memory
 namespace: process
-description: >-
-  Use BEFORE starting any non-trivial task to search project memory for prior
-  decisions, patterns, incidents, learnings, solutions matching current context.
-  Triggers: 'поищи в памяти', 'past decisions', 'как мы делали раньше', 'project
-  memory'.
+description: 'Use BEFORE starting any non-trivial task to search project memory for prior decisions, patterns, incidents, learnings, solutions matching current context. Triggers: ''поищи в памяти'', ''past decisions'', ''как мы делали раньше'', ''project memory''.'
 allowed-tools:
   - Read
   - Grep
@@ -22,6 +18,10 @@ last-verified: 2026-04-27T00:00:00.000Z
 
 # Project Memory
 
+## Overview
+
+Project Memory provides a reusable Supervibe operating method for Use BEFORE starting any non-trivial task to search project memory for prior decisions, patterns, incidents, learnings, solutions matching current context. Triggers: 'поищи в памяти', 'past decisions', 'как мы делали раньше', 'project memory'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
 Retrieval policy: memory is mandatory for non-trivial planning, architecture,
 recurring bugs, policy decisions and project-history questions. If skipped,
 state the `supervibe-retrieval-decision-policy` reason explicitly.
@@ -30,7 +30,7 @@ state the `supervibe-retrieval-decision-policy` reason explicitly.
 
 Design intelligence writes only accepted, rejected, or learned decisions into existing memory categories. Use tags such as `design`, `brand`, `ux`, `a11y`, `tokens`, `prototype`, `slides`, `collateral`, and `rejected`. Do not create a separate design memory root.
 
-## When to invoke
+## When to Use
 
 BEFORE starting any non-trivial task — feature, bug fix, refactor, design decision. Especially BEFORE invoking `supervibe:brainstorming` or `supervibe:writing-plans`.
 

@@ -19,6 +19,11 @@ import {
   createTraceContext,
   createTraceSpan,
 } from "./lib/supervibe-runtime-trace.mjs";
+import {
+  createHostManagedSubagentCleanupTarget,
+  defaultRuntimeCleanupRegistryPath,
+  registerRuntimeCleanupTarget,
+} from "./lib/runtime-cleanup-registry.mjs";
 
 const HOST_INVOCATION_SOURCES = Object.freeze({
   claude: "claude-code-task-hook",
@@ -150,6 +155,14 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         traceId: traceContext.traceId,
         spanId: record.span_id,
       });
+      await maybeRegisterHostManagedSubagentCleanup({
+        rootDir,
+        host,
+        source,
+        invocationId,
+        agentId,
+        record,
+      });
       const span = createTraceSpan({
         name: "supervibe.agent.invocation",
         traceId: traceContext.traceId,
@@ -197,6 +210,32 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.error(`ERROR: ${error.message}`);
     process.exit(2);
   }
+}
+
+async function maybeRegisterHostManagedSubagentCleanup({
+  rootDir,
+  host,
+  source,
+  invocationId,
+  agentId,
+  record,
+} = {}) {
+  const status = String(record?.status || "completed").toLowerCase();
+  if (host !== "codex") return null;
+  if (source !== "codex-spawn-agent") return null;
+  if (!["completed", "complete", "done", "closed"].includes(status)) return null;
+  const target = createHostManagedSubagentCleanupTarget({
+    host,
+    hostInvocationSource: source,
+    hostInvocationId: invocationId,
+    agentId,
+    status,
+    completedAt: record?.ts || null,
+    rootDir,
+  });
+  return registerRuntimeCleanupTarget(target, {
+    path: defaultRuntimeCleanupRegistryPath(rootDir),
+  });
 }
 
 async function maybeIssueWorkflowReceipt({ options, rootDir, agentId, source, invocationId, taskSummary, record, traceId = null, spanId = null }) {

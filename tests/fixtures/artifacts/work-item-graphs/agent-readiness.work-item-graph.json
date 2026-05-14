@@ -20,9 +20,7 @@
       "type": "epic",
       "priority": "critical",
       "parentId": null,
-      "blocks": [
-        "epic-agent-readiness-t1"
-      ],
+      "blocks": [],
       "related": [],
       "discoveredFrom": {
         "type": "fixture",
@@ -143,11 +141,6 @@
       "from": "epic-agent-readiness",
       "to": "epic-agent-readiness-t1",
       "type": "parent-child"
-    },
-    {
-      "from": "epic-agent-readiness",
-      "to": "epic-agent-readiness-t1",
-      "type": "blocks"
     }
   ],
   "tasks": [

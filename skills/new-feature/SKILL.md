@@ -1,10 +1,7 @@
 ---
 name: new-feature
 namespace: process
-description: >-
-  Use WHEN starting any new user-facing feature to orchestrate end-to-end flow
-  from requirements to merge with all gates enforced. Triggers: 'новая фича',
-  'feature scaffold', 'давай новую фичу', 'начни фичу'.
+description: 'Use WHEN starting any new user-facing feature to orchestrate end-to-end flow from requirements to merge with all gates enforced. Triggers: ''новая фича'', ''feature scaffold'', ''давай новую фичу'', ''начни фичу''.'
 allowed-tools:
   - Read
   - Grep
@@ -23,7 +20,11 @@ last-verified: 2026-05-02T00:00:00.000Z
 
 # New Feature
 
-## When to invoke
+## Overview
+
+New Feature provides a reusable Supervibe operating method for Use WHEN starting any new user-facing feature to orchestrate end-to-end flow from requirements to merge with all gates enforced. Triggers: 'новая фича', 'feature scaffold', 'давай новую фичу', 'начни фичу'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
+## When to Use
 
 WHEN user says "let's build feature X" and X is non-trivial (estimated complexity ≥4). This is the orchestrator that chains the entire feature workflow.
 

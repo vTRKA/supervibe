@@ -1,12 +1,7 @@
 ---
 name: code-review
 namespace: process
-description: >-
-  Use BEFORE merging any change to systematically review code across 8
-  dimensions
-  (correctness/security/readability/performance/coverage/error-handling/naming/docs)
-  with severity ranking. Triggers: 'отревьюй код', 'code review', 'проверь PR',
-  'обзор кода'.
+description: 'Use BEFORE merging any change to systematically review code across 8 dimensions (correctness/security/readability/performance/coverage/error-handling/naming/docs) with severity ranking. Triggers: ''отревьюй код'', ''code review'', ''проверь PR'', ''обзор кода''.'
 allowed-tools:
   - Read
   - Grep
@@ -23,7 +18,11 @@ last-verified: 2026-04-27T00:00:00.000Z
 
 # Code Review
 
-## When to invoke
+## Overview
+
+Code Review provides a reusable Supervibe operating method for Use BEFORE merging any change to systematically review code across 8 dimensions (correctness/security/readability/performance/coverage/error-handling/naming/docs) with severity ranking. Triggers: 'отревьюй код', 'code review', 'проверь PR', 'обзор кода'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
+## When to Use
 
 BEFORE any merge to main, BEFORE opening a PR for external review, AFTER completing a non-trivial implementation task.
 
@@ -83,8 +82,9 @@ Is the diff touching public symbols (rename / move / extract / delete)?
    - If breaking: require migration note + deprecation period per `api-contract-reviewer` rules
 7. **Protected simplification check** (only if the diff simplifies/refactors generated, vendored, migration, or compatibility code):
    - Respect `supervibe-simplify-ignore-start: <reason>` / `supervibe-simplify-ignore-end` blocks documented in `references/protected-block-simplification.md`
-   - Reject malformed or unreasoned protected blocks instead of silently deleting guarded code
-   - Use `scripts/lib/protected-block-simplification.mjs` for nested-safe range detection when tooling needs to inspect protected spans
+   - Map the diff to 1-based touched line ranges and run `evaluateProtectedSimplification(text, touchedRanges)` from `scripts/lib/protected-block-simplification.mjs`
+   - Block review approval when markers are malformed, unreasoned, unmatched, unclosed, or when any touched range overlaps a protected span, including marker lines
+   - Treat generated, vendored, migration, security, legal, compatibility, and user-owned spans as preserve-by-default; protected markers can only narrow edits, never authorize deletion or weaker verification
 8. **Output report** — see Output contract
 9. **Score** — `supervibe:confidence-scoring` artifact-type=agent-output; ≥9 required to mark review complete
 
@@ -101,15 +101,24 @@ Is the diff touching public symbols (rename / move / extract / delete)?
 
 ## Common rationalizations
 
-- "This is small, so no source check is needed" - reject when the skill changes code, config, or durable artifacts.
-- "The user asked for speed, so skip receipts" - reject when durable work, delegation, or review is claimed.
-- "Existing prose is enough evidence" - reject when validators or command output are required.
+- "The diff is mostly formatting, so caller behavior cannot change" fails when
+  public symbols, generated output, selectors, routing, serialization, or
+  config defaults changed; inspect callers and tests before approving.
+- "Only one reviewer pass is enough because the implementation agent is senior"
+  fails for security, data, migration, workflow, and release changes; require
+  independent evidence and severity-ranked findings.
+- "A green happy-path test means review is complete" fails when edge cases,
+  rollback, accessibility, auth, or persistence behavior were not covered by
+  the changed surface.
 
 ## Red flags
 
-- A durable artifact changes without a command, receipt, or verification path.
-- The skill is used outside its phase without an explicit handoff.
-- Claims of completion appear before evidence and confidence scoring.
+- The review verdict is `APPROVED` while a correctness, security, data-loss,
+  migration, or unverified-public-contract finding remains open.
+- Findings cite broad file names without line-level evidence, reachable path,
+  changed behavior, or a concrete fix owner.
+- The reviewer summarizes tests as "passed" without naming the exact command,
+  exit code, and whether the command covers the touched behavior.
 
 ## Checklist
 
@@ -127,20 +136,16 @@ Is the diff touching public symbols (rename / move / extract / delete)?
 
 ## Output contract
 
-Returns ranked findings list:
-```
-CRITICAL (N findings):
-  - file.ext:42 — <issue> — <suggested fix>
-MAJOR (N):
-  - ...
-MINOR (N):
-  - ...
-SUGGESTION (N):
-  - ...
+Return a ranked review artifact with stable fields:
 
-Verdict: APPROVED | APPROVED WITH NOTES | BLOCKED
-Evidence: <typecheck/test/lint output summary>
-```
+- `verdict`: `APPROVED`, `APPROVED_WITH_NOTES`, or `BLOCKED`.
+- `criticalFindings`: count and line-cited findings that block release.
+- `majorFindings`: count and line-cited findings that must be fixed or accepted.
+- `minorFindings`: count and line-cited non-blocking fixes.
+- `suggestions`: optional improvements separated from required fixes.
+- `evidence`: exact commands, exit codes, source reads, graph checks, and
+  reviewer receipts used.
+- `residualRisk`: remaining risk, owner, and why the verdict still holds.
 
 ## Guard rails
 
@@ -151,15 +156,18 @@ Evidence: <typecheck/test/lint output summary>
 - ALWAYS: cite file:line for every finding
 - ALWAYS: distinguish CRITICAL/MAJOR (blocking) from MINOR/SUGGESTION (advisory)
 - **Skip graph check on rename**: silent breakage waiting to happen. The rule `use-codegraph-before-refactor` makes this a HARD BLOCK; review must enforce.
-- **Deleting protected simplification blocks without checking reason/range**: can break generated, vendored, migration, or compatibility code. Treat malformed `supervibe-simplify-ignore-*` markers as review blockers.
+- **Deleting protected simplification blocks without checking reason/range**: can break generated, vendored, migration, security, legal, compatibility, or user-owned code. Treat malformed `supervibe-simplify-ignore-*` markers and protected-range overlaps as review blockers.
 
 ## Verification
 
-- Every CRITICAL finding has reproducer or evidence
-- Verdict matches finding severity (any CRITICAL → BLOCKED)
-- Test/typecheck/lint output included
-- For diffs touching public symbols: graph evidence cited (callers checked, count + resolution rate)
-- For pure-additive diffs: explicit "Structural change: none" stamp
+- Run the task's targeted `node --test ...`, `npm run validate:*`, or stack
+  check when review covers executable behavior.
+- Run `npm run validate:agent-content-quality` or
+  `npm run validate:skill-content-quality` when reviewing agent/skill changes.
+- Every CRITICAL finding has a reproducer, path evidence, or source citation.
+- Verdict matches finding severity; any unresolved CRITICAL remains `BLOCKED`.
+- For diffs touching public symbols, cite CodeGraph or caller evidence with the
+  caller count and resolution decision.
 
 ## Related
 

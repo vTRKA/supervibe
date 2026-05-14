@@ -70,6 +70,52 @@ test("work-item claim blocks duplicate active leases with conflict evidence", ()
   assert.equal(second.graph.events[1].changed, false);
 });
 
+test("claim-wave atomically claims disjoint assignments and records wave metadata", () => {
+  const result = mutateWorkItemGraph(baseGraph(), {
+    type: "claim-wave",
+    actor: "codex-wave",
+    waveId: "wave-1",
+    now: "2026-05-07T00:00:00.000Z",
+    claims: [
+      { itemId: "task-1", writeSet: ["src/a.ts"], writeSetLock: { lockId: "write-set-task-1" } },
+      { itemId: "task-2", writeSet: ["src/b.ts"], writeSetLock: { lockId: "write-set-task-2" } },
+    ],
+  });
+
+  assert.equal(result.action, "claim-wave");
+  assert.deepEqual(result.claimResults.map((claim) => claim.itemId), ["task-1", "task-2"]);
+  assert.equal(result.graph.claims.length, 2);
+  assert.equal(result.graph.claims[0].waveId, "wave-1");
+  assert.deepEqual(result.graph.claims[0].writeSet, ["src/a.ts"]);
+  assert.equal(result.graph.claims[0].writeSetLock.lockId, "write-set-task-1");
+  assert.equal(result.graph.events[0].action, "claim-wave");
+  assert.equal(result.graph.events[0].waveId, "wave-1");
+});
+
+test("claim-wave refuses all claims when one target already has an active claim", () => {
+  const claimed = mutateWorkItemGraph(baseGraph(), {
+    type: "claim",
+    itemId: "task-1",
+    actor: "agent-a",
+    now: "2026-05-07T00:00:00.000Z",
+  });
+  const blocked = mutateWorkItemGraph(claimed.graph, {
+    type: "claim-wave",
+    actor: "codex-wave",
+    waveId: "wave-2",
+    now: "2026-05-07T00:01:00.000Z",
+    claims: [
+      { itemId: "task-1" },
+      { itemId: "task-2" },
+    ],
+  });
+
+  assert.equal(blocked.action, "claim-wave-blocked");
+  assert.equal(blocked.changed, false);
+  assert.equal(blocked.graph.claims.length, 1);
+  assert.equal(blocked.graph.items.find((item) => item.itemId === "task-2").status, "open");
+});
+
 test("work-item claim safely recovers expired stale leases", () => {
   const first = mutateWorkItemGraph(baseGraph(), {
     type: "claim",
@@ -104,6 +150,29 @@ test("work-item terminal actions append audit events", () => {
   assert.equal(result.graph.events.length, 1);
   assert.equal(result.graph.events[0].action, "complete");
   assert.equal(result.graph.events[0].reason, "verified");
+});
+
+test("terminal actions retire active claims for the closed work item", () => {
+  const claimed = mutateWorkItemGraph(baseGraph(), {
+    type: "claim",
+    itemId: "task-1",
+    actor: "agent-a",
+    now: "2026-05-07T00:00:00.000Z",
+    leaseTtlMinutes: 60,
+  });
+  const closed = mutateWorkItemGraph(claimed.graph, {
+    type: "complete",
+    itemId: "task-1",
+    actor: "agent-a",
+    now: "2026-05-07T00:10:00.000Z",
+    reason: "targeted verification passed",
+  });
+
+  assert.equal(closed.graph.claims[0].status, "completed");
+  assert.equal(closed.graph.claims[0].completedBy, "agent-a");
+  assert.equal(closed.graph.claims[0].completionStatus, "complete");
+  assert.deepEqual(closed.retiredClaims.map((claim) => claim.claimId), [claimed.claim.claimId]);
+  assert.deepEqual(closed.graph.events.at(-1).retiredClaims, [claimed.claim.claimId]);
 });
 
 test("closing a parent auto-closes covered plan-step subtasks", () => {
@@ -204,6 +273,63 @@ test("work-item split creates blocking subtasks under parent", () => {
   assert.deepEqual(subtasks.map((item) => item.parentId), ["task-1", "task-1"]);
   assert.ok(subtasks.every((item) => item.blocks.includes("task-1")));
   assert.deepEqual(result.graph.tasks.find((task) => task.id === "task-1").dependencies.sort(), subtasks.map((item) => item.itemId).sort());
+});
+
+test("work-item split preserves provenance and refreshes derived metadata", () => {
+  const graph = baseGraph();
+  graph.items.find((item) => item.itemId === "task-1").discoveredFrom = {
+    type: "plan",
+    path: ".supervibe/artifacts/plans/example.md",
+    line: 12,
+    taskRef: "T001",
+  };
+  graph.items.find((item) => item.itemId === "task-1").executionHints = {
+    sourceTaskRef: "T001",
+    semanticEpicId: "semantic-epic-tests",
+  };
+  graph.items.find((item) => item.itemId === "task-2").executionHints = {
+    sourceTaskRef: "T002",
+    semanticEpicId: "semantic-epic-tests",
+  };
+  graph.metadata = {
+    taskBudgetPolicy: {
+      policy: {
+        schemaVersion: 1,
+        maxTasksPerPhase: 30,
+        maxChildItemsPerAtomizationRun: 80,
+        requirePhaseSplitDecision: true,
+      },
+      decision: { schemaVersion: 1, status: "recorded" },
+      report: { totals: { childItems: 2, implementationItems: 2 } },
+    },
+    semanticEpicGrouping: { version: 1, taskCount: 2, epicCount: 1 },
+    semanticEpics: [{
+      id: "semantic-epic-tests",
+      type: "epic",
+      taskIds: ["task-1", "task-2"],
+      taskCount: 2,
+      confidence: 0.8,
+    }],
+  };
+
+  const result = mutateWorkItemGraph(graph, {
+    type: "split",
+    itemId: "task-1",
+    titles: ["Part A", "Part B"],
+    actor: "lead",
+    now: "2026-05-07T00:00:00.000Z",
+  });
+
+  const subtask = result.graph.items.find((item) => item.itemId === "task-1.sub1");
+  assert.equal(subtask.discoveredFrom.parentItemId, "task-1");
+  assert.equal(subtask.discoveredFrom.path, ".supervibe/artifacts/plans/example.md");
+  assert.equal(subtask.discoveredFrom.taskRef, "T001");
+  assert.equal(subtask.executionHints.splitParentItemId, "task-1");
+  assert.ok(result.graph.dependencyEdges.some((edge) => edge.from === "task-1" && edge.to === "task-1.sub1" && edge.type === "discovered-from"));
+  assert.equal(result.graph.metadata.taskBudgetPolicy.report.totals.childItems, 4);
+  assert.equal(result.graph.metadata.taskBudgetPolicy.report.totals.implementationItems, 4);
+  assert.equal(result.graph.metadata.semanticEpicGrouping.taskCount, 4);
+  assert.deepEqual(result.graph.metadata.semanticEpics[0].taskIds.sort(), ["task-1", "task-1.sub1", "task-1.sub2", "task-2"].sort());
 });
 
 test("work-item skip, cancel, reparent, and dependency mutations are audit logged", () => {
@@ -312,6 +438,41 @@ test("work-item block, unblock, comments, handoff, and stale recovery are task-s
   });
   assert.equal(recovered.graph.claims.at(-1).status, "recovered");
   assert.equal(recovered.graph.items.find((item) => item.itemId === "task-1").status, "ready");
+});
+
+test("forced stale recovery retires active claims before returning item to ready", () => {
+  const claimed = mutateWorkItemGraph(baseGraph(), {
+    type: "claim",
+    itemId: "task-1",
+    actor: "agent-a",
+    now: "2026-05-07T00:00:00.000Z",
+    leaseTtlMinutes: 30,
+  });
+  assert.equal(claimed.graph.claims.at(-1).status, "claimed");
+
+  assert.throws(
+    () => mutateWorkItemGraph(claimed.graph, {
+      type: "recover-stale",
+      itemId: "task-1",
+      actor: "lead",
+      now: "2026-05-07T00:05:00.000Z",
+    }),
+    /no stale claim found/,
+  );
+
+  const recovered = mutateWorkItemGraph(claimed.graph, {
+    type: "recover-stale",
+    itemId: "task-1",
+    actor: "lead",
+    now: "2026-05-07T00:05:00.000Z",
+    force: true,
+    reason: "host worker was never spawned",
+  });
+
+  assert.equal(recovered.graph.claims.at(-1).status, "recovered");
+  assert.equal(recovered.graph.claims.at(-1).recoveryReason, "host worker was never spawned");
+  assert.equal(recovered.graph.items.find((item) => item.itemId === "task-1").status, "ready");
+  assert.deepEqual(recovered.graph.events.at(-1).recoveredClaims, [recovered.graph.claims.at(-1).claimId]);
 });
 
 test("dependency add rejects cycles before writing graph", () => {
@@ -446,6 +607,44 @@ test("loop CLI routes claim and preview delete work-item actions", async () => {
   ], { cwd: rootDir });
   assert.match(preview.stdout, /ACTION: delete/);
   assert.match(preview.stdout, /DRY_RUN: true/);
+});
+
+test("loop status does not display completed claims as active owners", async () => {
+  const rootDir = await mkdtemp(join(tmpdir(), "supervibe-actions-completed-claim-"));
+  const graphPath = join(rootDir, "graph.json");
+  await writeFile(graphPath, `${JSON.stringify(baseGraph(), null, 2)}\n`, "utf8");
+  const scriptPath = join(process.cwd(), "scripts", "supervibe-loop.mjs");
+
+  await execFileAsync(process.execPath, [
+    scriptPath,
+    "--claim",
+    "task-1",
+    "--file",
+    graphPath,
+    "--actor",
+    "agent-a",
+  ], { cwd: rootDir });
+  await execFileAsync(process.execPath, [
+    scriptPath,
+    "--complete",
+    "task-1",
+    "--file",
+    graphPath,
+    "--actor",
+    "agent-a",
+    "--reason",
+    "verified",
+  ], { cwd: rootDir });
+  const status = await execFileAsync(process.execPath, [
+    scriptPath,
+    "--status",
+    "--file",
+    graphPath,
+    "--no-auto-ui",
+  ], { cwd: rootDir });
+
+  assert.match(status.stdout, /CLAIMED: 0/);
+  assert.match(status.stdout, /TASK: task-1 STATUS: done .* CLAIM: none /);
 });
 
 test("command palette claim action points at implemented loop action", () => {

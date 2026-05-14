@@ -1,11 +1,7 @@
 ---
 name: prd
 namespace: process
-description: >-
-  Use BEFORE building any user-facing feature to write a Product Requirements
-  Document framing problem, users, solution, success metrics, and out-of-scope.
-  Triggers: 'PRD', 'продуктовая спецификация', 'product requirements', 'оформи
-  PRD'.
+description: 'Use BEFORE building any user-facing feature to write a Product Requirements Document framing problem, users, solution, success metrics, and out-of-scope. Triggers: ''PRD'', ''продуктовая спецификация'', ''product requirements'', ''оформи PRD''.'
 allowed-tools:
   - Read
   - Grep
@@ -23,7 +19,11 @@ last-verified: 2026-04-27T00:00:00.000Z
 
 # Product Requirements Document (PRD)
 
-## When to invoke
+## Overview
+
+Prd provides a reusable Supervibe operating method for Use BEFORE building any user-facing feature to write a Product Requirements Document framing problem, users, solution, success metrics, and out-of-scope. Triggers: 'PRD', 'продуктовая спецификация', 'product requirements', 'оформи PRD'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
+## When to Use
 
 BEFORE building any user-facing feature with explicit business value. Use when product-manager or systems-analyst agent is involved.
 
@@ -297,3 +297,7 @@ Required sections (in order):
 - `supervibe:_product:product-manager` — primary author
 - `supervibe:_product:systems-analyst` — collaborator on ACs
 - `supervibe:_product:analytics-implementation` — collaborator on instrumentation
+- [Decision Brief](../../docs/templates/decision-brief-template.md) - durable
+  product or architecture decisions referenced by the PRD.
+- [Migration And Deprecation](../../references/templates/migration-deprecation.md) —
+  replacement-feature migration, communication, and sunset planning.

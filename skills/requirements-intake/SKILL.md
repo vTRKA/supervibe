@@ -1,11 +1,7 @@
 ---
 name: requirements-intake
 namespace: process
-description: >-
-  Use BEFORE any new feature, bug fix, or refactor request to capture
-  requirements with stack-aware questions and decide complexity routing
-  (brainstorm vs plan vs exec). Triggers: 'requirements', 'intake', 'формализуй
-  задачу', 'собери требования'.
+description: 'Use BEFORE any new feature, bug fix, or refactor request to capture requirements with stack-aware questions and decide complexity routing (brainstorm vs plan vs exec). Triggers: ''requirements'', ''intake'', ''формализуй задачу'', ''собери требования''.'
 allowed-tools:
   - Read
   - Grep
@@ -24,7 +20,11 @@ last-verified: 2026-05-06T00:00:00.000Z
 
 # Requirements Intake
 
-## When to invoke
+## Overview
+
+Requirements Intake provides a reusable Supervibe operating method for Use BEFORE any new feature, bug fix, or refactor request to capture requirements with stack-aware questions and decide complexity routing (brainstorm vs plan vs exec). Triggers: 'requirements', 'intake', 'формализуй задачу', 'собери требования'.
+It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
+## When to Use
 
 BEFORE any new feature/bug/refactor request enters the workflow. This is the entry-gate that decides what skill chain to invoke next.
 

@@ -68,6 +68,19 @@ test("validate-work-item-graphs CLI passes persisted graph", async () => {
   assert.match(stdout, /All 1 work-item graph artifact\(s\) passed/);
 });
 
+test("validateWorkItemGraphFiles rejects stale dependency edge state", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "work-item-graph-stale-edge-"));
+  const file = join(dir, "graph.json");
+  const graph = atomizePlanToWorkItems(PLAN, { planPath: "plan.md", epicId: "epic-example", planReviewPassed: true, dryRun: true });
+  const task2 = graph.items.find((item) => item.itemId.endsWith("-t2"));
+  graph.dependencyEdges = graph.dependencyEdges.filter((edge) => !(edge.to === task2.itemId && edge.type === "blocks"));
+  await writeFile(file, `${JSON.stringify(graph, null, 2)}\n`);
+
+  const report = await validateWorkItemGraphFiles({ files: [file] });
+  assert.equal(report.pass, false);
+  assert.ok(report.results[0].validation.issues.some((issue) => issue.code === "missing-blocked-by-edge"));
+});
+
 test("validate-work-item-graphs accepts claimed active task with no ready front", async () => {
   const dir = await mkdtemp(join(tmpdir(), "work-item-graph-claimed-front-"));
   const file = join(dir, "graph.json");
