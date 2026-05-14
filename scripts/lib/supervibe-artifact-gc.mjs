@@ -2,12 +2,13 @@ import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join, relative, sep } from "node:path";
-import { gzipSync } from "node:zlib";
+import { gzipSync, gunzipSync } from "node:zlib";
 
 import {
   readWorkflowReceipts,
   validateWorkflowReceiptTrust,
 } from "./supervibe-workflow-receipt-runtime.mjs";
+import { buildCleanupReachability } from "./supervibe-cleanup-reachability.mjs";
 
 const RETENTION_TIERS = Object.freeze({
   REQUIRED: "required",
@@ -45,6 +46,7 @@ export async function scanSupervibeArtifactGc({
   compactAgentOutputDays = retentionDays,
   archiveRetentionDays = 90,
   maxArchiveBytes = 0,
+  archiveKeepLast = 0,
 } = {}) {
   const candidates = [];
   const activeNoise = [];
@@ -54,6 +56,8 @@ export async function scanSupervibeArtifactGc({
   const referenced = referencedOutputArtifacts(rootDir);
   const workflowReceipts = workflowReceiptsWithTrust(rootDir);
   const referencedPaths = [...referenced.keys()];
+  const reachability = buildCleanupReachability({ rootDir, now });
+  const protectedArchivePaths = new Set((reachability.roots?.compactArchiveBlobs || []).map((item) => normalizeRelPath(item.relPath)));
   const cutoffMs = Date.parse(now) - Number(retentionDays) * DAY_MS;
   const compactCutoffMs = Date.parse(now) - Number(compactAgentOutputDays) * DAY_MS;
 
@@ -245,6 +249,8 @@ export async function scanSupervibeArtifactGc({
     now,
     archiveRetentionDays,
     maxArchiveBytes,
+    keepLast: archiveKeepLast,
+    protectedPaths: protectedArchivePaths,
   }));
 
   candidates.sort((left, right) => left.relPath.localeCompare(right.relPath));
@@ -258,6 +264,7 @@ export async function scanSupervibeArtifactGc({
     compactAgentOutputDays: Number(compactAgentOutputDays),
     archiveRetentionDays: Number(archiveRetentionDays),
     maxArchiveBytes: Number(maxArchiveBytes || 0),
+    archiveKeepLast: Number(archiveKeepLast || 0),
     candidates,
     activeNoise,
     compactable,
@@ -268,6 +275,9 @@ export async function scanSupervibeArtifactGc({
       activeNoise: activeNoise.length,
       compactable: compactable.length,
       archiveCleanup: archiveCleanup.length,
+    },
+    reachability: {
+      summary: reachability.summary,
     },
   };
 }
@@ -283,7 +293,11 @@ export async function archiveSupervibeArtifactGcCandidates(scan = {}, {
   const errors = [];
   if (dryRun) return { dryRun: true, archived, compacted, archiveRemoved, errors };
 
+  const guardErrors = await validateApplyDeletionGuards({ rootDir, scan, now: runTimestamp });
+  if (guardErrors.length) return { dryRun: false, archived, compacted, archiveRemoved, errors: guardErrors };
+
   const archiveRoot = join(rootDir, ".supervibe", ".archive", "gc", sanitizeId(runTimestamp));
+  const auditLogPath = await writeArtifactGcApplyAudit({ rootDir, archiveRoot, scan, runTimestamp });
   for (const candidate of scan.candidates || []) {
     const relPath = normalizeRelPath(candidate.relPath);
     const source = join(rootDir, ...relPath.split("/"));
@@ -356,7 +370,47 @@ export async function archiveSupervibeArtifactGcCandidates(scan = {}, {
     await writeFile(logPath, `${lines.join("\n")}${lines.length ? "\n" : ""}`, "utf8");
   }
 
-  return { dryRun: false, archived, compacted, archiveRemoved, errors };
+  return { dryRun: false, archived, compacted, archiveRemoved, errors, auditLogPath: auditLogPath ? normalizeRelPath(relative(rootDir, auditLogPath)) : null };
+}
+
+async function validateApplyDeletionGuards({ rootDir, scan, now }) {
+  const errors = [];
+  const strict = await validateSupervibeGcStrict({ rootDir, now, scan });
+  for (const failure of strict.failures || []) errors.push(failure);
+  const reachability = buildCleanupReachability({ rootDir, now });
+  const protectedClasses = new Set(["protected", "hot", "blocked"]);
+  const protectedTargets = new Map((reachability.inventory || []).map((item) => [item.relPath, item]));
+  for (const candidate of [
+    ...(scan.candidates || []).map((item) => ({ ...item, cleanupMode: "candidate" })),
+    ...(scan.archiveCleanup || []).map((item) => ({ ...item, cleanupMode: "archive-cleanup" })),
+  ]) {
+    const relPath = normalizeRelPath(candidate.relPath);
+    const classification = protectedTargets.get(relPath);
+    if (classification && protectedClasses.has(classification.lifecycleClass)) {
+      errors.push(`${candidate.cleanupMode} would mutate ${classification.lifecycleClass} cleanup root: ${relPath}`);
+    }
+  }
+  return [...new Set(errors)];
+}
+
+async function writeArtifactGcApplyAudit({ rootDir, archiveRoot, scan, runTimestamp }) {
+  const auditLogPath = join(archiveRoot, "artifact-gc-plan.jsonl");
+  await mkdir(dirname(auditLogPath), { recursive: true });
+  const actions = [
+    ...(scan.candidates || []).map((entry) => ({ action: "archive", entry })),
+    ...(scan.compactable || []).map((entry) => ({ action: "compact", entry })),
+    ...(scan.archiveCleanup || []).map((entry) => ({ action: "remove-archive", entry })),
+  ];
+  const lines = actions.map(({ action, entry }) => JSON.stringify({
+    schemaVersion: 1,
+    plannedAt: runTimestamp,
+    action,
+    relPath: entry.relPath,
+    reason: entry.reason || null,
+    restoreCommand: entry.restoreCommand || null,
+  }));
+  await writeFile(auditLogPath, `${lines.join("\n")}${lines.length ? "\n" : ""}`, "utf8");
+  return auditLogPath;
 }
 
 export async function evaluateArtifactGcSchedule({
@@ -425,6 +479,7 @@ export async function validateSupervibeGcStrict({
   compactAgentOutputDays = retentionDays,
   archiveRetentionDays = 90,
   maxArchiveBytes = 0,
+  archiveKeepLast = 0,
 } = {}) {
   const resolvedScan = scan || await scanSupervibeArtifactGc({
     rootDir,
@@ -433,11 +488,14 @@ export async function validateSupervibeGcStrict({
     compactAgentOutputDays,
     archiveRetentionDays,
     maxArchiveBytes,
+    archiveKeepLast,
   });
   const inventory = collectSupervibeInventory(rootDir, now);
   const referenced = referencedOutputArtifacts(rootDir);
   const receiptTrustByPath = workflowReceiptTrustMap(rootDir);
   const protectedPaths = buildReceiptProtectedPathSet(referenced);
+  const reachability = buildCleanupReachability({ rootDir, now });
+  for (const item of reachability.roots?.compactArchiveBlobs || []) protectedPaths.add(normalizeRelPath(item.relPath));
   const deletablePaths = [
     ...(resolvedScan.candidates || []).map((item) => ({ ...item, cleanupMode: "candidate" })),
     ...(resolvedScan.archiveCleanup || []).map((item) => ({ ...item, cleanupMode: "archive-cleanup" })),
@@ -506,6 +564,7 @@ export async function validateSupervibeGcStrict({
       compactAgentOutputDays: Number(compactAgentOutputDays),
       workflowArtifactRetentionDays: DEFAULT_WORKFLOW_ARTIFACT_RETENTION_DAYS,
       archiveRetentionDays: Number(archiveRetentionDays),
+      archiveKeepLast: Number(archiveKeepLast || 0),
       trustedWorkflowReceipts: "retain",
       staleWorkflowReceipts: "prune with node scripts/workflow-receipt.mjs prune-stale --apply, then run npm run supervibe:gc -- --artifacts --dry-run",
     },
@@ -723,8 +782,15 @@ function collectArchiveCleanupCandidates({
   now,
   archiveRetentionDays,
   maxArchiveBytes,
+  keepLast = 0,
+  protectedPaths = new Set(),
 }) {
-  const files = listFiles(rootDir, ".supervibe/.archive", { includeArchive: true });
+  const sortedFiles = listFiles(rootDir, ".supervibe/.archive", { includeArchive: true })
+    .filter((item) => !isProtectedArchivePath(item.relPath, protectedPaths))
+    .sort((left, right) => right.stat.mtimeMs - left.stat.mtimeMs || left.relPath.localeCompare(right.relPath));
+  const keepCount = Math.max(0, Number(keepLast || 0));
+  const keepLastPaths = new Set(sortedFiles.slice(0, keepCount).map((item) => normalizeRelPath(item.relPath)));
+  const files = sortedFiles.filter((item) => !keepLastPaths.has(normalizeRelPath(item.relPath)));
   const cleanup = [];
   const nowMs = Date.parse(now);
   const ttlDays = Number(archiveRetentionDays);
@@ -764,6 +830,16 @@ function archiveCleanupItem(item, reason, now) {
   };
 }
 
+function isProtectedArchivePath(relPath, protectedPaths = new Set()) {
+  const normalized = normalizeRelPath(relPath);
+  for (const protectedPath of protectedPaths) {
+    if (normalized === protectedPath || normalized.startsWith(protectedPath + "/") || protectedPath.startsWith(normalized + "/")) {
+      return true;
+    }
+  }
+  return false;
+}
+
 async function compactAgentOutput(candidate, { rootDir, runTimestamp }) {
   const outputPath = normalizeRelPath(candidate.outputPath || `${candidate.relPath}/agent-output.json`);
   const source = join(rootDir, ...outputPath.split("/"));
@@ -793,6 +869,9 @@ async function compactAgentOutput(candidate, { rootDir, runTimestamp }) {
     archivePath,
     archiveSha256: sha256(compressed),
     archiveBytes: compressed.length,
+    receiptIds: candidate.receiptIds || [],
+    sourceCommand: "npm run supervibe:gc -- --artifacts --apply",
+    restoreCommand: "node scripts/supervibe-gc.mjs --artifacts --restore " + sanitizeId(runId),
     compression: "gzip",
     compactedAt: runTimestamp,
     summaryPath: normalizeRelPath(candidate.summaryPath || `${candidate.relPath}/summary.md`),
@@ -807,6 +886,27 @@ async function compactAgentOutput(candidate, { rootDir, runTimestamp }) {
   };
 }
 
+export async function verifyCompactManifestDigest({ rootDir = process.cwd(), manifestPath } = {}) {
+  const normalizedManifestPath = normalizeRelPath(manifestPath);
+  if (!normalizedManifestPath) throw new Error("manifestPath is required");
+  const manifest = JSON.parse(await readFile(join(rootDir, ...normalizedManifestPath.split("/")), "utf8"));
+  if (manifest.type !== COMPACT_MANIFEST_TYPE) throw new Error("not a compact manifest");
+  const archivePath = normalizeRelPath(manifest.archivePath || "");
+  if (!archivePath) throw new Error("compact manifest missing archivePath");
+  const archived = await readFile(join(rootDir, ...archivePath.split("/")));
+  const archiveSha256 = sha256(archived);
+  const restored = gunzipSync(archived);
+  const originalSha256 = sha256(restored);
+  return {
+    manifestPath: normalizedManifestPath,
+    archivePath,
+    archiveSha256,
+    originalSha256,
+    archiveMatches: archiveSha256 === manifest.archiveSha256,
+    originalMatches: originalSha256 === manifest.originalSha256,
+    pass: archiveSha256 === manifest.archiveSha256 && originalSha256 === manifest.originalSha256,
+  };
+}
 function readJson(path) {
   try {
     if (!existsSync(path)) return null;

@@ -107,6 +107,15 @@ Final acceptance output should include:
 - receipts or invocation proof when the workflow required delegated work;
 - unresolved findings, skipped checks, or follow-up risk.
 
+
+## Post-Workflow Cleanup Hygiene
+
+After durable workflow completion, run cleanup hygiene in dry-run mode only after runtime receipts are issued, plan state is closed or intentionally active, the work graph has terminal markers where applicable, and host-managed subagent sessions are closed or recorded as still active. The lifecycle orchestrator reports blockers instead of applying cleanup when those terminal signals are missing.
+
+Default agent context should exclude cold archives, trash, stale backups, closed workflow outputs, and unclassified cleanup targets. Physical deletion is a separate release-safe operation; context filtering must reduce noise even when no files are deleted.
+
+Release cleanup checks should include `npm run validate:supervibe-cleanup-lifecycle`, receipt validators, branch/diff review, version bump review, and rollback wording before commit or push.
+
 ## Parallel Execution Policy
 
 Parallel work is allowed only when dependencies, task ownership, and write sets

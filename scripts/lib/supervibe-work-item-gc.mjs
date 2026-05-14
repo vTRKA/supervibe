@@ -1,4 +1,4 @@
-import { cp, mkdir, readdir, readFile, rename, stat, writeFile } from "node:fs/promises";
+﻿import { cp, mkdir, readdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { createWorkItemIndex, groupWorkItemsByStatus } from "./supervibe-work-item-query.mjs";
@@ -9,6 +9,7 @@ export async function scanWorkItemGc({
   retentionDays = 14,
   staleOpenDays = 90,
   includeStaleOpen = false,
+  completedGraceHours = null,
   now = new Date().toISOString(),
 } = {}) {
   const workItemsDir = join(rootDir, ".supervibe", "memory", "work-items");
@@ -25,6 +26,7 @@ export async function scanWorkItemGc({
       retentionDays,
       staleOpenDays,
       includeStaleOpen,
+      completedGraceHours,
       now,
       fileMtime: fileStat.mtime.toISOString(),
     });
@@ -54,6 +56,7 @@ export function classifyWorkItemGraphForGc(graph = {}, {
   retentionDays = 14,
   staleOpenDays = 90,
   includeStaleOpen = false,
+  completedGraceHours = null,
   now = new Date().toISOString(),
   fileMtime = null,
 } = {}) {
@@ -64,6 +67,8 @@ export function classifyWorkItemGraphForGc(graph = {}, {
   const hasOpenChildren = children.some((item) => !isTerminalWorkItemStatus(item.effectiveStatus || item.status));
   const referenceDate = latestActivityDate(graph, fileMtime);
   const ageDays = ageInDays(referenceDate, now);
+  const ageHours = ageInHours(referenceDate, now);
+  const completedGrace = completedGraceHours === null || completedGraceHours === undefined ? NaN : Number(completedGraceHours);
   const alreadyArchived = Boolean(graph.metadata?.archivedAt || graph.archivedAt);
   let archiveCandidate = false;
   let reason = "active";
@@ -71,6 +76,9 @@ export function classifyWorkItemGraphForGc(graph = {}, {
   if (alreadyArchived) {
     archiveCandidate = true;
     reason = "already-marked-archived";
+  } else if (children.length > 0 && terminalChildren.length === children.length && Number.isFinite(completedGrace) && completedGrace >= 0 && completedGrace <= 24 && ageHours >= completedGrace) {
+    archiveCandidate = true;
+    reason = "completed-grace";
   } else if (children.length > 0 && terminalChildren.length === children.length && ageDays >= Number(retentionDays)) {
     archiveCandidate = true;
     reason = "completed-retention";
@@ -86,6 +94,8 @@ export function classifyWorkItemGraphForGc(graph = {}, {
     archiveCandidate,
     reason,
     ageDays,
+    ageHours,
+    completedGraceHours: Number.isFinite(completedGrace) ? completedGrace : null,
     referenceDate,
     counts: {
       total: index.length,
@@ -226,6 +236,13 @@ function latestActivityDate(graph, fallback) {
   if (explicitDates.length) return new Date(Math.max(...explicitDates)).toISOString();
   const fallbackMs = Date.parse(fallback || "");
   return Number.isFinite(fallbackMs) ? new Date(fallbackMs).toISOString() : new Date().toISOString();
+}
+
+function ageInHours(date, now) {
+  const start = Date.parse(date || "");
+  const end = Date.parse(now || "");
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return 0;
+  return Math.max(0, Math.floor((end - start) / 3_600_000));
 }
 
 function ageInDays(date, now) {

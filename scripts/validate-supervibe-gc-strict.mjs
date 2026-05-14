@@ -28,6 +28,7 @@ try {
     compactAgentOutputDays: args["compact-agent-output-days"] || args["retention-days"] || 14,
     archiveRetentionDays: args["archive-retention-days"] || 90,
     maxArchiveBytes: args["max-archive-bytes"] || 0,
+    archiveKeepLast: args["archive-keep-last"] || 0,
   });
   if (args.json) console.log(JSON.stringify(result, null, 2));
   else console.log(formatSupervibeGcStrictReport(result));

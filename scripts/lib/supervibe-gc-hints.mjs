@@ -1,6 +1,7 @@
 import { evaluateMemoryGcSchedule, scanMemoryGc } from "./supervibe-memory-gc.mjs";
 import { evaluateArtifactGcSchedule, scanSupervibeArtifactGc } from "./supervibe-artifact-gc.mjs";
 import { scanWorkItemGc } from "./supervibe-work-item-gc.mjs";
+import { buildCleanupReachability } from "./supervibe-cleanup-reachability.mjs";
 
 export async function buildGcHints({
   rootDir = process.cwd(),
@@ -16,7 +17,8 @@ export async function buildGcHints({
   ]);
   const memorySchedule = await evaluateMemoryGcSchedule({ rootDir, now, scan: memory });
   const artifactSchedule = await evaluateArtifactGcSchedule({ rootDir, now, scan: artifacts });
-  const needsAttention = workItems.summary.candidates > 0 || memory.summary.candidates > 0 || artifacts.summary.candidates > 0;
+  const lifecycle = buildCleanupReachability({ rootDir, now });
+  const needsAttention = workItems.summary.candidates > 0 || memory.summary.candidates > 0 || artifacts.summary.candidates > 0 || lifecycle.summary.trash > 0 || lifecycle.summary.unclassified > 0;
   return {
     schemaVersion: 1,
     generatedAt: now,
@@ -24,6 +26,7 @@ export async function buildGcHints({
     workItems: summarizeWorkItems(workItems),
     memory: { ...summarizeMemory(memory), schedule: memorySchedule },
     artifacts: { ...summarizeArtifacts(artifacts), schedule: artifactSchedule },
+    lifecycle: summarizeLifecycle(lifecycle),
     nextAction: memorySchedule.due
       ? memorySchedule.nextAction
       : artifactSchedule.due && artifacts.summary.candidates > 0
@@ -46,11 +49,27 @@ export function formatGcHints(hints = {}) {
     `ARTIFACT_ACTIVE_NOISE: ${hints.artifacts?.activeNoise || 0}`,
     `ARTIFACT_TOP: ${(hints.artifacts?.top || []).map((item) => `${item.relPath}:${item.reason}`).join(",") || "none"}`,
     `ARTIFACT_GC_DUE: ${Boolean(hints.artifacts?.schedule?.due)}`,
+    `LIFECYCLE_HOT: ${hints.lifecycle?.hot || 0}`,
+    `LIFECYCLE_WARM: ${hints.lifecycle?.warm || 0}`,
+    `LIFECYCLE_COLD: ${hints.lifecycle?.cold || 0}`,
+    `LIFECYCLE_TRASH: ${hints.lifecycle?.trash || 0}`,
+    `LIFECYCLE_PROTECTED: ${hints.lifecycle?.protected || 0}`,
+    `LIFECYCLE_UNCLASSIFIED: ${hints.lifecycle?.unclassified || 0}`,
     `ARTIFACT_GC_NEXT: ${hints.artifacts?.schedule?.nextRunAt || "unknown"}`,
     `MEMORY_GC_DUE: ${Boolean(hints.memory?.schedule?.due)}`,
     `MEMORY_GC_NEXT: ${hints.memory?.schedule?.nextRunAt || "unknown"}`,
     `NEXT_ACTION: ${hints.nextAction || "inspect status"}`,
   ].join("\n");
+}
+
+function summarizeLifecycle(scan) {
+  return {
+    ...(scan.summary || {}),
+    topNoise: (scan.inventory || [])
+      .filter((item) => ["cold", "trash", "unclassified"].includes(item.lifecycleClass))
+      .slice(0, 5)
+      .map((item) => ({ relPath: item.relPath, lifecycleClass: item.lifecycleClass, reason: item.reason })),
+  };
 }
 
 function summarizeArtifacts(scan) {

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.38] - 2026-05-15
+
+### Added
+
+- Added a Supervibe cleanup lifecycle with policy-driven reachability, safe dry-run orchestration, context filtering, protected compaction, archive budgets, and a dedicated validator.
+
+### Validation
+
+- Added cleanup lifecycle tests and rechecked release-facing version surfaces for the 2.1.38 package bump.
+
 ## [2.1.37] - 2026-05-15
 
 ### Fixed

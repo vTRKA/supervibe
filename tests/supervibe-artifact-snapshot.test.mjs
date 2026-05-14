@@ -38,9 +38,10 @@ test("artifact snapshot captures workflow graph ledgers indexes locks and heartb
     assert.ok(kinds.has("active-workflow"));
     assert.ok(kinds.has("work-graph"));
     assert.ok(kinds.has("receipt-ledger"));
-    assert.ok(kinds.has("memory-index"));
-    assert.ok(kinds.has("code-index"));
+    assert.equal(kinds.has("memory-index"), false);
+    assert.equal(kinds.has("code-index"), false);
     assert.ok(kinds.has("code-index-metadata"));
+    assert.ok(result.manifest.excludedRebuildableCaches.includes(".supervibe/memory/code.db"));
     assert.ok(kinds.has("lock-or-heartbeat"));
     assert.equal(paths.some((path) => path.endsWith(".key")), false);
     assert.match(result.manifest.restoreCommand, new RegExp(`--confirm ${ARTIFACT_SNAPSHOT_CONFIRM}`));

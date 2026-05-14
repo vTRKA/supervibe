@@ -27,7 +27,7 @@ const LOCK_HEARTBEAT_PATTERNS = Object.freeze([
   /watch.*\.json$/i,
 ]);
 
-export async function collectArtifactSnapshotInventory({ rootDir = process.cwd() } = {}) {
+export async function collectArtifactSnapshotInventory({ rootDir = process.cwd(), includeRebuildableCaches = false } = {}) {
   const root = resolve(rootDir);
   const candidates = [];
   const add = (kind, relPath) => addCandidate(candidates, root, kind, relPath);
@@ -35,8 +35,10 @@ export async function collectArtifactSnapshotInventory({ rootDir = process.cwd()
   add("active-workflow", ".supervibe/memory/active-workflow.json");
   add("receipt-ledger", ".supervibe/memory/workflow-invocation-ledger.jsonl");
   add("evidence-ledger", ".supervibe/memory/evidence-ledger.jsonl");
-  add("memory-index", ".supervibe/memory/memory.db");
-  add("code-index", ".supervibe/memory/code.db");
+  if (includeRebuildableCaches) {
+    add("memory-index", ".supervibe/memory/memory.db");
+    add("code-index", ".supervibe/memory/code.db");
+  }
   add("code-index-metadata", ".supervibe/memory/code-index-checkpoint.json");
 
   const active = await resolveActiveWorkItemGraph({ rootDir: root }).catch(() => null);
@@ -67,13 +69,14 @@ export async function createArtifactSnapshot({
   reason = "pre-mutation snapshot",
   snapshotId = null,
   snapshotRoot = ARTIFACT_SNAPSHOT_ROOT,
+  includeRebuildableCaches = false,
 } = {}) {
   const root = resolve(rootDir);
   const safeSnapshotRoot = resolveSnapshotRoot(root, snapshotRoot);
   const id = sanitizeSnapshotId(snapshotId || new Date().toISOString());
   const snapshotDir = join(safeSnapshotRoot, id);
   const filesDir = join(snapshotDir, "files");
-  const inventory = await collectArtifactSnapshotInventory({ rootDir: root });
+  const inventory = await collectArtifactSnapshotInventory({ rootDir: root, includeRebuildableCaches });
   const entries = [];
   await mkdir(filesDir, { recursive: true });
 
@@ -101,6 +104,11 @@ export async function createArtifactSnapshot({
     reason,
     rootDir: ".",
     entries,
+    excludedRebuildableCaches: includeRebuildableCaches ? [] : [".supervibe/memory/memory.db", ".supervibe/memory/code.db"],
+    rebuildCommands: [
+      "node scripts/build-code-index.mjs --root . --force --health --no-embeddings",
+      "npm run supervibe:status -- --index-health",
+    ],
     restoreCommand: `node scripts/supervibe-artifact-snapshot.mjs --restore ${id} --confirm ${ARTIFACT_SNAPSHOT_CONFIRM}`,
   };
   const manifestPath = join(snapshotDir, "snapshot.json");
@@ -129,7 +137,7 @@ export async function buildArtifactSnapshotStatus({ rootDir = process.cwd() } = 
   const latest = await readLatestArtifactSnapshot({ rootDir });
   const inventory = await collectArtifactSnapshotInventory({ rootDir });
   const presentKinds = new Set((latest?.entries || []).map((entry) => entry.kind));
-  const requiredKinds = ["active-workflow", "receipt-ledger", "memory-index", "code-index"];
+  const requiredKinds = ["active-workflow", "receipt-ledger"];
   const missingKinds = requiredKinds.filter((kind) => !presentKinds.has(kind));
   if (!presentKinds.has("active-work-graph") && !presentKinds.has("work-graph")) missingKinds.push("work-graph");
   const mutationBlocked = !latest || missingKinds.includes("work-graph") || missingKinds.includes("receipt-ledger");
@@ -285,6 +293,7 @@ async function main() {
       reason: typeof args.reason === "string" ? args.reason : "pre-mutation snapshot",
       snapshotId: typeof args.id === "string" ? args.id : null,
       snapshotRoot: typeof args["snapshot-root"] === "string" ? args["snapshot-root"] : ARTIFACT_SNAPSHOT_ROOT,
+      includeRebuildableCaches: args["include-rebuildable-caches"] === true,
     });
     console.log("SUPERVIBE_ARTIFACT_SNAPSHOT_CREATED");
     console.log(`SNAPSHOT_ID: ${result.manifest.snapshotId}`);

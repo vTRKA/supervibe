@@ -23,6 +23,9 @@ Default mode is dry-run. Applying cleanup requires an explicit `--apply`.
 /supervibe-gc --work-items --apply
 /supervibe-gc --memory --category learnings --apply
 /supervibe-gc --artifacts --scheduled --apply
+/supervibe-gc --lifecycle --mode dry-run
+/supervibe-gc --lifecycle --mode review
+/supervibe-gc --lifecycle --mode auto-safe
 /supervibe-gc --memory --restore <memory-id>
 /supervibe-gc --work-items --restore <graph-id>
 ```
@@ -32,6 +35,8 @@ Equivalent local commands:
 ```bash
 npm run supervibe:gc -- --all --dry-run
 npm run supervibe:gc -- --artifacts --scheduled --dry-run
+npm run supervibe:gc -- --lifecycle --mode dry-run
+npm run supervibe:gc -- --artifacts --dry-run --archive-keep-last 5
 npm run supervibe:gc -- --memory --restore <memory-id>
 npm run supervibe:gc -- --work-items --restore <graph-id>
 npm run supervibe:work-items-gc -- --dry-run
@@ -69,6 +74,15 @@ archive logs for memory/work-items, or under `.supervibe/.archive/` for artifact
 noise. Archived entries are excluded from active memory and work-item views by
 default.
 
+
+Cleanup lifecycle adds a reachability-first layer above low-level GC:
+
+- active roots stay hot and remain in current workflow context
+- trusted receipts, receipt-linked outputs, compact manifests, compact blobs, ledgers, and runtime keys are protected
+- completed work graphs can leave hot context after a configurable 0-24 hour grace period
+- cold, trash, and unclassified lifecycle classes are excluded from default context unless history mode is explicit
+- archive budgets support retention age, max bytes, keep-last-N, and protected provenance exceptions
+- manual apply is two-phase only: dry-run evidence first, then an exact action manifest and explicit apply approval
 ## Output Contract
 
 ```text

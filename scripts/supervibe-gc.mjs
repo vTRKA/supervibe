@@ -28,6 +28,10 @@ import {
   validateSupervibeGcStrict,
   writeArtifactGcScheduleRun,
 } from "./lib/supervibe-artifact-gc.mjs";
+import {
+  formatCleanupOrchestratorReport,
+  runCleanupOrchestrator,
+} from "./lib/supervibe-cleanup-orchestrator.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 
@@ -43,6 +47,11 @@ try {
       "  npm run supervibe:gc -- --artifacts --dry-run --compact-agent-output-days 14",
       "  npm run supervibe:gc -- --artifacts --dry-run --archive-retention-days 90 --max-archive-bytes 104857600",
       "  npm run supervibe:gc -- --artifacts --strict --dry-run",
+      "  npm run supervibe:gc -- --lifecycle --mode dry-run",
+      "  npm run supervibe:gc -- --lifecycle --mode review",
+      "  npm run supervibe:gc -- --lifecycle --mode auto-safe",
+      "  npm run supervibe:gc -- --lifecycle --completed-grace-hours 24",
+      "  npm run supervibe:gc -- --artifacts --dry-run --archive-keep-last 5",
       "  npm run supervibe:gc -- --code-db-maintenance --vacuum",
       "  npm run supervibe:gc -- --memory --scheduled --auto --apply",
       "  npm run supervibe:gc -- --all --apply",
@@ -64,10 +73,11 @@ try {
     }
     process.exit(0);
   }
-  const explicitMode = args.memory || args["work-items"] || args.artifacts || args["code-db-maintenance"];
+  const explicitMode = args.memory || args["work-items"] || args.artifacts || args.lifecycle || args["code-db-maintenance"];
   const runWorkItems = args.all || args["work-items"] || !explicitMode;
   const runMemory = args.all || args.memory || !explicitMode;
   const runArtifacts = args.all || args.artifacts || !explicitMode;
+  const runLifecycle = args.all || args.lifecycle;
   const runCodeDbMaintenance = args.all || args["code-db-maintenance"];
   const blocks = [];
   if (runWorkItems) {
@@ -76,6 +86,7 @@ try {
       retentionDays: args["retention-days"] || 14,
       staleOpenDays: args["stale-open-days"] || 90,
       includeStaleOpen: Boolean(args["include-stale-open"]),
+      completedGraceHours: args["completed-grace-hours"] ?? null,
     });
     const archiveResult = await archiveWorkItemGcCandidates(scan, { dryRun: !args.apply });
     blocks.push(formatWorkItemGcReport(scan, archiveResult));
@@ -102,6 +113,18 @@ try {
     if (args.apply && args.scheduled) await writeMemoryGcScheduleRun({ rootDir });
     blocks.push(formatMemoryGcReport(scan, archiveResult));
   }
+  if (runLifecycle) {
+    const mode = args.mode || (args.disabled ? "disabled" : args.review ? "review" : args["auto-safe"] ? "auto-safe" : args["manual-apply"] || args.apply ? "manual-apply" : "dry-run");
+    const lifecycle = await runCleanupOrchestrator({
+      rootDir,
+      mode,
+      retentionDays: args["retention-days"] || 14,
+      staleOpenDays: args["stale-open-days"] || 90,
+      includeStaleOpen: Boolean(args["include-stale-open"]),
+      completedGraceHours: args["completed-grace-hours"] ?? 24,
+    });
+    blocks.push(formatCleanupOrchestratorReport(lifecycle));
+  }
   if (runArtifacts) {
     const scan = await scanSupervibeArtifactGc({
       rootDir,
@@ -109,6 +132,7 @@ try {
       compactAgentOutputDays: args["compact-agent-output-days"] || args["retention-days"] || 14,
       archiveRetentionDays: args["archive-retention-days"] || 90,
       maxArchiveBytes: args["max-archive-bytes"] || 0,
+      archiveKeepLast: args["archive-keep-last"] || 0,
     });
     const schedule = await evaluateArtifactGcSchedule({ rootDir, scan });
     blocks.push(formatArtifactGcSchedule(schedule));
@@ -131,6 +155,7 @@ try {
         compactAgentOutputDays: args["compact-agent-output-days"] || args["retention-days"] || 14,
         archiveRetentionDays: args["archive-retention-days"] || 90,
         maxArchiveBytes: args["max-archive-bytes"] || 0,
+        archiveKeepLast: args["archive-keep-last"] || 0,
       });
       if (strict.pass !== true) strictFailed = true;
       blocks.push(formatSupervibeGcStrictReport(strict));
@@ -172,9 +197,16 @@ function parseArgs(argv) {
     else if (arg === "--memory") parsed.memory = true;
     else if (arg === "--work-items") parsed["work-items"] = true;
     else if (arg === "--artifacts") parsed.artifacts = true;
+    else if (arg === "--lifecycle") parsed.lifecycle = true;
+    else if (arg === "--review") parsed.review = true;
+    else if (arg === "--auto-safe") parsed["auto-safe"] = true;
+    else if (arg === "--manual-apply") parsed["manual-apply"] = true;
+    else if (arg === "--disabled") parsed.disabled = true;
     else if (arg === "--code-db-maintenance") parsed["code-db-maintenance"] = true;
     else if (arg === "--vacuum") parsed.vacuum = true;
     else if (arg === "--include-stale-open") parsed["include-stale-open"] = true;
+    else if (arg === "--mode") parsed.mode = argv[++i];
+    else if (arg.startsWith("--mode=")) parsed.mode = arg.slice("--mode=".length);
     else if (arg === "--restore") parsed.restore = argv[++i];
     else if (arg.startsWith("--restore=")) parsed.restore = arg.slice("--restore=".length);
     else if (arg.startsWith("--")) {

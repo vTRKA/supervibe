@@ -8,6 +8,7 @@ import { parseSemanticAnchors } from "./supervibe-semantic-anchor-index.mjs";
 import { extractFileLocalContracts } from "./supervibe-file-local-contracts.mjs";
 import { buildWorkflowSignal } from "./autonomous-loop-context-planner.mjs";
 import { createWorkflowFlowModel } from "./supervibe-workflow-flow-model.mjs";
+import { buildCleanupReachability } from "./supervibe-cleanup-reachability.mjs";
 
 const MEMORY_CATEGORIES = ["decisions", "patterns", "incidents", "learnings", "solutions"];
 const DEFAULT_CONTEXT_PACK_TOKEN_SLO = Object.freeze({
@@ -29,6 +30,7 @@ export async function buildContextPack({
   tokenHardRatio = DEFAULT_CONTEXT_PACK_TOKEN_SLO.hardRatio,
   now = new Date().toISOString(),
   includeStaleMemory = false,
+  includeHistory = false,
 } = {}) {
   if (!graphPath) throw new Error("context pack requires graphPath");
   const graph = JSON.parse(await readFile(graphPath, "utf8"));
@@ -54,7 +56,9 @@ export async function buildContextPack({
     curation: memoryCuration,
     includeHistory: includeStaleMemory,
   })).slice(0, memoryLimit);
-  const evidence = collectEvidence(graph, activeItem, evidenceLimit);
+  const cleanupReachability = buildCleanupReachability({ rootDir, now });
+  const rawEvidence = collectEvidence(graph, activeItem, evidenceLimit);
+  const evidence = filterCleanupContextItems(rawEvidence, { includeHistory, reachability: cleanupReachability });
   const semanticAnchors = await collectSemanticAnchors({ rootDir, activeItem, limit: 8 });
   const fileLocalContracts = await collectFileLocalContracts({ rootDir, activeItem, semanticAnchors, limit: 8 });
   const workflowFlow = createWorkflowFlowModel({ graph, index });
@@ -87,6 +91,11 @@ export async function buildContextPack({
     blockers,
     evidence,
     memory,
+    cleanupLifecycle: {
+      includeHistory,
+      summary: cleanupReachability.summary,
+      hiddenEvidence: rawEvidence.length - evidence.length,
+    },
     semanticAnchors,
     fileLocalContracts,
     summary: {
@@ -97,6 +106,9 @@ export async function buildContextPack({
       omittedItems: Math.max(0, index.length - 1 - dependencies.length - blockers.length),
       semanticAnchors: semanticAnchors.length,
       fileLocalContracts: fileLocalContracts.length,
+      cleanupLifecycleHiddenEvidence: rawEvidence.length - evidence.length,
+      cleanupLifecycleCold: cleanupReachability.summary?.cold || 0,
+      cleanupLifecycleTrash: cleanupReachability.summary?.trash || 0,
       maxChars,
       estimatedTokens: 0,
       tokenBudget: null,
@@ -105,6 +117,7 @@ export async function buildContextPack({
       "closed sibling task bodies",
       "raw provider prompts",
       "archived memory entries",
+      includeHistory ? null : "cold/trash/unclassified cleanup lifecycle artifacts",
       "full graph JSON when summarized fields are sufficient",
     ],
   };
@@ -186,10 +199,36 @@ export function formatContextPackMarkdown(pack = {}) {
     `- Token budget: ${pack.summary?.tokenBudget?.status || "unknown"} (${pack.summary?.tokenBudget?.estimatedTokens ?? pack.summary?.estimatedTokens ?? 0}/${pack.summary?.tokenBudget?.maxTokens ?? "unknown"})`,
     `- Total work items: ${pack.summary?.totalItems ?? 0}`,
     `- Omitted items: ${pack.summary?.omittedItems ?? 0}`,
+    `- Cleanup-hidden evidence: ${pack.summary?.cleanupLifecycleHiddenEvidence ?? 0}`,
     "",
   ].join("\n");
 }
 
+export function filterCleanupContextItems(items = [], { includeHistory = false, reachability = null } = {}) {
+  if (includeHistory) return [...items];
+  const byPath = reachability?.byPath instanceof Map
+    ? reachability.byPath
+    : new Map((reachability?.inventory || []).map((item) => [item.relPath, item]));
+  return (items || []).filter((item) => {
+    const relPath = normalizeContextPath(item?.path || item?.file || item?.relPath || item?.sourcePath || "");
+    if (!relPath) return true;
+    const lifecycleClass = byPath.get(relPath)?.lifecycleClass || inferContextLifecycleClass(relPath);
+    return !["cold", "trash", "unclassified"].includes(lifecycleClass);
+  });
+}
+
+function inferContextLifecycleClass(relPath) {
+  const normalized = normalizeContextPath(relPath);
+  if (!normalized.startsWith(".supervibe/")) return "hot";
+  if (normalized.includes("/.archive/") || normalized.includes("/_archive/")) return "cold";
+  if (/\.(?:bak|tmp|log)$/i.test(normalized)) return "trash";
+  if (normalized.includes("workflow-receipts-stale")) return "trash";
+  return "hot";
+}
+
+function normalizeContextPath(value = "") {
+  return String(value || "").replace(/\\/g, "/").replace(/^\.\//, "");
+}
 export function selectActiveItem(index = [], itemId = null) {
   if (itemId) {
     const exact = index.find((item) => item.itemId === itemId || item.id === itemId);
