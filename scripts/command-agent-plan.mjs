@@ -21,6 +21,10 @@ import {
   defaultRuntimeCleanupRegistryPath,
   summarizeHostManagedSubagentDebtSync,
 } from "./lib/runtime-cleanup-registry.mjs";
+import {
+  appendKnowledgeBootstrap,
+  buildAgentKnowledgeContexts,
+} from "./lib/supervibe-agent-knowledge-context.mjs";
 
 const PLUGIN_ROOT = resolve(fileURLToPath(new URL("../", import.meta.url)));
 
@@ -288,6 +292,12 @@ export function buildRuntimeCommandAgentPlan({
       })
     : { count: 0, closeRequired: [] };
   const codexSpawnBlockedByCleanup = codexCleanupDebt.count > 0 && Array.isArray(plan.codexSpawnPayloads) && plan.codexSpawnPayloads.length > 0;
+  const codexKnowledgeContexts = buildAgentKnowledgeContexts({
+    agentIds: (plan.codexSpawnPayloads || []).map((payload) => payload.agentId),
+    projectRoot: resolvedProjectRoot,
+    pluginRoot: resolvedPluginRoot,
+    hostAgentsFolder: hostSelection.adapter.agentsFolder,
+  });
   const enrichedPlan = {
     ...plan,
     ...(codexCleanupDebt.count > 0 ? {
@@ -307,13 +317,11 @@ export function buildRuntimeCommandAgentPlan({
     verificationPolicy,
     ...(!codexSpawnBlockedByCleanup && plan.codexSpawnPayloads
       ? {
-        codexSpawnPayloads: plan.codexSpawnPayloads.map((payload) => ({
-          ...payload,
-          payload: {
-            ...payload.payload,
-            evidence_packet: packet,
-            verification_policy: verificationPolicy,
-          },
+        codexSpawnPayloads: plan.codexSpawnPayloads.map((payload) => enrichCodexSpawnPayloadWithKnowledgeContext({
+          spawnPayload: payload,
+          knowledgeContext: codexKnowledgeContexts.get(payload.agentId),
+          evidencePacket: packet,
+          verificationPolicy,
         })),
       }
       : {}),
@@ -422,6 +430,20 @@ function listCallableAgentSources({
     }
   }
   return sources;
+}
+
+function enrichCodexSpawnPayloadWithKnowledgeContext({ spawnPayload, knowledgeContext, evidencePacket, verificationPolicy } = {}) {
+  const context = knowledgeContext || { status: "partial", agentInstructionPaths: [], declaredSkills: [], skillPaths: [], missing: ["agent-context"] };
+  return {
+    ...spawnPayload,
+    knowledgeContext: context,
+    evidencePacket,
+    verificationPolicy,
+    payload: {
+      ...spawnPayload.payload,
+      message: appendKnowledgeBootstrap(spawnPayload.payload?.message || "", context),
+    },
+  };
 }
 
 function addAgentSources(sources, dir, source, { recursive = true } = {}) {

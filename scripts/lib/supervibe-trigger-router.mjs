@@ -11,6 +11,12 @@ import {
   validateQuestionSurface,
 } from "./question-surface-contract.mjs";
 import { decideRetrievalPolicy } from "./supervibe-retrieval-decision-policy.mjs";
+import {
+  WORKFLOW_SUMMARY_APPROVAL_SOURCE,
+  WORKFLOW_SUMMARY_ARTIFACT_SCHEMA_PATH,
+  durableWorkflowSummaryPath,
+  workflowSummaryStageChoices,
+} from "./supervibe-post-stage-actions.mjs";
 
 const NO_SLASH_COMMAND_PREEMPT_IDS = new Set([
   "/supervibe-adapt",
@@ -73,6 +79,24 @@ const ROUTES = {
     nextQuestionRu: "Шаг 1/1: показать summary и варианты решения перед созданием документации?",
     nextQuestionEn: "Step 1/1: show the summary and decision choices before creating documentation?",
     prerequisites: ["user-request"],
+  },
+  pre_spec_summary_gate: {
+    phase: "spec-summary",
+    command: "/supervibe-brainstorm --summary-gate --stage pre-spec",
+    skill: "supervibe:brainstorming",
+    nextQuestionRu: "Step 1/1: show the pre-spec summary and stable approval choices before creating the spec?",
+    nextQuestionEn: "Step 1/1: show the pre-spec summary and stable approval choices before creating the spec?",
+    prerequisites: ["user-request"],
+    summaryStage: "pre-spec",
+  },
+  pre_plan_summary_gate: {
+    phase: "plan-summary",
+    command: "/supervibe-plan --summary-gate --stage pre-plan",
+    skill: "supervibe:writing-plans",
+    nextQuestionRu: "Step 1/1: show the pre-plan summary and stable approval choices before creating the plan?",
+    nextQuestionEn: "Step 1/1: show the pre-plan summary and stable approval choices before creating the plan?",
+    prerequisites: ["approved-scope-or-spec"],
+    summaryStage: "pre-plan",
   },
   plan_review: {
     phase: "plan",
@@ -536,6 +560,16 @@ const RULES = [
     test: (text) => hasAny(text, ["ревью", "review", "проверь"]) && hasAny(text, ["план", "plan"]),
   },
   {
+    intent: "pre_spec_summary_gate",
+    confidence: 0.97,
+    test: (text) => hasSummaryGateLanguage(text) && hasAny(text, ["spec", "specification", "requirements", "prd", "pre-spec", "pre spec"]),
+  },
+  {
+    intent: "pre_plan_summary_gate",
+    confidence: 0.97,
+    test: (text) => hasSummaryGateLanguage(text) && hasAny(text, ["plan", "planning", "implementation plan", "pre-plan", "pre plan"]),
+  },
+  {
     intent: "documentation_summary_gate",
     confidence: 0.96,
     test: (text) => hasAny(text, ["summary before docs", "summary before documentation", "summarize before writing docs", "before creating documentation", "before creating docs", "decide before docs", "саммари", "сводка", "summary"]) &&
@@ -825,6 +859,34 @@ export function routeTriggerRequest(input, options = {}) {
         matchedPhrase: route.command,
       }], alternativesFromRoutes(commandMatch.intent)),
       routeArtifacts,
+    );
+  }
+
+  const summaryGateIntent = specificSummaryGateIntent(text);
+  if (summaryGateIntent) {
+    const route = ROUTES[summaryGateIntent];
+    return withArtifactStatus(
+      withRoutingEvidence({
+        intent: summaryGateIntent,
+        phase: route.phase,
+        command: route.command,
+        skill: route.skill,
+        confidence: 0.98,
+        confidenceFloor: 0.97,
+        mutationRisk: mutationRiskFor(summaryGateIntent),
+        prerequisites: route.prerequisites,
+        requiredSafety: requiredSafetyFor(summaryGateIntent),
+        nextQuestion: localizedRouteQuestion(route, locale),
+        alternatives: alternativesFromRoutes(summaryGateIntent),
+        matchedPhrase: null,
+        source: "summary-gate-precedence",
+        reason: "Specific " + route.summaryStage + " summary gate takes precedence over generic documentation or planning shortcuts.",
+      }, [{
+        source: "summary-gate-precedence",
+        reason: "Specific " + route.summaryStage + " summary gate requested before durable artifact creation.",
+        matchedPhrase: route.summaryStage,
+      }], alternativesFromRoutes(summaryGateIntent)),
+      artifacts,
     );
   }
 
@@ -1119,9 +1181,53 @@ function commandCatalogOptions(options = {}) {
 }
 
 function withArtifactStatus(route, artifacts) {
-  const missingArtifacts = route.prerequisites.filter((name) => !artifactSatisfied(name, artifacts));
-  const safetyBlockers = safetyBlockersFor(route, artifacts);
-  return { ...route, missingArtifacts, safetyBlockers };
+  const routeDefinition = ROUTES[route.intent] || {};
+  const routeWithDefinition = {
+    ...route,
+    summaryStage: route.summaryStage || routeDefinition.summaryStage,
+    prerequisites: route.prerequisites || routeDefinition.prerequisites || [],
+  };
+  const enrichedRoute = withSummaryApprovalContract(routeWithDefinition, artifacts);
+  const missingArtifacts = enrichedRoute.prerequisites.filter((name) => !artifactSatisfied(name, artifacts));
+  const safetyBlockers = safetyBlockersFor(enrichedRoute, artifacts);
+  return { ...enrichedRoute, missingArtifacts, safetyBlockers };
+}
+
+function withSummaryApprovalContract(route, artifacts = {}) {
+  if (!route.summaryStage) return route;
+  const workflowId = artifacts.summaryWorkflowId || artifacts.workflowId || artifacts.planId || artifacts.planPath || route.intent;
+  const storagePath = durableWorkflowSummaryPath({ workflowId, stage: route.summaryStage });
+  const choices = workflowSummaryStageChoices(route.summaryStage);
+  const approveChoice = choices.find((choice) => choice.recommended) || choices[0];
+  const summaryApprovalContract = {
+    schemaVersion: 1,
+    stage: route.summaryStage,
+    storagePath,
+    schemaPath: WORKFLOW_SUMMARY_ARTIFACT_SCHEMA_PATH,
+    approvalSource: WORKFLOW_SUMMARY_APPROVAL_SOURCE,
+    approvalState: "pending",
+    requiredBindings: ["sourcePromptHash", "artifactHash", "selectedChoiceId", "expiresAt"],
+    rejectSources: ["quoted-prior-text", "old-prompt-content", "embedded-slash-command", "summary-body-text"],
+    approveChoiceId: approveChoice?.id || null,
+    choices,
+  };
+  return {
+    ...route,
+    summaryApprovalContract,
+    questionChoices: choices.map((choice) => ({
+      id: choice.id,
+      label: choice.label,
+      tradeoff: choice.description,
+      recommended: choice.recommended === true,
+    })),
+    questionEvidence: [
+      ...(route.questionEvidence || []),
+      `summaryStoragePath=${storagePath}`,
+      `summarySchema=${WORKFLOW_SUMMARY_ARTIFACT_SCHEMA_PATH}`,
+      `approvalSource=${WORKFLOW_SUMMARY_APPROVAL_SOURCE}`,
+    ],
+    questionArtifactImpact: route.questionArtifactImpact || `The answer controls whether ${route.summaryStage} summary approval can unlock the next durable artifact; old prompts, quoted text, slash commands, and summary body text cannot approve it.`,
+  };
 }
 
 function artifactSatisfied(name, artifacts) {
@@ -1135,6 +1241,7 @@ function artifactSatisfied(name, artifacts) {
     "explicit-budget": ["durationBudget", "maxDuration", "maxLoops"],
     "readiness-audit": ["readinessAudit", "planReviewPassed"],
     "accepted-change-summary": ["changeSummary", "acceptedChangeSummary"],
+    "approved-scope-or-spec": ["approvedScope", "spec", "specPath", "specContent", "brainstormSummary"],
     "design-brief": ["designBrief", "brief", "request", "userRequest"],
     "design-artifact": ["prototype", "prototypePath", "designArtifact", "screenshot", "figmaFile"],
     "approved-design-system": ["approvedDesignSystem", "designSystemApproved", "designSystem"],
@@ -1196,7 +1303,7 @@ function mutationRiskFor(intent) {
   if (intent === "worktree_autonomous_run") return "creates-worktree";
   if (["atomize_plan", "create_epic"].includes(intent)) return "writes-tracker";
   if (intent === "plugin_update_repair") return "explicit-user-command";
-  if (["brainstorm_to_plan", "documentation_summary_gate", "readme_update", "design_new", "design_continue", "design_system_extension", "mobile_ui", "chart_ux", "presentation_deck", "brand_collateral", "stack_ui_guidance", "agent_strengthen", "agent_provisioning", "prompt_ai_engineering", "figma_source_of_truth"].includes(intent)) return "writes-docs";
+  if (["brainstorm_to_plan", "documentation_summary_gate", "pre_spec_summary_gate", "pre_plan_summary_gate", "readme_update", "design_new", "design_continue", "design_system_extension", "mobile_ui", "chart_ux", "presentation_deck", "brand_collateral", "stack_ui_guidance", "agent_strengthen", "agent_provisioning", "prompt_ai_engineering", "figma_source_of_truth"].includes(intent)) return "writes-docs";
   return "none";
 }
 
@@ -1222,6 +1329,8 @@ function requiredSafetyFor(intent) {
   if (intent === "source_truth_research") return [...base, "source-hierarchy", "freshness-check", "conflict-resolution-log"];
   if (intent === "workflow_chain_audit") return [...base, "read-only-audit", "source-hierarchy", "workflow-chain-coverage", "scope-bloat-check", "pitfall-review", "end-to-end-goal-check"];
   if (intent === "documentation_summary_gate") return [...base, "documentation-approval-before-write", "summary-before-durable-artifact", "post-documentation-summary"];
+  if (intent === "pre_spec_summary_gate") return [...base, "summary-before-spec-approval", "latest-user-summary-approval", "source-prompt-hash-bound", "summary-artifact-hash-bound"];
+  if (intent === "pre_plan_summary_gate") return [...base, "summary-before-plan-approval", "latest-user-summary-approval", "source-prompt-hash-bound", "summary-artifact-hash-bound"];
   if (intent === "visual_explanation") return [...base, "text-first-visual-summary", "optional-browser-preview-for-ui-only", "no-unverified-implementation-claims"];
   if (intent === "task_readiness_intake") return [...base, "requirements-gate", "raw-task-block", "acceptance-criteria-required"];
   if (intent === "plugin_update_repair") return [...base, "managed-checkout-drift-restore", "mirror-clean-assertion"];
@@ -1309,6 +1418,22 @@ function detectLocale(text) {
 
 function hasAny(text, phrases) {
   return phrases.some((phrase) => text.includes(normalize(phrase)));
+}
+
+function hasSummaryGateLanguage(text) {
+  return hasAny(text, ["summary", "summarize", "summary gate", "human summary", "approval summary", "сводка", "саммари"]) &&
+    hasAny(text, ["before", "pre", "approval", "approve", "gate", "до", "перед", "соглас"]);
+}
+
+function specificSummaryGateIntent(text) {
+  if (!hasSummaryGateLanguage(text)) return null;
+  if (hasAny(text, ["pre-spec", "pre spec", "requirements spec", "requirements", "specification", "prd"])) {
+    return "pre_spec_summary_gate";
+  }
+  if (hasAny(text, ["pre-plan", "pre plan", "implementation plan", "planning", "plan"])) {
+    return "pre_plan_summary_gate";
+  }
+  return null;
 }
 
 function matchSlashCommand(text) {
@@ -1477,6 +1602,8 @@ function routeQuestionSubject(route, locale = "en") {
   }
   if (route.command?.startsWith("/supervibe-design")) return "the design route for this brief";
   if (route.command?.includes("loop")) return "the agent loop for this work item";
+  if (route.intent === "pre_spec_summary_gate") return "the pre-spec summary gate";
+  if (route.intent === "pre_plan_summary_gate") return "the pre-plan summary gate";
   if (route.command?.includes("plan")) return "the planning route for this artifact";
   return `${intent}${phase ? ` (${phase})` : ""}`;
 }

@@ -108,7 +108,7 @@ export function bindGraphProducerProofOutput(proof = null, { rootDir = process.c
   };
 }
 
-export function validateEpicAgentContract({ rootDir = process.cwd(), graph = {}, graphPath = null } = {}) {
+export function validateEpicAgentContract({ rootDir = process.cwd(), graph = {}, graphPath = null, activeGraphStrict = false } = {}) {
   const issues = [];
   const contract = graph.metadata?.epicAgentContract || null;
   const requiresContract = graph.metadata?.createdFrom === "plan"
@@ -145,6 +145,20 @@ export function validateEpicAgentContract({ rootDir = process.cwd(), graph = {},
     contract,
   });
   if (producerProof.pass) {
+    if (activeGraphStrict) {
+      const activeReceiptPolicy = validateActiveGraphReceiptPolicy({ rootDir, graph, graphPath, contract });
+      if (!activeReceiptPolicy.pass) {
+        issues.push(...activeReceiptPolicy.issues);
+      }
+      return {
+        pass: issues.length === 0,
+        issues,
+        trustedReceipts: activeReceiptPolicy.trustedReceipts || [],
+        producerProof: producerProof.proof,
+        proofMode: activeReceiptPolicy.pass ? "active-graph-receipt" : "active-graph-receipt-missing",
+        activeReceiptPolicy,
+      };
+    }
     return {
       pass: issues.length === 0,
       issues,
@@ -171,14 +185,130 @@ export function validateEpicAgentContract({ rootDir = process.cwd(), graph = {},
       producerProof,
     }));
   }
+  let activeReceiptPolicy = null;
+  if (activeGraphStrict) {
+    activeReceiptPolicy = validateActiveGraphReceiptPolicy({ rootDir, graph, graphPath, contract });
+    if (!activeReceiptPolicy.pass) issues.push(...activeReceiptPolicy.issues);
+  }
+
+  return {
+    pass: issues.length === 0,
+    issues,
+    trustedReceipts: activeReceiptPolicy?.trustedReceipts?.length ? activeReceiptPolicy.trustedReceipts : trustedReceipts,
+    producerProof: producerProof.proof || null,
+    producerProofIssues: producerProof.issues,
+    proofMode: activeReceiptPolicy?.pass ? "active-graph-receipt" : trustedReceipts.length > 0 ? "legacy-receipt" : "missing-proof",
+    activeReceiptPolicy,
+  };
+}
+
+
+export function validateActiveGraphReceiptPolicy({
+  rootDir = process.cwd(),
+  graph = {},
+  graphPath = null,
+  contract = {},
+  command = null,
+  stage = null,
+  handoffId = null,
+} = {}) {
+  const issues = [];
+  const trustedReceipts = [];
+  const candidateIssues = [];
+  if (!graphPath) {
+    issues.push(issue("active-graph-path-missing", graph.epicId || graph.graph_id, "Active graph receipt policy requires a graph path."));
+    return { pass: false, issues, trustedReceipts, candidateIssues };
+  }
+  const graphRel = normalizeRel(rootDir, graphPath);
+  if (isArchivedGraphPath(graphRel)) {
+    issues.push(issue("active-graph-archived-provenance-not-allowed", graph.epicId || graph.graph_id, "Archived graph provenance cannot satisfy active graph strictness."));
+    return { pass: false, issues, trustedReceipts, candidateIssues };
+  }
+  if (!existsSync(graphPath)) {
+    issues.push(issue("active-graph-file-missing", graph.epicId || graph.graph_id, "Active graph file is missing: " + graphRel));
+    return { pass: false, issues, trustedReceipts, candidateIssues };
+  }
+  const graphId = normalizeOptional(graph.epicId || graph.graph_id || graph.graphId || graph.id);
+  const proof = graph.metadata?.graphProducerProof || graph.metadata?.producerProof || {};
+  const expectedCommand = normalizeCommand(command || proof.command || contract.command || "/supervibe-loop");
+  const expectedHandoff = normalizeOptional(handoffId || proof.handoffId || graphId);
+  const allowedStages = uniqueStrings([
+    stage,
+    proof.stage,
+    ...(Array.isArray(contract.allowedStages) ? contract.allowedStages : []),
+    contract.stage,
+  ]).map((item) => String(item).toLowerCase());
+  const allowedStageSet = new Set(allowedStages.filter(Boolean));
+  const allowedAgentIds = new Set((contract.allowedAgentIds || DEFAULT_EPIC_AGENT_IDS).map((item) => String(item).toLowerCase()).filter(Boolean));
+  const graphHash = fileSha256(graphPath);
+
+  for (const receipt of readWorkflowReceipts(rootDir)) {
+    if (receipt.__invalidJson) continue;
+    const binding = activeGraphReceiptBindingIssues(receipt, {
+      graphRel,
+      graphHash,
+      graphId,
+      expectedCommand,
+      expectedHandoff,
+      allowedStageSet,
+      allowedAgentIds,
+    });
+    if (binding.issues.length > 0) {
+      if (binding.candidate) candidateIssues.push({ receiptId: receipt.receiptId || receipt.__file, issues: binding.issues });
+      continue;
+    }
+    const trust = validateWorkflowReceiptTrust(rootDir, receipt, { requireHostInvocationProof: true });
+    if (!trust.pass) {
+      candidateIssues.push({ receiptId: receipt.receiptId || receipt.__file, issues: trust.issues });
+      continue;
+    }
+    trustedReceipts.push({
+      receiptId: receipt.receiptId,
+      receiptPath: receipt.__file,
+      command: receipt.command,
+      stage: receipt.stage,
+      handoffId: receipt.handoffId,
+      subjectType: receipt.subjectType,
+      subjectId: receipt.subjectId,
+      agentId: receipt.agentId || receipt.subjectId,
+      graphPath: graphRel,
+      graphSha256: graphHash,
+      hostInvocation: {
+        source: receipt.hostInvocation?.source || null,
+        invocationId: receipt.hostInvocation?.invocationId || receipt.hostInvocation?.invocation_id || receipt.hostInvocation?.id || null,
+      },
+    });
+  }
+
+  if (trustedReceipts.length === 0) {
+    issues.push(issue("active-graph-receipt-missing", graphId, "Active graph requires a trusted graph-level agent or worker receipt bound to path, current hash, command, stage, handoff, and host invocation proof.", {
+      repairScope: {
+        command: expectedCommand,
+        stage: allowedStages[0] || "work-item-atomization",
+        graphId,
+        handoffId: expectedHandoff,
+        outputArtifact: graphRel,
+        outputHash: graphHash,
+        subjectTypes: ["agent", "worker"],
+        hostInvocationRequired: true,
+      },
+      candidateIssues,
+    }));
+  }
 
   return {
     pass: issues.length === 0,
     issues,
     trustedReceipts,
-    producerProof: producerProof.proof || null,
-    producerProofIssues: producerProof.issues,
-    proofMode: trustedReceipts.length > 0 ? "legacy-receipt" : "missing-proof",
+    candidateIssues,
+    expected: {
+      command: expectedCommand,
+      stages: allowedStages,
+      handoffId: expectedHandoff,
+      graphId,
+      graphPath: graphRel,
+      graphSha256: graphHash,
+    },
   };
 }
 
@@ -404,6 +534,53 @@ function receiptInputEvidenceCurrent(receipt = {}, { rootDir = process.cwd(), gr
   if (!existsSync(absPath)) return false;
   const currentHash = createHash("sha256").update(readFileSync(absPath)).digest("hex");
   return currentHash === match.sha256;
+}
+
+
+function activeGraphReceiptBindingIssues(receipt = {}, {
+  graphRel = "",
+  graphHash = "",
+  graphId = null,
+  expectedCommand = "",
+  expectedHandoff = null,
+  allowedStageSet = new Set(),
+  allowedAgentIds = new Set(),
+} = {}) {
+  const issues = [];
+  const outputArtifacts = Array.isArray(receipt.outputArtifacts) ? receipt.outputArtifacts.map(normalizePath) : [];
+  const outputHashes = Array.isArray(receipt.outputHashes) ? receipt.outputHashes : [];
+  const outputHash = outputHashes.find((entry) => normalizePath(entry.path) === graphRel);
+  const candidate = outputArtifacts.includes(graphRel)
+    || outputHashes.some((entry) => normalizePath(entry.path) === graphRel)
+    || receipt.workItemBinding?.graphId === graphId;
+  const subjectType = String(receipt.subjectType || "").toLowerCase();
+  if (!outputArtifacts.includes(graphRel)) issues.push("receipt outputArtifacts must include active graph path " + graphRel);
+  if (!outputHash?.sha256) issues.push("receipt outputHashes must include active graph sha256 for " + graphRel);
+  if (outputHash?.sha256 && graphHash && outputHash.sha256 !== graphHash) issues.push("receipt active graph hash does not match current graph artifact");
+  if (isArchivedGraphPath(graphRel) || outputArtifacts.some(isArchivedGraphPath) || outputHashes.some((entry) => isArchivedGraphPath(normalizePath(entry.path)))) {
+    issues.push("archived graph provenance cannot satisfy active graph strictness");
+  }
+  if (!['agent', 'worker'].includes(subjectType)) issues.push("active graph receipt subjectType must be agent or worker");
+  const agentId = String(receipt.agentId || receipt.subjectId || "").toLowerCase();
+  if (!agentId) issues.push("active graph receipt must bind an agent or worker id");
+  if (allowedAgentIds.size > 0 && agentId && !allowedAgentIds.has(agentId)) issues.push("active graph receipt agent or worker id is not allowed by graph contract");
+  if (expectedCommand && normalizeCommand(receipt.command) !== expectedCommand) issues.push("active graph receipt command mismatch");
+  if (allowedStageSet.size > 0 && !allowedStageSet.has(String(receipt.stage || "").toLowerCase())) issues.push("active graph receipt stage is not allowed");
+  if (expectedHandoff && receipt.handoffId !== expectedHandoff) issues.push("active graph receipt handoffId mismatch");
+  if (graphId && receipt.workItemBinding?.graphId !== graphId) issues.push("active graph receipt workItemBinding.graphId mismatch");
+  if (receipt.workItemBinding?.taskId) issues.push("active graph receipt must be graph-level and must not bind a child taskId");
+  const invocationId = receipt.hostInvocation?.invocationId || receipt.hostInvocation?.invocation_id || receipt.hostInvocation?.id || null;
+  if (!receipt.hostInvocation?.source) issues.push("active graph receipt hostInvocation.source missing");
+  if (!invocationId) issues.push("active graph receipt hostInvocation.invocationId missing");
+  return { candidate, issues };
+}
+
+function isArchivedGraphPath(value = "") {
+  return normalizePath(value).includes("/.archive/") || normalizePath(value).includes(".supervibe/.archive/");
+}
+
+function fileSha256(path) {
+  return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
 function normalizeRel(rootDir, filePath) {

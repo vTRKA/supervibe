@@ -97,7 +97,7 @@ test("agent retrieval telemetry does not report 10/10 when samples are too thin"
   assert.ok(report.globalViolations.some((item) => item.includes("insufficient invocation sample")));
 });
 
-test("agent retrieval telemetry caps maturity for legacy-only invocations", () => {
+test("agent retrieval telemetry treats legacy-only invocations as non-blocking telemetry", () => {
   const invocations = Array.from({ length: 10 }, (_, index) => ({
     ts: `2026-05-02T00:00:${String(index).padStart(2, "0")}.000Z`,
     agent_id: `legacy-${index}`,
@@ -116,12 +116,13 @@ test("agent retrieval telemetry caps maturity for legacy-only invocations", () =
   });
 
   assert.equal(report.pass, true);
-  assert.equal(report.maturityScore, 8);
-  assert.equal(isStrictAgentRetrievalTelemetryPass(report), false);
+  assert.equal(report.maturityScore, 10);
+  assert.equal(isStrictAgentRetrievalTelemetryPass(report), true);
   assert.equal(report.summary.invocations, 0);
   assert.equal(report.summary.legacySkipped, 10);
   assert.equal(report.sampleStatus, "ready-no-post-enforcement-samples");
   assert.ok(report.globalWarnings.some((item) => item.includes("post-enforcement retrieval telemetry samples")));
+  assert.ok(report.nonBlockingTelemetry.some((item) => item.code === "legacy-invocations-skipped" && item.blocking === false));
 });
 
 
@@ -164,8 +165,8 @@ test("agent retrieval telemetry skips explicit not-provided enforcement samples"
 
   assert.equal(report.summary.invocations, 0);
   assert.equal(report.summary.legacySkipped, 6);
-  assert.equal(report.maturityScore, 8);
-  assert.equal(isStrictAgentRetrievalTelemetryPass(report), false);
+  assert.equal(report.maturityScore, 10);
+  assert.equal(isStrictAgentRetrievalTelemetryPass(report), true);
 });
 
 test("agent retrieval telemetry does not penalize sources marked optional by retrieval policy", () => {

@@ -19,12 +19,12 @@ async function walkGraphs(dir) {
   return out;
 }
 
-export async function validateWorkItemGraphFiles({ rootDir = process.cwd(), files = [], requireSourcePlanSnapshot = false, scopeMode = "graph-strict" } = {}) {
+export async function validateWorkItemGraphFiles({ rootDir = process.cwd(), files = [], requireSourcePlanSnapshot = false, requireActiveGraphReceipts = false, scopeMode = "graph-strict" } = {}) {
   const results = [];
   for (const file of files) {
     const graph = JSON.parse(await readFile(file, "utf8"));
     let validation = validateWorkItemGraph(graph);
-    const epicAgentContract = validateEpicAgentContract({ rootDir, graph, graphPath: file });
+    const epicAgentContract = validateEpicAgentContract({ rootDir, graph, graphPath: file, activeGraphStrict: Boolean(requireActiveGraphReceipts) });
     if (!epicAgentContract.pass) {
       validation = {
         ...validation,
@@ -64,6 +64,7 @@ async function main() {
       "scope-graph-id": { type: "string" },
       "fixture-dir": { type: "string" },
       "require-source-plan-snapshot": { type: "boolean", default: false },
+      "require-active-graph-receipts": { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
   });
@@ -75,7 +76,8 @@ async function main() {
   node scripts/validate-work-item-graphs.mjs --graph-id <epic-id>
   node scripts/validate-work-item-graphs.mjs --strict
   node scripts/validate-work-item-graphs.mjs --fixture-dir tests/fixtures/work-item-graphs
-  node scripts/validate-work-item-graphs.mjs --file .supervibe/memory/work-items/<epic>/graph.json --require-source-plan-snapshot`);
+  node scripts/validate-work-item-graphs.mjs --file .supervibe/memory/work-items/<epic>/graph.json --require-source-plan-snapshot
+  node scripts/validate-work-item-graphs.mjs --file .supervibe/memory/work-items/<epic>/graph.json --require-active-graph-receipts`);
     return;
   }
 
@@ -105,6 +107,7 @@ async function main() {
     rootDir: root,
     files,
     requireSourcePlanSnapshot: Boolean(values["require-source-plan-snapshot"]),
+    requireActiveGraphReceipts: Boolean(values["require-active-graph-receipts"]),
     scopeMode,
   });
   console.log("SCOPE: " + report.scopeMode);

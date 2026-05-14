@@ -60,6 +60,7 @@ function usage() {
     "USAGE:",
     "  node scripts/agent-invocation.mjs log --agent <agent-id> --host codex --host-invocation-id <runtime-id> --task <summary> --confidence <0-10> [--changed-files a,b] [--risks text] [--recommendations text]",
     "  node scripts/agent-invocation.mjs log --agent <agent-id> --host codex --host-invocation-id <runtime-id> --task <summary> --confidence <0-10> --issue-receipt --command /supervibe-design --stage <stage-id> --handoff-id <id> --input-evidence a,b --output-artifacts a,b",
+    "  node scripts/agent-invocation.mjs log --reviewer <reviewer-id> --host codex --host-invocation-id <runtime-id> --task <summary> --confidence <0-10> --issue-receipt --command /supervibe-plan --stage plan-review-<reviewer-id> --handoff-id <id> --output-artifacts .supervibe/artifacts/plan-reviews/<review>.md",
     "  node scripts/agent-invocation.mjs log --agent <agent-id> --host codex --host-invocation-id <runtime-id> --task <summary> --confidence <0-10> --retrieval-policy memory=mandatory,rag=mandatory,codegraph=optional --memory-ids id --rag-chunk-ids file:line --graph-symbols symbol --verification-commands \"npm test\" --redaction-status not-needed",
     "",
     "NOTES:",
@@ -96,6 +97,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (!Number.isFinite(confidence) || confidence < 0 || confidence > 10) {
       throw new Error("--confidence must be a number from 0 to 10");
     }
+    const subjectType = inferSubjectType(options);
 
     if (truthyFlag(options["issue-receipt"] || options.issueReceipt)) {
       preflightReceiptIssue({
@@ -103,6 +105,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         rootDir,
         agentId,
         invocationId,
+        subjectType,
       });
     }
 
@@ -152,7 +155,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         handoff_id: options["handoff-id"] || options.handoff || null,
         workflow_run_id: options["workflow-run-id"] || options.workflowRunId || null,
         task_id: options["task-id"] || options["work-item-id"] || null,
-        subject_type: options["subject-type"] || "agent",
+        subject_type: subjectType,
         subject_id: options["subject-id"] || agentId,
         output_artifacts: splitList(options["output-artifacts"] || options.outputArtifacts),
       });
@@ -166,6 +169,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         record,
         traceId: traceContext.traceId,
         spanId: record.span_id,
+        subjectType,
       });
       await maybeRecordAgentLease({
         rootDir,
@@ -176,6 +180,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         taskSummary,
         record,
         options,
+        subjectType,
       });
       await maybeRegisterHostManagedSubagentCleanup({
         rootDir,
@@ -277,6 +282,7 @@ async function maybeRecordAgentLease({
   taskSummary,
   record,
   options = {},
+  subjectType = inferSubjectType(options),
 } = {}) {
   return upsertAgentLeaseFromInvocation({
     rootDir,
@@ -294,7 +300,7 @@ async function maybeRecordAgentLease({
       handoffId: options["handoff-id"] || options.handoff || null,
       workflowRunId: options["workflow-run-id"] || options.workflowRunId || null,
       taskId: options["task-id"] || options["work-item-id"] || null,
-      subjectType: options["subject-type"] || "agent",
+      subjectType,
       subjectId: options["subject-id"] || agentId,
       outputArtifacts: splitList(options["output-artifacts"] || options.outputArtifacts),
       allowedOutputScope: splitList(options["allowed-output-scope"] || options.allowedOutputScope),
@@ -302,12 +308,11 @@ async function maybeRecordAgentLease({
   });
 }
 
-async function maybeIssueWorkflowReceipt({ options, rootDir, agentId, source, invocationId, taskSummary, record, traceId = null, spanId = null }) {
+async function maybeIssueWorkflowReceipt({ options, rootDir, agentId, source, invocationId, taskSummary, record, traceId = null, spanId = null, subjectType = inferSubjectType(options) }) {
   if (!truthyFlag(options["issue-receipt"] || options.issueReceipt)) return null;
   const command = options.command || options.workflow;
   const stage = options.stage || options["stage-id"];
   const handoffId = options["handoff-id"] || options.handoff;
-  const subjectType = options["subject-type"] || "agent";
   const outputArtifacts = splitList(options["output-artifacts"] || options.outputArtifacts);
   if (!command) throw new Error("--command required when --issue-receipt is set");
   if (!stage) throw new Error("--stage required when --issue-receipt is set");
@@ -340,10 +345,11 @@ async function maybeIssueWorkflowReceipt({ options, rootDir, agentId, source, in
   });
 }
 
-function preflightReceiptIssue({ options, rootDir, agentId, invocationId }) {
+function preflightReceiptIssue({ options, rootDir, agentId, invocationId, subjectType = inferSubjectType(options) }) {
   const command = options.command || options.workflow;
   const stage = options.stage || options["stage-id"];
   const subjectId = options["subject-id"] || agentId;
+  void subjectType;
   const outputArtifacts = splitList(options["output-artifacts"] || options.outputArtifacts);
   if (!command) throw new Error("--command required when --issue-receipt is set");
   if (!stage) throw new Error("--stage required when --issue-receipt is set");
@@ -449,6 +455,13 @@ function buildEvidenceFromOptions(options = {}) {
     || evidence.redactionStatus
     || evidence.bypassReasons.length;
   return hasEvidence ? evidence : null;
+}
+
+function inferSubjectType(options = {}) {
+  if (options["subject-type"] || options.subjectType) return options["subject-type"] || options.subjectType;
+  if (options.reviewer) return "reviewer";
+  if (options.worker) return "worker";
+  return "agent";
 }
 
 function parseRetrievalPolicy(value) {

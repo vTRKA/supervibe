@@ -65,7 +65,7 @@ rules and command entry points.
 
 ## Agent And Artifact Map
 
-- Agents: 97 files under `agents/`; human-readable role map in `docs/agent-roster.md`; content-quality, skill-coverage, empirical-hardening, section-order and tool-use gates in `scripts/validate-agent-content-quality.mjs`, `scripts/validate-agent-skill-coverage.mjs`, `scripts/validate-agent-empirical-hardening.mjs`, `scripts/validate-agent-section-order.mjs`, and `scripts/validate-agent-tool-use-matrix.mjs`.
+- Agents: 98 files under `agents/`; human-readable role map in `docs/agent-roster.md`; content-quality, skill-coverage, empirical-hardening, section-order and tool-use gates in `scripts/validate-agent-content-quality.mjs`, `scripts/validate-agent-skill-coverage.mjs`, `scripts/validate-agent-empirical-hardening.mjs`, `scripts/validate-agent-section-order.mjs`, and `scripts/validate-agent-tool-use-matrix.mjs`.
 - Skills: 59 folders under `skills/`; every skill needs at least one agent owner; operational/content-quality gates in `scripts/validate-skill-operational-contracts.mjs` and `scripts/validate-skill-content-quality.mjs`.
 - Rules: 31 files under `rules/`.
 - Confidence rubrics: 19 YAML files under `confidence-rubrics/`.

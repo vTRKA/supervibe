@@ -245,6 +245,7 @@ export async function writeActivePlanPointer({
   pointerPath = defaultActivePlanPointerPath(rootDir),
 } = {}) {
   if (!planPath) throw new Error("planPath is required");
+  assertPlanWriteTargetAllowed({ rootDir, planPath });
   const pointer = {
     schemaVersion: SCHEMA_VERSION,
     activePlanPath: normalizeProjectPath(rootDir, planPath),
@@ -272,6 +273,7 @@ export async function repairPlanLifecycle({
     ? normalizeProjectPath(resolvedRoot, currentPlanPath)
     : report.activePlanPath;
   if (!currentPlan) throw new Error("current plan path is required; pass --plan <path> or create an active-plan pointer");
+  assertPlanWriteTargetAllowed({ rootDir: resolvedRoot, planPath: currentPlan });
   if (apply && !receiptId) {
     throw new Error("--apply requires --receipt-id from node scripts/workflow-receipt.mjs issue ...");
   }

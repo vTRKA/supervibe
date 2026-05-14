@@ -5,11 +5,21 @@ import { findCommandShortcut } from "./supervibe-command-catalog.mjs";
 import { routeTriggerRequest } from "./supervibe-trigger-router.mjs";
 import { validateTaskGraphTraceability } from "../validate-task-graph-traceability.mjs";
 import { validateEpicCompletion } from "./supervibe-epic-completion-validator.mjs";
-import { validateWorkItemRegistryIntegrity } from "./supervibe-work-item-registry.mjs";
+import {
+  resolveActiveWorkItemGraphSync,
+  validateWorkItemRegistryIntegrity,
+} from "./supervibe-work-item-registry.mjs";
 import {
   readWorkflowReceipts,
   validateWorkflowReceiptTrust,
 } from "./supervibe-workflow-receipt-runtime.mjs";
+import { validateActiveGraphReceiptPolicy } from "./supervibe-epic-agent-contract.mjs";
+import {
+  graphIdentity,
+  isTrustedGraphCompletionReceiptForGraph,
+  isTrustedTaskCompletionReceiptForGraph,
+  trustedReceiptScopeFromReceipt,
+} from "./supervibe-receipt-completion-trust.mjs";
 
 const ROUTING_CASES = Object.freeze([
   ["создай задачи и эпик из плана", "task_graph_create_from_plan"],
@@ -44,6 +54,7 @@ const TERMINAL_GRAPH_EPIC_STATUSES = new Set(["closed", "complete", "completed",
 const REQUIRED_LOOP_TOKENS = Object.freeze([
   "--atomize-plan",
   "--claim-ready",
+  "--adopt-completed",
   "--validate-completion",
   "--require-trusted-evidence",
   "--auto-ui-dry-run",
@@ -134,6 +145,7 @@ export function buildTaskGraphMaturityReport(rootDir = process.cwd(), options = 
     currentGraphDimension(rootDir, { required: requireActiveGraph }),
     ...(requireActiveGraph ? [
       registryIntegrityDimension(rootDir),
+      activeGraphReceiptPolicyDimension(rootDir),
       activeTraceabilityDimension(rootDir),
       activeTrustedCompletionDimension(rootDir),
     ] : []),
@@ -380,16 +392,28 @@ function graphFixtureDimension(rootDir) {
 }
 
 function currentGraphDimension(rootDir, { required }) {
-  const dir = join(rootDir, ".supervibe", "memory", "work-items");
-  const files = walkFiles(dir).filter((file) => file.endsWith("graph.json") || file.endsWith(".work-item-graph.json"));
+  const resolution = resolveActiveWorkItemGraphSync({ rootDir });
+  const evidence = (resolution.candidates || []).slice(0, 5).map((file) => relative(rootDir, file).split(sep).join("/"));
+  const pass = required ? resolution.status === "active" : true;
   return {
     id: "current-active-graph",
     title: "Current project work graph",
     required,
-    pass: required ? files.length > 0 : true,
-    summary: files.length > 0 ? `${files.length} current graph file(s) found` : "no current graph active; atomize a reviewed plan when execution starts",
-    blockers: required && files.length === 0 ? ["no current work-item graph files found"] : [],
-    evidence: files.slice(0, 5).map((file) => relative(rootDir, file).split(sep).join("/")),
+    pass,
+    summary: resolution.status === "active"
+      ? "one active graph selected from " + resolution.source
+      : resolution.status === "ambiguous"
+        ? String((resolution.candidates || []).length) + " active graph candidate(s) require user choice"
+        : "no active work-item graph selected",
+    blockers: pass ? [] : [resolution.nextAction || "choose or atomize one active reviewed graph before execution"],
+    evidence,
+    activeGraphResolution: {
+      status: resolution.status,
+      source: resolution.source,
+      readOnly: resolution.readOnly === true,
+      userChoiceRequired: resolution.userChoiceRequired === true,
+      executionBlocked: resolution.executionBlocked === true,
+    },
   };
 }
 
@@ -405,21 +429,63 @@ function registryIntegrityDimension(rootDir) {
   };
 }
 
-function activeTraceabilityDimension(rootDir) {
-  const graphFiles = discoverActiveWorkItemGraphFiles(rootDir);
-  if (graphFiles.length !== 1) {
+function activeGraphReceiptPolicyDimension(rootDir) {
+  const resolution = resolveActiveWorkItemGraphSync({ rootDir });
+  if (resolution.status !== "active") {
     return {
-      id: "active-traceability",
-      title: "Active graph strict traceability",
+      id: "active-graph-receipts",
+      title: "Active graph receipt binding",
       pass: false,
-      summary: `${graphFiles.length} active graph candidate(s) found`,
-      blockers: ["exactly one active graph is required for strict traceability"],
-      evidence: graphFiles.slice(0, 5).map((file) => relative(rootDir, file).split(sep).join("/")),
+      summary: resolution.status === "ambiguous"
+        ? String((resolution.candidates || []).length) + " active graph candidate(s) require user choice"
+        : "no active graph selected",
+      blockers: [resolution.nextAction || "choose or atomize one active reviewed graph before execution"],
+      evidence: (resolution.candidates || []).slice(0, 5).map((file) => relative(rootDir, file).split(sep).join("/")),
     };
   }
   let graph = null;
   try {
-    graph = JSON.parse(readFileSync(graphFiles[0], "utf8"));
+    graph = JSON.parse(readFileSync(resolution.graphPath, "utf8"));
+  } catch (error) {
+    return {
+      id: "active-graph-receipts",
+      title: "Active graph receipt binding",
+      pass: false,
+      summary: "active graph cannot be read",
+      blockers: [error.message],
+      evidence: [relative(rootDir, resolution.graphPath).split(sep).join("/")],
+    };
+  }
+  const report = validateActiveGraphReceiptPolicy({ rootDir, graph, graphPath: resolution.graphPath });
+  return {
+    id: "active-graph-receipts",
+    title: "Active graph receipt binding",
+    pass: report.pass,
+    summary: report.pass
+      ? "active graph has trusted path/hash/host receipt binding"
+      : String(report.issues.length) + " active graph receipt issue(s)",
+    blockers: report.issues.map((issue) => issue.code + ": " + issue.message),
+    evidence: [relative(rootDir, resolution.graphPath).split(sep).join("/")],
+  };
+}
+
+function activeTraceabilityDimension(rootDir) {
+  const resolution = resolveActiveWorkItemGraphSync({ rootDir });
+  if (resolution.status !== "active") {
+    return {
+      id: "active-traceability",
+      title: "Active graph strict traceability",
+      pass: false,
+      summary: resolution.status === "ambiguous"
+        ? String((resolution.candidates || []).length) + " active graph candidate(s) require user choice"
+        : "no active graph selected",
+      blockers: [resolution.nextAction || "choose or atomize one active reviewed graph before strict traceability"],
+      evidence: (resolution.candidates || []).slice(0, 5).map((file) => relative(rootDir, file).split(sep).join("/")),
+    };
+  }
+  let graph = null;
+  try {
+    graph = JSON.parse(readFileSync(resolution.graphPath, "utf8"));
   } catch (error) {
     return {
       id: "active-traceability",
@@ -427,12 +493,12 @@ function activeTraceabilityDimension(rootDir) {
       pass: false,
       summary: "active graph cannot be read",
       blockers: [error.message],
-      evidence: [relative(rootDir, graphFiles[0]).split(sep).join("/")],
+      evidence: [relative(rootDir, resolution.graphPath).split(sep).join("/")],
     };
   }
-  const plan = readGraphSourceMarkdown({ rootDir, graphPath: graphFiles[0], graph });
+  const plan = readGraphSourceMarkdown({ rootDir, graphPath: resolution.graphPath, graph });
   const report = validateTaskGraphTraceability({ plan, graph, requireRequirements: true });
-  const trustedGraphReceiptIds = trustedGraphReceiptIdsForMaturity(rootDir, graph);
+  const trustedGraphReceiptIds = trustedGraphReceiptIdsForMaturity(rootDir, graph, { graphPath: resolution.graphPath });
   const mappedRatio = report.requirements?.length ? report.mapped / report.requirements.length : 0;
   const trustedGraphCompletionCoverage = report.pass !== true
     && trustedGraphReceiptIds.length > 0
@@ -448,25 +514,27 @@ function activeTraceabilityDimension(rootDir) {
       ? `${report.mapped}/${report.requirements.length} requirements mapped`
       : `${report.issues.length} traceability issue(s), requirements=${report.requirements.length}`,
     blockers: pass ? [] : report.issues,
-    evidence: [relative(rootDir, graphFiles[0]).split(sep).join("/")],
+    evidence: [relative(rootDir, resolution.graphPath).split(sep).join("/")],
   };
 }
 
 function activeTrustedCompletionDimension(rootDir) {
-  const graphFiles = discoverActiveWorkItemGraphFiles(rootDir);
-  if (graphFiles.length !== 1) {
+  const resolution = resolveActiveWorkItemGraphSync({ rootDir });
+  if (resolution.status !== "active") {
     return {
       id: "active-trusted-completion",
       title: "Active graph trusted completion",
       pass: false,
-      summary: `${graphFiles.length} active graph candidate(s) found`,
-      blockers: ["exactly one active graph is required for trusted completion"],
-      evidence: graphFiles.slice(0, 5).map((file) => relative(rootDir, file).split(sep).join("/")),
+      summary: resolution.status === "ambiguous"
+        ? String((resolution.candidates || []).length) + " active graph candidate(s) require user choice"
+        : "no active graph selected",
+      blockers: [resolution.nextAction || "choose or atomize one active reviewed graph before trusted completion"],
+      evidence: (resolution.candidates || []).slice(0, 5).map((file) => relative(rootDir, file).split(sep).join("/")),
     };
   }
   let graph = null;
   try {
-    graph = JSON.parse(readFileSync(graphFiles[0], "utf8"));
+    graph = JSON.parse(readFileSync(resolution.graphPath, "utf8"));
   } catch (error) {
     return {
       id: "active-trusted-completion",
@@ -474,11 +542,12 @@ function activeTrustedCompletionDimension(rootDir) {
       pass: false,
       summary: "active graph cannot be read",
       blockers: [error.message],
-      evidence: [relative(rootDir, graphFiles[0]).split(sep).join("/")],
+      evidence: [relative(rootDir, resolution.graphPath).split(sep).join("/")],
     };
   }
-  const trustedReceiptIds = trustedReceiptIdsForMaturity(rootDir);
-  const trustedGraphReceiptIds = trustedGraphReceiptIdsForMaturity(rootDir, graph);
+  const trustedReceiptScopes = trustedReceiptScopesForMaturity(rootDir, graph);
+  const trustedReceiptIds = Object.keys(trustedReceiptScopes);
+  const trustedGraphReceiptIds = trustedGraphReceiptIdsForMaturity(rootDir, graph, { graphPath: resolution.graphPath });
   const report = validateEpicCompletion(graph, {
     production: true,
     requireEvidence: true,
@@ -486,6 +555,7 @@ function activeTrustedCompletionDimension(rootDir) {
     allowDryRunEvidence: false,
     requireTrustedEvidence: true,
     trustedReceiptIds,
+    trustedReceiptScopesById: trustedReceiptScopes,
     trustedGraphReceiptIds,
     disallowLegacyEvidence: true,
     requireEpicClosed: false,
@@ -498,7 +568,7 @@ function activeTrustedCompletionDimension(rootDir) {
       ? `strict trusted completion passed with ${trustedReceiptIds.length} trusted receipt id(s)`
       : `${report.issues.length} trusted completion issue(s) found`,
     blockers: (report.issues || []).slice(0, 10).map((issue) => `${issue.code}: ${issue.itemId || "graph"}: ${issue.message}`),
-    evidence: [relative(rootDir, graphFiles[0]).split(sep).join("/")],
+    evidence: [relative(rootDir, resolution.graphPath).split(sep).join("/")],
   };
 }
 
@@ -526,27 +596,31 @@ function isActiveWorkItemGraphFile(file) {
   });
 }
 
-function trustedReceiptIdsForMaturity(rootDir) {
-  const trusted = [];
+function trustedReceiptIdsForMaturity(rootDir, graph = null) {
+  return Object.keys(trustedReceiptScopesForMaturity(rootDir, graph));
+}
+
+function trustedReceiptScopesForMaturity(rootDir, graph = null) {
+  const trusted = {};
   for (const receipt of readWorkflowReceipts(rootDir)) {
     if (!receipt?.receiptId) continue;
-    const trust = validateWorkflowReceiptTrust(rootDir, receipt);
-    if (trust.pass) trusted.push(String(receipt.receiptId));
+    if (receipt.recovery) continue;
+    if (!isTrustedTaskCompletionReceiptForGraph(receipt, graph)) continue;
+    const trust = validateWorkflowReceiptTrust(rootDir, receipt, { requireHostInvocationProof: true });
+    if (trust.pass) trusted[String(receipt.receiptId)] = trustedReceiptScopeFromReceipt(receipt, graph);
   }
   return trusted;
 }
 
-function trustedGraphReceiptIdsForMaturity(rootDir, graph = {}) {
-  const graphId = graph.epicId || graph.graph_id || graph.graphId || null;
+function trustedGraphReceiptIdsForMaturity(rootDir, graph = {}, { graphPath = null } = {}) {
+  const graphId = graphIdentity(graph);
   if (!graphId) return [];
   const trusted = [];
   for (const receipt of readWorkflowReceipts(rootDir)) {
     if (!receipt?.receiptId) continue;
-    const receiptGraphId = receipt.graphId || receipt.workItemBinding?.graphId || null;
-    if (receiptGraphId !== graphId) continue;
-    const taskId = receipt.taskId || receipt.workItemId || receipt.graphTaskId || receipt.workItemBinding?.taskId || null;
-    if (taskId) continue;
-    const trust = validateWorkflowReceiptTrust(rootDir, receipt);
+    if (receipt.recovery) continue;
+    if (!isTrustedGraphCompletionReceiptForGraph(receipt, graph, { rootDir, graphPath })) continue;
+    const trust = validateWorkflowReceiptTrust(rootDir, receipt, { requireHostInvocationProof: true });
     if (trust.pass) trusted.push(String(receipt.receiptId));
   }
   return trusted;

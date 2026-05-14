@@ -11,13 +11,13 @@ last-verified: "2026-05-14"
 
 ## Overview
 
-/supervibe-review is the production-readiness review gate after /supervibe-verify. It checks the verified diff, required evidence, risk domains, rollback posture, and remaining blockers before a release or ship decision.
+/supervibe-review is the production-readiness review gate after /supervibe-verify. It checks the verified diff, required evidence, risk domains, rollback posture, and remaining blockers before a release or ship decision. Plan-review requests must route to `/supervibe-plan --review <plan-path>` instead; that path keeps `systems-analyst` in the baseline reviewer set and gates atomization on trusted plan-review receipts.
 
 If verification evidence is missing, the command records missing-verify-evidence and stops instead of silently reviewing an unproven change.
 
 ## When to Use
 
-Use this command after /supervibe-verify produced a Goal-mapped verification packet, or when a user explicitly asks whether a verified change is production-ready. Do not use it as the first proof step for an implementation claim; route to /supervibe-verify first.
+Use this command after /supervibe-verify produced a Goal-mapped verification packet, or when a user explicitly asks whether a verified change is production-ready. Do not use it as the first proof step for an implementation claim; route to /supervibe-verify first. If the user asks to review a plan before atomization or execution, run `/supervibe-plan --review`, not `/supervibe-review`.
 
 ## Process
 
@@ -73,7 +73,7 @@ Source of truth: scripts/lib/command-agent-orchestration-contract.mjs profile /s
 
 Required roles: supervibe-orchestrator owns scope and missing-evidence routing; architect-reviewer checks structure; code-reviewer owns severity-ranked findings; qa-test-engineer validates the verification packet; release-governance-reviewer checks production readiness; quality-gate-reviewer gates confidence and evidence completeness.
 
-Dynamic selectors add artifact owners and risk reviewers. Active workflow output remains blocked until current-run reviewer receipts are trusted.
+Dynamic selectors add artifact owners and risk reviewers. Active workflow output remains blocked until current-run reviewer receipts are trusted. For plan-review artifacts, the non-waived required receipt set includes `supervibe-orchestrator`, `systems-analyst`, `architect-reviewer`, `quality-gate-reviewer`, `security-auditor`, `qa-test-engineer`, `release-governance-reviewer`, and `db-reviewer`.
 
 ## Skill Contract
 

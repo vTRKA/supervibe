@@ -314,6 +314,28 @@ export const DEFAULT_COMMAND_ROUTE_FIXTURES = Object.freeze([
     },
   },
   {
+    id: "ru-plan-only-validation-review",
+    phrase: "\u0437\u0430\u043f\u0443\u0441\u0442\u0438 \u0432\u0430\u043b\u0438\u0434\u0430\u0446\u0438\u044e \u043f\u043b\u0430\u043d\u0430 / \u043f\u043e\u043a\u0430 \u0442\u043e\u043b\u044c\u043a\u043e \u043f\u043b\u0430\u043d",
+    expected: {
+      intent: "plan_review",
+      command: "/supervibe-plan --review",
+      minConfidence: 0.9,
+      notIntent: ["supervibe_execute_plan"],
+      notCommand: ["/supervibe-execute-plan"],
+    },
+  },
+  {
+    id: "mixed-spec-plan-implementation-upstream",
+    phrase: "write a spec, create the implementation plan, then start implementation",
+    expected: {
+      intent: "supervibe_brainstorm",
+      command: "/supervibe-brainstorm",
+      minConfidence: 0.9,
+      notIntent: ["supervibe_execute_plan", "plan_review"],
+      notCommand: ["/supervibe-execute-plan", "/supervibe-plan --review"],
+    },
+  },
+  {
     id: "ru-review-loop-plan",
     phrase: "запусти review loop по плану",
     expected: {

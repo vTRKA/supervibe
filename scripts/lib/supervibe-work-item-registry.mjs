@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, join, parse, relative, resolve, sep } from "node:path";
 import { createWorkItemIndex, groupWorkItemsByStatus } from "./supervibe-work-item-query.mjs";
@@ -31,6 +31,7 @@ export function validateWorkItemRegistryIntegrity({
   const issues = [];
   const epics = normalized.epics && typeof normalized.epics === "object" ? normalized.epics : {};
   const activeEpicIds = [];
+  const activeGraphCandidates = [];
 
   if (normalized.activeEpicId && !epics[normalized.activeEpicId]) {
     issues.push(registryIssue("active-epic-missing", normalized.activeEpicId, `activeEpicId is not present in epics: ${normalized.activeEpicId}`));
@@ -63,6 +64,7 @@ export function validateWorkItemRegistryIntegrity({
       continue;
     }
     const summary = summarizeGraphForRegistry({ graph, graphPath, rootDir: resolvedRoot });
+    if (summary.status === "active") activeGraphCandidates.push({ epicId, graphPath: summary.graphPath });
     if (status && summary.status !== status) {
       issues.push(registryIssue("stale-epic-status", epicId, `Epic ${epicId} registry status is ${status}, graph summary is ${summary.status}.`));
     }
@@ -77,6 +79,13 @@ export function validateWorkItemRegistryIntegrity({
 
   if (activeEpicIds.length > 1) {
     issues.push(registryIssue("multiple-active-epics", null, `Registry has multiple active epics: ${activeEpicIds.join(", ")}`));
+  }
+  if (activeGraphCandidates.length > 1) {
+    issues.push(registryIssue("multiple-active-graphs", null, `Registry has multiple active graph candidates: ${activeGraphCandidates.map((item) => item.graphPath).join(", ")}`, {
+      candidates: activeGraphCandidates,
+      readOnly: true,
+      nextAction: "exactly one active graph is required; choose one active graph explicitly or archive stale candidates",
+    }));
   }
   if (normalized.activeEpicId && epics[normalized.activeEpicId]) {
     const active = epics[normalized.activeEpicId];
@@ -276,6 +285,78 @@ export async function resolveActiveWorkItemGraph({
   };
 }
 
+export function resolveActiveWorkItemGraphSync({
+  rootDir = process.cwd(),
+  file = null,
+  epicId = null,
+  registryPath = null,
+} = {}) {
+  const resolvedRoot = resolve(rootDir);
+  if (file) {
+    const graphPath = resolve(resolvedRoot, file);
+    return activeGraphResolutionFromExplicitPath({ rootDir: resolvedRoot, graphPath, source: "explicit-file" });
+  }
+  if (epicId) {
+    const graphPath = join(resolvedRoot, ".supervibe", "memory", "work-items", epicId, "graph.json");
+    return activeGraphResolutionFromExplicitPath({ rootDir: resolvedRoot, graphPath, source: "explicit-epic" });
+  }
+
+  const filePath = registryPath || defaultWorkItemRegistryPath(resolvedRoot);
+  const registry = readRegistrySync(filePath);
+  if (registry.activeGraphPath) {
+    const candidate = resolveRegistryPath(resolvedRoot, registry.activeGraphPath);
+    if (existsSync(candidate)) {
+      const explicit = activeGraphResolutionFromExplicitPath({ rootDir: resolvedRoot, graphPath: candidate, source: "registry", registry });
+      if (explicit.status === "active") return explicit;
+    }
+  }
+
+  const graphPaths = findWorkItemGraphPathsSync(resolvedRoot);
+  const activeGraphPaths = activeWorkItemGraphPathsFromFiles({ rootDir: resolvedRoot, graphPaths });
+  if (activeGraphPaths.length > 1) {
+    activeGraphPaths.sort();
+    return {
+      status: "ambiguous",
+      graphPath: null,
+      epicId: null,
+      source: "discovered-graphs",
+      candidates: activeGraphPaths,
+      registry,
+      readOnly: true,
+      executionBlocked: true,
+      userChoiceRequired: true,
+      nextAction: "exactly one active graph is required; choose one active graph explicitly or archive stale candidates before execution",
+    };
+  }
+
+  if (activeGraphPaths.length === 1) {
+    return {
+      status: "active",
+      graphPath: activeGraphPaths[0],
+      epicId: null,
+      source: "single-discovered-active-graph",
+      candidates: activeGraphPaths,
+      registry,
+      readOnly: true,
+      executionBlocked: false,
+      userChoiceRequired: false,
+    };
+  }
+  return {
+    status: "none",
+    graphPath: null,
+    epicId: null,
+    source: "none",
+    candidates: [],
+    registry,
+    readOnly: true,
+    executionBlocked: true,
+    userChoiceRequired: true,
+    nextAction: "atomize a reviewed plan into a work graph or pass --file <graph.json>",
+  };
+}
+
+
 export async function listWorkItemGraphSummaries(rootDir = process.cwd()) {
   const graphPaths = await findWorkItemGraphPaths(rootDir);
   const summaries = [];
@@ -317,6 +398,103 @@ export async function findWorkItemGraphPaths(rootDir = process.cwd()) {
   return out;
 }
 
+
+function activeGraphResolutionFromExplicitPath({ rootDir, graphPath, source, registry = null } = {}) {
+  if (!existsSync(graphPath)) {
+    return {
+      status: "none",
+      graphPath: null,
+      epicId: null,
+      source,
+      candidates: [],
+      registry,
+      readOnly: true,
+      executionBlocked: true,
+      userChoiceRequired: true,
+      nextAction: "selected graph path is missing; choose or atomize a reviewed graph",
+    };
+  }
+  try {
+    const graph = JSON.parse(readFileSync(graphPath, "utf8"));
+    const summary = summarizeGraphForRegistry({ graph, graphPath, rootDir });
+    if (summary.status === "active") {
+      return {
+        status: "active",
+        graphPath,
+        epicId: summary.epicId,
+        source,
+        candidates: [graphPath],
+        registry,
+        readOnly: source !== "explicit-file" && source !== "explicit-epic",
+        executionBlocked: false,
+        userChoiceRequired: false,
+      };
+    }
+    return {
+      status: "none",
+      graphPath: null,
+      epicId: summary.epicId,
+      source,
+      candidates: [],
+      registry,
+      readOnly: true,
+      executionBlocked: true,
+      userChoiceRequired: true,
+      nextAction: "selected graph is not active; atomize or choose an active reviewed graph",
+    };
+  } catch (error) {
+    return {
+      status: "unreadable",
+      graphPath: null,
+      epicId: null,
+      source,
+      candidates: [graphPath],
+      registry,
+      readOnly: true,
+      executionBlocked: true,
+      userChoiceRequired: true,
+      nextAction: "repair unreadable graph JSON before execution",
+      error: error.message,
+    };
+  }
+}
+
+function activeWorkItemGraphPathsFromFiles({ rootDir, graphPaths = [] } = {}) {
+  const active = [];
+  for (const graphPath of graphPaths) {
+    try {
+      const graph = JSON.parse(readFileSync(graphPath, "utf8"));
+      const summary = summarizeGraphForRegistry({ graph, graphPath, rootDir });
+      if (summary.status === "active") active.push(graphPath);
+    } catch {
+      active.push(graphPath);
+    }
+  }
+  return active;
+}
+
+function findWorkItemGraphPathsSync(rootDir = process.cwd()) {
+  const base = join(rootDir, ".supervibe", "memory", "work-items");
+  const out = [];
+  if (!existsSync(base)) return out;
+  function walk(dir, depth = 0) {
+    if (depth > 4) return;
+    let entries = [];
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory() && entry.name !== ".archive") walk(full, depth + 1);
+      else if (entry.name === "graph.json" || entry.name.endsWith(".work-item-graph.json")) out.push(full);
+    }
+  }
+  walk(base);
+  return out;
+}
+
 function summarizeGraphForRegistry({ graph = {}, graphPath, rootDir = process.cwd() } = {}) {
   const index = createWorkItemIndex({ graph, claims: graph.claims || [], gates: graph.gates || [], evidence: graph.evidence || [] });
   const grouped = groupWorkItemsByStatus(index);
@@ -329,7 +507,7 @@ function summarizeGraphForRegistry({ graph = {}, graphPath, rootDir = process.cw
     ? "closed"
     : epicStatus
       ? "active"
-      : activeCount > 0 ? "active" : "closed";
+      : activeCount > 0 || taskCount === 0 ? "active" : "closed";
   return {
     epicId,
     graphId: graph.graph_id || graph.graphId || graph.epicId || epicId,

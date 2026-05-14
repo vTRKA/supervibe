@@ -3,6 +3,7 @@
 ## Review Summary
 
 - Plan: `.supervibe/artifacts/plans/2026-05-11-billing-export-mvp.md`
+- Review command: `/supervibe-plan --review .supervibe/artifacts/plans/2026-05-11-billing-export-mvp.md`
 - Verdict: revise before execution.
 - Score: 8.6/10.
 - Stop reason: two blocking findings remain for permission evidence and rollback proof.
@@ -13,18 +14,23 @@
 - systems-analyst: requirements, MVP production slice, anti-bloat boundary, deferred scope, and production-readiness completeness.
 - architect-reviewer: module boundary, billing repository ownership, signed URL dependency, data flow, and deployment risk.
 - quality-gate-reviewer: tests, validators, release gates, rollback, old-token scan, and command evidence.
+- security-auditor: mandatory risk reviewer selected for redaction and permission. If waived, replace this with an explicit user waiver that names the reason.
+- qa-test-engineer: mandatory risk reviewer selected for verification coverage. If waived, replace this with an explicit user waiver that names the reason.
+- release-governance-reviewer: mandatory risk reviewer selected for release and rollback. If waived, replace this with an explicit user waiver that names the reason.
+- db-reviewer: mandatory risk reviewer selected for data topology. If waived, replace this with an explicit user waiver that names the reason.
 - Triggered specialists: database not triggered because no migration is planned; cache not triggered because no cache is planned; queue not triggered because async jobs are deferred; security triggered for redaction and permission; API triggered for endpoint contract; infrastructure triggered for release and rollback; frontend triggered for dashboard states and accessibility basics.
 
 ## Risk Trigger Matrix
 
 | Area | Trigger | Specialist | Decision |
 | --- | --- | --- | --- |
-| database | not triggered | db-reviewer | no schema change, no migration, no restore drill required |
+| database | not triggered | db-reviewer | no schema change, no migration, no restore drill required; if omitted, record user-waived with reason |
 | cache | not triggered | redis-architect | no cache added for MVP |
 | queue | not triggered | queue-worker-architect | scheduled and async exports deferred |
 | security | triggered | security-auditor | block until permission and redaction tests exist |
 | api | triggered | api-contract-reviewer | block until request, response, and error envelope are fixed |
-| infrastructure | triggered | devops-sre | block until rollback path is executable without migration |
+| infrastructure | triggered | release-governance-reviewer | block until rollback path is executable without migration |
+| verification | triggered | qa-test-engineer | block until targeted and final verification evidence is mapped |
 | frontend | triggered | accessibility-reviewer | pass after loading, empty, error, forbidden, and retry states are covered |
 
 ## Plan Review Scorecard
@@ -98,7 +104,7 @@ Rubric: `plan-review.yaml`
 
 ## Evidence
 
-- workflow receipt: runtime receipt path or receipt id issued by `node scripts/workflow-receipt.mjs`.
-- verification command: `node scripts/validate-plan-review-artifacts.mjs --file .supervibe/artifacts/plans/2026-05-11-billing-export-mvp.md`.
+- workflow receipt: trusted current-run reviewer receipts for baseline reviewers and mandatory risk reviewers, issued through `node scripts/agent-invocation.mjs log --reviewer reviewer-id --issue-receipt` or an equivalent runtime receipt path.
+- verification command: `node scripts/validate-plan-review-artifacts.mjs --file .supervibe/artifacts/plan-reviews/2026-05-11-billing-export-mvp-review.md`.
 - plan-review-passed: proof flag may be issued only after all needs-revision rows become pass.
-- evidenceGatePass: true only when command output, artifact paths, source citations, and runtime receipts are present and trusted.
+- evidenceGatePass: true only when command output, artifact paths, source citations, reviewer coverage, user waivers if any, and runtime receipts are present and trusted.

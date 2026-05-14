@@ -16,6 +16,12 @@ import {
   defaultWorkItemRegistryPath,
   readWorkItemRegistry,
 } from "./lib/supervibe-work-item-registry.mjs";
+import {
+  graphIdentity,
+  isTrustedGraphCompletionReceiptForGraph,
+  isTrustedTaskCompletionReceiptForGraph,
+  trustedReceiptScopeFromReceipt,
+} from "./lib/supervibe-receipt-completion-trust.mjs";
 
 async function walkGraphs(dir) {
   const out = [];
@@ -37,6 +43,8 @@ export async function validateEpicCompletionFiles({
   allowDryRunEvidence = false,
   requireTrustedEvidence = false,
   trustedReceiptIds = [],
+  trustedReceiptScopesById = null,
+  explicitReceiptIds = [],
   trustedGraphReceiptIdsByGraphId = {},
   activePreCloseGraphIds = [],
   disallowLegacyEvidence = false,
@@ -48,8 +56,14 @@ export async function validateEpicCompletionFiles({
   const preCloseGraphIds = new Set((activePreCloseGraphIds || []).map(String).filter(Boolean));
   for (const file of files) {
     const graph = JSON.parse(String(await readFile(file, "utf8")).replace(/^\uFEFF/, ""));
-    const graphId = graph.epicId || graph.graph_id || graph.items?.find?.((item) => item.type === "epic")?.itemId || null;
-    const trustedGraphReceiptIds = graphId ? trustedGraphReceiptIdsByGraphId[graphId] || [] : [];
+    const graphId = graphIdentity(graph);
+    const scopedTrustedReceiptScopes = trustedReceiptScopesById || trustedReceiptScopesForValidation(rootDir, graph, { explicitReceiptIds });
+    const scopedTrustedReceiptIds = trustedReceiptIds.length > 0 ? trustedReceiptIds : Object.keys(scopedTrustedReceiptScopes);
+    const explicitGraphReceiptIds = graphId ? trustedGraphReceiptIdsByGraphId[graphId] || [] : [];
+    const trustedGraphReceiptIds = [...new Set([
+      ...explicitGraphReceiptIds,
+      ...trustedGraphReceiptIdsForGraphValidation(rootDir, graph, { graphPath: file, explicitReceiptIds }),
+    ].map(String).filter(Boolean))];
     const allowActivePreClose = Boolean(
       requireEpicClosed
         && graphId
@@ -62,7 +76,8 @@ export async function validateEpicCompletionFiles({
       allowSkipped,
       allowDryRunEvidence,
       requireTrustedEvidence,
-      trustedReceiptIds,
+      trustedReceiptIds: scopedTrustedReceiptIds,
+      trustedReceiptScopesById: scopedTrustedReceiptScopes,
       trustedGraphReceiptIds,
       disallowLegacyEvidence,
       allowLegacyEvidence,
@@ -143,12 +158,9 @@ Trusted mode:
     return;
   }
 
-  const trustedReceiptIds = trustedReceiptIdsForValidation(root, {
-    explicitReceiptIds: splitCsv(values["trusted-receipts"]),
-  });
-  const trustedGraphReceiptIdsByGraphId = trustedGraphReceiptIdsByGraphForValidation(root, {
-    explicitReceiptIds: splitCsv(values["trusted-receipts"]),
-  });
+  const explicitReceiptIds = splitCsv(values["trusted-receipts"]);
+  const trustedReceiptIds = [];
+  const trustedGraphReceiptIdsByGraphId = {};
   const activePreCloseGraphIds = await activePreCloseGraphIdsForValidation(root, {
     enabled: Boolean(values["allow-active-preclose"]),
   });
@@ -162,6 +174,7 @@ Trusted mode:
     allowDryRunEvidence: values["allow-dry-run-evidence"],
     requireTrustedEvidence: values["require-trusted-evidence"],
     trustedReceiptIds,
+    explicitReceiptIds,
     trustedGraphReceiptIdsByGraphId,
     activePreCloseGraphIds,
     disallowLegacyEvidence: values["disallow-legacy-evidence"],
@@ -192,32 +205,30 @@ async function activePreCloseGraphIdsForValidation(rootDir, { enabled = false } 
   ].map(String).filter((value) => value && value !== "undefined" && value !== "null");
 }
 
-function trustedGraphReceiptIdsByGraphForValidation(rootDir, { explicitReceiptIds = [] } = {}) {
-  const explicit = new Set((explicitReceiptIds || []).map(String).filter(Boolean));
-  const out = {};
-  for (const receipt of readWorkflowReceipts(rootDir)) {
-    if (!receipt?.receiptId) continue;
-    if (explicit.size > 0 && !explicit.has(String(receipt.receiptId))) continue;
-    const graphId = receipt.graphId || receipt.workItemBinding?.graphId || null;
-    if (!graphId) continue;
-    const taskId = receipt.taskId || receipt.workItemId || receipt.graphTaskId || receipt.workItemBinding?.taskId || null;
-    if (taskId) continue;
-    const trust = validateWorkflowReceiptTrust(rootDir, receipt);
-    if (!trust.pass) continue;
-    if (!out[graphId]) out[graphId] = [];
-    out[graphId].push(String(receipt.receiptId));
-  }
-  return out;
-}
-
-function trustedReceiptIdsForValidation(rootDir, { explicitReceiptIds = [] } = {}) {
+function trustedGraphReceiptIdsForGraphValidation(rootDir, graph = {}, { graphPath = null, explicitReceiptIds = [] } = {}) {
   const explicit = new Set((explicitReceiptIds || []).map(String).filter(Boolean));
   const trusted = [];
   for (const receipt of readWorkflowReceipts(rootDir)) {
     if (!receipt?.receiptId) continue;
+    if (receipt.recovery) continue;
     if (explicit.size > 0 && !explicit.has(String(receipt.receiptId))) continue;
-    const trust = validateWorkflowReceiptTrust(rootDir, receipt);
+    if (!isTrustedGraphCompletionReceiptForGraph(receipt, graph, { rootDir, graphPath })) continue;
+    const trust = validateWorkflowReceiptTrust(rootDir, receipt, { requireHostInvocationProof: true });
     if (trust.pass) trusted.push(String(receipt.receiptId));
+  }
+  return trusted;
+}
+
+function trustedReceiptScopesForValidation(rootDir, graph = {}, { explicitReceiptIds = [] } = {}) {
+  const explicit = new Set((explicitReceiptIds || []).map(String).filter(Boolean));
+  const trusted = {};
+  for (const receipt of readWorkflowReceipts(rootDir)) {
+    if (!receipt?.receiptId) continue;
+    if (receipt.recovery) continue;
+    if (explicit.size > 0 && !explicit.has(String(receipt.receiptId))) continue;
+    if (!isTrustedTaskCompletionReceiptForGraph(receipt, graph)) continue;
+    const trust = validateWorkflowReceiptTrust(rootDir, receipt, { requireHostInvocationProof: true });
+    if (trust.pass) trusted[String(receipt.receiptId)] = trustedReceiptScopeFromReceipt(receipt, graph);
   }
   return trusted;
 }

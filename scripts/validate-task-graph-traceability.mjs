@@ -5,9 +5,12 @@ import {
   readWorkflowReceipts,
   validateWorkflowReceiptTrust,
 } from "./lib/supervibe-workflow-receipt-runtime.mjs";
+import {
+  isTrustedGraphCompletionReceiptForGraph,
+} from "./lib/supervibe-receipt-completion-trust.mjs";
 
-const MARKDOWN_REQUIREMENT_HEADING = /^(?:#{1,4}\s*)(?:Requirement|Goal|Success Criteria|Acceptance Criteria|Recovered Work Items)\s*[:#-]?\s*(.*)$/i;
-const BOLD_REQUIREMENT_HEADING = /^\*\*(?:Requirement|Success Criteria|Acceptance Criteria|Recovered Work Items)\s*[:#-]?\*\*\s*[:#-]?\s*(.*)$/i;
+const MARKDOWN_REQUIREMENT_HEADING = /^(?:#{1,4}\s*)(Requirements?|Goals?|Success Criteria|Acceptance Criteria|Recovered Work Items)\s*[:#-]?\s*(.*)$/i;
+const BOLD_REQUIREMENT_HEADING = /^\*\*(Requirements?|Goals?|Success Criteria|Acceptance Criteria|Recovered Work Items)\s*[:#-]?\*\*\s*[:#-]?\s*(.*)$/i;
 const BOLD_FIELD_HEADING = /^\*\*([^*]+):\*\*/;
 
 export function extractTraceabilityRequirements(markdown = "") {
@@ -21,8 +24,9 @@ export function extractTraceabilityRequirements(markdown = "") {
     const requirementHeading = MARKDOWN_REQUIREMENT_HEADING.exec(line) || BOLD_REQUIREMENT_HEADING.exec(line);
     if (requirementHeading) {
       inRequirementList = true;
-      const title = requirementHeading[1].trim();
-      if (title && !/^(requirements?|recovered work items)$/i.test(title)) requirements.push(title);
+      const heading = requirementHeading[1].trim();
+      const title = requirementHeading[2].trim();
+      if (title && !isRequirementContainerTitle(heading, title)) requirements.push(title);
       continue;
     }
     if (/^[-*]\s+\[[ xX]\]\s+\*\*Step\b/i.test(line)) {
@@ -111,7 +115,28 @@ function normalizeRequirement(value = "") {
     .slice(0, 180);
 }
 
+function isRequirementContainerTitle(heading = "", title = "") {
+  const normalizedHeading = String(heading || "").trim().toLowerCase();
+  const normalizedTitle = String(title || "").trim().toLowerCase();
+  if (!normalizedTitle) return true;
+  if (/^requirements?$/.test(normalizedHeading) && /^(requirements?|ledger|table|matrix|list)$/i.test(normalizedTitle)) return true;
+  return /^(requirements?|goals?|success criteria|acceptance criteria|recovered work items)$/i.test(normalizedTitle);
+}
+
+function requirementIdsFromText(value = "") {
+  return [...String(value || "").matchAll(/\bREQ-[A-Z0-9][A-Z0-9_-]*\b/gi)]
+    .map((match) => match[0].toUpperCase());
+}
+
 function itemMatchesRequirement(item = {}, requirement = "") {
+  const itemRequirementIds = requirementIdsFromText([
+    item.requirementId,
+    item.requirement,
+    ...(Array.isArray(item.requirementIds) ? item.requirementIds : []),
+    ...(Array.isArray(item.executionHints?.requirementIds) ? item.executionHints.requirementIds : []),
+  ].filter(Boolean).join(" "));
+  const requiredIds = requirementIdsFromText(requirement);
+  if (requiredIds.length > 0 && requiredIds.some((id) => itemRequirementIds.includes(id))) return true;
   const haystack = [
     item.sourceRequirement,
     item.requirementId,
@@ -122,6 +147,7 @@ function itemMatchesRequirement(item = {}, requirement = "") {
     item.title,
     item.description,
     ...(Array.isArray(item.requirementIds) ? item.requirementIds : []),
+    ...(Array.isArray(item.executionHints?.requirementIds) ? item.executionHints.requirementIds : []),
     ...(Array.isArray(item.acceptanceCriteria) ? item.acceptanceCriteria : []),
     ...(Array.isArray(item.labels) ? item.labels : []),
   ].filter(Boolean).join(" ").toLowerCase();
@@ -130,7 +156,6 @@ function itemMatchesRequirement(item = {}, requirement = "") {
   const tokens = normalized.split(/[^a-z0-9]+/).filter((token) => token.length > 3);
   return tokens.length > 0 && tokens.every((token) => haystack.includes(token));
 }
-
 function isTerminal(status = "") {
   return /^(done|complete|completed|closed|skipped|cancelled|canceled)$/i.test(String(status || ""));
 }
@@ -228,24 +253,21 @@ if (process.argv[1]?.endsWith("validate-task-graph-traceability.mjs")) {
     plan,
     graph,
     requireRequirements: Boolean(args.strict && graph),
-    trustedGraphEvidence: Boolean(args.strict && graph && trustedGraphReceiptIdsForTraceability(root, graph).length > 0),
+    trustedGraphEvidence: Boolean(args.strict && graph && trustedGraphReceiptIdsForTraceability(root, graph, { graphPath }).length > 0),
   });
   if (graphPath) report.graph = relative(root, graphPath).split(sep).join("/");
   console.log(args.json ? JSON.stringify(report, null, 2) : formatTaskGraphTraceabilityReport(report));
   if (!report.pass && (args.strict || !report.neutral)) process.exit(1);
 }
 
-function trustedGraphReceiptIdsForTraceability(rootDir, graph = {}) {
+function trustedGraphReceiptIdsForTraceability(rootDir, graph = {}, { graphPath = null } = {}) {
   const graphId = graph.epicId || graph.graph_id || graph.graphId || null;
   if (!graphId) return [];
   const trusted = [];
   for (const receipt of readWorkflowReceipts(rootDir)) {
     if (!receipt?.receiptId) continue;
-    const receiptGraphId = receipt.graphId || receipt.workItemBinding?.graphId || null;
-    if (receiptGraphId !== graphId) continue;
-    const taskId = receipt.taskId || receipt.workItemId || receipt.graphTaskId || receipt.workItemBinding?.taskId || null;
-    if (taskId) continue;
-    const trust = validateWorkflowReceiptTrust(rootDir, receipt);
+    if (!isTrustedGraphCompletionReceiptForGraph(receipt, graph, { rootDir, graphPath })) continue;
+    const trust = validateWorkflowReceiptTrust(rootDir, receipt, { requireHostInvocationProof: true });
     if (trust.pass) trusted.push(String(receipt.receiptId));
   }
   return trusted;

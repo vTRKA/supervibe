@@ -49,6 +49,44 @@ test("traceability extracts bold plan goal and task acceptance blocks without ne
   assert.equal(requirements.some((item) => /rollback/i.test(item)), false);
 });
 
+
+test("traceability ignores requirement ledger container headings", () => {
+  const requirements = extractTraceabilityRequirements([
+    "# Spec",
+    "",
+    "## Requirements Ledger",
+    "",
+    "| ID | Requirement |",
+    "| --- | --- |",
+    "| REQ-GRAPH-001 | Graph closes completed work. |",
+    "",
+    "## Acceptance Criteria",
+    "- Graph closes completed work.",
+    "",
+  ].join("\n"));
+
+  assert.equal(requirements.some((item) => item === "s Ledger"), false);
+  assert.ok(requirements.includes("Graph closes completed work."));
+});
+
+test("traceability maps execution hint requirement ids", () => {
+  const report = validateTaskGraphTraceability({
+    spec: "## Acceptance Criteria\n- REQ-GRAPH-001",
+    graph: {
+      items: [{
+        itemId: "task-graph",
+        status: "complete",
+        executionHints: { requirementIds: ["REQ-GRAPH-001"] },
+        evidence: [{ status: "pass", command: "node --test tests/graph.test.mjs" }],
+      }],
+      evidence: [],
+    },
+  });
+
+  assert.equal(report.pass, true);
+  assert.equal(report.mapped, 1);
+});
+
 test("traceability passes mapped terminal work with evidence", () => {
   const report = validateTaskGraphTraceability({
     spec: "## Acceptance Criteria\n- Status explains completed epics.",

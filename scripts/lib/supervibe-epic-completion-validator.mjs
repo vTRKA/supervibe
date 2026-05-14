@@ -1,4 +1,7 @@
 import { validateWorkItemGraph } from "./supervibe-plan-to-work-items.mjs";
+import {
+  evidenceMatchesTrustedReceiptScope,
+} from "./supervibe-receipt-completion-trust.mjs";
 
 const TERMINAL_STATUSES = new Set(["done", "complete", "completed", "closed"]);
 const EXPLICITLY_SKIPPED_STATUSES = new Set(["skipped", "skip", "cancelled", "canceled"]);
@@ -14,7 +17,9 @@ export function validateEpicCompletion(graph = {}, options = {}) {
   const disallowLegacyEvidence = Boolean(options.disallowLegacyEvidence) && !allowLegacyEvidence;
   const requireTrustedEvidence = Boolean(options.requireTrustedEvidence);
   const trustedReceiptIds = new Set((options.trustedReceiptIds || []).map(String));
+  const trustedReceiptScopesById = normalizeTrustedReceiptScopes(options.trustedReceiptScopesById || options.trustedReceiptScopes);
   const trustedGraphReceiptIds = [...new Set((options.trustedGraphReceiptIds || []).map(String).filter(Boolean))];
+  const trustedGraphReceiptIdSet = new Set(trustedGraphReceiptIds);
   const requireEpicClosed = options.requireEpicClosed !== false;
   const requireEvidence = options.requireEvidence !== false;
   const includeFollowups = Boolean(options.requireFollowups);
@@ -69,7 +74,7 @@ export function validateEpicCompletion(graph = {}, options = {}) {
         issues.push(completionIssue("legacy-evidence", id, `${id} uses migrated legacy evidence and cannot close strict production completion.`));
       } else if (strictProduction && !evidence.some(isStructuredProductionEvidence)) {
         issues.push(completionIssue("insufficient-evidence", id, `${id} has evidence, but it is not structured enough for production completion.`));
-      } else if (strictProduction && requireTrustedEvidence && !evidence.some((entry) => isTrustedProductionEvidence(entry, { trustedReceiptIds }))) {
+      } else if (strictProduction && requireTrustedEvidence && !evidence.some((entry) => isTrustedProductionEvidence(entry, { trustedReceiptIds, trustedGraphReceiptIds: trustedGraphReceiptIdSet, trustedReceiptScopesById, graph, taskId: id }))) {
         issues.push(completionIssue("untrusted-evidence", id, `${id} has structured evidence, but no trusted runtime receipt evidence for production completion.`));
       }
     }
@@ -273,10 +278,26 @@ function isLegacyEvidence(evidence) {
   return /legacy-graph-evidence-migration/i.test(receiptId) || /legacy-graph-evidence-migration/i.test(text);
 }
 
-function isTrustedProductionEvidence(evidence, { trustedReceiptIds = new Set() } = {}) {
+function isTrustedProductionEvidence(evidence, { trustedReceiptIds = new Set(), trustedGraphReceiptIds = new Set(), trustedReceiptScopesById = new Map(), graph = null, taskId = null } = {}) {
   if (!isStructuredProductionEvidence(evidence) || isLegacyEvidence(evidence)) return false;
   const receiptId = evidenceReceiptId(evidence);
-  return Boolean(receiptId && trustedReceiptIds.has(String(receiptId)));
+  const normalizedReceiptId = String(receiptId || "");
+  if (!normalizedReceiptId) return false;
+  if (evidence.source === "trusted-graph-completion-receipt" && trustedGraphReceiptIds.has(normalizedReceiptId)) return true;
+  if (!trustedReceiptIds.has(normalizedReceiptId)) return false;
+  const scope = trustedReceiptScopesById.get(normalizedReceiptId);
+  return evidenceMatchesTrustedReceiptScope(evidence, { scope, graph, taskId });
+}
+
+function normalizeTrustedReceiptScopes(value = {}) {
+  if (value instanceof Map) return value;
+  const out = new Map();
+  if (!value || typeof value !== "object") return out;
+  for (const [receiptId, scope] of Object.entries(value)) {
+    if (!receiptId || !scope || typeof scope !== "object") continue;
+    out.set(String(receiptId), { ...scope, receiptId: String(scope.receiptId || receiptId) });
+  }
+  return out;
 }
 
 function evidenceReceiptId(evidence) {

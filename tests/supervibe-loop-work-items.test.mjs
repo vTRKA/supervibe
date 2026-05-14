@@ -13,7 +13,11 @@ import {
 } from "../scripts/lib/supervibe-plan-to-work-items.mjs";
 import { runAutonomousLoop } from "../scripts/lib/autonomous-loop-runner.mjs";
 import { createShellStubAdapter } from "../scripts/lib/autonomous-loop-tool-adapters.mjs";
-import { issueWorkflowInvocationReceipt } from "../scripts/lib/supervibe-workflow-receipt-runtime.mjs";
+import {
+  issueWorkflowInvocationReceipt,
+  readWorkflowReceipts,
+} from "../scripts/lib/supervibe-workflow-receipt-runtime.mjs";
+import { buildTaskGraphMaturityReport } from "../scripts/lib/supervibe-task-graph-maturity.mjs";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const execFileAsync = promisify(execFile);
@@ -624,6 +628,502 @@ test("loop CLI close-eligible accepts trusted graph-level release receipt as gra
     await rm(temp, { recursive: true, force: true });
   }
 });
+
+
+test("loop CLI complete adopts a trusted bound worker receipt without reissuing it", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-adopt-bound-receipt-"));
+  try {
+    const epicId = "epic-loop-adopt-bound-receipt";
+    const taskId = epicId + "-t1";
+    const graph = atomizePlanToWorkItems(PLAN, {
+      planPath: ".supervibe/artifacts/plans/adopt-bound-receipt.md",
+      epicId,
+      planReviewPassed: true,
+    });
+    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: temp });
+
+    await execFileAsync(process.execPath, [
+      join(ROOT, "scripts", "supervibe-loop.mjs"),
+      "--claim",
+      taskId,
+      "--file",
+      graphPath,
+      "--actor",
+      "worker",
+    ], { cwd: temp });
+
+    const invocationId = "codex-adopt-bound-worker";
+    const outputArtifact = ".supervibe/artifacts/worker-output/adopt-bound.json";
+    await writeStableArtifact(temp, outputArtifact, {
+      status: "pass",
+      taskId,
+      summary: "Worker completed the first task outside the active loop.",
+    });
+    await writeTestAgentInvocation(temp, {
+      agentId: "implementation-worker",
+      invocationId,
+      taskSummary: "completed task outside active loop",
+    });
+    const { receipt } = await issueWorkflowInvocationReceipt({
+      rootDir: temp,
+      command: "/supervibe-loop",
+      subjectType: "worker",
+      subjectId: "implementation-worker",
+      agentId: "implementation-worker",
+      stage: "work-item-execution",
+      invocationReason: "completed task outside active loop",
+      outputArtifacts: [outputArtifact],
+      startedAt: "2026-05-10T00:00:00.000Z",
+      completedAt: "2026-05-10T00:01:00.000Z",
+      handoffId: "adopt-bound-receipt",
+      graphId: epicId,
+      taskId,
+      hostInvocation: {
+        source: "codex-spawn-agent",
+        invocationId,
+        agentId: "implementation-worker",
+      },
+    });
+    const beforeReceipts = readWorkflowReceipts(temp).length;
+
+    const { stdout } = await execFileAsync(process.execPath, [
+      join(ROOT, "scripts", "supervibe-loop.mjs"),
+      "--complete",
+      taskId,
+      "--file",
+      graphPath,
+      "--receipt",
+      receipt.receiptId,
+      "--evidence",
+      "trusted worker receipt adopted for completed task",
+      "--actor",
+      "receipt-adoption",
+    ], { cwd: temp });
+
+    assert.match(stdout, /ACTION: complete/);
+    assert.match(stdout, new RegExp("RECEIPT_ADOPTED: " + receipt.receiptId));
+    assert.match(stdout, /RECEIPT_TRUSTED: true/);
+    assert.equal(readWorkflowReceipts(temp).length, beforeReceipts);
+
+    const saved = JSON.parse(await readFile(graphPath, "utf8"));
+    const task = saved.items.find((item) => item.itemId === taskId);
+    assert.equal(task.status, "complete");
+    assert.ok(task.verificationEvidence.some((item) => item.receiptId === receipt.receiptId));
+    assert.equal(saved.claims.some((claim) => claim.taskId === taskId && ["active", "claimed", "in_progress"].includes(claim.status)), false);
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+test("loop CLI adopt-completed maps trusted outside-loop receipts onto existing work items", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-adopt-completed-"));
+  try {
+    const epicId = "epic-loop-adopt-completed";
+    const taskOne = epicId + "-t1";
+    const taskTwo = epicId + "-t2";
+    const planPath = ".supervibe/artifacts/plans/adopt-completed.md";
+    const graph = atomizePlanToWorkItems(PLAN, {
+      planPath,
+      epicId,
+      planReviewPassed: true,
+    });
+    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: temp });
+    const first = await issueWorkerReceipt(temp, {
+      subjectId: "outside-worker-one",
+      invocationId: "codex-outside-worker-one",
+      outputArtifact: ".supervibe/artifacts/worker-output/outside-one.json",
+      taskId: null,
+      graphId: null,
+      stage: "T1-outside-loop",
+      handoffId: "adopt-completed",
+      inputEvidence: [planPath],
+    });
+    const second = await issueWorkerReceipt(temp, {
+      subjectId: "outside-worker-two",
+      invocationId: "codex-outside-worker-two",
+      outputArtifact: ".supervibe/artifacts/worker-output/outside-two.json",
+      taskId: null,
+      graphId: null,
+      stage: "T2-outside-loop",
+      handoffId: "adopt-completed",
+      inputEvidence: [planPath],
+    });
+    const beforeReceipts = readWorkflowReceipts(temp).length;
+
+    const { stdout } = await execFileAsync(process.execPath, [
+      join(ROOT, "scripts", "supervibe-loop.mjs"),
+      "--adopt-completed",
+      "--apply",
+      "--file",
+      graphPath,
+      "--map",
+      taskOne + "=" + first.receipt.receiptId + "," + taskTwo + "=" + second.receipt.receiptId,
+      "--actor",
+      "receipt-adoption",
+    ], { cwd: temp });
+
+    assert.match(stdout, /SUPERVIBE_WORK_ITEM_RECEIPT_ADOPTION/);
+    assert.match(stdout, /APPLIED: true/);
+    assert.match(stdout, /ADOPTED: 2/);
+    assert.equal(readWorkflowReceipts(temp).length, beforeReceipts);
+
+    const saved = JSON.parse(await readFile(graphPath, "utf8"));
+    for (const [taskId, receiptId] of [[taskOne, first.receipt.receiptId], [taskTwo, second.receipt.receiptId]]) {
+      const item = saved.items.find((entry) => entry.itemId === taskId);
+      assert.equal(item.status, "complete");
+      assert.ok(item.verificationEvidence.some((entry) => entry.receiptId === receiptId));
+    }
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+test("loop CLI receipt adoption rejects receipts bound to a different task", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-adopt-wrong-task-"));
+  try {
+    const epicId = "epic-loop-adopt-wrong-task";
+    const taskOne = epicId + "-t1";
+    const taskTwo = epicId + "-t2";
+    const graph = atomizePlanToWorkItems(PLAN, {
+      planPath: ".supervibe/artifacts/plans/adopt-wrong-task.md",
+      epicId,
+      planReviewPassed: true,
+    });
+    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: temp });
+    const { receipt } = await issueWorkerReceipt(temp, {
+      subjectId: "wrong-task-worker",
+      invocationId: "codex-wrong-task-worker",
+      outputArtifact: ".supervibe/artifacts/worker-output/wrong-task.json",
+      graphId: epicId,
+      taskId: taskTwo,
+      stage: "work-item-execution",
+      handoffId: "adopt-wrong-task",
+    });
+
+    let error;
+    try {
+      await execFileAsync(process.execPath, [
+        join(ROOT, "scripts", "supervibe-loop.mjs"),
+        "--complete",
+        taskOne,
+        "--file",
+        graphPath,
+        "--receipt",
+        receipt.receiptId,
+      ], { cwd: temp });
+    } catch (err) {
+      error = err;
+    }
+
+    assert.ok(error);
+    assert.match(error.stdout, /SUPERVIBE_RECEIPT_ADOPTION_FAILED/);
+    assert.match(error.stdout, new RegExp("receipt taskId " + taskTwo + " does not match " + taskOne));
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+
+test("loop CLI receipt adoption rejects unrelated unbound receipts by default", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-adopt-unbound-reject-"));
+  try {
+    const epicId = "epic-loop-adopt-unbound-reject";
+    const taskId = epicId + "-t1";
+    const graph = atomizePlanToWorkItems(PLAN, {
+      planPath: ".supervibe/artifacts/plans/adopt-unbound-source.md",
+      epicId,
+      planReviewPassed: true,
+    });
+    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: temp });
+    const { receipt } = await issueWorkerReceipt(temp, {
+      subjectId: "unrelated-unbound-worker",
+      invocationId: "codex-unrelated-unbound-worker",
+      outputArtifact: ".supervibe/artifacts/worker-output/unrelated-unbound.json",
+      graphId: null,
+      taskId: null,
+      stage: "T1-outside-loop",
+      handoffId: "unrelated-unbound",
+      inputEvidence: [".supervibe/artifacts/plans/other-source.md"],
+    });
+
+    let error;
+    try {
+      await execFileAsync(process.execPath, [
+        join(ROOT, "scripts", "supervibe-loop.mjs"),
+        "--complete",
+        taskId,
+        "--file",
+        graphPath,
+        "--receipt",
+        receipt.receiptId,
+      ], { cwd: temp });
+    } catch (err) {
+      error = err;
+    }
+
+    assert.ok(error);
+    assert.match(error.stdout, /SUPERVIBE_RECEIPT_ADOPTION_FAILED/);
+    assert.match(error.stdout, /unbound receipt does not match graph source plan/);
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+test("loop CLI adopt-completed infers same-plan outside-loop receipts from source plan", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-adopt-source-infer-"));
+  try {
+    const epicId = "epic-loop-adopt-source-infer";
+    const planPath = ".supervibe/artifacts/plans/adopt-source-infer.md";
+    const graph = atomizePlanToWorkItems(PLAN, {
+      planPath,
+      epicId,
+      planReviewPassed: true,
+    });
+    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: temp });
+    const first = await issueWorkerReceipt(temp, {
+      command: "/supervibe-execute-plan",
+      subjectId: "source-infer-worker-one",
+      invocationId: "codex-source-infer-worker-one",
+      outputArtifact: ".supervibe/artifacts/worker-output/source-infer-one.json",
+      graphId: null,
+      taskId: null,
+      stage: "T1-source-infer",
+      handoffId: "adopt-source-infer",
+      inputEvidence: [planPath],
+    });
+    const second = await issueWorkerReceipt(temp, {
+      command: "/supervibe-execute-plan",
+      subjectId: "source-infer-worker-two",
+      invocationId: "codex-source-infer-worker-two",
+      outputArtifact: ".supervibe/artifacts/worker-output/source-infer-two.json",
+      graphId: null,
+      taskId: null,
+      stage: "T2-source-infer",
+      handoffId: "adopt-source-infer",
+      inputEvidence: [planPath],
+    });
+
+    const { stdout } = await execFileAsync(process.execPath, [
+      join(ROOT, "scripts", "supervibe-loop.mjs"),
+      "--adopt-completed",
+      "--apply",
+      "--file",
+      graphPath,
+      "--from-receipts",
+      first.receipt.receiptId + "," + second.receipt.receiptId,
+      "--actor",
+      "receipt-adoption",
+    ], { cwd: temp });
+
+    assert.match(stdout, /ADOPTED: 2/);
+    assert.match(stdout, /SOURCE: source-plan-stage-inference/);
+
+    const validation = await execFileAsync(process.execPath, [
+      join(ROOT, "scripts", "supervibe-loop.mjs"),
+      "--validate-completion",
+      "--file",
+      graphPath,
+      "--require-trusted-evidence",
+      "--allow-open-epic",
+      "--non-production",
+      "--trusted-receipts",
+      first.receipt.receiptId + "," + second.receipt.receiptId,
+    ], { cwd: temp });
+    assert.match(validation.stdout, /PASS: true/);
+
+    const maturity = buildTaskGraphMaturityReport(temp, { requireActiveGraph: true });
+    const traceability = maturity.dimensions.find((item) => item.id === "active-traceability");
+    const trustedCompletion = maturity.dimensions.find((item) => item.id === "active-trusted-completion");
+    assert.equal(traceability.pass, true);
+    assert.equal(trustedCompletion.pass, true);
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+test("loop CLI reconcile-receipts alias adopts same-plan receipts", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-reconcile-receipts-"));
+  try {
+    const epicId = "epic-loop-reconcile-receipts";
+    const planPath = ".supervibe/artifacts/plans/reconcile-receipts.md";
+    const graph = atomizePlanToWorkItems(PLAN, {
+      planPath,
+      epicId,
+      planReviewPassed: true,
+    });
+    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: temp });
+    const { receipt } = await issueWorkerReceipt(temp, {
+      command: "/supervibe-execute-plan",
+      subjectId: "reconcile-worker",
+      invocationId: "codex-reconcile-worker",
+      outputArtifact: ".supervibe/artifacts/worker-output/reconcile.json",
+      graphId: null,
+      taskId: null,
+      stage: "T1-reconcile",
+      handoffId: "reconcile-receipts",
+      inputEvidence: [planPath],
+    });
+
+    const { stdout } = await execFileAsync(process.execPath, [
+      join(ROOT, "scripts", "supervibe-loop.mjs"),
+      "--reconcile-receipts",
+      "--apply",
+      "--file",
+      graphPath,
+      "--from-receipts",
+      receipt.receiptId,
+    ], { cwd: temp });
+
+    assert.match(stdout, /SUPERVIBE_WORK_ITEM_RECEIPT_ADOPTION/);
+    assert.match(stdout, /ADOPTED: 1/);
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+test("loop CLI receipt adoption rejects graph-level receipts for task completion", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-adopt-graph-only-reject-"));
+  try {
+    const epicId = "epic-loop-adopt-graph-only-reject";
+    const taskId = epicId + "-t2";
+    const graph = atomizePlanToWorkItems(PLAN, {
+      planPath: ".supervibe/artifacts/plans/adopt-graph-only-reject.md",
+      epicId,
+      planReviewPassed: true,
+    });
+    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: temp });
+    const { receipt } = await issueWorkerReceipt(temp, {
+      subjectId: "graph-only-worker",
+      invocationId: "codex-graph-only-worker",
+      outputArtifact: ".supervibe/artifacts/worker-output/graph-only.json",
+      graphId: epicId,
+      taskId: null,
+      stage: "release-completion",
+      handoffId: "adopt-graph-only-reject",
+    });
+
+    let error;
+    try {
+      await execFileAsync(process.execPath, [
+        join(ROOT, "scripts", "supervibe-loop.mjs"),
+        "--complete",
+        taskId,
+        "--file",
+        graphPath,
+        "--receipt",
+        receipt.receiptId,
+      ], { cwd: temp });
+    } catch (err) {
+      error = err;
+    }
+
+    assert.ok(error);
+    assert.match(error.stdout, /graph-level receipt cannot be adopted as task completion evidence/);
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+test("loop CLI receipt adoption rejects validator receipts", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-adopt-validator-reject-"));
+  try {
+    const epicId = "epic-loop-adopt-validator-reject";
+    const taskId = epicId + "-t1";
+    const graph = atomizePlanToWorkItems(PLAN, {
+      planPath: ".supervibe/artifacts/plans/adopt-validator-reject.md",
+      epicId,
+      planReviewPassed: true,
+    });
+    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: temp });
+    const outputArtifact = ".supervibe/artifacts/validator-output/adopt-validator.json";
+    await writeStableArtifact(temp, outputArtifact, { status: "pass", taskId });
+    const { receipt } = await issueWorkflowInvocationReceipt({
+      rootDir: temp,
+      command: "/supervibe-loop",
+      subjectType: "validator",
+      subjectId: "validator-output",
+      stage: "work-item-execution",
+      invocationReason: "validator output cannot close implementation task",
+      outputArtifacts: [outputArtifact],
+      startedAt: "2026-05-10T00:00:00.000Z",
+      completedAt: "2026-05-10T00:01:00.000Z",
+      handoffId: "adopt-validator-reject",
+      graphId: epicId,
+      taskId,
+    });
+
+    let error;
+    try {
+      await execFileAsync(process.execPath, [
+        join(ROOT, "scripts", "supervibe-loop.mjs"),
+        "--complete",
+        taskId,
+        "--file",
+        graphPath,
+        "--receipt",
+        receipt.receiptId,
+      ], { cwd: temp });
+    } catch (err) {
+      error = err;
+    }
+
+    assert.ok(error);
+    assert.match(error.stdout, /receipt subject type is not adoptable: validator/);
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+async function issueWorkerReceipt(root, {
+  command = "/supervibe-loop",
+  subjectId,
+  invocationId,
+  outputArtifact,
+  graphId = null,
+  taskId = null,
+  stage = "work-item-execution",
+  handoffId = "worker-receipt",
+  inputEvidence = [],
+} = {}) {
+  await writeStableArtifact(root, outputArtifact, {
+    status: "pass",
+    subjectId,
+    taskId,
+    summary: "Worker output eligible for receipt adoption.",
+  });
+  await writeTestAgentInvocation(root, {
+    agentId: subjectId,
+    invocationId,
+    taskSummary: "worker output eligible for receipt adoption",
+  });
+  return issueWorkflowInvocationReceipt({
+    rootDir: root,
+    command,
+    subjectType: "worker",
+    subjectId,
+    agentId: subjectId,
+    stage,
+    invocationReason: "worker output eligible for receipt adoption",
+    inputEvidence,
+    outputArtifacts: [outputArtifact],
+    startedAt: "2026-05-10T00:00:00.000Z",
+    completedAt: "2026-05-10T00:01:00.000Z",
+    handoffId,
+    graphId,
+    taskId,
+    hostInvocation: {
+      source: "codex-spawn-agent",
+      invocationId,
+      agentId: subjectId,
+    },
+  });
+}
+
+async function writeStableArtifact(root, relativePath, value) {
+  const absPath = join(root, ...String(relativePath).split("/"));
+  await mkdir(dirname(absPath), { recursive: true });
+  await writeFile(absPath, JSON.stringify(value, null, 2) + "\n", "utf8");
+}
 
 async function writeTestAgentInvocation(root, { agentId, invocationId, taskSummary }) {
   const outputJson = `.supervibe/artifacts/_agent-outputs/${invocationId}/agent-output.json`;

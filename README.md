@@ -379,7 +379,7 @@ Most users only need these five ideas:
 
 | Feature | What it means |
 |---|---|
-| 97 specialist agents | Role-specific agents for repositories, architecture, design, security, QA, operations, and stacks |
+| 98 specialist agents | Role-specific agents for repositories, architecture, design, security, QA, operations, and stacks |
 | Code graph | Tree-sitter symbols and edges; query callers, callees, neighbors, and impact |
 | Semantic code search | Offline multilingual source search with local embeddings |
 | Project memory | Decisions, patterns, incidents, learnings, and solutions under `.supervibe/memory/` |

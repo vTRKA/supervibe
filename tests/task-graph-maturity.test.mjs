@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -10,6 +10,7 @@ import {
   buildTaskGraphMaturityReport,
   formatTaskGraphMaturityReport,
 } from "../scripts/lib/supervibe-task-graph-maturity.mjs";
+import { issueWorkflowInvocationReceipt } from "../scripts/lib/supervibe-workflow-receipt-runtime.mjs";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -30,7 +31,7 @@ test("task graph maturity strict active graph mode blocks missing current graph 
 
   assert.equal(report.pass, false);
   assert.ok(report.dimensions.some((dimension) => dimension.id === "current-active-graph" && !dimension.pass));
-  assert.match(formatTaskGraphMaturityReport(report), /no current work-item graph files found/);
+  assert.match(formatTaskGraphMaturityReport(report), /no active work-item graph selected|atomize a reviewed plan into a work graph/);
 });
 
 test("task graph runtime maturity blocks stale work-item registry", () => {
@@ -90,6 +91,149 @@ test("task graph runtime maturity ignores closed historical graphs for active tr
   assert.equal(traceability.blockers.some((blocker) => /exactly one active graph/.test(blocker)), false);
 });
 
+
+test("task graph runtime maturity uses registry-selected graph when stale open graphs exist", () => {
+  const root = mkdtempSync(join(tmpdir(), "supervibe-task-graph-maturity-registry-selected-"));
+  writeMinimalSurface(root);
+  writeRuntimeGraph(root, { source: "## Acceptance Criteria\n- Runtime requirement.\n" });
+  writeFileSync(join(root, ".supervibe", "memory", "work-items", "index.json"), `${JSON.stringify({
+    schemaVersion: 1,
+    activeEpicId: "epic-runtime",
+    activeGraphPath: ".supervibe/memory/work-items/epic-runtime/graph.json",
+    epics: {
+      "epic-runtime": {
+        epicId: "epic-runtime",
+        graphPath: ".supervibe/memory/work-items/epic-runtime/graph.json",
+        sourcePlanPath: ".supervibe/artifacts/plans/missing.md",
+        status: "active",
+      },
+    },
+  }, null, 2)}\n`, "utf8");
+
+  const staleDir = join(root, ".supervibe", "memory", "work-items", "epic-stale-open");
+  mkdirSync(staleDir, { recursive: true });
+  writeFileSync(join(staleDir, "source-plan.md"), "## Acceptance Criteria\n- Stale requirement.\n", "utf8");
+  writeFileSync(join(staleDir, "graph.json"), `${JSON.stringify({
+    graph_id: "epic-stale-open",
+    source: { snapshotPath: "source-plan.md" },
+    items: [
+      { itemId: "epic-stale-open", type: "epic", status: "open", title: "Stale" },
+      { itemId: "task-stale", type: "task", status: "ready", title: "Stale requirement" },
+    ],
+  }, null, 2)}\n`, "utf8");
+
+  const report = buildTaskGraphMaturityReport(root, { requireActiveGraph: true });
+  const current = report.dimensions.find((item) => item.id === "current-active-graph");
+  const traceability = report.dimensions.find((item) => item.id === "active-traceability");
+  const trustedCompletion = report.dimensions.find((item) => item.id === "active-trusted-completion");
+
+  assert.equal(current.pass, true);
+  assert.equal(traceability.blockers.some((blocker) => /exactly one active graph/.test(blocker)), false);
+  assert.equal(trustedCompletion.blockers.some((blocker) => /exactly one active graph/.test(blocker)), false);
+  assert.deepEqual(traceability.evidence, [".supervibe/memory/work-items/epic-runtime/graph.json"]);
+});
+
+test("task graph runtime maturity rejects validator and command-only receipts", async () => {
+  const root = mkdtempSync(join(tmpdir(), "supervibe-task-graph-maturity-receipt-filter-"));
+  writeMinimalSurface(root);
+  const commandOutput = ".supervibe/artifacts/receipt-filter/command.json";
+  const validatorOutput = ".supervibe/artifacts/receipt-filter/validator.json";
+  writeJsonArtifact(root, commandOutput, { status: "pass", source: "command-only" });
+  writeJsonArtifact(root, validatorOutput, { status: "pass", source: "validator" });
+  const commandReceipt = await issueWorkflowInvocationReceipt({
+    rootDir: root,
+    command: "/supervibe-loop",
+    subjectType: "command",
+    subjectId: "supervibe-loop",
+    stage: "release-completion",
+    invocationReason: "command-only graph receipt cannot satisfy active trusted completion",
+    outputArtifacts: [commandOutput],
+    startedAt: "2026-05-10T00:00:00.000Z",
+    completedAt: "2026-05-10T00:01:00.000Z",
+    handoffId: "receipt-filter",
+    graphId: "epic-runtime",
+  });
+  const validatorReceipt = await issueWorkflowInvocationReceipt({
+    rootDir: root,
+    command: "/supervibe-loop",
+    subjectType: "validator",
+    subjectId: "validator-output",
+    stage: "release-completion",
+    invocationReason: "validator graph receipt cannot satisfy active trusted completion",
+    outputArtifacts: [validatorOutput],
+    startedAt: "2026-05-10T00:00:00.000Z",
+    completedAt: "2026-05-10T00:01:00.000Z",
+    handoffId: "receipt-filter-validator",
+    graphId: "epic-runtime",
+  });
+
+  writeRuntimeGraph(root, {
+    source: "## Acceptance Criteria\n- Runtime requirement.\n",
+    evidence: [{
+      status: "pass",
+      command: "node --test tests/runtime.test.mjs",
+      outputSummary: "validator-only evidence is not enough",
+      receiptId: validatorReceipt.receipt.receiptId,
+    }],
+  });
+
+  const report = buildTaskGraphMaturityReport(root, { requireActiveGraph: true });
+  const dimension = report.dimensions.find((item) => item.id === "active-trusted-completion");
+
+  assert.equal(dimension.pass, false);
+  assert.ok(dimension.blockers.some((blocker) => blocker.includes("untrusted-evidence")));
+  assert.equal(dimension.summary.includes(commandReceipt.receipt.receiptId), false);
+});
+
+test("task graph runtime maturity rejects receipts bound to another graph or task", async () => {
+  const root = mkdtempSync(join(tmpdir(), "supervibe-task-graph-maturity-wrong-binding-"));
+  writeMinimalSurface(root);
+  const outputArtifact = ".supervibe/artifacts/wrong-binding/worker.json";
+  const invocationId = "test-stack-developer-wrong-binding";
+  writeJsonArtifact(root, outputArtifact, { status: "pass", source: "wrong-binding" });
+  writeTestAgentInvocation(root, {
+    agentId: "stack-developer",
+    invocationId,
+    taskSummary: "worker receipt bound to another graph",
+  });
+  const { receipt } = await issueWorkflowInvocationReceipt({
+    rootDir: root,
+    command: "/supervibe-loop",
+    subjectType: "worker",
+    subjectId: "stack-developer",
+    agentId: "stack-developer",
+    stage: "T1-wrong-binding",
+    invocationReason: "receipt bound to another graph must not satisfy active completion",
+    outputArtifacts: [outputArtifact],
+    startedAt: "2026-05-10T00:00:00.000Z",
+    completedAt: "2026-05-10T00:01:00.000Z",
+    handoffId: "wrong-binding",
+    graphId: "epic-other",
+    taskId: "epic-other-t1",
+    hostInvocation: {
+      source: "codex-spawn-agent",
+      invocationId,
+      agentId: "stack-developer",
+    },
+  });
+
+  writeRuntimeGraph(root, {
+    source: "## Acceptance Criteria\n- Runtime requirement.\n",
+    evidence: [{
+      status: "pass",
+      command: "node --test tests/runtime.test.mjs",
+      outputSummary: "copied wrong binding receipt must not count",
+      receiptId: receipt.receiptId,
+    }],
+  });
+
+  const report = buildTaskGraphMaturityReport(root, { requireActiveGraph: true });
+  const dimension = report.dimensions.find((item) => item.id === "active-trusted-completion");
+
+  assert.equal(dimension.pass, false);
+  assert.ok(dimension.blockers.some((blocker) => blocker.includes("untrusted-evidence")));
+});
+
 test("task graph runtime maturity blocks active legacy completion evidence", () => {
   const root = mkdtempSync(join(tmpdir(), "supervibe-task-graph-maturity-legacy-evidence-"));
   writeMinimalSurface(root);
@@ -126,7 +270,7 @@ test("task graph maturity CLI prints a machine-readable report", () => {
 
 function writeMinimalSurface(root) {
   const files = {
-    "scripts/supervibe-loop.mjs": "--atomize-plan --claim-ready --validate-completion --require-trusted-evidence --auto-ui-dry-run --no-auto-ui trustedReceiptIdsForValidation --split --reparent --skip --block --delete --edit",
+    "scripts/supervibe-loop.mjs": "--atomize-plan --claim-ready --adopt-completed --validate-completion --require-trusted-evidence --auto-ui-dry-run --no-auto-ui trustedReceiptIdsForValidation --split --reparent --skip --block --delete --edit",
     "scripts/lib/supervibe-ui-server.mjs": "no-active-graph atomizeReviewedPlan tracker actionImpact claim defer close reopen skip cancel create edit split reparent dep-add dep-remove delete",
     "scripts/lib/supervibe-durable-task-tracker-adapter.mjs": "createEpic createTask addDependency ready claim update close syncPush syncPull",
     "scripts/lib/supervibe-task-tracker-sync.mjs": "validateTrackerMapping diagnoseTrackerSyncConflicts partial-sync redactTrackerSyncDiagnostics",
@@ -147,6 +291,33 @@ function writeMinimalSurface(root) {
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, `${content}\n`, "utf8");
   }
+}
+
+function writeTestAgentInvocation(root, { agentId, invocationId, taskSummary }) {
+  const outputJson = `.supervibe/artifacts/_agent-outputs/${invocationId}/agent-output.json`;
+  mkdirSync(join(root, ".supervibe", "memory"), { recursive: true });
+  mkdirSync(dirname(join(root, ...outputJson.split("/"))), { recursive: true });
+  writeFileSync(join(root, ...outputJson.split("/")), `${JSON.stringify({
+    schemaVersion: 1,
+    invocationId,
+    agentId,
+    taskSummary,
+  }, null, 2)}\n`, "utf8");
+  appendFileSync(join(root, ".supervibe", "memory", "agent-invocations.jsonl"), `${JSON.stringify({
+    schemaVersion: 1,
+    ts: "2026-05-10T00:00:00.000Z",
+    invocation_id: invocationId,
+    agent_id: agentId,
+    task_summary: taskSummary,
+    confidence_score: 10,
+    structured_output: { json: outputJson },
+  })}\n`, "utf8");
+}
+
+function writeJsonArtifact(root, relativePath, value) {
+  const path = join(root, ...String(relativePath).split("/"));
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, JSON.stringify(value, null, 2) + "\n", "utf8");
 }
 
 function writeRuntimeGraph(root, {

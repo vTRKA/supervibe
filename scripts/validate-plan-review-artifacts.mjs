@@ -38,12 +38,22 @@ export const PLAN_REVIEW_DIMENSION_TERMS = Object.freeze([
   "provider-policy",
   "convergence-decision",
 ]);
-const REQUIRED_REVIEWERS = Object.freeze([
+export const PLAN_REVIEW_BASE_REVIEWERS = Object.freeze([
   "supervibe-orchestrator",
   "systems-analyst",
   "architect-reviewer",
   "quality-gate-reviewer",
 ]);
+
+export const PLAN_REVIEW_MANDATORY_RISK_REVIEWERS = Object.freeze([
+  "security-auditor",
+  "qa-test-engineer",
+  "release-governance-reviewer",
+  "db-reviewer",
+]);
+
+const REQUIRED_REVIEWERS = PLAN_REVIEW_BASE_REVIEWERS;
+const USER_WAIVER_PATTERN = /\b(?:user[-\s]?waived\s+by\s+user|waived by user|explicit user waiver\s*:|user accepted waiver)\b/i;
 
 const PLACEHOLDER_PATTERNS = Object.freeze([
   /\bTBD\b/i,
@@ -147,10 +157,12 @@ export function validatePlanReviewArtifact(markdown) {
   if (!/\b(Minor|Info|Advisory)\b/i.test(nonBlockerBody)) {
     issues.push("non-blocker findings: missing minor/info/advisory classification");
   }
-  if (/\b(Verdict|plan-review-passed)\b[\s\S]{0,80}\bpass(?:ed)?\b/i.test(summary)) {
-    if (/\b(Critical|Major)\s*:\s*[1-9]\d*\s+Open\b/i.test(findings)) {
-      issues.push("findings: pass verdict cannot have open critical or major findings");
-    }
+  const blockerFindings = sectionBody(markdown, "Blocker Findings");
+  const openBlockerSeverity = ["Critical", "Major"].find((severity) => {
+    return hasOpenSeverityFinding(findings, severity) || hasOpenSeverityFinding(blockerFindings, severity);
+  });
+  if (openBlockerSeverity) {
+    issues.push(`findings: pass verdict cannot have open critical or major findings (${openBlockerSeverity})`);
   }
   requireTerms({
     issues,
@@ -264,8 +276,40 @@ export async function inspectActivePlanReviewSource({ rootDir = process.cwd(), p
   };
 }
 
-function trustedReviewerReceiptsForArtifact(rootDir, reviewRel) {
-  const coverage = new Map(REQUIRED_REVIEWERS.map((id) => [id, false]));
+function planReviewReviewerCoverageForArtifact(markdown = "") {
+  const issues = [];
+  const waivedReviewers = new Set();
+  const requiredReviewers = new Set(PLAN_REVIEW_BASE_REVIEWERS);
+
+  for (const reviewer of PLAN_REVIEW_BASE_REVIEWERS) {
+    const disposition = reviewerCoverageDisposition(markdown, reviewer);
+    if (!disposition.covered) {
+      issues.push(`reviewer coverage: missing baseline reviewer ${reviewer}`);
+    }
+  }
+
+  for (const reviewer of PLAN_REVIEW_MANDATORY_RISK_REVIEWERS) {
+    const disposition = reviewerCoverageDisposition(markdown, reviewer);
+    if (disposition.waived) {
+      waivedReviewers.add(reviewer);
+      continue;
+    }
+    requiredReviewers.add(reviewer);
+    if (!disposition.covered) {
+      issues.push(`reviewer coverage: missing mandatory risk reviewer ${reviewer} or explicit user waiver`);
+    }
+  }
+
+  return {
+    requiredReviewers: [...requiredReviewers],
+    waivedReviewers: [...waivedReviewers],
+    issues,
+  };
+}
+
+function trustedReviewerReceiptsForArtifact(rootDir, reviewRel, markdown = "") {
+  const coverageRequirements = planReviewReviewerCoverageForArtifact(markdown);
+  const coverage = new Map(coverageRequirements.requiredReviewers.map((id) => [id, false]));
   const issues = [];
   const receipts = readWorkflowReceipts(rootDir);
   for (const receipt of receipts) {
@@ -274,19 +318,29 @@ function trustedReviewerReceiptsForArtifact(rootDir, reviewRel) {
     const outputArtifacts = Array.isArray(receipt.outputArtifacts) ? receipt.outputArtifacts.map(normalizePath) : [];
     if (!outputArtifacts.includes(normalizePath(reviewRel))) continue;
     const trust = validateWorkflowReceiptTrust(rootDir, receipt);
-    if (!trust.pass) continue;
     const id = String(receipt.subjectId || receipt.agentId || "").toLowerCase();
-    if (coverage.has(id)) coverage.set(id, true);
+    if (!coverage.has(id)) continue;
+    if (!trust.pass) {
+      issues.push(`untrusted reviewer receipt for ${id}: ${trust.issues.join("; ")}`);
+      continue;
+    }
+    coverage.set(id, true);
   }
   for (const [reviewer, seen] of coverage.entries()) {
     if (!seen) {
       issues.push([
         `missing trusted reviewer receipt for ${reviewer} bound to current review artifact`,
-        `repair: node scripts/workflow-receipt.mjs issue --subject-type reviewer --subject-id ${reviewer} --output ${reviewRel}`,
+        `repair: node scripts/agent-invocation.mjs log --reviewer ${reviewer} --host codex --host-invocation-id <returned-host-agent-id> --task "Review plan artifact" --confidence <0-10> --issue-receipt --command /supervibe-plan --stage plan-review-${reviewer} --handoff-id <handoff-id> --output-artifacts ${reviewRel}`,
+        `receipt repair fallback: node scripts/workflow-receipt.mjs issue --subject-type reviewer --subject-id ${reviewer} --output ${reviewRel}`,
       ].join("; "));
     }
   }
-  return { pass: issues.length === 0, issues };
+  return {
+    pass: coverageRequirements.issues.length === 0 && issues.length === 0,
+    issues: [...coverageRequirements.issues, ...issues],
+    requiredReviewers: coverageRequirements.requiredReviewers,
+    waivedReviewers: coverageRequirements.waivedReviewers,
+  };
 }
 
 export async function validatePlanReviewGateForPlan({ rootDir = process.cwd(), planPath, requireActiveReview = true } = {}) {
@@ -299,7 +353,7 @@ export async function validatePlanReviewGateForPlan({ rootDir = process.cwd(), p
     };
   }
   const artifactIssues = validatePlanReviewArtifact(inspection.markdown);
-  const receiptGate = trustedReviewerReceiptsForArtifact(rootDir, inspection.reviewRel);
+  const receiptGate = trustedReviewerReceiptsForArtifact(rootDir, inspection.reviewRel, inspection.markdown);
   return {
     pass: artifactIssues.length === 0 && receiptGate.pass,
     reviewPath: inspection.reviewPath,
@@ -367,7 +421,7 @@ async function main() {
     });
     if (inspection.status === "review-found") {
       files = [inspection.reviewPath];
-      const receiptGate = trustedReviewerReceiptsForArtifact(root, inspection.reviewRel);
+      const receiptGate = trustedReviewerReceiptsForArtifact(root, inspection.reviewRel, inspection.markdown);
       if (!receiptGate.pass) {
         activeReviewIssueCount += 1;
         console.error(`FAIL active-review ${inspection.reviewRel}`);
@@ -414,6 +468,32 @@ async function main() {
 
 function escapeRegex(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function hasOpenSeverityFinding(body = "", severity = "") {
+  const severityPattern = new RegExp(`\\b${escapeRegex(severity)}\\b`, "i");
+  for (const line of String(body || "").split(/\r?\n/)) {
+    if (!severityPattern.test(line) || !/\bopen\b/i.test(line)) continue;
+    const openCount = /open\s+count\s*[:=]?\s*(\d+)/i.exec(line)
+      || /open\s*[:=]\s*(\d+)/i.exec(line)
+      || /(\d+)\s+open\b/i.exec(line);
+    if (openCount) return Number(openCount[1]) > 0;
+  }
+  return false;
+}
+
+function reviewerCoverageDisposition(markdown = "", reviewer = "") {
+  const body = [
+    sectionBody(markdown, "Reviewer Coverage"),
+    sectionBody(markdown, "Risk Trigger Matrix"),
+  ].filter(Boolean).join("\n");
+  const reviewerPattern = new RegExp(`(^|[^a-z0-9-])${escapeRegex(reviewer)}([^a-z0-9-]|$)`, "i");
+  const lines = body.split(/\r?\n/).filter((line) => reviewerPattern.test(line));
+  return {
+    covered: lines.length > 0,
+    waived: lines.some((line) => USER_WAIVER_PATTERN.test(line)),
+    lines,
+  };
 }
 
 const isMain = import.meta.url === `file://${process.argv[1]?.replace(/\\/g, "/")}`;

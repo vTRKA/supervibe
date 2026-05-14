@@ -261,18 +261,34 @@ test("validate-epic-completion CLI reports failed and passed completion", async 
 test("validate-epic-completion CLI requires runtime-trusted receipt evidence in trusted mode", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-trusted-epic-completion-"));
   const evidenceFile = join(root, "trusted-output.txt");
+  const planFile = join(root, ".supervibe", "artifacts", "plans", "completion.md");
+  const invocationId = "test-worker-trusted-completion";
+  await mkdir(dirname(planFile), { recursive: true });
+  await writeFile(planFile, PLAN, "utf8");
   await writeFile(evidenceFile, "trusted verification\n", "utf8");
+  await writeTestAgentInvocation(root, {
+    agentId: "stack-developer",
+    invocationId,
+    taskSummary: "trusted completion verification",
+  });
   const { receipt } = await issueWorkflowInvocationReceipt({
     rootDir: root,
     command: "/supervibe-loop",
-    subjectType: "validator",
-    subjectId: "completion-validator",
+    subjectType: "worker",
+    subjectId: "stack-developer",
+    agentId: "stack-developer",
     stage: "validate-completion",
     invocationReason: "trusted completion verification",
+    inputEvidence: [".supervibe/artifacts/plans/completion.md"],
     outputArtifacts: ["trusted-output.txt"],
     startedAt: "2026-05-10T00:00:00.000Z",
     completedAt: "2026-05-10T00:01:00.000Z",
     handoffId: "trusted-completion",
+    hostInvocation: {
+      source: "codex-spawn-agent",
+      invocationId,
+      agentId: "stack-developer",
+    },
   });
 
   const trusted = graphWithReceiptId(receipt.receiptId);
@@ -323,18 +339,30 @@ test("validate-epic-completion CLI accepts graph-bound release receipt in truste
   graph.tasks = graph.tasks.map((task) => ({ ...task, verificationEvidence: [] }));
   const graphFile = join(root, "graph.json");
   await writeFile(graphFile, `${JSON.stringify(graph, null, 2)}\n`, "utf8");
+  const invocationId = "test-supervibe-orchestrator-graph-completion";
+  await writeTestAgentInvocation(root, {
+    agentId: "supervibe-orchestrator",
+    invocationId,
+    taskSummary: "trusted graph-level completion verification",
+  });
   const { receipt } = await issueWorkflowInvocationReceipt({
     rootDir: root,
     command: "/supervibe-loop",
-    subjectType: "validator",
-    subjectId: "completion-validator",
-    stage: "release-completion-proof",
+    subjectType: "agent",
+    subjectId: "supervibe-orchestrator",
+    agentId: "supervibe-orchestrator",
+    stage: "release-completion",
     invocationReason: "trusted graph-level completion verification",
-    outputArtifacts: ["final-audit.md"],
+    outputArtifacts: ["graph.json"],
     startedAt: "2026-05-10T00:00:00.000Z",
     completedAt: "2026-05-10T00:01:00.000Z",
     handoffId: "epic-completion",
     graphId: "epic-completion",
+    hostInvocation: {
+      source: "codex-spawn-agent",
+      invocationId,
+      agentId: "supervibe-orchestrator",
+    },
   });
 
   const passStdout = execFileSync(process.execPath, [

@@ -1006,6 +1006,18 @@ function createWorkItem(item) {
     workspace: item.workspace ?? null,
     subproject: item.subproject ?? null,
     requiredGates: uniqueStrings(item.requiredGates ?? []),
+    scopeIds: uniqueStrings([
+      ...(item.scopeIds ?? []),
+      ...(item.executionHints?.scopeIds ?? []),
+    ]),
+    requirementIds: uniqueStrings([
+      ...(item.requirementIds ?? []),
+      ...(item.executionHints?.requirementIds ?? []),
+    ]),
+    contractRows: uniqueStrings([
+      ...(item.contractRows ?? []),
+      ...(item.executionHints?.contractRows ?? []),
+    ]),
     verificationHints: uniqueStrings([
       ...(item.verificationHints ?? []),
       "tests:deferred-until-release-handoff",

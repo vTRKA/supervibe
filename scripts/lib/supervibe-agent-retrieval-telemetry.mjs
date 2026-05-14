@@ -19,6 +19,8 @@ const DEFAULT_THRESHOLDS = Object.freeze({
   confidence: 8.5,
 });
 
+const T0_RECOVERY_TTL_DAYS = 14;
+const GENERATED_STATE_OWNER = "supervibe-runtime";
 const STRUCTURAL_TASK_PATTERN = /(refactor|rename|move|delete|extract|caller|callee|impact|public api|dependency impact|architecture review)/i;
 const HOST_AGENT_SUBJECT_TYPES = new Set(["agent", "worker", "reviewer"]);
 const MEMORY_EVIDENCE_PATTERN = /^\.supervibe[\\/]+memory[\\/]/i;
@@ -103,6 +105,7 @@ export function buildAgentRetrievalTelemetryReport({
   thresholds = {},
 } = {}) {
   const policy = { ...DEFAULT_THRESHOLDS, ...thresholds };
+  const generatedAt = new Date().toISOString();
   const scoredInvocations = invocations.filter(isRetrievalTelemetryScoredInvocation);
   const legacySkipped = invocations.length - scoredInvocations.length;
   const byAgent = groupByAgent(scoredInvocations);
@@ -135,7 +138,10 @@ export function buildAgentRetrievalTelemetryReport({
       ...metrics,
       violations,
       advisories,
-      recommendedActions: buildRecommendedActions(agentId, [...violations, ...advisories]),
+      recommendedActions: [
+        ...buildRecommendedActions(agentId, violations, { blocking: true, category: "retrieval" }),
+        ...buildRecommendedActions(agentId, advisories, { blocking: false, category: "confidence" }),
+      ],
     });
   }
   const underperformers = detectUnderperformers(scoredInvocations, {
@@ -156,15 +162,22 @@ export function buildAgentRetrievalTelemetryReport({
     legacySkipped,
   });
   const strengtheningTasks = createStrengtheningTasks({ agents: failingAgents, underperformers, evidenceFailed });
+  const retrievalStrengtheningTasks = strengtheningTasks.filter((task) => task.blocking !== false);
+  const advisoryStrengtheningTasks = strengtheningTasks.filter((task) => task.blocking === false);
+  const nonBlockingTelemetry = createNonBlockingTelemetry({
+    legacySkipped,
+    rawInvocations: invocations.length,
+    scoredInvocations: scoredInvocations.length,
+    advisoryStrengtheningTasks,
+    generatedAt,
+  });
   const pass = globalViolations.length === 0 && failingAgents.length === 0 && evidenceFailed.length === 0;
   const maturityScore = pass
-    ? globalWarnings.length
-      ? 8
-      : 10
+    ? 10
     : Math.max(0, 10 - Math.min(6, globalViolations.length + failingAgents.length + evidenceFailed.length));
   return {
     schemaVersion: 1,
-    generatedAt: new Date().toISOString(),
+    generatedAt,
     pass,
     maturityScore,
     thresholds: policy,
@@ -178,9 +191,13 @@ export function buildAgentRetrievalTelemetryReport({
       failingAgents: failingAgents.length,
       evidenceFailed: evidenceFailed.length,
       strengtheningTasks: strengtheningTasks.length,
+      retrievalStrengtheningTasks: retrievalStrengtheningTasks.length,
+      advisoryStrengtheningTasks: advisoryStrengtheningTasks.length,
+      nonBlockingTelemetry: nonBlockingTelemetry.length,
     },
     globalViolations,
     globalWarnings,
+    nonBlockingTelemetry,
     sampleStatus: scoredInvocations.length
       ? "scored-samples"
       : legacySkipped
@@ -190,6 +207,15 @@ export function buildAgentRetrievalTelemetryReport({
     underperformers,
     evidenceFailed,
     strengtheningTasks,
+    retrievalStrengtheningTasks,
+    advisoryStrengtheningTasks,
+    strictRetrievalHealth: {
+      pass,
+      score: maturityScore,
+      blockingViolations: globalViolations.length + failingAgents.length + evidenceFailed.length,
+      advisoryTasks: advisoryStrengtheningTasks.length,
+      legacySkipped,
+    },
   };
 }
 
@@ -202,6 +228,8 @@ function createStrengtheningTasks({ agents = [], underperformers = [], evidenceF
       reason: agent.violations.join("; "),
       action: "run /supervibe-strengthen with explicit project-memory, code-search, evidence citation, and codegraph requirements",
       priority: agent.violations.some((item) => item.includes("codegraph") || item.includes("evidence")) ? "high" : "medium",
+      category: "retrieval",
+      blocking: true,
     });
   }
   for (const item of underperformers) {
@@ -212,6 +240,9 @@ function createStrengtheningTasks({ agents = [], underperformers = [], evidenceF
       reason: `${item.reason}: ${item.value}`,
       action: "run /supervibe-strengthen and inspect recent low-confidence outcomes",
       priority: "medium",
+      category: item.signal || "confidence",
+      role: item.role || "agent",
+      blocking: false,
     });
   }
   for (const entry of evidenceFailed) {
@@ -221,6 +252,8 @@ function createStrengtheningTasks({ agents = [], underperformers = [], evidenceF
       reason: entry.gate?.failures?.join("; ") || "evidence gate failed",
       action: "attach retrieval evidence or record an explicit no-evidence bypass",
       priority: "high",
+      category: "evidence",
+      blocking: true,
     });
   }
   return tasks.slice(0, 50);
@@ -230,10 +263,19 @@ export async function writeStrengtheningTasks(report, {
   rootDir = process.cwd(),
   outPath = join(rootDir, ".supervibe", "memory", "strengthening-tasks.json"),
 } = {}) {
+  const generatedAt = report.generatedAt || new Date().toISOString();
   const payload = {
-    schemaVersion: 1,
-    generatedAt: report.generatedAt || new Date().toISOString(),
+    schemaVersion: 2,
+    generatedAt,
+    generatedState: {
+      kind: "agent-retrieval-strengthening-tasks",
+      owner: GENERATED_STATE_OWNER,
+      recoveryPolicy: buildT0RecoveryPolicy(generatedAt),
+    },
     tasks: report.strengtheningTasks || [],
+    retrievalTasks: report.retrievalStrengtheningTasks || [],
+    advisoryTasks: report.advisoryStrengtheningTasks || [],
+    nonBlockingTelemetry: report.nonBlockingTelemetry || [],
   };
   await mkdir(dirname(outPath), { recursive: true });
   await writeFile(outPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
@@ -254,12 +296,18 @@ export function formatAgentRetrievalTelemetryReport(report = {}) {
     `FAILING_AGENTS: ${report.summary?.failingAgents || 0}`,
     `EVIDENCE_FAILED: ${report.summary?.evidenceFailed || 0}`,
     `STRENGTHENING_TASKS: ${report.summary?.strengtheningTasks || 0}`,
+    `RETRIEVAL_STRENGTHENING_TASKS: ${report.summary?.retrievalStrengtheningTasks || 0}`,
+    `ADVISORY_STRENGTHENING_TASKS: ${report.summary?.advisoryStrengtheningTasks || 0}`,
+    `NON_BLOCKING_TELEMETRY: ${report.summary?.nonBlockingTelemetry || 0}`,
   ];
   for (const violation of report.globalViolations || []) {
     lines.push(`WARN: ${violation}`);
   }
   for (const warning of report.globalWarnings || []) {
     lines.push(`WARN: ${warning}`);
+  }
+  for (const telemetry of report.nonBlockingTelemetry || []) {
+    lines.push(`INFO: ${telemetry.code} blocking=${telemetry.blocking === true} count=${telemetry.count ?? 0} owner=${telemetry.owner || "unknown"} expiresAt=${telemetry.expiresAt || "unknown"}`);
   }
   for (const agent of report.agents || []) {
     const status = agent.violations?.length ? "WARN" : "OK";
@@ -268,7 +316,7 @@ export function formatAgentRetrievalTelemetryReport(report = {}) {
     for (const advisory of agent.advisories || []) lines.push(`  - advisory: ${advisory}`);
   }
   for (const task of report.strengtheningTasks || []) {
-    lines.push(`TASK: ${task.id} agent=${task.agentId} priority=${task.priority} reason=${task.reason}`);
+    lines.push(`TASK: ${task.id} agent=${task.agentId} priority=${task.priority} blocking=${task.blocking !== false} category=${task.category || "retrieval"} reason=${task.reason}`);
   }
   return lines.join("\n");
 }
@@ -309,6 +357,57 @@ function detectGlobalRetrievalTelemetryWarnings({
     warnings.push("post-enforcement retrieval telemetry samples are not available yet; readiness is green, but maturity score is capped until new scored agent invocations exist");
   }
   return warnings;
+}
+
+function createNonBlockingTelemetry({
+  legacySkipped = 0,
+  rawInvocations = 0,
+  scoredInvocations = 0,
+  advisoryStrengtheningTasks = [],
+  generatedAt = new Date().toISOString(),
+} = {}) {
+  const recovery = buildT0RecoveryPolicy(generatedAt);
+  const telemetry = [];
+  if (legacySkipped > 0) {
+    telemetry.push({
+      code: "legacy-invocations-skipped",
+      type: "legacy-retrieval-telemetry",
+      blocking: false,
+      count: legacySkipped,
+      rawInvocations,
+      scoredInvocations,
+      owner: GENERATED_STATE_OWNER,
+      expiresAt: recovery.expiresAt,
+      recoveryPolicy: recovery.id,
+      message: "Legacy invocations are retained as explicit non-blocking telemetry and are not used to adjust strict retrieval health.",
+    });
+  }
+  if (advisoryStrengtheningTasks.length > 0) {
+    telemetry.push({
+      code: "confidence-advisory-strengthening",
+      type: "confidence-advisory",
+      blocking: false,
+      count: advisoryStrengtheningTasks.length,
+      owner: "agent-quality",
+      expiresAt: recovery.expiresAt,
+      recoveryPolicy: recovery.id,
+      message: "Confidence strengthening tasks are advisory and remain separate from strict retrieval health.",
+    });
+  }
+  return telemetry;
+}
+
+function buildT0RecoveryPolicy(generatedAt = new Date().toISOString()) {
+  const start = new Date(generatedAt);
+  const base = Number.isFinite(start.getTime()) ? start : new Date();
+  const expiresAt = new Date(base.getTime() + T0_RECOVERY_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  return {
+    id: "T0",
+    owner: GENERATED_STATE_OWNER,
+    generatedState: true,
+    expiresAt,
+    action: "regenerate from runtime telemetry sources; do not hand-edit generated state",
+  };
 }
 
 function isRetrievalTelemetryScoredInvocation(entry = {}) {
@@ -626,11 +725,13 @@ function detectRetrievalAdvisories(metrics, thresholds) {
   return advisories;
 }
 
-function buildRecommendedActions(agentId, violations = []) {
+function buildRecommendedActions(agentId, violations = [], { blocking = true, category = "retrieval" } = {}) {
   return violations.map((violation) => ({
     agentId,
     violation,
     command: `/supervibe-strengthen ${agentId}`,
+    blocking,
+    category,
   }));
 }
 

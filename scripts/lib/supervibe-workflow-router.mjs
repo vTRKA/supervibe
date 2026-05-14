@@ -194,6 +194,9 @@ export function routeWorkflowIntent(input, options = {}) {
   const topicDrift = routeTopicDriftFromRecentHandoff(request, recentAssistantOutput, locale);
   if (topicDrift) return applySafetyState(topicDrift, { dirtyGitState, artifacts });
 
+  const upstream = routeUpstreamArtifactRequest({ text, locale, artifacts });
+  if (upstream) return applySafetyState(upstream, { dirtyGitState, artifacts });
+
   const contextual = routeFromWorkflowContext({ text, locale, lastCompletedPhase, artifacts, dirtyGitState });
   if (contextual) return applySafetyState(contextual, { dirtyGitState, artifacts });
 
@@ -376,6 +379,161 @@ function routeTopicDriftFromRecentHandoff(request, recentAssistantOutput, locale
     ],
     handoff: parsed,
   };
+}
+
+function routeUpstreamArtifactRequest({ text, locale, artifacts }) {
+  if (looksLikeSpecBeforePlanOrExecution(text)) {
+    return fromWorkflowStep("intake", {
+      intent: "feature_brainstorm",
+      locale,
+      confidence: 0.91,
+      reason: "Spec or requirements request appears before plan or implementation; route upstream before execution.",
+      source: "upstream-artifact-precedence",
+      command: "/supervibe-brainstorm",
+      skill: "supervibe:brainstorming",
+      stopCondition: "ask-before-brainstorm",
+      question: locale === "ru"
+        ? "\u0428\u0430\u0433 1/1: \u0441\u043d\u0430\u0447\u0430\u043b\u0430 \u0441\u043e\u0431\u0440\u0430\u0442\u044c \u0442\u0440\u0435\u0431\u043e\u0432\u0430\u043d\u0438\u044f \u043f\u0435\u0440\u0435\u0434 \u043f\u043b\u0430\u043d\u043e\u043c \u0438 \u0440\u0435\u0430\u043b\u0438\u0437\u0430\u0446\u0438\u0435\u0439?"
+        : "Step 1/1: capture requirements before planning or implementation?",
+    });
+  }
+
+  if (!artifacts.planReviewPassed && looksLikePlanOnlyReviewGate(text)) {
+    return fromWorkflowStep("plan", {
+      intent: "plan_review",
+      locale,
+      confidence: 0.94,
+      reason: "Plan-only validation or reviewer request is blocked at the mandatory plan review gate before execution.",
+      source: "plan-only-review-gate",
+    });
+  }
+
+  if (!artifacts.planReviewPassed && looksLikePlanBeforeExecution(text)) {
+    if (hasPlanArtifact(artifacts)) {
+      return fromWorkflowStep("plan", {
+        intent: "plan_review",
+        locale,
+        confidence: 0.94,
+        reason: "Execution request with an existing plan is blocked until mandatory plan review passes.",
+        source: "plan-review-gate",
+      });
+    }
+    return fromWorkflowStep("brainstorm", {
+      intent: "brainstorm_to_plan",
+      locale,
+      confidence: 0.9,
+      reason: "Plan and implementation were requested together; write or confirm the plan before review and execution.",
+      source: "upstream-artifact-precedence",
+      command: "/supervibe-plan",
+      skill: "supervibe:writing-plans",
+      stopCondition: "ask-before-plan",
+      question: locale === "ru"
+        ? "\u0428\u0430\u0433 1/1: \u0441\u043d\u0430\u0447\u0430\u043b\u0430 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u0442\u044c \u043f\u043b\u0430\u043d \u043f\u0435\u0440\u0435\u0434 review loop \u0438 \u0438\u0441\u043f\u043e\u043b\u043d\u0435\u043d\u0438\u0435\u043c?"
+        : "Step 1/1: prepare the plan before review and execution?",
+    });
+  }
+
+  return null;
+}
+
+function hasPlanArtifact(artifacts = {}) {
+  return Boolean(artifacts.plan || artifacts.planPath || artifacts.planContent || artifacts.implementationPlan || artifacts.reviewedPlanPath);
+}
+
+function looksLikeSpecBeforePlanOrExecution(text) {
+  const hasSpec = containsAny(text, [
+    "spec",
+    "specification",
+    "requirements",
+    "prd",
+    "brief",
+    "\u0441\u043f\u0435\u043a",
+    "\u0441\u043f\u0435\u0446\u0438\u0444\u0438\u043a\u0430\u0446\u0438\u044f",
+    "\u0442\u0440\u0435\u0431\u043e\u0432\u0430\u043d\u0438\u044f",
+    "\u0442\u0437",
+  ]) || containsStemAny(text, [
+    "\u0441\u043f\u0435\u0446\u0438\u0444\u0438\u043a",
+    "\u0442\u0440\u0435\u0431\u043e\u0432\u0430\u043d",
+  ]);
+  const hasDownstream = containsAny(text, [
+    "plan",
+    "implementation",
+    "implement",
+    "execute",
+    "start implementation",
+    "before implementation",
+    "\u043f\u043b\u0430\u043d",
+    "\u0440\u0435\u0430\u043b\u0438\u0437\u0430\u0446\u0438\u044f",
+    "\u0440\u0435\u0430\u043b\u0438\u0437\u0430\u0446\u0438\u044e",
+    "\u043d\u0430\u0447\u043d\u0438",
+  ]) || containsStemAny(text, [
+    "\u0440\u0435\u0430\u043b\u0438\u0437",
+    "\u0438\u0441\u043f\u043e\u043b\u043d",
+    "\u043d\u0430\u0447\u043d",
+  ]);
+  return hasSpec && hasDownstream;
+}
+
+function looksLikePlanBeforeExecution(text) {
+  const hasPlan = containsAny(text, ["plan", "implementation plan", "\u043f\u043b\u0430\u043d"]);
+  const hasExecution = containsAny(text, [
+    "execute",
+    "implementation",
+    "implement",
+    "start work",
+    "start implementation",
+    "begin work",
+    "run it",
+    "\u0441\u0442\u0430\u0440\u0442",
+    "\u043d\u0430\u0447\u043d\u0438",
+    "\u043d\u0430\u0447\u0430\u0442\u044c",
+    "\u0437\u0430\u043f\u0443\u0441\u0442\u0438",
+    "\u0440\u0435\u0430\u043b\u0438\u0437\u0430\u0446\u0438\u044f",
+  ]) || containsStemAny(text, [
+    "\u0440\u0435\u0430\u043b\u0438\u0437",
+    "\u0438\u0441\u043f\u043e\u043b\u043d",
+    "\u043d\u0430\u0447\u043d",
+  ]);
+  const hasReviewedPlan = containsAny(text, [
+    "reviewed plan",
+    "plan review passed",
+    "active graph",
+    "\u043e\u0434\u043e\u0431\u0440\u0435\u043d\u043d\u044b\u0439 \u043f\u043b\u0430\u043d",
+    "\u043f\u043b\u0430\u043d \u043f\u0440\u043e\u0448\u0435\u043b \u0440\u0435\u0432\u044c\u044e",
+  ]);
+  return hasPlan && hasExecution && !hasReviewedPlan;
+}
+
+function looksLikePlanOnlyReviewGate(text) {
+  const planOnly = containsAny(text, [
+    "only the plan for now",
+    "only plan for now",
+    "plan only",
+    "only the plan",
+    "for now only the plan",
+    "for now plan only",
+    "\u0442\u043e\u043b\u044c\u043a\u043e \u043f\u043b\u0430\u043d",
+    "\u043f\u043e\u043a\u0430 \u0442\u043e\u043b\u044c\u043a\u043e \u043f\u043b\u0430\u043d",
+  ]);
+  const asksReview = containsAny(text, [
+    "review",
+    "reviewer",
+    "reviewers",
+    "plan review",
+    "validate",
+    "validation",
+    "validator",
+    "validators",
+    "\u0440\u0435\u0432\u044c\u044e",
+    "\u043f\u0440\u043e\u0432\u0435\u0440\u044c",
+    "\u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c",
+  ]) || containsStemAny(text, [
+    "\u0432\u0430\u043b\u0438\u0434\u0430\u0446",
+    "\u0432\u0430\u043b\u0438\u0434\u0438\u0440",
+    "\u0440\u0435\u0432\u044c\u044e\u0435\u0440",
+    "\u043f\u0440\u043e\u0432\u0435\u0440",
+  ]);
+  return planOnly && asksReview;
 }
 
 function routeFromWorkflowContext({ text, locale, lastCompletedPhase, artifacts }) {
@@ -939,6 +1097,10 @@ function isExplicitStopOrPause(text) {
 
 function containsAny(text, phrases) {
   return phrases.some((phrase) => text.includes(normalize(phrase)));
+}
+
+function containsStemAny(text, stems) {
+  return stems.some((stem) => text.includes(normalize(stem)));
 }
 
 function detectLocale(value) {

@@ -231,6 +231,7 @@ export function buildActiveWorkflowResumeInfo(state = null) {
       artifactManifest: null,
       receipts: [],
       summaries: [],
+      activeGraph: null,
     };
   }
   const normalized = normalizeActiveWorkflowState(state);
@@ -264,6 +265,7 @@ export function buildActiveWorkflowResumeInfo(state = null) {
     artifactManifest: normalized.artifactManifest ?? null,
     receipts: Array.isArray(normalized.receipts) ? normalized.receipts : [],
     summaries: Array.isArray(normalized.summaries) ? normalized.summaries : [],
+    activeGraph: normalized.activeGraph ?? null,
   };
 }
 
@@ -362,6 +364,7 @@ export function normalizeActiveWorkflowState(document = {}) {
   const artifactManifest = normalizeArtifactManifestState(firstPresent(source.artifactManifest, source.artifact_manifest));
   const receipts = normalizeReceipts(firstPresent(source.receipts, source.receiptIds, source.receipt_ids));
   const summaries = normalizeStageSummaries(firstPresent(source.summaries, source.stageSummaries, source.stage_summaries));
+  const activeGraph = normalizeActiveGraphRef(firstPresent(source.activeGraph, source.active_graph, source.graph));
   const nextCommand = normalizeCommand(firstNonEmpty(source.nextCommand, source.next_command, next.command));
   const command = normalizeCommand(firstNonEmpty(source.command, source.workflow, source.activeCommand, nextCommand));
 
@@ -389,6 +392,7 @@ export function normalizeActiveWorkflowState(document = {}) {
     artifactManifest,
     receipts,
     summaries,
+    activeGraph,
     nextCommand,
     nextAction: String(firstPresent(source.nextAction, next.action, "") || "").trim(),
   };
@@ -418,6 +422,7 @@ export function activeWorkflowStateToWorkflow(state = {}) {
     artifactManifest: state.artifactManifest ?? null,
     receipts: Array.isArray(state.receipts) ? state.receipts : [],
     summaries: Array.isArray(state.summaries) ? state.summaries : [],
+    activeGraph: state.activeGraph ?? null,
     nextCommand: state.nextCommand || "",
     nextAction: state.nextAction || "",
   };
@@ -533,6 +538,9 @@ function validateActiveWorkflowState(state = {}, { file = "active-workflow-state
     }
   }
 
+  if (hasAnyOwn(source, ["activeGraph", "active_graph", "graph"]) && normalized.activeGraph !== null) {
+    validateActiveGraphStateRef(normalized.activeGraph, file, issues);
+  }
   const hasNextCommand = hasAnyOwn(source, ["nextCommand", "next_command"]) || isPlainObject(source.next) && Object.hasOwn(source.next, "command");
   const hasNextAction = hasAnyOwn(source, ["nextAction", "next_action"]) || isPlainObject(source.next) && Object.hasOwn(source.next, "action");
   if (!normalized.nextCommand && !normalized.nextAction) {
@@ -578,6 +586,7 @@ function materializeActiveWorkflowState(document = {}) {
   const artifactManifest = normalizeArtifactManifestState(firstPresent(source.artifactManifest, source.artifact_manifest, null));
   const receipts = normalizeReceipts(firstPresent(source.receipts, source.receiptIds, source.receipt_ids, []));
   const summaries = normalizeStageSummaries(firstPresent(source.summaries, source.stageSummaries, source.stage_summaries, []));
+  const activeGraph = normalizeActiveGraphRef(firstPresent(source.activeGraph, source.active_graph, source.graph, null));
   const explicitNextCommand = firstPresent(source.nextCommand, source.next_command, nestedNext.command);
   const explicitNextAction = firstPresent(source.nextAction, source.next_action, nestedNext.action);
   const defaults = defaultNextFieldsForStage(stage, command, { artifacts });
@@ -603,6 +612,7 @@ function materializeActiveWorkflowState(document = {}) {
     artifactManifest,
     receipts,
     summaries,
+    activeGraph,
   };
   assignOptionalString(state, "host", firstPresent(source.host, source.activeHost));
   assignOptionalString(state, "slug", firstPresent(source.slug, source.prototypeSlug));
@@ -766,6 +776,54 @@ function normalizeArtifactManifestState(value) {
       ? value.artifacts.map((artifact) => isPlainObject(artifact) ? { ...artifact } : artifact)
       : [],
   };
+}
+
+
+function normalizeActiveGraphRef(value) {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (!isPlainObject(value)) return value;
+  const hostInvocation = isPlainObject(value.hostInvocation) ? { ...value.hostInvocation } : value.hostInvocation;
+  return {
+    ...value,
+    path: String(firstNonEmpty(value.path, value.graphPath, value.artifactPath) || "").trim(),
+    sha256: String(firstNonEmpty(value.sha256, value.graphSha256, value.artifactHash) || "").trim(),
+    receiptId: String(firstNonEmpty(value.receiptId, value.receipt_id) || "").trim(),
+    command: normalizeCommand(firstNonEmpty(value.command, value.workflowCommand)),
+    stage: String(firstNonEmpty(value.stage, value.stageId) || "").trim(),
+    handoffId: String(firstNonEmpty(value.handoffId, value.handoff_id) || "").trim(),
+    subjectId: String(firstNonEmpty(value.subjectId, value.agentId, value.workerId) || "").trim(),
+    subjectType: String(firstNonEmpty(value.subjectType, value.type) || "").trim(),
+    hostInvocation,
+  };
+}
+
+function validateActiveGraphStateRef(activeGraph, file, issues) {
+  if (!isPlainObject(activeGraph)) {
+    issues.push(issue("active-workflow-state-active-graph-invalid", file, "activeGraph must be null or an object"));
+    return;
+  }
+  for (const [field, value] of [
+    ["activeGraph.path", activeGraph.path],
+    ["activeGraph.sha256", activeGraph.sha256],
+    ["activeGraph.receiptId", activeGraph.receiptId],
+    ["activeGraph.command", activeGraph.command],
+    ["activeGraph.stage", activeGraph.stage],
+    ["activeGraph.handoffId", activeGraph.handoffId],
+    ["activeGraph.subjectId", activeGraph.subjectId],
+    ["activeGraph.hostInvocation.source", activeGraph.hostInvocation?.source],
+    ["activeGraph.hostInvocation.invocationId", activeGraph.hostInvocation?.invocationId || activeGraph.hostInvocation?.invocation_id || activeGraph.hostInvocation?.id],
+  ]) {
+    if (!nonEmptyString(value)) {
+      issues.push(issue("active-workflow-state-active-graph-field-missing", file, field + " is required when activeGraph is present"));
+    }
+  }
+  if (activeGraph.command && !isCommandLike(activeGraph.command)) {
+    issues.push(issue("active-workflow-state-active-graph-command-invalid", file, "activeGraph.command must be a Supervibe slash command"));
+  }
+  if (activeGraph.sha256 && !/^[a-f0-9]{64}$/i.test(activeGraph.sha256)) {
+    issues.push(issue("active-workflow-state-active-graph-hash-invalid", file, "activeGraph.sha256 must be a sha256 hex digest"));
+  }
 }
 
 function normalizeAcceptedAnswer(value) {

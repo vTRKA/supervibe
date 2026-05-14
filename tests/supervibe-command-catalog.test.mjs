@@ -1216,6 +1216,44 @@ test("command-agent-plan CLI treats Codex spawn_agent as logical-role callable",
   }
 });
 
+test("command-agent-plan CLI gives Codex logical subagents concrete agent and skill knowledge", () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-agent-plan-knowledge-"));
+  try {
+    const out = execFileSync(process.execPath, [
+      AGENT_PLAN_SCRIPT,
+      "--root",
+      projectRoot,
+      "--command",
+      "/supervibe-design",
+      "--host",
+      "codex",
+      "--json",
+    ], {
+      cwd: ROOT,
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    const report = JSON.parse(out);
+    const creativeDirector = report.plan.codexSpawnPayloads.find((payload) => payload.agentId === "creative-director");
+
+    assert.ok(creativeDirector);
+    assert.deepEqual(Object.keys(creativeDirector.payload).sort(), ["fork_context", "message"]);
+    assert.equal(creativeDirector.knowledgeContext.status, "ready");
+    assert.deepEqual(creativeDirector.knowledgeContext.missing, []);
+    assert.ok(creativeDirector.knowledgeContext.agentInstructionPaths.some((path) => /agents\/_design\/creative-director\.md$/.test(path)));
+    assert.ok(creativeDirector.knowledgeContext.declaredSkills.length >= 4);
+    assert.equal(creativeDirector.knowledgeContext.skillPaths.length, creativeDirector.knowledgeContext.declaredSkills.length);
+    assert.ok(creativeDirector.knowledgeContext.declaredSkills.includes("supervibe:design-intelligence"));
+    assert.ok(creativeDirector.knowledgeContext.skillPaths.some((entry) => entry.skillId === "supervibe:design-intelligence" && /skills\/design-intelligence\/SKILL\.md$/.test(entry.path)));
+    assert.match(creativeDirector.payload.message, /Knowledge bootstrap:/);
+    assert.match(creativeDirector.payload.message, /agents\/_design\/creative-director\.md/);
+    assert.match(creativeDirector.payload.message, /supervibe:design-intelligence=.*skills\/design-intelligence\/SKILL\.md/);
+    assert.match(creativeDirector.payload.message, /report it as a blocker instead of acting as a generic agent/);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
 test("command-agent-plan --strict fails fast when active scoped receipts are missing", () => {
   const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-agent-plan-strict-active-"));
   try {

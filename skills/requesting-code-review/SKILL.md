@@ -54,7 +54,7 @@ Use the full review packet when:
 
 ## Plan Review User Gate
 
-Plan-review mode is a mandatory reviewer gate, not a controller-only reread. It must include Reviewer Coverage for the baseline reviewers `supervibe-orchestrator`, `systems-analyst`, `architect-reviewer`, and `quality-gate-reviewer`, plus any risk-triggered specialist reviewers. A plan cannot pass review with open critical or major findings, missing reviewer coverage, missing durable review artifact, or missing Next User Decision.
+Plan-review mode is a mandatory reviewer gate routed through `/supervibe-plan --review <plan-path>`, not a controller-only reread or `/supervibe-review`. It must include Reviewer Coverage for the baseline reviewers `supervibe-orchestrator`, `systems-analyst`, `architect-reviewer`, and `quality-gate-reviewer`. The mandatory risk reviewers `security-auditor`, `qa-test-engineer`, `release-governance-reviewer`, and `db-reviewer` must either have trusted current-run reviewer receipts or an explicit user-waived line in the review artifact. A plan cannot pass review with open critical or major findings, missing reviewer coverage, missing trusted receipts, missing durable review artifact, or missing Next User Decision.
 
 After a pass, ask the user whether to atomize, revise, rerun specialist review, inspect readiness, or stop. Do not atomize, create an epic, execute, bump versions, commit, push, or clean up until the current explicit user answer is recorded after that question.
 
@@ -116,7 +116,7 @@ Database/migration/storage topology -> db-reviewer or data specialist
 API/schema/compatibility/idempotency -> API contract reviewer
 UI/browser/accessibility/visual regression -> frontend or UX reviewer
 Performance/resource usage -> performance reviewer
-Plan/workflow/readiness gate -> quality-gate-reviewer plus risk specialists
+Plan/workflow/readiness gate -> /supervibe-plan --review with systems-analyst, quality-gate-reviewer, and mandatory risk reviewers or explicit user waivers
 ```
 
 ## Procedure
@@ -242,7 +242,7 @@ When the input artifact is a plan, produce a review package with:
 - Spec coverage and unresolved questions
 - MVP value, anti-bloat check, and explicit approved/deferred/rejected scope
 - Architecture fit, PRD decision section need, and unresolved architecture decisions
-- Risk-triggered specialist coverage for database, cache, queue, security, API, infrastructure, and frontend areas
+- Risk-triggered specialist coverage for database, cache, queue, security, API, infrastructure, frontend, verification, and release-governance areas
 - Data storage topology, migration safety, backup, restore, and scaling posture when database risk is triggered
 - Cache and queue topology, retry, idempotency, and dead-letter behavior when cache or queue risk is triggered
 - API contract readiness, error envelope, compatibility, and idempotency when API risk is triggered
@@ -257,7 +257,7 @@ When the input artifact is a plan, produce a review package with:
 - Capability assignment, reviewer independence, and wave serialization/blocker reasons
 - Provider-policy safety: no bypass defaults, no hidden background automation, explicit stop/resume/status
 
-Plan-review mode must write a durable artifact using `docs/templates/plan-review-template.md`, validate it with `node scripts/validate-plan-review-artifacts.mjs --file <review-artifact>`, and score against `confidence-rubrics/plan-review.yaml`. Inline notes are diagnostic only. The loop can stop with pass only when the Convergence Ledger shows at least one iteration, zero open critical findings, zero open major findings, an explicit stop reason, and a Next User Decision.
+Plan-review mode must write a durable artifact using `docs/templates/plan-review-template.md`, validate it with `node scripts/validate-plan-review-artifacts.mjs --file <review-artifact>`, and score against `confidence-rubrics/plan-review.yaml`. Inline notes are diagnostic only. The loop can stop with pass only when the Convergence Ledger shows at least one iteration, zero open critical findings, zero open major findings, score >=9, `evidenceGatePass: true`, trusted receipts for every non-waived required reviewer, an explicit stop reason, and a Next User Decision.
 
 If the plan passes, first print a human-first Decision Card with recommendation, `Step N/M` question, choices, resume cursor, and next command. Then print the secondary raw resume block:
 

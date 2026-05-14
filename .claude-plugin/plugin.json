@@ -1,6 +1,6 @@
 {
   "name": "supervibe",
-  "description": "Supervibe plugin: specialist agents, trigger-safe workflow routing, worktree-ready autonomous loops, design intelligence, code graph, project memory, confidence gates, and scaffolding for 25 stacks.",
+  "description": "Supervibe plugin: 98 specialist agents, trigger-safe workflow routing, worktree-ready autonomous loops, design intelligence, code graph, project memory, confidence gates, and scaffolding for 25 stacks.",
   "version": "2.1.35",
   "author": {
     "name": "vTRKA"
@@ -31,6 +31,7 @@
     "./agents/_core/repo-researcher.md",
     "./agents/_core/root-cause-debugger.md",
     "./agents/_core/security-auditor.md",
+    "./agents/_core/stack-developer.md",
     "./agents/_design/accessibility-reviewer.md",
     "./agents/_design/copywriter.md",
     "./agents/_design/creative-director.md",

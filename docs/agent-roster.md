@@ -48,7 +48,7 @@ producer, reviewer, worker, validator, external tool, or receipt issuer when the
 real runtime path exists. If the task has no matching trigger, ask for one
 clarifying detail or route through `/supervibe` instead of guessing.
 
-Total agents: 97
+Total agents: 98
 
 ## Core workflow
 
@@ -60,6 +60,7 @@ Total agents: 97
 - `repo-researcher` - Use BEFORE making changes in unfamiliar code area to map existing structure, patterns, and risks via READ-ONLY exploration backed by supervibe:code-search semantic queries. Stacks: any.
 - `root-cause-debugger` - Use WHEN encountering any bug, test failure, or unexpected behavior to find root cause via hypothesis-evidence-isolation method, never symptom suppression. Stacks: any.
 - `security-auditor` - Use BEFORE merging changes touching auth/secrets/data-handling to audit OWASP Top 10 risks, secrets exposure, permissions, and attack surface; also use as the lead auditor for /supervibe-security-audit remediation loops. Stacks: any.
+- `stack-developer` - Use WHEN an implementation task is stack-agnostic, cross-stack, or not yet routed to a narrower stack specialist. Owns small code changes, bug fixes, CLI/runtime glue, and integration-safe edits with local evidence. Stacks: any.
 
 ## Design and UI
 

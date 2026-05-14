@@ -13,6 +13,7 @@ import {
 } from "./autonomous-loop-tool-adapters.mjs";
 import { createPermissionAudit } from "./autonomous-loop-permission-audit.mjs";
 import { loadProviderCapabilities } from "./supervibe-provider-config-doctor.mjs";
+import { readProviderRuntimeConfigLimits } from "./supervibe-provider-runtime-limits.mjs";
 import {
   defaultRuntimeCleanupRegistryPath,
   summarizeHostManagedSubagentDebtSync,
@@ -349,11 +350,23 @@ function resolveProviderLimitPolicy({ adapterId = "generic-shell-stub", options 
       ?? options["max-concurrency"],
     null,
   );
-  const fallbackDefault = 3;
+  const fallbackDefault = 12;
   const provider = findProviderLimitEntry(providerId, options);
   const limits = provider?.providerLimits || {};
-  const providerMaxThreads = positiveInt(limits.defaultMaxThreads, null);
   const rootDir = options.projectRoot || options.rootDir || process.cwd();
+  const runtimeLimits = readProviderRuntimeConfigLimits({
+    provider,
+    providerId,
+    projectRoot: rootDir,
+    userHome: options.userHome,
+    providerHome: options.providerHome,
+    env: options.env || process.env,
+  });
+  const manifestMaxThreads = positiveInt(limits.defaultMaxThreads, null);
+  const providerMaxThreads = positiveInt(
+    options.providerMaxThreads ?? options["provider-max-threads"],
+    positiveInt(runtimeLimits.maxThreads, manifestMaxThreads),
+  );
   const cleanupDebt = providerId === "codex"
     ? summarizeHostManagedSubagentDebtSync({
         rootDir,
@@ -368,9 +381,14 @@ function resolveProviderLimitPolicy({ adapterId = "generic-shell-stub", options 
   return {
     schemaVersion: 1,
     providerId: provider?.id || providerId,
-    source: provider ? "provider-capabilities-manifest" : "preflight-default",
+    source: runtimeLimits.maxThreads ? "provider-runtime-config" : provider ? "provider-capabilities-manifest" : "preflight-default",
     maxThreadsKey: limits.maxThreadsKey || null,
     providerMaxThreads,
+    providerMaxThreadsSource: runtimeLimits.maxThreads ? "provider-runtime-config" : manifestMaxThreads ? "provider-capabilities-manifest" : "preflight-default",
+    runtimeMaxThreads: runtimeLimits.maxThreads,
+    runtimeConfigPath: runtimeLimits.configPath,
+    runtimeConfigIssue: runtimeLimits.issue,
+    manifestDefaultMaxThreads: manifestMaxThreads,
     hostManagedCleanupRequired: cleanupDebt.count,
     hostManagedCleanupIds: cleanupDebt.closeRequired.map((item) => item.hostInvocationId).filter(Boolean),
     availableProviderThreads: availableThreads,

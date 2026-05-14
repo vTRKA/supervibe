@@ -450,6 +450,29 @@ const COMMAND_SHORTCUTS = Object.freeze([
     nextAction: "Run status first when the user asked to inspect rather than start indexing.",
   },
   {
+    id: "upstream-spec-before-implementation",
+    intent: "supervibe_brainstorm",
+    title: "Capture requirements before planning or execution",
+    command: "/supervibe-brainstorm",
+    description: "Route mixed spec, plan, and implementation requests to the upstream requirements/spec step before planning or execution.",
+    agentContract: copyCommandAgentContract(),
+    agentProfile: getCommandAgentProfile("/supervibe-brainstorm"),
+    aliases: [
+      "write a spec, create the implementation plan, then start implementation",
+      "draft requirements and a plan before implementation",
+      "\u0441\u043e\u0437\u0434\u0430\u0439 \u0441\u043f\u0435\u0446\u0438\u0444\u0438\u043a\u0430\u0446\u0438\u044e \u0438 \u043f\u043b\u0430\u043d, \u043f\u043e\u0442\u043e\u043c \u043d\u0430\u0447\u043d\u0438 \u0440\u0435\u0430\u043b\u0438\u0437\u0430\u0446\u0438\u044e",
+    ],
+    keywordGroups: [
+      ["spec", "specification", "requirements", "prd", "brief", "\u0441\u043f\u0435\u0446\u0438\u0444\u0438\u043a\u0430\u0446\u0438\u044f", "\u0441\u043f\u0435\u043a", "\u0442\u0440\u0435\u0431\u043e\u0432\u0430\u043d\u0438\u044f", "\u0442\u0437"],
+      ["plan", "implementation", "execute", "start implementation", "before implementation", "\u043f\u043b\u0430\u043d", "\u0440\u0435\u0430\u043b\u0438\u0437\u0430\u0446\u0438\u044f", "\u0440\u0435\u0430\u043b\u0438\u0437\u0430\u0446\u0438\u044e", "\u043d\u0430\u0447\u043d\u0438"],
+    ],
+    requiredGroupIndexes: [0, 1],
+    mutationRisk: "delegates-to-slash-command",
+    directRoute: true,
+    commandId: "/supervibe-brainstorm",
+    nextAction: "Run /supervibe-brainstorm first; mixed spec/plan/implementation wording must capture requirements before plan review, atomization, or execution.",
+  },
+  {
     id: "plan-then-execute-natural-language",
     intent: "plan_then_execute",
     title: "Write a detailed plan before atomization and execution",
@@ -1014,7 +1037,7 @@ function createSlashShortcut(profile) {
     : profile.intent || name.replaceAll("-", "_");
   const directRoute = profile.directRoute === true;
   return {
-    id: `shortcut:${name}`,
+    id: profile.id ? `shortcut:${profile.id}` : `shortcut:${name}`,
     intent,
     title: profile.title,
     command: profile.command,
@@ -1052,8 +1075,15 @@ function scoreShortcut(shortcut, text) {
   if (shortcut.id === "plan-then-execute-natural-language" && (looksLikePlanOnlyReviewGate(text) || looksLikeExistingPlanExecution(text))) {
     return null;
   }
-  if (shortcut.command === "/supervibe-execute-plan" && looksLikePlanOnlyReviewGate(text)) {
+  if (shortcut.command === "/supervibe-execute-plan" && (looksLikePlanOnlyReviewGate(text) || looksLikeSlashCommandEvidenceText(text))) {
     return null;
+  }
+  if (shortcut.id === "plan-review-natural-language" && looksLikePlanOnlyReviewGate(text)) {
+    return enrichMatch(copyShortcut(shortcut), {
+      confidence: 0.96,
+      reason: "plan-only review or validation gate requested before execution",
+      matchedGroups: ["plan-only", "review-or-validation"],
+    });
   }
 
   const groups = shortcut.keywordGroups || [];
@@ -1083,25 +1113,34 @@ function looksLikePlanOnlyReviewGate(text) {
     "only plan for now",
     "plan only",
     "only the plan",
-    "только план",
-    "пока только план"
+    "for now only the plan",
+    "for now plan only",
+    "\u0442\u043e\u043b\u044c\u043a\u043e \u043f\u043b\u0430\u043d",
+    "\u043f\u043e\u043a\u0430 \u0442\u043e\u043b\u044c\u043a\u043e \u043f\u043b\u0430\u043d"
   ].some((phrase) => includesPhrase(text, phrase));
   const delayedExecution = [
     "i will say when to start work",
     "will say when to start work",
     "i will say when to start",
     "say when to start work",
-    "потом скажу",
-    "когда начнем",
-    "когда начнём"
+    "\u043f\u043e\u0442\u043e\u043c \u0441\u043a\u0430\u0436\u0443",
+    "\u043a\u043e\u0433\u0434\u0430 \u043d\u0430\u0447\u043d\u0435\u043c",
+    "\u043a\u043e\u0433\u0434\u0430 \u043d\u0430\u0447\u043d\u0451\u043c"
   ].some((phrase) => includesPhrase(text, phrase));
   const asksReview = [
     "review",
     "reviewer",
     "reviewers",
     "plan review",
-    "ревью"
-  ].some((phrase) => includesPhrase(text, phrase));
+    "validate",
+    "validation",
+    "validator",
+    "validators",
+    "\u0440\u0435\u0432\u044c\u044e",
+    "\u043f\u0440\u043e\u0432\u0435\u0440\u044c",
+    "\u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c"
+  ].some((phrase) => includesPhrase(text, phrase))
+    || ["\u0432\u0430\u043b\u0438\u0434\u0430\u0446", "\u0432\u0430\u043b\u0438\u0434\u0438\u0440", "\u0440\u0435\u0432\u044c\u044e\u0435\u0440", "\u043f\u0440\u043e\u0432\u0435\u0440"].some((stem) => text.includes(stem));
   return asksReview && (planOnly || delayedExecution);
 }
 
@@ -1543,24 +1582,30 @@ function parseExplicitSupervibeSlashCommand(request) {
   const text = String(request || "");
   const match = text.match(/(?:^|[\s`"'(])(?<raw>\/supervibe(?:-[a-z0-9-]+)?)(?=$|[\s`"')])(?<args>[^\n]*)/i);
   if (!match?.groups?.raw) return null;
-  if (!isExplicitSupervibeSlashCommandRequest(text, match.index)) return null;
+  const rawStart = match.index + match[0].indexOf(match.groups.raw);
+  if (!isExplicitSupervibeSlashCommandRequest(text, rawStart)) return null;
   return parsedSupervibeCommand(match.groups.raw, match.groups.args);
 }
 
-function isExplicitSupervibeSlashCommandRequest(text, matchIndex = -1) {
+function isExplicitSupervibeSlashCommandRequest(text, rawStart = -1) {
   const raw = String(text || "");
-  const prefix = raw.slice(0, Math.max(0, matchIndex));
+  const prefix = raw.slice(0, Math.max(0, rawStart));
   const normalizedPrefix = normalizeText(prefix);
   if (!normalizedPrefix) return true;
-  if (isNegatedCommandMention(raw, matchIndex)) return false;
+  if (isNegatedCommandMention(raw, rawStart)) return false;
   if (looksLikeSlashCommandEvidencePrefix(normalizedPrefix)) return false;
-  if (countSupervibeSlashMentions(raw) === 1) return true;
+  if (looksLikeShellEmbeddedCommandPrefix(normalizedPrefix)) return false;
   return [
     "active command",
     "current command",
     "active",
     "current",
     "next command",
+    "scoped",
+    "final scoped",
+    "required specialist",
+    "specialist",
+    "handoff",
     "run command",
     "execute command",
     "invoke command",
@@ -1571,6 +1616,11 @@ function isExplicitSupervibeSlashCommandRequest(text, matchIndex = -1) {
     "invoke",
     "start",
     "use",
+    "via",
+    "using",
+    "through",
+    "with",
+    "in",
     "please",
     "pls",
     "kindly",
@@ -1584,9 +1634,31 @@ function isExplicitSupervibeSlashCommandRequest(text, matchIndex = -1) {
     "\u0442\u0435\u043a\u0443\u0449\u0430\u044f \u043a\u043e\u043c\u0430\u043d\u0434\u0430",
     "\u0441\u043b\u0435\u0434\u0443\u044e\u0449\u0430\u044f \u043a\u043e\u043c\u0430\u043d\u0434\u0430",
     "\u043a\u043e\u043c\u0430\u043d\u0434\u0430",
+    "\u043a\u043e\u043c\u0430\u043d\u0434\u0443",
+    "\u0437\u0430\u043f\u0443\u0441\u0442\u0438 \u043a\u043e\u043c\u0430\u043d\u0434\u0443",
   ].some((phrase) => {
     const normalized = normalizeText(phrase);
     return normalizedPrefix.endsWith(normalized) || normalizedPrefix.endsWith(`${normalized}:`);
+  });
+}
+
+function looksLikeShellEmbeddedCommandPrefix(normalizedPrefix) {
+  const shellPrefix = String(normalizedPrefix || "").replace(/[:]+$/g, "").trim();
+  return [
+    "echo",
+    "printf",
+    "cat",
+    "type",
+    "write-output",
+    "set-content",
+    "bash c",
+    "sh c",
+    "cmd c",
+    "powershell command",
+    "pwsh command",
+  ].some((phrase) => {
+    const normalized = normalizeText(phrase);
+    return shellPrefix === normalized || shellPrefix.endsWith(` ${normalized}`);
   });
 }
 
@@ -1600,6 +1672,7 @@ function countSupervibeSlashMentions(value) {
 }
 
 function looksLikeSlashCommandEvidencePrefix(normalizedPrefix) {
+  const evidencePrefix = String(normalizedPrefix || "").replace(/[:]+/g, " ");
   return [
     "example",
     "examples",
@@ -1626,7 +1699,7 @@ function looksLikeSlashCommandEvidencePrefix(normalizedPrefix) {
     "\u0443\u043f\u043e\u043c\u0438\u043d\u0430\u0435\u0442",
     "\u043f\u0435\u0440\u0435\u0447\u0438\u0441\u043b\u044f\u0435\u0442",
     "\u0432\u043d\u0443\u0442\u0440\u0438",
-  ].some((phrase) => includesPhrase(normalizedPrefix, phrase));
+  ].some((phrase) => includesPhrase(evidencePrefix, phrase));
 }
 
 function parseTerminalSupervibeCommand(request) {
@@ -1691,11 +1764,13 @@ function splitSlashCommandRest(rest = "") {
   let index = 0;
   while (index < tokens.length) {
     const token = tokens[index];
+    if (isShellControlToken(token)) break;
     if (!token.startsWith("-")) break;
     args.push(token);
     index += 1;
     const flagName = token.includes("=") ? token.slice(0, token.indexOf("=")) : token;
     if (!token.includes("=") && VALUE_SLASH_FLAGS.has(flagName) && index < tokens.length) {
+      if (isShellControlToken(tokens[index])) break;
       args.push(tokens[index]);
       index += 1;
     }
@@ -1707,7 +1782,14 @@ function splitSlashCommandRest(rest = "") {
 }
 
 function cleanSlashCommandToken(token = "") {
-  return String(token || "").replace(/^[`"']+/, "").replace(/[`\\"",)]+$/g, "");
+  return String(token || "")
+    .replace(/^[`"'({[]+/, "")
+    .replace(/[;|&]+$/g, "")
+    .replace(/[`\\",');\]}]+$/g, "");
+}
+
+function isShellControlToken(token = "") {
+  return /^[;|&]+$/.test(String(token || "").trim());
 }
 
 function portablePluginScriptCommand(command, args = "") {

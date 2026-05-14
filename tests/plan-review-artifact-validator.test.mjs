@@ -86,6 +86,13 @@ test("plan review artifact validator rejects pass with open major finding", asyn
   assert.ok(issues.some((issue) => issue.includes("pass verdict cannot have open critical or major findings")));
 });
 
+test("plan review artifact validator rejects open count wording for blockers", async () => {
+  const markdown = await readFile(FIXTURE, "utf8");
+  const bad = markdown.replace("Critical: 0 Open, 1 Resolved", "Critical: Open count 1, resolved count 0");
+  const issues = validatePlanReviewArtifact(bad);
+  assert.ok(issues.some((issue) => issue.includes("pass verdict cannot have open critical or major findings")));
+});
+
 test("plan review artifact validator rejects missing next user decision", async () => {
   const markdown = await readFile(FIXTURE, "utf8");
   const bad = markdown.replace("- Continue to atomization: run `/supervibe-loop --atomize-plan .supervibe/artifacts/plans/review-loop-hardening.md --plan-review-passed`.", "");
@@ -146,5 +153,6 @@ test("active plan review gate requires trusted reviewer receipts before atomizat
 
   assert.equal(gate.pass, false);
   assert.ok(gate.issues.some((issue) => issue.includes("missing trusted reviewer receipt for supervibe-orchestrator")));
-  assert.ok(gate.issues.every((issue) => issue.includes("repair: node scripts/workflow-receipt.mjs issue")));
+  assert.ok(gate.issues.some((issue) => issue.includes("missing mandatory risk reviewer qa-test-engineer")));
+  assert.ok(gate.issues.some((issue) => issue.includes("repair: node scripts/agent-invocation.mjs log --reviewer")));
 });

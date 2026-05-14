@@ -24,7 +24,7 @@ When Supervibe agents/skills reference Claude Code tools by name, mentally subst
 ## What Supervibe provides
 
 Same Supervibe project context, adapted for Gemini CLI:
-- 97 specialist agents in `./agents/` with responsibilities in `./docs/agent-roster.md`
+- 98 specialist agents in `./agents/` with responsibilities in `./docs/agent-roster.md`
 - Agent smartness is validated by `npm run validate:agent-content-quality`,
   `npm run validate:agent-skill-coverage`, `npm run validate:agent-empirical-hardening`, and `npm run validate:agent-tool-use-matrix`, not by padding files to a line count. Use `npm run supervibe:agent-heatmap` when you need per-agent quality scores instead of a pass/fail answer.
 - Every agent must explain each declared skill in `## Skills`; every process skill must have at least one owning agent.

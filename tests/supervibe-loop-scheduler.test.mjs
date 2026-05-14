@@ -68,6 +68,18 @@ async function seedEvidence(root) {
   await writeFile(join(memoryDir, "code.db"), "fixture-code-index", "utf8");
 }
 
+async function createCodexProviderHome(maxThreads) {
+  const providerHome = await mkdtemp(join(tmpdir(), "supervibe-codex-home-"));
+  await writeFile(join(providerHome, "config.toml"), [
+    "[agents]",
+    `max_threads = ${maxThreads}`,
+    "max_depth = 1",
+    "job_max_runtime_seconds = 1800",
+    "",
+  ].join("\n"), "utf8");
+  return providerHome;
+}
+
 test("assign-ready includes bounded evidence packets in worker and reviewer payloads", async () => {
   const dir = await mkdtemp(join(tmpdir(), "supervibe-assign-ready-"));
   await seedEvidence(dir);
@@ -565,6 +577,8 @@ test("plan wave scheduler caps concurrency from provider manifest and explains d
     planPath,
     "--provider",
     "codex",
+    "--provider-home",
+    join(dir, "missing-codex-provider-home"),
     "--max-concurrency",
     "10",
   ], { cwd: dir, maxBuffer: 1024 * 1024 });
@@ -578,6 +592,94 @@ test("plan wave scheduler caps concurrency from provider manifest and explains d
   assert.match(cli.stdout, /TASK: plan-t06 DECISION: parallel/);
   assert.match(cli.stdout, /TASK: plan-t07 DECISION: parallel/);
   assert.match(cli.stdout, /TASK: plan-t08 DECISION: parallel/);
+});
+
+test("plan-waves defaults Codex concurrency to runtime max_threads", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "supervibe-plan-waves-runtime-max-"));
+  const codexHome = await createCodexProviderHome(12);
+  const planPath = join(dir, "runtime-max-plan.md");
+  const taskBlocks = Array.from({ length: 12 }, (_, index) => {
+    const id = `T${String(index + 1).padStart(2, "0")}`;
+    return [
+      `## Task ${id}: Runtime limited task ${index + 1}`,
+      "**Files:**",
+      `- Modify: \`src/runtime-task-${index + 1}.mjs\``,
+      "**Acceptance Criteria:**",
+      `- ${id} is scheduled from runtime max_threads.`,
+      "```bash",
+      "node --test tests/supervibe-loop-scheduler.test.mjs",
+      "```",
+    ].join("\n");
+  }).join("\n\n");
+  await writeFile(planPath, [
+    "# Runtime Max Threads Implementation Plan",
+    "",
+    "## Delivery Strategy",
+    "- Task budget policy: max tasks per phase=12; max child items per atomization run=80; phase-split required before graph write.",
+    "",
+    taskBlocks,
+  ].join("\n"), "utf8");
+
+  const cli = await execFileAsync(process.execPath, [
+    join(ROOT, "scripts", "supervibe-loop.mjs"),
+    "--plan-waves",
+    planPath,
+    "--provider",
+    "codex",
+  ], {
+    cwd: dir,
+    env: { ...process.env, CODEX_HOME: codexHome },
+    maxBuffer: 1024 * 1024,
+  });
+
+  assert.match(cli.stdout, /REQUESTED_MAX_CONCURRENCY: 12/);
+  assert.match(cli.stdout, /PROVIDER_MAX_THREADS: 12/);
+  assert.match(cli.stdout, /PROVIDER_MAX_THREADS_SOURCE: provider-runtime-config/);
+  assert.match(cli.stdout, /RUNTIME_MAX_THREADS: 12/);
+  assert.match(cli.stdout, /SOURCE: provider-runtime-config/);
+  assert.match(cli.stdout, /EFFECTIVE_MAX_CONCURRENCY: 12/);
+  assert.match(cli.stdout, /TASK: plan-t12 DECISION: parallel/);
+});
+
+test("plan-waves keeps non-Codex providers on the local fallback when max_threads is unavailable", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "supervibe-plan-waves-provider-fallback-"));
+  const planPath = join(dir, "provider-fallback-plan.md");
+  const taskBlocks = Array.from({ length: 13 }, (_, index) => {
+    const id = `T${String(index + 1).padStart(2, "0")}`;
+    return [
+      `## Task ${id}: Fallback task ${index + 1}`,
+      "**Files:**",
+      `- Modify: \`src/fallback-task-${index + 1}.mjs\``,
+      "**Acceptance Criteria:**",
+      `- ${id} is scheduled from local fallback policy.`,
+      "```bash",
+      "node --test tests/supervibe-loop-scheduler.test.mjs",
+      "```",
+    ].join("\n");
+  }).join("\n\n");
+  await writeFile(planPath, [
+    "# Provider Fallback Implementation Plan",
+    "",
+    "## Delivery Strategy",
+    "- Task budget policy: max tasks per phase=13; max child items per atomization run=80; phase-split required before graph write.",
+    "",
+    taskBlocks,
+  ].join("\n"), "utf8");
+
+  const cli = await execFileAsync(process.execPath, [
+    join(ROOT, "scripts", "supervibe-loop.mjs"),
+    "--plan-waves",
+    planPath,
+    "--provider",
+    "opencode",
+  ], { cwd: dir, maxBuffer: 1024 * 1024 });
+
+  assert.match(cli.stdout, /PROVIDER: opencode/);
+  assert.match(cli.stdout, /REQUESTED_MAX_CONCURRENCY: 12/);
+  assert.match(cli.stdout, /PROVIDER_MAX_THREADS: unknown/);
+  assert.match(cli.stdout, /EFFECTIVE_MAX_CONCURRENCY: 12/);
+  assert.match(cli.stdout, /TASK: plan-t12 DECISION: parallel/);
+  assert.match(cli.stdout, /TASK: plan-t13 DECISION: serialized REASON: max concurrency 12 reached/);
 });
 
 test("dispatch-wave blocks new Codex spawns when completed subagent cleanup exhausts provider threads", async () => {
@@ -990,9 +1092,60 @@ test("dispatch-wave reads active work-item graph items and selects disjoint writ
   const serialized = report.dispatches.find((dispatch) => dispatch.taskId === "task-c");
   assert.equal(serialized.status, "serialized");
   assert.match(serialized.blockedReason, /write-set conflict/);
-  const spawnPayload = report.dispatches.find((dispatch) => dispatch.taskId === "task-a").codexSpawnPayload;
+  const assignedDispatch = report.dispatches.find((dispatch) => dispatch.taskId === "task-a");
+  const spawnPayload = assignedDispatch.codexSpawnPayload;
   assert.equal(spawnPayload.agent_type, "worker");
   assert.equal(spawnPayload.fork_context, false);
+  assert.equal(Object.hasOwn(spawnPayload, "task_id"), false);
+  assert.deepEqual(Object.keys(spawnPayload).sort(), ["agent_type", "fork_context", "message"]);
+  assert.match(spawnPayload.message, /Knowledge bootstrap:/);
+  assert.equal(assignedDispatch.codexSpawnKnowledgeContext.agentId, assignedDispatch.primaryAgentId);
+  assert.equal(assignedDispatch.codexSpawnKnowledgeContext.resolvedAgentId, "stack-developer");
+  assert.equal(assignedDispatch.codexSpawnKnowledgeContext.status, "ready");
+  assert.ok(assignedDispatch.codexSpawnKnowledgeContext.agentInstructionPaths.some((path) => /agents\/_core\/stack-developer\.md$/.test(path)));
+  assert.ok(assignedDispatch.codexSpawnKnowledgeContext.declaredSkills.length >= 4);
+  assert.equal(assignedDispatch.codexSpawnKnowledgeContext.skillPaths.length, assignedDispatch.codexSpawnKnowledgeContext.declaredSkills.length);
+  assert.equal(assignedDispatch.codexSpawnMetadata.taskId, "task-a");
+});
+
+test("dispatch-wave blocks codex spawn when specialist knowledge is missing", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "supervibe-dispatch-no-knowledge-"));
+  await seedEvidence(dir);
+  const emptyPluginRoot = join(dir, "empty-plugin");
+  await mkdir(emptyPluginRoot, { recursive: true });
+  const graphPath = join(dir, "graph.json");
+  await writeFile(graphPath, JSON.stringify({
+    kind: "supervibe-work-item-graph",
+    epicId: "epic-no-knowledge",
+    items: [
+      { itemId: "epic-no-knowledge", type: "epic", status: "open", title: "No knowledge" },
+      { itemId: "task-no-knowledge", type: "task", status: "ready", title: "Task without specialist files", parentId: "epic-no-knowledge", blockedBy: [], blocks: [], writeScope: [{ action: "modify", path: "docs/no-knowledge.md" }] },
+    ],
+    tasks: [
+      { id: "task-no-knowledge", status: "ready", dependencies: [], verificationCommands: [] },
+    ],
+    claims: [],
+  }, null, 2), "utf8");
+
+  const cli = await execFileAsync(process.execPath, [
+    join(ROOT, "scripts", "supervibe-loop.mjs"),
+    "--dispatch-wave",
+    "--json",
+    "--file",
+    graphPath,
+    "--plugin-root",
+    emptyPluginRoot,
+    "--max-concurrency",
+    "1",
+  ], { cwd: dir, maxBuffer: 1024 * 1024 });
+  const report = JSON.parse(cli.stdout);
+  const dispatch = report.dispatches.find((item) => item.taskId === "task-no-knowledge");
+  assert.equal(dispatch.status, "blocked");
+  assert.equal(dispatch.assignmentBlocked, true);
+  assert.match(dispatch.blockedReason, /knowledge context incomplete/);
+  assert.equal(dispatch.codexSpawnPayload, null);
+  assert.equal(dispatch.codexSpawnKnowledgeContext.status, "partial");
+  assert.ok(dispatch.codexSpawnKnowledgeContext.missing.includes("agent-instructions"));
 });
 
 test("dispatch-wave blocks ready tasks that overlap active claimed write sets", async () => {

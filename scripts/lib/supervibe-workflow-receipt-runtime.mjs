@@ -31,6 +31,8 @@ const LEDGER_LOCK_RELATIVE_PATH = ".supervibe/memory/workflow-invocation-ledger.
 const DEFAULT_RECEIPT_DIR = ".supervibe/artifacts/_workflow-invocations";
 const ARTIFACT_LINKS_FILE = "artifact-links.json";
 const COMPACT_MANIFEST_TYPE = "supervibe-agent-output-compact-manifest";
+const GENERATED_STATE_RECOVERY_TYPE = "supervibe-generated-state-recovery-policy";
+const GENERATED_STATE_RECOVERY_LOCK_RELATIVE_PATH = ".supervibe/memory/generated-state-recovery.lock";
 const RECEIPT_LOCK_TIMEOUT_MS = 30_000;
 const RECEIPT_LOCK_RETRY_MS = 25;
 const MUTABLE_OUTPUT_PATTERNS = Object.freeze([
@@ -48,6 +50,24 @@ const MUTABLE_OUTPUT_PATTERNS = Object.freeze([
   /\.lock$/i,
   /\.key$/i,
 ]);
+export const WORKFLOW_RECEIPT_REPAIR_OPERATIONS = Object.freeze([
+  "inspect",
+  "reissue",
+  "prune-stale",
+  "rebuild-ledger",
+  "recovery-status",
+]);
+const WORKFLOW_RECEIPT_REPAIR_OPERATION_SET = new Set(WORKFLOW_RECEIPT_REPAIR_OPERATIONS);
+const GENERATED_STATE_PATTERNS = Object.freeze([
+  /^\.supervibe\/memory\/code\.db$/i,
+  /^\.supervibe\/memory\/index\.json$/i,
+  /^\.supervibe\/memory\/work-items\/index\.json$/i,
+  /^\.supervibe\/memory\/workflow-invocation-ledger\.jsonl$/i,
+  /^\.supervibe\/memory\/workflow-receipt-runtime\.key$/i,
+  /^\.supervibe\/memory\/active-plan\.json$/i,
+  /^\.supervibe\/memory\/active-workflows?\.json$/i,
+]);
+
 export function defaultWorkflowReceiptKeyPath(rootDir = process.cwd()) {
   return join(rootDir, ...KEY_RELATIVE_PATH.split("/"));
 }
@@ -58,6 +78,10 @@ export function defaultWorkflowReceiptLedgerPath(rootDir = process.cwd()) {
 
 function defaultWorkflowReceiptLedgerLockPath(rootDir = process.cwd()) {
   return join(rootDir, ...LEDGER_LOCK_RELATIVE_PATH.split("/"));
+}
+
+export function defaultGeneratedStateRecoveryLockPath(rootDir = process.cwd()) {
+  return join(rootDir, ...GENERATED_STATE_RECOVERY_LOCK_RELATIVE_PATH.split("/"));
 }
 
 export async function issueWorkflowInvocationReceipt({
@@ -503,6 +527,178 @@ export function validateWorkflowReceipts(rootDir = process.cwd(), options = {}) 
     nextRepairCommand: repairCommandForReceiptIssues(issues),
     issues,
     diagnostics,
+  };
+}
+
+
+export function classifyWorkflowReceiptRepairCommand(command = "") {
+  const normalized = String(command || "").trim().replace(/\s+/g, " ");
+  const comparable = normalized.replace(/\\/g, "/");
+  const match = comparable.match(/(?:^|\s)(?:node(?:\.exe)?\s+)?(?:\.\/)?scripts\/workflow-receipt\.mjs\s+([a-z-]+)/i);
+  const operation = match?.[1] || "";
+  const allowed = WORKFLOW_RECEIPT_REPAIR_OPERATION_SET.has(operation);
+  return {
+    command: normalized,
+    operation: operation || null,
+    allowed,
+    mutates: operation === "reissue" || operation === "prune-stale" || operation === "rebuild-ledger",
+    reason: allowed
+      ? null
+      : "receipt repair must use workflow-receipt.mjs inspect, reissue, prune-stale, rebuild-ledger, or recovery-status",
+  };
+}
+
+export function assertWorkflowReceiptRepairCommandAllowed(command = "") {
+  const classification = classifyWorkflowReceiptRepairCommand(command);
+  if (!classification.allowed) {
+    throw new Error(classification.reason + ": " + (classification.command || "(missing command)"));
+  }
+  return classification;
+}
+
+export function classifyGeneratedStatePath(path, rootDir = process.cwd()) {
+  const relPath = normalizeInputPath(path, rootDir);
+  const generatedState = GENERATED_STATE_PATTERNS.some((pattern) => pattern.test(relPath));
+  const receiptRepairSurface = /(?:^|\/)workflow-invocation-ledger\.jsonl$|(?:^|\/)workflow-receipt-runtime\.key$|\/_workflow-invocations\//i.test(relPath);
+  return {
+    path: relPath,
+    generatedState,
+    receiptRepairSurface,
+    reason: generatedState ? null : "path is not a known generated Supervibe memory state artifact",
+  };
+}
+
+export async function createGeneratedStateRecoveryPolicy({
+  rootDir = process.cwd(),
+  paths = [],
+  operation = "generated-state-repair",
+  repairCommand = "",
+  postCheckCommands = [],
+  runTimestamp = null,
+  apply = false,
+  lockPath = GENERATED_STATE_RECOVERY_LOCK_RELATIVE_PATH,
+} = {}) {
+  const timestamp = runTimestamp || new Date().toISOString();
+  const normalizedPaths = uniqueStrings(paths).map((item) => normalizeInputPath(item, rootDir));
+  if (normalizedPaths.length === 0) throw new Error("generated-state recovery paths required");
+  const recoveryRoot = normalizeRelPath(".supervibe/artifacts/_workflow-recovery/generated-state/" + sanitizeId(operation) + "/" + sanitizeId(timestamp));
+  const lockRel = normalizeInputPath(lockPath, rootDir);
+  const receiptRepairSurface = normalizedPaths.some((item) => classifyGeneratedStatePath(item, rootDir).receiptRepairSurface);
+  const materialize = async () => {
+    const entries = [];
+    for (const relPath of normalizedPaths) {
+      const classification = classifyGeneratedStatePath(relPath, rootDir);
+      const before = hashGeneratedStatePath(rootDir, relPath);
+      const snapshotPath = normalizeRelPath(recoveryRoot + "/snapshots/" + snapshotNameForGeneratedState(relPath));
+      if (apply && before.exists) {
+        const snapshotAbs = join(rootDir, ...snapshotPath.split("/"));
+        await mkdir(dirname(snapshotAbs), { recursive: true });
+        await writeFile(snapshotAbs, await readFile(join(rootDir, ...relPath.split("/"))));
+      }
+      entries.push({
+        path: relPath,
+        generatedState: classification.generatedState,
+        receiptRepairSurface: classification.receiptRepairSurface,
+        before,
+        snapshot: {
+          path: snapshotPath,
+          exists: before.exists,
+          sha256: before.sha256,
+          bytes: before.bytes,
+        },
+        restore: {
+          command: generatedStateRestoreCommand({ snapshotPath, targetPath: relPath }),
+          targetPath: relPath,
+          sourceSnapshotPath: snapshotPath,
+        },
+      });
+    }
+    const policy = {
+      schemaVersion: 1,
+      type: GENERATED_STATE_RECOVERY_TYPE,
+      operation: String(operation || "generated-state-repair"),
+      generatedAt: timestamp,
+      apply: Boolean(apply),
+      recoveryRoot,
+      lock: {
+        path: lockRel,
+        required: true,
+        mode: "exclusive-file",
+        acquiredDuringApply: Boolean(apply),
+      },
+      repair: {
+        command: String(repairCommand || "").trim(),
+        receiptRepairSurface,
+        receiptRepairCommand: receiptRepairSurface ? classifyWorkflowReceiptRepairCommand(repairCommand) : null,
+      },
+      entries,
+      postCheck: {
+        required: true,
+        commands: uniqueStrings(postCheckCommands),
+      },
+      recoveryStatusCommand: "node scripts/workflow-receipt.mjs recovery-status",
+    };
+    const validation = validateGeneratedStateRecoveryPolicy(rootDir, policy);
+    policy.validation = {
+      pass: validation.pass,
+      issues: validation.issues,
+    };
+    if (apply) {
+      const manifestPath = normalizeRelPath(recoveryRoot + "/generated-state-recovery.json");
+      const manifestAbs = join(rootDir, ...manifestPath.split("/"));
+      const manifestBytes = JSON.stringify(policy, null, 2) + "\n";
+      await mkdir(dirname(manifestAbs), { recursive: true });
+      await writeFile(manifestAbs, manifestBytes, "utf8");
+      return {
+        ...policy,
+        manifest: {
+          path: manifestPath,
+          sha256: sha256(manifestBytes),
+          bytes: Buffer.byteLength(manifestBytes),
+        },
+      };
+    }
+    return policy;
+  };
+  if (!apply) return materialize();
+  return withGeneratedStateRecoveryLock(rootDir, lockRel, materialize);
+}
+
+export function validateGeneratedStateRecoveryPolicy(rootDir = process.cwd(), policy = {}, options = {}) {
+  const issues = [];
+  if (policy.type !== GENERATED_STATE_RECOVERY_TYPE) issues.push(policyIssue("generated-state-recovery-type", "generated-state recovery policy type missing or invalid"));
+  if (!policy.lock?.required || !policy.lock?.path) issues.push(policyIssue("generated-state-recovery-lock-missing", "generated-state recovery requires an exclusive lock path"));
+  const entries = Array.isArray(policy.entries) ? policy.entries : [];
+  if (entries.length === 0) issues.push(policyIssue("generated-state-recovery-entries-missing", "generated-state recovery requires at least one state entry"));
+  for (const [index, entry] of entries.entries()) {
+    const label = entry?.path || "entry[" + index + "]";
+    const classification = classifyGeneratedStatePath(label, rootDir);
+    if (!classification.generatedState && options.allowUnknownGeneratedStatePaths !== true) {
+      issues.push(policyIssue("generated-state-path-unsupported", label + ": " + classification.reason));
+    }
+    if (entry?.before?.exists !== false && !entry?.before?.sha256) {
+      issues.push(policyIssue("generated-state-before-hash-missing", label + ": before sha256 is required"));
+    }
+    if (!entry?.snapshot?.path || (entry.snapshot.exists !== false && !entry.snapshot.sha256)) {
+      issues.push(policyIssue("generated-state-snapshot-missing", label + ": snapshot path and hash are required"));
+    }
+    if (!entry?.restore?.command || !entry.restore?.sourceSnapshotPath || !entry.restore?.targetPath) {
+      issues.push(policyIssue("generated-state-restore-missing", label + ": restore command, source snapshot, and target path are required"));
+    }
+  }
+  const postChecks = Array.isArray(policy.postCheck?.commands) ? policy.postCheck.commands.filter(Boolean) : [];
+  if (policy.postCheck?.required !== true || postChecks.length === 0) {
+    issues.push(policyIssue("generated-state-post-check-missing", "generated-state recovery requires at least one post-check command"));
+  }
+  const receiptRepairSurface = policy.repair?.receiptRepairSurface === true
+    || entries.some((entry) => classifyGeneratedStatePath(entry?.path || "", rootDir).receiptRepairSurface);
+  if (receiptRepairSurface) {
+    const repair = classifyWorkflowReceiptRepairCommand(policy.repair?.command || "");
+    if (!repair.allowed) issues.push(policyIssue("receipt-repair-command-unsupported", repair.reason));
+  }
+  return {
+    pass: issues.length === 0,
+    issues,
   };
 }
 
@@ -1462,6 +1658,71 @@ function stableStringify(value) {
     return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(",")}}`;
   }
   return JSON.stringify(value);
+}
+
+
+function hashGeneratedStatePath(rootDir, path) {
+  const relPath = normalizeInputPath(path, rootDir);
+  const absPath = join(rootDir, ...relPath.split("/"));
+  if (!existsSync(absPath)) {
+    return {
+      exists: false,
+      sha256: null,
+      bytes: 0,
+      mtimeMs: null,
+    };
+  }
+  const bytes = readFileSync(absPath);
+  const stats = statSync(absPath);
+  return {
+    exists: true,
+    sha256: sha256(bytes),
+    bytes: bytes.length,
+    mtimeMs: stats.mtimeMs,
+  };
+}
+
+function snapshotNameForGeneratedState(path) {
+  const normalized = normalizeRelPath(path);
+  const suffix = normalized.endsWith(".jsonl") ? ".jsonl" : normalized.endsWith(".db") ? ".db" : ".json";
+  return normalized.replace(/[^A-Za-z0-9._-]+/g, "__") + suffix;
+}
+
+function generatedStateRestoreCommand({ snapshotPath, targetPath } = {}) {
+  const script = "const fs=require('node:fs');const path=require('node:path');fs.mkdirSync(path.dirname(process.argv[2]),{recursive:true});fs.copyFileSync(process.argv[1],process.argv[2]);";
+  return "node -e " + JSON.stringify(script) + " " + JSON.stringify(snapshotPath) + " " + JSON.stringify(targetPath);
+}
+
+async function withGeneratedStateRecoveryLock(rootDir, lockPath, callback) {
+  const relPath = normalizeInputPath(lockPath, rootDir);
+  const absPath = join(rootDir, ...relPath.split("/"));
+  await mkdir(dirname(absPath), { recursive: true });
+  const started = Date.now();
+  let handle = null;
+  while (!handle) {
+    try {
+      handle = await open(absPath, "wx");
+    } catch (error) {
+      if (error?.code !== "EEXIST") throw error;
+      if (Date.now() - started > RECEIPT_LOCK_TIMEOUT_MS) {
+        throw new Error("generated-state recovery lock timeout: " + relPath);
+      }
+      await sleep(RECEIPT_LOCK_RETRY_MS);
+    }
+  }
+  try {
+    await handle.writeFile(process.pid + ":" + new Date().toISOString() + "\n", "utf8");
+    return await callback();
+  } finally {
+    await handle.close();
+    await unlink(absPath).catch((error) => {
+      if (error?.code !== "ENOENT") throw error;
+    });
+  }
+}
+
+function policyIssue(code, message, extra = {}) {
+  return { code, message, ...extra };
 }
 
 function normalizeRelPath(path) {

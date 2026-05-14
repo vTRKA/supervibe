@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import {
   buildPreflight,
@@ -7,6 +10,19 @@ import {
   createPreflightQuestions,
 } from "../scripts/lib/autonomous-loop-preflight-intake.mjs";
 import { validateAgenticQuestion } from "../scripts/lib/supervibe-dialogue-contract.mjs";
+
+function createCodexProviderHome(maxThreads) {
+  const providerHome = mkdtempSync(join(tmpdir(), "supervibe-codex-home-"));
+  mkdirSync(providerHome, { recursive: true });
+  writeFileSync(join(providerHome, "config.toml"), [
+    "[agents]",
+    `max_threads = ${maxThreads}`,
+    "max_depth = 1",
+    "job_max_runtime_seconds = 1800",
+    "",
+  ].join("\n"), "utf8");
+  return providerHome;
+}
 
 test("server deploy request requires full preflight and safe access references", () => {
   assert.equal(classifyPreflight({ request: "deploy to production server" }), "full");
@@ -39,13 +55,16 @@ test("preflight keeps dry-run explicit and defaults configured providers to real
   const dryRun = buildPreflight({ request: "validate integrations", options: { dryRun: true } });
   assert.equal(dryRun.execution_policy.mode, "dry-run");
 
+  const codexProjectRoot = mkdtempSync(join(tmpdir(), "supervibe-preflight-codex-"));
   const codex = buildPreflight({
     request: "finish epic",
     options: {
+      projectRoot: codexProjectRoot,
       tool: "codex",
       availableCommands: { codex: true },
       allowSpawn: true,
       permissionPromptBridge: true,
+      providerHome: "missing-codex-provider-home",
     },
   });
   assert.equal(codex.execution_policy.mode, "fresh-context");
@@ -59,14 +78,17 @@ test("preflight keeps dry-run explicit and defaults configured providers to real
 });
 
 test("preflight caps requested concurrency to provider max threads", () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-preflight-cap-"));
   const preflight = buildPreflight({
     request: "finish epic",
     options: {
+      projectRoot,
       tool: "codex",
       availableCommands: { codex: true },
       maxConcurrentAgents: 10,
       allowSpawn: true,
       permissionPromptBridge: true,
+      providerHome: "missing-codex-provider-home",
     },
   });
 
@@ -74,6 +96,40 @@ test("preflight caps requested concurrency to provider max threads", () => {
   assert.equal(preflight.provider_limit_policy.requestedMaxConcurrentAgents, 10);
   assert.equal(preflight.provider_limit_policy.effectiveMaxConcurrentAgents, 8);
   assert.equal(preflight.provider_limit_policy.capped, true);
+});
+
+test("preflight uses Codex runtime max_threads and keeps non-Codex providers on fallback", () => {
+  const providerHome = createCodexProviderHome(12);
+  const codexProjectRoot = mkdtempSync(join(tmpdir(), "supervibe-preflight-runtime-"));
+  const codex = buildPreflight({
+    request: "finish epic",
+    options: {
+      projectRoot: codexProjectRoot,
+      tool: "codex",
+      availableCommands: { codex: true },
+      allowSpawn: true,
+      permissionPromptBridge: true,
+      providerHome,
+    },
+  });
+
+  assert.equal(codex.max_concurrent_agents, 12);
+  assert.equal(codex.provider_limit_policy.providerMaxThreads, 12);
+  assert.equal(codex.provider_limit_policy.runtimeMaxThreads, 12);
+  assert.equal(codex.provider_limit_policy.providerMaxThreadsSource, "provider-runtime-config");
+  assert.equal(codex.provider_limit_policy.source, "provider-runtime-config");
+
+  const opencodeProjectRoot = mkdtempSync(join(tmpdir(), "supervibe-preflight-opencode-"));
+  const opencode = buildPreflight({
+    request: "finish epic",
+    options: {
+      projectRoot: opencodeProjectRoot,
+      tool: "opencode",
+    },
+  });
+  assert.equal(opencode.max_concurrent_agents, 12);
+  assert.equal(opencode.provider_limit_policy.providerMaxThreads, null);
+  assert.equal(opencode.provider_limit_policy.effectiveMaxConcurrentAgents, 12);
 });
 
 test("preflight blocks fresh-context execution when provider adapter is unavailable", () => {

@@ -28,10 +28,19 @@ export function detectUnderperformers(allInvocations, opts = {}) {
     if (invs.length < minInv) continue;
     const sorted = invs.slice().sort((a, b) => new Date(a.ts) - new Date(b.ts));
     const recent = sorted.slice(-TREND_WINDOW);
+    const role = classifyInvocationRole(agent_id, recent);
 
     const avg = recent.reduce((s, e) => s + (e.confidence_score || 0), 0) / recent.length;
     if (avg < confThreshold) {
-      flagged.push({ agent_id, reason: 'low-avg-confidence', value: avg.toFixed(2) });
+      flagged.push({
+        agent_id,
+        reason: 'low-avg-confidence',
+        value: avg.toFixed(2),
+        signal: 'confidence',
+        role,
+        blocking: false,
+        window: recent.length,
+      });
       continue;
     }
 
@@ -45,12 +54,25 @@ export function detectUnderperformers(allInvocations, opts = {}) {
         flagged.push({
           agent_id,
           reason: 'rising-override-rate',
-          value: `${(fhRate*100).toFixed(0)}% → ${(shRate*100).toFixed(0)}%`,
+          value: `${(fhRate*100).toFixed(0)}% -> ${(shRate*100).toFixed(0)}%`,
+          signal: 'override-rate',
+          role,
+          blocking: false,
+          window: recent.length,
         });
       }
     }
   }
   return flagged;
+}
+
+function classifyInvocationRole(agentId = '', invocations = []) {
+  const subjectTypes = new Set(invocations
+    .map((inv) => String(inv.subject_type || inv.subjectType || inv.role || '').toLowerCase())
+    .filter(Boolean));
+  if (subjectTypes.has('reviewer') || /(^|[-_])reviewer($|[-_])|review/i.test(String(agentId))) return 'reviewer';
+  if (subjectTypes.has('worker')) return 'worker';
+  return 'agent';
 }
 
 function isFixtureInvocation(inv) {

@@ -49,6 +49,12 @@ import { buildExecutionWaves, formatWaveStatus, selectSafeExecutionWave, taskWri
 import { defaultRuntimeCleanupRegistryPath, summarizeHostManagedSubagentDebtSync } from "./lib/runtime-cleanup-registry.mjs";
 import { createHappyPathPlan, formatHappyPathPlan } from "./lib/supervibe-happy-path.mjs";
 import { formatEpicCompletionReport, validateEpicCompletion } from "./lib/supervibe-epic-completion-validator.mjs";
+import {
+  graphIdentity as trustedGraphIdentity,
+  isTrustedGraphCompletionReceiptForGraph,
+  isTrustedTaskCompletionReceiptForGraph,
+  trustedReceiptScopeFromReceipt,
+} from "./lib/supervibe-receipt-completion-trust.mjs";
 import { buildLoopCompletionDecision } from "./lib/supervibe-release-path.mjs";
 import { formatStageDecisionCard } from "./lib/supervibe-post-stage-actions.mjs";
 import { createPreLoopSummaryModel } from "./lib/supervibe-ui-server.mjs";
@@ -66,6 +72,7 @@ import {
   summarizeTaskBudgetPolicy,
 } from "./lib/supervibe-task-budget-policy.mjs";
 import { PRESET_NAMES, formatPresetSummary, selectWorkerPreset } from "./lib/supervibe-worker-reviewer-presets.mjs";
+import { appendKnowledgeBootstrap, buildAgentKnowledgeContext } from "./lib/supervibe-agent-knowledge-context.mjs";
 import { checkpointDiagnostics, formatCheckpointDiagnostics, readAgentCheckpoint, resumeAgentCheckpoint } from "./lib/supervibe-agent-checkpoints.mjs";
 import {
   createWorktreeSessionRecord,
@@ -86,9 +93,12 @@ import {
   TOOL_ADAPTER_IDS,
 } from "./lib/autonomous-loop-tool-adapters.mjs";
 import { loadProviderCapabilities } from "./lib/supervibe-provider-config-doctor.mjs";
+import { readProviderRuntimeConfigLimits } from "./lib/supervibe-provider-runtime-limits.mjs";
 import { startBackgroundNodeScript } from "./lib/supervibe-process-manager.mjs";
 import { selectHostAdapter } from "./lib/supervibe-host-detector.mjs";
 import { validatePlanReviewGateForPlan } from "./validate-plan-review-artifacts.mjs";
+
+const PLUGIN_ROOT = resolve(fileURLToPath(new URL("../", import.meta.url)));
 import {
   createFinalReviewerSweep,
   evaluateFinalReviewerSweep,
@@ -223,6 +233,9 @@ function parseArgs(argv) {
     "validate-completion",
     "completion-status",
     "close-eligible",
+    "adopt-completed",
+    "reconcile-receipts",
+    "allow-unbound-receipts",
     "require-release-full-check",
     "allow-missing-release-full-check",
     "allow-dry-run-evidence",
@@ -529,6 +542,50 @@ function buildReadyAssignmentDispatches(tasks = [], {
     const reviewMode = args.reviewMode || args["review-mode"] || "final-sweep";
     const dispatch = dispatchTask({ ...task, id: taskId }, { useCapabilityRegistry: true, reviewMode });
     const assignmentExplanation = attachVerificationPolicyToExplanation(dispatch.assignmentExplanation, verificationPolicy);
+    const codexSpawnKnowledgeContext = buildAgentKnowledgeContext({
+      agentId: dispatch.primaryAgentId,
+      projectRoot: rootDir,
+      pluginRoot: args["plugin-root"] || process.env.SUPERVIBE_PLUGIN_ROOT || PLUGIN_ROOT,
+      hostAgentsFolder: ".codex/agents",
+    });
+    if (codexSpawnKnowledgeContext.status !== "ready") {
+      const knowledgeBlockedReason = [
+        "codex spawn knowledge context incomplete",
+        dispatch.primaryAgentId,
+        (codexSpawnKnowledgeContext.missing || []).join(",") || "unknown-missing-context",
+      ].join(": ");
+      return {
+        ...dispatch,
+        status: "blocked",
+        assignmentBlocked: true,
+        blockedReason: knowledgeBlockedReason,
+        writeSet,
+        writeSetLock: null,
+        evidencePacket,
+        verificationPolicy,
+        assignmentExplanation,
+        workerAssignmentPayload: null,
+        reviewerAssignmentPayload: null,
+        codexSpawnKnowledgeContext,
+        codexSpawnMetadata: {
+          taskId: dispatch.taskId,
+          agentId: dispatch.primaryAgentId,
+          evidencePacket,
+          verificationPolicy,
+        },
+        codexSpawnPayload: null,
+      };
+    }
+    const codexSpawnMessage = appendKnowledgeBootstrap([
+      `Supervibe work item ${dispatch.taskId}: ${task.title || task.goal || "assigned task"}.`,
+      `Supervibe specialist role: ${dispatch.primaryAgentId}.`,
+      "You are not alone in the codebase; do not revert edits made by others and keep to your assigned write set.",
+      `Owned write set: ${writeSet.join(", ")}`,
+      "Do not run tests or validators during development for plan/graph/task work; they are release-gate only.",
+      `Non-test/non-validator evidence allowed now: ${verificationPolicy.targetedCommands.join(" && ") || "none; collect implementation evidence and defer test/validator execution"}.`,
+      `Deferred test/validator/full verification: ${verificationPolicy.deferredFullCommands.join(" && ") || "none"}.`,
+      "Final response must list changed file paths, non-test/non-validator evidence, deferred tests/validators, and any blockers.",
+    ].join("\n"), codexSpawnKnowledgeContext);
     const workerAssignmentPayload = {
       agentId: dispatch.primaryAgentId,
       taskId: dispatch.taskId,
@@ -559,19 +616,17 @@ function buildReadyAssignmentDispatches(tasks = [], {
         verificationCommands: verificationPolicy.targetedCommands,
         deferredFullVerificationCommands: verificationPolicy.deferredFullCommands,
       },
+      codexSpawnKnowledgeContext,
+      codexSpawnMetadata: {
+        taskId: dispatch.taskId,
+        agentId: dispatch.primaryAgentId,
+        evidencePacket,
+        verificationPolicy,
+      },
       codexSpawnPayload: {
         agent_type: "worker",
         fork_context: false,
-        task_id: dispatch.taskId,
-        message: [
-          `Supervibe work item ${dispatch.taskId}: ${task.title || task.goal || "assigned task"}.`,
-          "You are not alone in the codebase; do not revert edits made by others and keep to your assigned write set.",
-          `Owned write set: ${writeSet.join(", ")}`,
-          "Do not run tests or validators during development for plan/graph/task work; they are release-gate only.",
-          `Non-test/non-validator evidence allowed now: ${verificationPolicy.targetedCommands.join(" && ") || "none; collect implementation evidence and defer test/validator execution"}.`,
-          `Deferred test/validator/full verification: ${verificationPolicy.deferredFullCommands.join(" && ") || "none"}.`,
-          "Final response must list changed file paths, non-test/non-validator evidence, deferred tests/validators, and any blockers.",
-        ].join("\n"),
+        message: codexSpawnMessage,
       },
     };
   });
@@ -1231,6 +1286,10 @@ async function main() {
     return;
   }
 
+  if (args["adopt-completed"] || args["reconcile-receipts"]) {
+    await runReceiptAdoptionCommand({ rootDir, args });
+    return;
+  }
   const workItemAction = resolveWorkItemAction(args);
   if (args["claim-ready"]) {
     const graphPath = args.file
@@ -1270,6 +1329,34 @@ async function main() {
     if (workItemAction.type === "delete" && !dryRun && !args.yes && !args.force) {
       throw new Error("delete requires --preview, --dry-run, --yes, or --force");
     }
+    let closeReceiptAdoption = null;
+    if (["close", "complete"].includes(workItemAction.type) && (args.receipt || args.receiptId || args["receipt-id"])) {
+      assertCanonicalWorkItemGraphPath(rootDir, graphPath, "receipt adoption");
+      const graph = JSON.parse(await readFile(graphPath, "utf8"));
+      closeReceiptAdoption = validateReceiptAdoptionForWorkItem({
+        rootDir,
+        graph,
+        taskId: workItemAction.itemId,
+        receiptId: args.receipt || args.receiptId || args["receipt-id"],
+        allowUnbound: Boolean(args["allow-unbound-receipts"]),
+      });
+      if (!closeReceiptAdoption.pass) {
+        console.log("SUPERVIBE_RECEIPT_ADOPTION_FAILED");
+        console.log(`ITEM: ${workItemAction.itemId}`);
+        console.log(`RECEIPT: ${args.receipt || args.receiptId || args["receipt-id"]}`);
+        for (const issue of closeReceiptAdoption.issues || []) console.log(`ISSUE: ${issue}`);
+        console.log(`GRAPH: ${graphPath}`);
+        process.exitCode = 1;
+        return;
+      }
+      workItemAction.verificationEvidence = [
+        ...(workItemAction.verificationEvidence || []),
+        createReceiptAdoptionEvidence(closeReceiptAdoption.receipt, workItemAction.itemId, {
+          outputSummary: args.evidence || args["output-summary"] || args.summary,
+          source: "supervibe-loop:close-receipt-adoption",
+        }),
+      ];
+    }
     if (workItemAction.type === "close" && !args.force) {
       const graph = JSON.parse(await readFile(graphPath, "utf8"));
       const target = (graph.items || []).find((item) => (item.itemId || item.id) === workItemAction.itemId);
@@ -1279,7 +1366,10 @@ async function main() {
           requireEvidence: !args["no-evidence-required"],
           allowDryRunEvidence: Boolean(args["allow-dry-run-evidence"]),
           requireTrustedEvidence: Boolean(args["require-trusted-evidence"]),
-          trustedReceiptIds: trustedReceiptIdsForValidation(rootDir, {
+          trustedReceiptIds: trustedReceiptIdsForValidation(rootDir, graph, {
+            explicitReceiptIds: splitCsv(args["trusted-receipts"]),
+          }),
+          trustedReceiptScopesById: trustedReceiptScopesForValidation(rootDir, graph, {
             explicitReceiptIds: splitCsv(args["trusted-receipts"]),
           }),
           trustedGraphReceiptIds: trustedGraphReceiptIdsForValidation(rootDir, graph, {
@@ -1348,6 +1438,10 @@ async function main() {
     console.log(`CHANGED: ${result.changed}`);
     console.log(`DRY_RUN: ${result.dryRun}`);
     if (result.conflict) console.log(`CONFLICT: ${result.conflict.reason}`);
+    if (closeReceiptAdoption?.receiptId) {
+      console.log(`RECEIPT_ADOPTED: ${closeReceiptAdoption.receiptId}`);
+      console.log("RECEIPT_TRUSTED: true");
+    }
     if (result.createdItems?.length) console.log(`CREATED_ITEMS: ${result.createdItems.join(",")}`);
     if (result.dependency) console.log(`DEPENDENCY: ${result.dependency.from}->${result.dependency.to}:${result.dependency.type}`);
     console.log(`GRAPH: ${graphPath}`);
@@ -1682,9 +1776,12 @@ async function main() {
       requireEvidence: !args["no-evidence-required"],
       allowDryRunEvidence: Boolean(args["allow-dry-run-evidence"]),
       requireTrustedEvidence: Boolean(args["require-trusted-evidence"]),
-      trustedReceiptIds: trustedReceiptIdsForValidation(rootDir, {
-        explicitReceiptIds: splitCsv(args["trusted-receipts"]),
-      }),
+      trustedReceiptIds: trustedReceiptIdsForValidation(rootDir, graph, {
+            explicitReceiptIds: splitCsv(args["trusted-receipts"]),
+          }),
+          trustedReceiptScopesById: trustedReceiptScopesForValidation(rootDir, graph, {
+            explicitReceiptIds: splitCsv(args["trusted-receipts"]),
+          }),
       trustedGraphReceiptIds: trustedGraphReceiptIdsForValidation(rootDir, graph, {
         explicitReceiptIds: splitCsv(args["trusted-receipts"]),
       }),
@@ -2598,15 +2695,266 @@ function normalizeLocalPort(value) {
   return port;
 }
 
-function trustedReceiptIdsForValidation(rootDir, { explicitReceiptIds = [] } = {}) {
+async function runReceiptAdoptionCommand({ rootDir, args } = {}) {
+  const graphPath = args.file
+    ? resolve(rootDir, args.file)
+    : await resolveActiveWorkItemGraphPath({ rootDir });
+  if (!graphPath) throw new Error("adopt-completed requires --file <graph.json> or an active work graph");
+  assertCanonicalWorkItemGraphPath(rootDir, graphPath, "receipt adoption");
+  const graph = JSON.parse(await readFile(graphPath, "utf8"));
+  const explicitMap = parseReceiptAdoptionMap(args.map || args["adoption-map"]);
+  const fromReceiptIds = splitCsv(args["from-receipts"] || args.receipts || "");
+  const previewOnly = !args.apply || Boolean(args["dry-run"] || args.preview);
+  const adoption = createReceiptAdoptionPlan({
+    rootDir,
+    graph,
+    explicitMap,
+    fromReceiptIds,
+    allowUnbound: Boolean(args["allow-unbound-receipts"]),
+  });
+  console.log("SUPERVIBE_WORK_ITEM_RECEIPT_ADOPTION");
+  console.log(`GRAPH: ${graphPath}`);
+  console.log(`APPLIED: ${!previewOnly}`);
+  console.log(`ALLOW_UNBOUND_RECEIPTS: ${Boolean(args["allow-unbound-receipts"])}`);
+  console.log(`CANDIDATES: ${adoption.candidates.length}`);
+  for (const candidate of adoption.candidates) {
+    console.log(`CANDIDATE: ${candidate.taskId}<=${candidate.receiptId} SOURCE: ${candidate.matchSource}`);
+  }
+  for (const rejected of adoption.rejected) {
+    console.log(`REJECTED: ${rejected.receiptId || rejected.taskId || "unknown"} REASON: ${rejected.reason}`);
+  }
+  if (previewOnly) {
+    console.log(`NEXT_ACTION: run /supervibe-loop --adopt-completed --apply --file ${graphPath}${adoption.candidates.length ? "" : " after adding --map <task-id>=<receipt-id>"}`);
+    if (adoption.rejected.some((item) => item.reason === "ambiguous-task-match")) process.exitCode = 1;
+    return;
+  }
+  if (adoption.candidates.length === 0) {
+    process.exitCode = 1;
+    console.log("NEXT_ACTION: no trusted receipt adoption candidates; pass --map <task-id>=<receipt-id> or inspect receipt trust");
+    return;
+  }
+  const adopted = [];
+  for (const candidate of adoption.candidates) {
+    const result = await mutateWorkItemGraphFile(graphPath, {
+      type: "complete",
+      itemId: candidate.taskId,
+      actor: args.actor || args.owner || "receipt-adoption",
+      reason: args.reason || "trusted existing worker receipt adopted into active graph",
+      verificationEvidence: [createReceiptAdoptionEvidence(candidate.receipt, candidate.taskId, {
+        outputSummary: args.evidence || args["output-summary"] || args.summary,
+      })],
+      rootDir,
+      force: Boolean(args.force),
+    });
+    adopted.push({ ...candidate, changed: result.changed, autoClosedCoveredItems: result.autoClosedCoveredItems || [] });
+  }
+  console.log(`ADOPTED: ${adopted.length}`);
+  for (const item of adopted) {
+    console.log(`TASK: ${item.taskId} RECEIPT_ADOPTED: ${item.receiptId} RECEIPT_TRUSTED: true CHANGED: ${item.changed} AUTO_CLOSED: ${item.autoClosedCoveredItems.join(",") || "none"}`);
+  }
+}
+
+function createReceiptAdoptionPlan({ rootDir, graph, explicitMap = [], fromReceiptIds = [], allowUnbound = false } = {}) {
+  const receipts = readWorkflowReceipts(rootDir);
+  const byId = new Map(receipts.filter((receipt) => receipt?.receiptId).map((receipt) => [String(receipt.receiptId), receipt]));
+  const candidates = [];
+  const rejected = [];
+  if (explicitMap.length > 0) {
+    for (const entry of explicitMap) {
+      const validation = validateReceiptAdoptionForWorkItem({ rootDir, graph, taskId: entry.taskId, receiptId: entry.receiptId, receipt: byId.get(entry.receiptId), allowUnbound });
+      if (validation.pass) candidates.push({ taskId: entry.taskId, receiptId: entry.receiptId, receipt: validation.receipt, matchSource: "explicit-map" });
+      else rejected.push({ taskId: entry.taskId, receiptId: entry.receiptId, reason: validation.issues.join("; ") });
+    }
+    return dedupeAdoptionCandidates({ candidates, rejected, explicit: true });
+  }
+
+  const requested = new Set((fromReceiptIds || []).map(String).filter(Boolean));
+  for (const receipt of receipts) {
+    if (!receipt?.receiptId) continue;
+    const receiptId = String(receipt.receiptId);
+    if (requested.size > 0 && !requested.has(receiptId)) continue;
+    const taskId = inferReceiptAdoptionTaskId({ receipt, graph });
+    if (!taskId) {
+      rejected.push({ receiptId, reason: "no-unambiguous-task-match" });
+      continue;
+    }
+    const validation = validateReceiptAdoptionForWorkItem({ rootDir, graph, taskId, receiptId, receipt, allowUnbound });
+    if (validation.pass) candidates.push({ taskId, receiptId, receipt: validation.receipt, matchSource: receiptTaskBinding(receipt).taskId ? "receipt-task-binding" : "source-plan-stage-inference" });
+    else rejected.push({ taskId, receiptId, reason: validation.issues.join("; ") });
+  }
+  return dedupeAdoptionCandidates({ candidates, rejected, explicit: false });
+}
+
+function dedupeAdoptionCandidates({ candidates = [], rejected = [], explicit = false } = {}) {
+  const byTask = new Map();
+  const byReceipt = new Map();
+  for (const candidate of candidates) {
+    byTask.set(candidate.taskId, [...(byTask.get(candidate.taskId) || []), candidate]);
+    byReceipt.set(candidate.receiptId, [...(byReceipt.get(candidate.receiptId) || []), candidate]);
+  }
+  const accepted = [];
+  if (explicit) {
+    const duplicateTaskIds = new Set([...byTask.entries()].filter(([, entries]) => entries.length > 1).map(([taskId]) => taskId));
+    const duplicateReceiptIds = new Set([...byReceipt.entries()].filter(([, entries]) => entries.length > 1).map(([receiptId]) => receiptId));
+    for (const candidate of candidates) {
+      if (duplicateTaskIds.has(candidate.taskId)) {
+        rejected.push({ taskId: candidate.taskId, receiptId: candidate.receiptId, reason: "duplicate-task-map" });
+        continue;
+      }
+      if (duplicateReceiptIds.has(candidate.receiptId)) {
+        rejected.push({ taskId: candidate.taskId, receiptId: candidate.receiptId, reason: "duplicate-receipt-map" });
+        continue;
+      }
+      accepted.push(candidate);
+    }
+    return { candidates: accepted, rejected };
+  }
+  for (const [taskId, entries] of byTask) {
+    if (entries.length === 1) {
+      accepted.push(...entries);
+      continue;
+    }
+    for (const entry of entries) rejected.push({ taskId, receiptId: entry.receiptId, reason: "ambiguous-task-match" });
+  }
+  return { candidates: accepted, rejected };
+}
+
+function validateReceiptAdoptionForWorkItem({ rootDir, graph, taskId, receiptId, receipt = null, allowUnbound = false } = {}) {
+  const issues = [];
+  const normalizedTaskId = String(taskId || "").trim();
+  const normalizedReceiptId = String(receiptId || "").trim();
+  if (!normalizedTaskId) issues.push("task id missing");
+  if (!normalizedReceiptId) issues.push("receipt id missing");
+  const target = findGraphEntry(graph, normalizedTaskId);
+  if (!target) issues.push(`work item not found: ${normalizedTaskId}`);
+  if (target?.type === "epic") issues.push("epic receipts must use final release close, not task adoption");
+  const resolvedReceipt = receipt || readWorkflowReceipts(rootDir).find((item) => String(item?.receiptId || "") === normalizedReceiptId);
+  if (!resolvedReceipt) issues.push(`receipt not found: ${normalizedReceiptId}`);
+  if (resolvedReceipt?.recovery) issues.push("recovery receipts cannot be adopted as task completion evidence");
+  if (resolvedReceipt && !["/supervibe-loop", "/supervibe-execute-plan"].includes(String(resolvedReceipt.command || ""))) {
+    issues.push(`receipt command is not adoptable: ${resolvedReceipt.command || "unknown"}`);
+  }
+  const subjectType = String(resolvedReceipt?.subjectType || "").toLowerCase();
+  if (resolvedReceipt && !["agent", "worker", "reviewer"].includes(subjectType)) {
+    issues.push(`receipt subject type is not adoptable: ${resolvedReceipt.subjectType || "unknown"}`);
+  }
+  if (resolvedReceipt) {
+    const trust = validateWorkflowReceiptTrust(rootDir, resolvedReceipt, { requireHostInvocationProof: true });
+    if (!trust.pass) issues.push(...trust.issues.map((issue) => `untrusted receipt: ${issue}`));
+    const binding = receiptTaskBinding(resolvedReceipt);
+    const graphId = graphIdentity(graph);
+    if (binding.graphId && graphId && binding.graphId !== graphId) issues.push(`receipt graphId ${binding.graphId} does not match ${graphId}`);
+    if (binding.taskId && binding.taskId !== normalizedTaskId) issues.push(`receipt taskId ${binding.taskId} does not match ${normalizedTaskId}`);
+    if (binding.graphId && !binding.taskId) issues.push("graph-level receipt cannot be adopted as task completion evidence");
+    if (!binding.graphId && !binding.taskId && !allowUnbound && !receiptMatchesGraphSource(resolvedReceipt, graph)) {
+      issues.push("unbound receipt does not match graph source plan; pass --allow-unbound-receipts only after explicit review");
+    }
+  }
+  return { pass: issues.length === 0, issues, receipt: resolvedReceipt || null, receiptId: normalizedReceiptId, taskId: normalizedTaskId };
+}
+
+function assertCanonicalWorkItemGraphPath(rootDir, graphPath, operation = "work item graph mutation") {
+  const root = resolve(rootDir).replace(/\\/g, "/");
+  const full = resolve(graphPath).replace(/\\/g, "/");
+  const canonical = `${root}/.supervibe/memory/work-items/`;
+  if (!full.startsWith(canonical) || !(full.endsWith("/graph.json") || full.endsWith(".work-item-graph.json"))) {
+    throw new Error(`${operation} requires a canonical graph path under .supervibe/memory/work-items/**/graph.json`);
+  }
+}
+
+function createReceiptAdoptionEvidence(receipt = {}, taskId, { outputSummary = null, source = "trusted-task-worker-receipt" } = {}) {
+  const summary = outputSummary || receipt.invocationReason || `${receipt.subjectId || receipt.agentId || "worker"} completed ${receipt.stage || "work item"}`;
+  return {
+    taskId,
+    status: "pass",
+    source,
+    receiptId: receipt.receiptId,
+    command: receipt.command,
+    outputSummary: summary,
+    subjectType: receipt.subjectType || null,
+    subjectId: receipt.subjectId || receipt.agentId || null,
+    stage: receipt.stage || null,
+    hostInvocation: receipt.hostInvocation ? {
+      source: receipt.hostInvocation.source || null,
+      invocationId: receipt.hostInvocation.invocationId || null,
+    } : null,
+  };
+}
+
+function parseReceiptAdoptionMap(value = "") {
+  return String(value || "")
+    .split(",")
+    .map((pair) => pair.trim())
+    .filter(Boolean)
+    .map((pair) => {
+      const [taskId, receiptId] = pair.split("=").map((item) => item?.trim());
+      if (!taskId || !receiptId) throw new Error(`invalid adoption map entry: ${pair}`);
+      return { taskId, receiptId };
+    });
+}
+
+function inferReceiptAdoptionTaskId({ receipt = {}, graph = {} } = {}) {
+  const binding = receiptTaskBinding(receipt);
+  if (binding.taskId && findGraphEntry(graph, binding.taskId)) return binding.taskId;
+  if (binding.graphId && !binding.taskId) return null;
+  if (!receiptMatchesGraphSource(receipt, graph)) return null;
+  const text = [receipt.stage, receipt.subjectId, receipt.agentId, receipt.invocationReason].filter(Boolean).join(" ");
+  const ref = /\bT0*([0-9]+)(?:\b|[-_ .:])/i.exec(text)?.[1];
+  if (!ref) return null;
+  const sourceTaskRef = `T${Number(ref)}`;
+  const matches = (graph.items || []).filter((item) => {
+    if (!item || item.type === "epic") return false;
+    if (item.type === "subtask") return false;
+    return String(item.executionHints?.sourceTaskRef || "").toUpperCase() === sourceTaskRef;
+  });
+  return matches.length === 1 ? (matches[0].itemId || matches[0].id) : null;
+}
+
+function receiptTaskBinding(receipt = {}) {
+  return {
+    graphId: receipt.graphId || receipt.workGraphId || receipt.workItemBinding?.graphId || null,
+    taskId: receipt.taskId || receipt.workItemId || receipt.graphTaskId || receipt.workItemBinding?.taskId || null,
+  };
+}
+
+function receiptMatchesGraphSource(receipt = {}, graph = {}) {
+  const sourceHashes = new Set([graph.source?.sha256, graph.metadata?.sourcePlanSnapshot?.sha256].filter(Boolean).map(String));
+  const sourcePaths = new Set([graph.source?.path, graph.metadata?.sourcePlanSnapshot?.path, graph.planPath].filter(Boolean).map(normalizeComparablePath));
+  for (const input of receipt.inputHashes || []) {
+    if (input?.sha256 && sourceHashes.has(String(input.sha256))) return true;
+    if (input?.path && sourcePaths.has(normalizeComparablePath(input.path))) return true;
+  }
+  for (const input of receipt.inputEvidence || []) {
+    if (sourcePaths.has(normalizeComparablePath(input))) return true;
+  }
+  return false;
+}
+
+function graphIdentity(graph = {}) {
+  return graph.epicId || graph.graph_id || graph.graphId || (graph.items || []).find((item) => item.type === "epic")?.itemId || null;
+}
+
+function findGraphEntry(graph = {}, id = "") {
+  return [...(graph.items || []), ...(graph.tasks || [])].find((entry) => (entry.itemId || entry.id || entry.taskId) === id) || null;
+}
+
+function normalizeComparablePath(value = "") {
+  return String(value || "").replace(/\\/g, "/").toLowerCase();
+}
+function trustedReceiptIdsForValidation(rootDir, graph = null, { explicitReceiptIds = [] } = {}) {
+  return Object.keys(trustedReceiptScopesForValidation(rootDir, graph, { explicitReceiptIds }));
+}
+
+function trustedReceiptScopesForValidation(rootDir, graph = null, { explicitReceiptIds = [] } = {}) {
   const explicit = new Set((explicitReceiptIds || []).map(String).filter(Boolean));
-  const trusted = [];
+  const trusted = {};
   for (const receipt of readWorkflowReceipts(rootDir)) {
     if (!receipt?.receiptId) continue;
     if (receipt.recovery) continue;
     if (explicit.size > 0 && !explicit.has(String(receipt.receiptId))) continue;
+    if (!isTrustedTaskCompletionReceiptForGraph(receipt, graph)) continue;
     const trust = validateWorkflowReceiptTrust(rootDir, receipt, { requireHostInvocationProof: true });
-    if (trust.pass) trusted.push(String(receipt.receiptId));
+    if (trust.pass) trusted[String(receipt.receiptId)] = trustedReceiptScopeFromReceipt(receipt, graph);
   }
   return trusted;
 }
@@ -2625,7 +2973,7 @@ function trustedFinalReviewerReceiptIdsForValidation(rootDir, graph = {}, { expl
     if (receipt.stage && receipt.stage !== "final-review-sweep") continue;
     if (!receipt.hostInvocation?.source || !receipt.hostInvocation?.invocationId) continue;
     const receiptGraphId = receipt.graphId || receipt.workItemBinding?.graphId || null;
-    if (graphId && receiptGraphId && receiptGraphId !== graphId) continue;
+    if (!graphId || receiptGraphId !== graphId) continue;
     const trust = validateWorkflowReceiptTrust(rootDir, receipt, { requireHostInvocationProof: true });
     if (trust.pass) trusted.push(String(receipt.receiptId));
   }
@@ -2639,7 +2987,7 @@ function finalReviewEntryHasTrustedReceipt(reviewEntry = {}, trustedReceiptIds =
 }
 
 function trustedGraphReceiptIdsForValidation(rootDir, graph = {}, { explicitReceiptIds = [] } = {}) {
-  const graphId = graph.epicId || graph.graph_id || (graph.items || []).find((item) => item.type === "epic")?.itemId || null;
+  const graphId = trustedGraphIdentity(graph);
   if (!graphId) return [];
   const explicit = new Set((explicitReceiptIds || []).map(String).filter(Boolean));
   const trusted = [];
@@ -2653,26 +3001,13 @@ function trustedGraphReceiptIdsForValidation(rootDir, graph = {}, { explicitRece
     if (!receipt?.receiptId) continue;
     if (receipt.recovery) continue;
     if (explicit.size > 0 && !explicit.has(String(receipt.receiptId))) continue;
-    if (receipt.command !== "/supervibe-loop") continue;
-    if (!allowedStages.has(String(receipt.stage || ""))) continue;
-    const subjectType = String(receipt.subjectType || "").toLowerCase();
-    if (!["reviewer", "agent"].includes(subjectType)) continue;
-    if (!receipt.hostInvocation?.source || !receipt.hostInvocation?.invocationId) continue;
-    const receiptGraphId = receipt.graphId || receipt.workItemBinding?.graphId || null;
-    if (receiptGraphId !== graphId) continue;
-    const taskId = receipt.taskId || receipt.workItemId || receipt.graphTaskId || receipt.workItemBinding?.taskId || null;
-    if (taskId && !isGraphWideCompletionReceipt(receipt, taskId)) continue;
+    if (!isTrustedGraphCompletionReceiptForGraph(receipt, graph, { allowedStages })) continue;
     const trust = validateWorkflowReceiptTrust(rootDir, receipt, { requireHostInvocationProof: true });
     if (trust.pass) trusted.push(String(receipt.receiptId));
   }
   return trusted;
 }
 
-function isGraphWideCompletionReceipt(receipt = {}, taskId = "") {
-  const normalizedTaskId = String(taskId || "").toLowerCase();
-  if (!normalizedTaskId) return true;
-  return /(?:graph|epic|release)[-_ ]?(?:close|completion|handoff|proof|evidence)|completion[-_ ]?proof/.test(normalizedTaskId);
-}
 
 function splitCsv(value = "") {
   return String(value || "")
@@ -3217,12 +3552,21 @@ function buildAdapterConfig(args) {
 }
 
 function resolveSchedulerPolicy({ args = {}, rootDir = process.cwd(), activeGraph = null } = {}) {
-  const requestedMaxConcurrency = positiveInt(args["max-concurrency"], 3);
   const providerId = String(args.provider || args.tool || process.env.SUPERVIBE_PROVIDER || "codex").toLowerCase();
   const manifest = loadProviderCapabilities({ rootDir: args["plugin-root"] || rootDir });
   const provider = (manifest.providers || []).find((entry) => String(entry.id || "").toLowerCase() === providerId) || null;
   const providerLimits = provider?.providerLimits || {};
-  const providerMaxThreads = positiveInt(args["provider-max-threads"], positiveInt(providerLimits.defaultMaxThreads, requestedMaxConcurrency));
+  const runtimeLimits = readProviderRuntimeConfigLimits({
+    provider,
+    providerId,
+    projectRoot: rootDir,
+    userHome: args["user-home"],
+    providerHome: args["provider-home"],
+    env: process.env,
+  });
+  const manifestMaxThreads = positiveInt(providerLimits.defaultMaxThreads, null);
+  const providerMaxThreads = positiveInt(args["provider-max-threads"], positiveInt(runtimeLimits.maxThreads, manifestMaxThreads));
+  const requestedMaxConcurrency = positiveInt(args["max-concurrency"], providerMaxThreads || 12);
   const providerTimeoutSeconds = positiveInt(args["provider-timeout-seconds"], positiveInt(providerLimits.defaultJobRuntimeSeconds, null));
   const hostManagedCleanupDebt = providerId === "codex"
     ? summarizeHostManagedSubagentDebtSync({
@@ -3246,13 +3590,18 @@ function resolveSchedulerPolicy({ args = {}, rootDir = process.cwd(), activeGrap
     providerName: provider?.name || providerId,
     requestedMaxConcurrency,
     providerMaxThreads: providerMaxThreads || null,
+    providerMaxThreadsSource: runtimeLimits.maxThreads ? "provider-runtime-config" : manifestMaxThreads ? "provider-capabilities-manifest" : "cli-default",
+    runtimeMaxThreads: runtimeLimits.maxThreads,
+    runtimeConfigPath: runtimeLimits.configPath,
+    runtimeConfigIssue: runtimeLimits.issue,
+    manifestDefaultMaxThreads: manifestMaxThreads,
     providerTimeoutSeconds: providerTimeoutSeconds || null,
     hostManagedCleanupRequired: hostManagedCleanupDebt.count,
     hostManagedCleanupIds: hostManagedCleanupDebt.closeRequired.map((item) => item.hostInvocationId).filter(Boolean),
     activeGraphClaimedSlots,
     availableProviderThreads,
     effectiveMaxConcurrency,
-    source: provider ? "provider-capabilities-manifest" : "cli-default",
+    source: runtimeLimits.maxThreads ? "provider-runtime-config" : provider ? "provider-capabilities-manifest" : "cli-default",
     reason,
   };
 }
@@ -3323,6 +3672,10 @@ function formatSchedulerPolicy(policy = {}) {
     `PROVIDER_NAME: ${policy.providerName || "unknown"}`,
     `REQUESTED_MAX_CONCURRENCY: ${policy.requestedMaxConcurrency || 0}`,
     `PROVIDER_MAX_THREADS: ${policy.providerMaxThreads ?? "unknown"}`,
+    `PROVIDER_MAX_THREADS_SOURCE: ${policy.providerMaxThreadsSource || "unknown"}`,
+    `RUNTIME_MAX_THREADS: ${policy.runtimeMaxThreads ?? "unknown"}`,
+    `RUNTIME_CONFIG_PATH: ${policy.runtimeConfigPath || "unknown"}`,
+    `MANIFEST_DEFAULT_MAX_THREADS: ${policy.manifestDefaultMaxThreads ?? "unknown"}`,
     `PROVIDER_TIMEOUT_SECONDS: ${policy.providerTimeoutSeconds ?? "unknown"}`,
     `HOST_MANAGED_CLEANUP_REQUIRED: ${policy.hostManagedCleanupRequired || 0}`,
     `HOST_MANAGED_CLEANUP_IDS: ${(policy.hostManagedCleanupIds || []).join(",") || "none"}`,
@@ -3461,6 +3814,7 @@ Primary:
   supervibe-loop --claim-ready --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --dispatch-wave --apply --file .supervibe/memory/work-items/<epic-id>/graph.json --max-concurrency 4
   supervibe-loop --close <task-id> --reason "verified" --file .supervibe/memory/work-items/<epic-id>/graph.json
+  supervibe-loop --adopt-completed --apply --file .supervibe/memory/work-items/<epic-id>/graph.json --map <task-id>=<receipt-id>
   supervibe-loop --validate-completion --file .supervibe/memory/work-items/<epic-id>/graph.json
   supervibe-loop --validate-completion --file .supervibe/memory/work-items/<epic-id>/graph.json --require-trusted-evidence --trusted-receipts <id,id>
   supervibe-loop --final-review-sweep --file .supervibe/memory/work-items/<epic-id>/graph.json

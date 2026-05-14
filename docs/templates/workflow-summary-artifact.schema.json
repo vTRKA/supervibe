@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://supervibe.local/schemas/workflow-summary-artifact.schema.json",
+  "title": "Supervibe Workflow Summary Artifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "artifactKind",
+    "summaryId",
+    "workflowId",
+    "stage",
+    "title",
+    "createdAt",
+    "expiresAt",
+    "storagePath",
+    "sourcePrompt",
+    "summary",
+    "approvedScope",
+    "assumptions",
+    "planningAssumptions",
+    "constraints",
+    "risks",
+    "missingFacts",
+    "choices",
+    "approvalState",
+    "evidenceAppendix",
+    "artifactHash"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "artifactKind": { "const": "workflow-summary" },
+    "summaryId": { "type": "string", "minLength": 1 },
+    "workflowId": { "type": "string", "minLength": 1 },
+    "stage": { "enum": ["pre-spec", "pre-plan"] },
+    "title": { "type": "string", "minLength": 1 },
+    "createdAt": { "type": "string", "minLength": 1 },
+    "expiresAt": { "type": "string", "minLength": 1 },
+    "storagePath": {
+      "type": "string",
+      "pattern": "^\\.supervibe/artifacts/summaries/.+/(pre-spec-summary|pre-plan-summary)\\.json$"
+    },
+    "sourcePrompt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hash", "capturedAt", "excerpt"],
+      "properties": {
+        "hash": { "$ref": "#/$defs/sha256" },
+        "capturedAt": { "type": "string", "minLength": 1 },
+        "excerpt": { "type": "string" }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["objective", "scope", "nonGoals"],
+      "properties": {
+        "objective": { "type": "string" },
+        "scope": { "$ref": "#/$defs/stringArray" },
+        "nonGoals": { "$ref": "#/$defs/stringArray" }
+      }
+    },
+    "approvedScope": { "$ref": "#/$defs/stringArray" },
+    "assumptions": { "$ref": "#/$defs/stringArray" },
+    "planningAssumptions": { "$ref": "#/$defs/stringArray" },
+    "constraints": { "$ref": "#/$defs/stringArray" },
+    "risks": { "$ref": "#/$defs/stringArray" },
+    "missingFacts": { "$ref": "#/$defs/stringArray" },
+    "choices": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "description", "recommended", "ordinal"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+          "label": { "type": "string", "minLength": 1 },
+          "description": { "type": "string", "minLength": 1 },
+          "recommended": { "type": "boolean" },
+          "ordinal": { "type": "integer", "minimum": 1 }
+        }
+      }
+    },
+    "approvalState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "selectedChoiceId", "approvedAt", "approvedBy", "approvalSource", "allowedChoiceIds", "sourcePromptHash", "artifactHash", "expiresAt"],
+      "properties": {
+        "status": { "enum": ["pending", "approved", "rejected", "expired"] },
+        "selectedChoiceId": { "type": "string" },
+        "approvedAt": { "type": "string" },
+        "approvedBy": { "type": "string" },
+        "approvalSource": { "const": "latest-user-gate" },
+        "allowedChoiceIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" }
+        },
+        "sourcePromptHash": { "$ref": "#/$defs/sha256" },
+        "artifactHash": { "anyOf": [{ "$ref": "#/$defs/sha256" }, { "const": "" }] },
+        "expiresAt": { "type": "string", "minLength": 1 }
+      }
+    },
+    "evidenceAppendix": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaPath", "storagePath", "sourcePromptHash", "artifactHash", "items"],
+      "properties": {
+        "schemaPath": { "const": "docs/templates/workflow-summary-artifact.schema.json" },
+        "storagePath": { "type": "string", "minLength": 1 },
+        "sourcePromptHash": { "$ref": "#/$defs/sha256" },
+        "artifactHash": { "anyOf": [{ "$ref": "#/$defs/sha256" }, { "const": "" }] },
+        "items": { "$ref": "#/$defs/stringArray" }
+      }
+    },
+    "artifactHash": { "$ref": "#/$defs/sha256" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "stage": { "const": "pre-spec" } } },
+      "then": {
+        "properties": {
+          "storagePath": { "pattern": "/pre-spec-summary\\.json$" },
+          "choices": {
+            "contains": {
+              "type": "object",
+              "properties": { "id": { "const": "approve-pre-spec-summary" } },
+              "required": ["id"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "stage": { "const": "pre-plan" } } },
+      "then": {
+        "properties": {
+          "storagePath": { "pattern": "/pre-plan-summary\\.json$" },
+          "choices": {
+            "contains": {
+              "type": "object",
+              "properties": { "id": { "const": "approve-pre-plan-summary" } },
+              "required": ["id"]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "minLength": 71,
+      "maxLength": 71,
+      "pattern": "^sha256:[a-f0-9]+$"
+    },
+    "stringArray": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}
