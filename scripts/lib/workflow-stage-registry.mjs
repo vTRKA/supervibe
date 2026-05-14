@@ -25,12 +25,48 @@ const DESIGN_STAGE_IDS = Object.freeze([
   "stage-7-quality-gate",
 ]);
 
+const VERIFY_STAGE_IDS = Object.freeze([
+  "goal-evidence",
+  "tester-evidence",
+  "targeted-checks",
+  "goal-map",
+  "verification-gate",
+]);
+
+const REVIEW_STAGE_IDS = Object.freeze([
+  "verify-evidence-check",
+  "missing-verify-evidence",
+  "production-readiness",
+  "review-findings",
+  "review-gate",
+]);
+
+const SHIP_STAGE_IDS = Object.freeze([
+  "target-detection",
+  "release-readiness",
+  "docker-readiness",
+  "rollback-readiness",
+  "ship-gate",
+]);
+
 const COMMAND_STAGE_REGISTRY = Object.freeze({
   "/supervibe-design": {
     stageIds: DESIGN_STAGE_IDS,
     stagePatterns: Object.freeze([
       /^stage-0-reference-[a-z0-9-]+$/,
     ]),
+  },
+  "/supervibe-verify": {
+    stageIds: VERIFY_STAGE_IDS,
+    stagePatterns: Object.freeze([]),
+  },
+  "/supervibe-review": {
+    stageIds: REVIEW_STAGE_IDS,
+    stagePatterns: Object.freeze([]),
+  },
+  "/supervibe-ship": {
+    stageIds: SHIP_STAGE_IDS,
+    stagePatterns: Object.freeze([]),
   },
 });
 

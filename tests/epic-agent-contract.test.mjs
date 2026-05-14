@@ -218,6 +218,146 @@ test("epic-agent contract accepts a runtime-issued trusted agent receipt bound t
   }
 });
 
+test("epic-agent contract accepts a trusted reviewer receipt bound through graph input evidence", async () => {
+  const root = await mkdtemp(join(tmpdir(), "epic-agent-contract-reviewer-input-"));
+  try {
+    const graph = atomizePlanToWorkItems(PLAN, {
+      planPath: ".supervibe/artifacts/plans/agent-contract.md",
+      epicId: "epic-agent-contract",
+      planReviewPassed: true,
+    });
+    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: root });
+    const graphRel = relative(root, graphPath).replace(/\\/g, "/");
+    const outputRel = ".supervibe/artifacts/_agent-outputs/quality-gate-graph-review/agent-output.json";
+    await writeInvocation(root, {
+      agentId: "quality-gate-reviewer",
+      invocationId: "quality-gate-graph-review",
+      outputRel,
+    });
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-review",
+      subjectType: "reviewer",
+      subjectId: "quality-gate-reviewer",
+      agentId: "quality-gate-reviewer",
+      stage: "review-gate",
+      invocationReason: "review durable epic/task graph",
+      inputEvidence: [graphRel],
+      outputArtifacts: [outputRel],
+      startedAt: "2026-05-12T00:00:00.000Z",
+      completedAt: "2026-05-12T00:01:00.000Z",
+      handoffId: "epic-agent-contract-review",
+      graphId: "epic-agent-contract",
+      hostInvocation: {
+        source: "agent-invocations-jsonl",
+        invocationId: "quality-gate-graph-review",
+      },
+    });
+
+    const saved = JSON.parse(await readFile(graphPath, "utf8"));
+    const report = validateEpicAgentContract({ rootDir: root, graph: saved, graphPath });
+
+    assert.equal(report.pass, true);
+    assert.equal(report.trustedReceipts.length, 1);
+    assert.equal(report.trustedReceipts[0].agentId, "quality-gate-reviewer");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("epic-agent contract rejects stale graph input evidence after graph mutation", async () => {
+  const root = await mkdtemp(join(tmpdir(), "epic-agent-contract-stale-input-"));
+  try {
+    const graph = atomizePlanToWorkItems(PLAN, {
+      planPath: ".supervibe/artifacts/plans/agent-contract.md",
+      epicId: "epic-agent-contract",
+      planReviewPassed: true,
+    });
+    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: root });
+    const graphRel = relative(root, graphPath).replace(/\\/g, "/");
+    const outputRel = ".supervibe/artifacts/_agent-outputs/quality-gate-stale-review/agent-output.json";
+    await writeInvocation(root, {
+      agentId: "quality-gate-reviewer",
+      invocationId: "quality-gate-stale-review",
+      outputRel,
+    });
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-review",
+      subjectType: "reviewer",
+      subjectId: "quality-gate-reviewer",
+      agentId: "quality-gate-reviewer",
+      stage: "review-gate",
+      invocationReason: "review durable epic/task graph",
+      inputEvidence: [graphRel],
+      outputArtifacts: [outputRel],
+      startedAt: "2026-05-12T00:00:00.000Z",
+      completedAt: "2026-05-12T00:01:00.000Z",
+      handoffId: "epic-agent-contract-review",
+      graphId: "epic-agent-contract",
+      hostInvocation: {
+        source: "agent-invocations-jsonl",
+        invocationId: "quality-gate-stale-review",
+      },
+    });
+
+    const mutated = JSON.parse(await readFile(graphPath, "utf8"));
+    mutated.updatedAt = "2026-05-12T00:02:00.000Z";
+    await writeFile(graphPath, `${JSON.stringify(mutated, null, 2)}\n`, "utf8");
+    const report = validateEpicAgentContract({ rootDir: root, graph: mutated, graphPath });
+
+    assert.equal(report.pass, false);
+    assert.ok(report.issues.some((issue) => issue.code === "missing-epic-agent-receipt"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("epic-agent contract rejects task-scoped graphId-only receipts", async () => {
+  const root = await mkdtemp(join(tmpdir(), "epic-agent-contract-task-scoped-"));
+  try {
+    const graph = atomizePlanToWorkItems(PLAN, {
+      planPath: ".supervibe/artifacts/plans/agent-contract.md",
+      epicId: "epic-agent-contract",
+      planReviewPassed: true,
+    });
+    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: root });
+    const outputRel = ".supervibe/artifacts/_agent-outputs/task-scoped-review/agent-output.json";
+    await writeInvocation(root, {
+      agentId: "quality-gate-reviewer",
+      invocationId: "task-scoped-review",
+      outputRel,
+    });
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-review",
+      subjectType: "reviewer",
+      subjectId: "quality-gate-reviewer",
+      agentId: "quality-gate-reviewer",
+      stage: "review-gate",
+      invocationReason: "review one task in graph",
+      outputArtifacts: [outputRel],
+      startedAt: "2026-05-12T00:00:00.000Z",
+      completedAt: "2026-05-12T00:01:00.000Z",
+      handoffId: "epic-agent-contract-review",
+      graphId: "epic-agent-contract",
+      taskId: "epic-agent-contract-t1",
+      hostInvocation: {
+        source: "agent-invocations-jsonl",
+        invocationId: "task-scoped-review",
+      },
+    });
+
+    const saved = JSON.parse(await readFile(graphPath, "utf8"));
+    const report = validateEpicAgentContract({ rootDir: root, graph: saved, graphPath });
+
+    assert.equal(report.pass, false);
+    assert.ok(report.issues.some((issue) => issue.code === "missing-epic-agent-receipt"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("epic-agent contract accepts trusted reissued receipts as producer proof", async () => {
   const root = await mkdtemp(join(tmpdir(), "epic-agent-contract-recovery-"));
   try {

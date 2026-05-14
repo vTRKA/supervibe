@@ -5,7 +5,8 @@ const WORKFLOW_FLOW_STEPS = Object.freeze([
   { id: "atomize", label: "Atomize" },
   { id: "execute", label: "Execute" },
   { id: "verify", label: "Verify" },
-  { id: "close", label: "Close" },
+  { id: "review", label: "Review" },
+  { id: "ship", label: "Ship" },
   { id: "archive", label: "Archive" },
 ]);
 
@@ -57,9 +58,18 @@ export function createWorkflowFlowModel({
     activeId = "verify";
     activeState = blockedGates.length > 0 ? "blocked" : "current";
   } else if (!closed && (allTasksDone || runTerminal)) {
-    activeId = "close";
+    activeId = releaseStageComplete(graph, run, "verify") ? "review" : "verify";
+    if (releaseStageComplete(graph, run, "review")) activeId = "ship";
   } else if (closed) {
-    activeId = "archive";
+    if (releaseStageComplete(graph, run, "ship")) {
+      activeId = "archive";
+    } else if (releaseStageComplete(graph, run, "review")) {
+      activeId = "ship";
+    } else if (releaseStageComplete(graph, run, "verify")) {
+      activeId = "review";
+    } else {
+      activeId = "verify";
+    }
   }
 
   const activeIndex = WORKFLOW_FLOW_STEPS.findIndex((step) => step.id === activeId);
@@ -172,9 +182,16 @@ function workflowFlowHint(id, facts) {
     if (facts.evidenceCount > 0) return `${facts.evidenceCount} evidence item(s)`;
     return facts.doneTasks > 0 ? "No open gates" : "Waiting for execution";
   }
-  if (id === "close") return facts.closed ? "Closed" : facts.doneTasks > 0 ? `${facts.doneTasks} done task(s)` : "Waiting for verification";
-  if (id === "archive") return facts.archived ? "Archived" : facts.closed ? "Ready to archive" : "Waiting for close";
+  if (id === "review") return facts.doneTasks > 0 ? "Review verified evidence" : "Waiting for verification";
+  if (id === "ship") return facts.closed ? "Ship readiness" : "Waiting for review";
+  if (id === "archive") return facts.archived ? "Archived" : facts.closed ? "Ready to archive" : "Waiting for ship";
   return "";
+}
+
+function releaseStageComplete(graph = {}, run = {}, stage = "") {
+  const events = [...asArray(graph?.events), ...asArray(run?.events)];
+  return events.some((event) => normalizeFlowStatus(event?.stage) === normalizeFlowStatus(stage)
+    && ["stage_completed", "stage_complete", "gate_passed", "command_completed"].includes(normalizeFlowStatus(event?.type)));
 }
 
 function isDoneWorkItem(item) {

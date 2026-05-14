@@ -120,13 +120,13 @@ Auto-detect the most recent spec in `.supervibe/artifacts/specs/` and use it. If
 
 8. **Post-plan summary before review.** After the durable plan is saved and validated, give a short human-readable summary: artifact path, phases, critical path, included scope, deferred/rejected scope, highest risks, validation result, score, and the next review choices.
 
-8a. **Mandatory review handoff before execution.** Print the command output block and wait for one user choice. In normal conversational summaries, translate the available choices into a short human-readable next-step sentence instead of exposing the raw `NEXT_USER_ACTIONS[]` marker. Print:
+8a. **Mandatory review handoff before execution.** Print a human-first Decision Card using `scripts/lib/supervibe-post-stage-actions.mjs` before any raw machine state, then print the command output block and wait for one user choice. In normal conversational summaries, translate the available choices into a short human-readable next-step sentence instead of exposing the raw `NEXT_USER_ACTIONS[]` marker. Print:
    ```
    Plan saved to <path>.
    Step N/M: run the plan review loop?
    ```
 
-8b. **Machine-readable review handoff.** Include:
+8b. **Secondary machine-readable review handoff.** Include the raw block only after the Decision Card. The raw `NEXT_STEP_HANDOFF` block is resume state, not the primary user-facing UX:
 
    ```text
    NEXT_STEP_HANDOFF
@@ -171,6 +171,7 @@ Scope safety: approved scope mapped; deferred/rejected extras documented
 Retrieval/graph: required memory, RAG, CodeGraph, citations, fallback and graph-quality checks mapped
 Visual evidence: text-first summary/table/stage map; browser preview only for actual UI/prototype/browser evidence; Mermaid fallback includes accessible title and description when used
 Post-plan summary: concise human summary and next review actions shown after plan creation
+Decision Card: human-first recommendation, `Step N/M` question, choices, resume cursor, and next command before any raw handoff block
 Final gate:  10/10 acceptance + no open blockers
 Score:       <N>/10  Rubric: plan
 Validator:   validate-plan-artifacts PASS

@@ -742,7 +742,9 @@ export class CodeStore {
       await enter('hashing');
       const hash = await hashFile(absPath);
       const existing = this.db.prepare('SELECT content_hash, graph_version FROM code_files WHERE path = ?').get(relPath);
-      const graphStale = this.useGraph && Number(existing?.graph_version || 0) !== CODE_GRAPH_EXTRACTOR_VERSION;
+      const existingGraphVersion = Number(existing?.graph_version || 0);
+      const preserveGraphWhenDisabled = !this.useGraph && existing && existing.content_hash === hash && existingGraphVersion > 0;
+      const graphStale = this.useGraph && existingGraphVersion !== CODE_GRAPH_EXTRACTOR_VERSION;
       if (existing && existing.content_hash === hash && !force && !graphStale) {
         return { skipped: 'unchanged' };
       }
@@ -797,6 +799,8 @@ export class CodeStore {
           emit,
           enter,
           shouldStop,
+          preserveGraph: preserveGraphWhenDisabled,
+          preservedGraphVersion: existingGraphVersion,
         });
 
         if (this.useGraph && !result.partial) {
@@ -816,7 +820,7 @@ export class CodeStore {
               }
             }
           }
-        } else if (!this.useGraph) {
+        } else if (!this.useGraph && !preserveGraphWhenDisabled) {
           this.clearGraphFor(relPath);
         }
         return result;
@@ -871,13 +875,23 @@ export class CodeStore {
       }
 
       await enter('db-write');
-      this.db.prepare(`
-        INSERT OR REPLACE INTO code_files (
-          path, language, content_hash, line_count, indexed_at, graph_version,
-          index_status, chunking_strategy, chunk_count, indexed_bytes
-        )
-        VALUES (?, ?, ?, ?, datetime('now'), 0, 'full', ?, ?, ?)
-      `).run(relPath, lang, hash, lines, chunkerMode, chunks.length, Number(fileStats?.size || Buffer.byteLength(content, 'utf8')));
+      const indexedBytes = Number(fileStats?.size || Buffer.byteLength(content, 'utf8'));
+      if (preserveGraphWhenDisabled) {
+        this.db.prepare(`
+          UPDATE code_files
+          SET language = ?, content_hash = ?, line_count = ?, indexed_at = datetime('now'), graph_version = ?,
+              index_status = 'full', chunking_strategy = ?, chunk_count = ?, indexed_bytes = ?
+          WHERE path = ?
+        `).run(lang, hash, lines, existingGraphVersion, chunkerMode, chunks.length, indexedBytes, relPath);
+      } else {
+        this.db.prepare(`
+          INSERT OR REPLACE INTO code_files (
+            path, language, content_hash, line_count, indexed_at, graph_version,
+            index_status, chunking_strategy, chunk_count, indexed_bytes
+          )
+          VALUES (?, ?, ?, ?, datetime('now'), 0, 'full', ?, ?, ?)
+        `).run(relPath, lang, hash, lines, chunkerMode, chunks.length, indexedBytes);
+      }
 
       const insertChunk = this.db.prepare(`
         INSERT INTO code_chunks (
@@ -940,7 +954,7 @@ export class CodeStore {
             console.warn(`[code-graph] failed for ${relPath}: ${err.message}`);
           }
         }
-      } else {
+      } else if (!preserveGraphWhenDisabled) {
         this.clearGraphFor(relPath);
       }
 
@@ -961,6 +975,8 @@ export class CodeStore {
     emit = null,
     enter = null,
     shouldStop = null,
+    preserveGraph = false,
+    preservedGraphVersion = 0,
   } = {}) {
     const structuralRust = lang === 'rust' && this.largeFileFallbackMode !== 'line-window';
     const chunkingStrategy = structuralRust ? 'large-file-rust-structural' : 'large-file-line-window';
@@ -984,20 +1000,29 @@ export class CodeStore {
 
     this.db.prepare('DELETE FROM code_chunks WHERE path = ?').run(relPath);
     this.db.prepare('DELETE FROM code_chunks_fts WHERE path = ?').run(relPath);
-    this.clearGraphFor(relPath);
+    if (!preserveGraph) this.clearGraphFor(relPath);
 
     await enter?.('db-write', {
       chunkerMode: 'large-file',
       chunkingStrategy,
       indexStatus: 'partial',
     });
-    this.db.prepare(`
-      INSERT OR REPLACE INTO code_files (
-        path, language, content_hash, line_count, indexed_at, graph_version,
-        index_status, chunking_strategy, chunk_count, indexed_bytes
-      )
-      VALUES (?, ?, ?, ?, datetime('now'), 0, 'partial', ?, 0, 0)
-    `).run(relPath, lang, hash, initialLineCount || 0, chunkingStrategy);
+    if (preserveGraph) {
+      this.db.prepare(`
+        UPDATE code_files
+        SET language = ?, content_hash = ?, line_count = ?, indexed_at = datetime('now'), graph_version = ?,
+            index_status = 'partial', chunking_strategy = ?, chunk_count = 0, indexed_bytes = 0
+        WHERE path = ?
+      `).run(lang, hash, initialLineCount || 0, preservedGraphVersion, chunkingStrategy, relPath);
+    } else {
+      this.db.prepare(`
+        INSERT OR REPLACE INTO code_files (
+          path, language, content_hash, line_count, indexed_at, graph_version,
+          index_status, chunking_strategy, chunk_count, indexed_bytes
+        )
+        VALUES (?, ?, ?, ?, datetime('now'), 0, 'partial', ?, 0, 0)
+      `).run(relPath, lang, hash, initialLineCount || 0, chunkingStrategy);
+    }
 
     const insertChunk = this.db.prepare(`
       INSERT INTO code_chunks (

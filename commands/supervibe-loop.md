@@ -175,7 +175,12 @@ as the canonical queue. Loop task status, claims, verification evidence, and
 completion semantics are synced back into that graph so status, UI, resume, and
 worktree sessions see the same source of truth. Completion output includes
 `COMPLETION_SEMANTICS`, `PRODUCTION_READY`, and `NEXT_COMPLETION_ACTION` when
-the validator can derive them from the graph and run state.
+the validator can derive them from the graph and run state. Then print a
+human-first Decision Card before raw machine handoff state. The card must offer
+`/supervibe-verify`, `/supervibe-review`, continue loop, revise goals, and
+stop-with-gaps choices. It must not offer `/supervibe-ship` directly from
+loop-completion; ship appears only after review has passed or an approved waiver
+covers the review gate.
 
 Saved views and reports are handled by `/supervibe-status`. Local task control
 is handled by `/supervibe-loop --claim-ready|--claim|--close|--complete|--reopen|--edit|--split|--reparent|--dep-add|--dep-remove|--skip|--cancel|--delete`
@@ -392,7 +397,7 @@ fork a checkpoint for replan instead of overwriting the completed evidence.
 
 If the user shifts topic while `.supervibe/memory/loops/<run-id>/state.json`, `contextPack.workflowSignal`, or a queued handoff exists, do not silently drop the loop. Surface run id, current phase, active task or wave, artifact path, next command, stop command, and blocker, then ask one `Step N/M` or `Step N/M` resume question with these choices: continue ready work, skip/delegate safe non-final decisions to the controller and continue, pause current loop and switch topic, or stop/archive the current state.
 
-Skipped or delegated decisions must be recorded in loop state, side-effect ledger, and final report. They cannot bypass policy, explicit budget, approval, production, destructive-operation, review, verification, or scope-expansion gates.
+Skipped or delegated decisions must be recorded in loop state, side-effect ledger, and final report. They cannot bypass policy, explicit budget, approval, production, destructive-operation, review, verification, or scope-expansion gates. For production-ready completion, `/supervibe-ship` is blocked until `/supervibe-verify` and `/supervibe-review` evidence exists, unless the skipped gate has explicit waiver or skip evidence with approval, affected goal/stage, and release impact.
 
 ## Safety Boundaries
 

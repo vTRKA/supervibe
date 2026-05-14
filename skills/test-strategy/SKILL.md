@@ -147,6 +147,7 @@ Open risks: <enumerated>
 
 ## Related
 
+- `/supervibe-verify` - command surface that turns the selected test strategy into Goal-mapped tester evidence before production review or ship readiness.
 - `supervibe:tdd` — drives the day-to-day red/green/refactor loop on top of this strategy.
 - `supervibe:audit` — periodic re-check of flake rate and coverage triangulation.
 - `supervibe:feature-flag-rollout` — paired strategy when the feature ships behind a flag.

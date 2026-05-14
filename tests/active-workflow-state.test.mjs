@@ -33,6 +33,7 @@ function validState(overrides = {}) {
     question: {
       id: "scope",
       prompt: "Choose implementation scope",
+      resumeCursor: "question:scope",
     },
     choices: [
       { id: "narrow", label: "Narrow" },
@@ -301,10 +302,12 @@ test("active workflow persistence updates stage with workflow aliases", () => {
 
     const expected = [
       ["plan", "plan-draft"],
-      ["review", "plan-review"],
+      ["review", "review"],
+      ["review-plan", "plan-review"],
       ["atomize", "work-item-atomization"],
       ["execute", "executing"],
       ["verify", "verification"],
+      ["ship", "ship"],
       ["archive", "archived"],
       ["resume", "resume"],
     ];
@@ -390,8 +393,128 @@ test("active workflow resume info prefers explicit next command and falls back b
 
   assert.equal(explicit.canResume, true);
   assert.equal(explicit.nextCommand, "/supervibe-loop");
-  assert.equal(fallback.nextCommand, "/supervibe-validate");
+  assert.equal(fallback.nextCommand, "/supervibe-verify");
   assert.equal(fallback.nextAction, "run workflow verification");
   assert.equal(missing.canResume, false);
   assert.equal(missing.nextAction, "none");
+});
+
+test("active workflow resume info restores current question, choices, history, cursor, blockers, summaries, and artifacts", () => {
+  withTempRoot((root) => {
+    const summaryStages = [
+      "brainstorm",
+      "spec-approval",
+      "plan-approval",
+      "loop-completion",
+      "verify",
+      "review",
+      "ship",
+    ];
+    const summaries = summaryStages.flatMap((stage) => [
+      {
+        id: `summary-${stage}-pre`,
+        stage,
+        kind: "pre-action",
+        summary: `${stage} pre-action summary.`,
+        createdAt: "2026-05-14T00:00:00.000Z",
+      },
+      {
+        id: `summary-${stage}-post`,
+        stage,
+        kind: "post-artifact",
+        summary: `${stage} post-artifact summary.`,
+        createdAt: "2026-05-14T00:00:00.000Z",
+        artifactIds: ["plan"],
+      },
+    ]);
+    const written = upsertActiveWorkflowState(root, validState({
+      stage: "review",
+      question: {
+        id: "approve-plan",
+        prompt: "Approve the reviewed plan?",
+        resumeCursor: "question:approve-plan",
+      },
+      choices: [
+        { id: "approve", label: "Approve" },
+        { id: "revise", label: "Revise" },
+      ],
+      acceptedAnswer: null,
+      answerHistory: [
+        {
+          questionId: "approve-plan",
+          choiceId: "revise",
+          actor: "user",
+          answeredAt: "2026-05-14T00:00:00.000Z",
+        },
+      ],
+      resumeCursor: "question:approve-plan",
+      blockedDecision: {
+        id: "decision-review",
+        reason: "waiting for approval",
+      },
+      nextCommand: "/supervibe-loop",
+      summaries,
+      artifactManifest: {
+        id: "artifact-manifest-1",
+        artifacts: [
+          {
+            id: "plan",
+            path: ".supervibe/artifacts/plans/example.md",
+            hash: "sha256:abc123",
+          },
+        ],
+      },
+    }));
+    const current = readCurrentActiveWorkflowState(root);
+    const resume = buildActiveWorkflowResumeInfo(current.state);
+
+    assert.equal(written.summaries.length, 14);
+    assert.equal(resume.hasPendingQuestion, true);
+    assert.equal(resume.question.resumeCursor, "question:approve-plan");
+    assert.deepEqual(resume.choices.map((choice) => choice.id), ["approve", "revise"]);
+    assert.equal(resume.answerHistory[0].choiceId, "revise");
+    assert.equal(resume.resumeCursor, "question:approve-plan");
+    assert.equal(resume.blockedDecision.id, "decision-review");
+    assert.equal(resume.nextCommand, "/supervibe-loop");
+    assert.equal(resume.summaries.length, 14);
+    assert.equal(resume.artifactManifest.artifacts[0].hash, "sha256:abc123");
+  });
+});
+
+test("active workflow validation fails question records without resume cursors", () => {
+  const result = validateActiveWorkflowStateDocument(validState({
+    question: {
+      id: "approve-plan",
+      prompt: "Approve the reviewed plan?",
+    },
+    choices: [{ id: "approve", label: "Approve" }],
+    acceptedAnswer: null,
+  }));
+
+  assert.equal(result.pass, false);
+  assert.ok(codes(result).has("question-record-resume-cursor-missing"));
+});
+
+
+test("active workflow production review resumes through review command", () => {
+  const resume = buildActiveWorkflowResumeInfo(validState({
+    stage: "review",
+    nextCommand: undefined,
+    nextAction: undefined,
+  }));
+
+  assert.equal(resume.stage, "review");
+  assert.equal(resume.nextCommand, "/supervibe-review");
+  assert.equal(resume.nextAction, "run workflow review");
+});
+
+test("active workflow release-ready resumes through ship command", () => {
+  const resume = buildActiveWorkflowResumeInfo(validState({
+    stage: "release-ready",
+    nextCommand: undefined,
+    nextAction: undefined,
+  }));
+
+  assert.equal(resume.nextCommand, "/supervibe-ship");
+  assert.equal(resume.nextAction, "run release ship readiness");
 });

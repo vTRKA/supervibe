@@ -217,6 +217,70 @@ export const DEFAULT_SEMANTIC_TRIGGER_FIXTURES = Object.freeze([
 
 export const DEFAULT_COMMAND_ROUTE_FIXTURES = Object.freeze([
   {
+    id: "en-brainstorm-command-intent-safety",
+    phrase: "brainstorm the feature for command intent safety",
+    expected: {
+      intent: "supervibe_brainstorm",
+      command: "/supervibe-brainstorm",
+      minConfidence: 0.9,
+      notIntent: ["supervibe_audit"],
+      notCommand: ["/supervibe-audit", "/supervibe-status"],
+    },
+  },
+  {
+    id: "ru-brainstorm-routing-safety",
+    phrase: "\u0434\u0430\u0432\u0430\u0439 \u0431\u0440\u0435\u0439\u043d\u0448\u0442\u043e\u0440\u043c \u0438\u0434\u0435\u0438 \u0434\u043b\u044f \u0431\u0435\u0437\u043e\u043f\u0430\u0441\u043d\u043e\u0433\u043e \u0440\u043e\u0443\u0442\u0438\u043d\u0433\u0430",
+    expected: {
+      intent: "supervibe_brainstorm",
+      command: "/supervibe-brainstorm",
+      minConfidence: 0.9,
+      notIntent: ["supervibe_audit"],
+      notCommand: ["/supervibe-audit", "/supervibe-status"],
+    },
+  },
+  {
+    id: "active-command-audit-explicit",
+    phrase: "Active command: /supervibe-audit\nReview the current routing result.",
+    expected: {
+      intent: "slash_command",
+      command: "/supervibe-audit",
+      minConfidence: 1,
+      notCommand: ["/supervibe-plan"],
+    },
+  },
+  {
+    id: "active-command-plan-not-execute",
+    phrase: "Active command: /supervibe-plan\nPrepare the planning pass; do not execute the plan.",
+    expected: {
+      intent: "slash_command",
+      command: "/supervibe-plan",
+      minConfidence: 1,
+      notCommand: ["/supervibe-execute-plan"],
+    },
+  },
+  {
+    id: "existing-plan-artifact-revision-not-audit",
+    phrase: "Check the existing plan artifact .supervibe/artifacts/plans/router.md and adapt the matcher intents for reviewer agents.",
+    expected: {
+      intent: "supervibe_plan",
+      command: "/supervibe-plan",
+      minConfidence: 0.9,
+      notIntent: ["supervibe_audit", "plan_review"],
+      notCommand: ["/supervibe-audit", "/supervibe-plan --review"],
+    },
+  },
+  {
+    id: "slash-command-names-in-plan-text-are-evidence",
+    phrase: "Revise the existing plan text; it lists /supervibe-brainstorm, /supervibe-plan, and /supervibe-execute-plan as examples. Do not run those commands.",
+    expected: {
+      intent: "supervibe_plan",
+      command: "/supervibe-plan",
+      minConfidence: 0.9,
+      notIntent: ["slash_command", "workflow_chain_audit"],
+      notCommand: ["/supervibe-audit --workflow-chain", "/supervibe-execute-plan"],
+    },
+  },
+  {
     id: "design-flow-broken-audit",
     phrase: "audit why design flow is broken again; skipped prototype-builder ux-ui-designer ui-polish-reviewer accessibility-reviewer quality-gate-reviewer copywriter receipts",
     expected: {

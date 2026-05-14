@@ -16,6 +16,8 @@ const ACTIVE_WORKFLOW_STAGES = Object.freeze([
   "execution-ready",
   "executing",
   "verification",
+  "review",
+  "ship",
   "release-ready",
   "ui",
   "resume",
@@ -24,12 +26,14 @@ const ACTIVE_WORKFLOW_STAGES = Object.freeze([
 
 const ACTIVE_WORKFLOW_STAGE_ALIASES = Object.freeze({
   plan: "plan-draft",
-  review: "plan-review",
+  "review-plan": "plan-review",
+  planreview: "plan-review",
   atomize: "work-item-atomization",
   atomization: "work-item-atomization",
   ui: "ui",
   execute: "executing",
   verify: "verification",
+  ship: "ship",
   archive: "archived",
   resume: "resume",
 });
@@ -219,8 +223,14 @@ export function buildActiveWorkflowResumeInfo(state = null) {
       hasPendingQuestion: false,
       question: null,
       acceptedAnswer: null,
+      choices: [],
+      answerHistory: [],
+      resumeCursor: "",
+      blockedDecision: null,
       artifacts: [],
+      artifactManifest: null,
       receipts: [],
+      summaries: [],
     };
   }
   const normalized = normalizeActiveWorkflowState(state);
@@ -246,8 +256,14 @@ export function buildActiveWorkflowResumeInfo(state = null) {
     hasPendingQuestion,
     question: normalized.question ?? null,
     acceptedAnswer: normalized.acceptedAnswer ?? null,
+    choices: Array.isArray(normalized.choices) ? normalized.choices : [],
+    answerHistory: Array.isArray(normalized.answerHistory) ? normalized.answerHistory : [],
+    resumeCursor: normalized.resumeCursor || normalized.question?.resumeCursor || "",
+    blockedDecision: normalized.blockedDecision ?? null,
     artifacts: Array.isArray(normalized.artifacts) ? normalized.artifacts : [],
+    artifactManifest: normalized.artifactManifest ?? null,
     receipts: Array.isArray(normalized.receipts) ? normalized.receipts : [],
+    summaries: Array.isArray(normalized.summaries) ? normalized.summaries : [],
   };
 }
 
@@ -341,8 +357,11 @@ export function normalizeActiveWorkflowState(document = {}) {
   const question = normalizeQuestion(firstPresent(source.question, source.activeQuestion, source.currentQuestion));
   const choices = normalizeChoices(firstPresent(source.choices, question?.choices, source.questionChoices, source.nextQuestionChoices));
   const acceptedAnswer = normalizeAcceptedAnswer(firstPresent(source.acceptedAnswer, source.accepted_answer));
+  const answerHistory = normalizeAnswerHistory(firstPresent(source.answerHistory, source.answer_history, source.answers));
   const artifacts = normalizeArtifacts(firstPresent(source.artifacts, source.artifactRefs, source.artifactIds));
+  const artifactManifest = normalizeArtifactManifestState(firstPresent(source.artifactManifest, source.artifact_manifest));
   const receipts = normalizeReceipts(firstPresent(source.receipts, source.receiptIds, source.receipt_ids));
+  const summaries = normalizeStageSummaries(firstPresent(source.summaries, source.stageSummaries, source.stage_summaries));
   const nextCommand = normalizeCommand(firstNonEmpty(source.nextCommand, source.next_command, next.command));
   const command = normalizeCommand(firstNonEmpty(source.command, source.workflow, source.activeCommand, nextCommand));
 
@@ -363,8 +382,13 @@ export function normalizeActiveWorkflowState(document = {}) {
     activeQuestion: isPlainObject(question) ? question : null,
     choices,
     acceptedAnswer,
+    answerHistory,
+    resumeCursor: String(firstPresent(source.resumeCursor, source.resume_cursor, question?.resumeCursor, "") || "").trim(),
+    blockedDecision: normalizeBlockedDecision(firstPresent(source.blockedDecision, source.blocked_decision)),
     artifacts,
+    artifactManifest,
     receipts,
+    summaries,
     nextCommand,
     nextAction: String(firstPresent(source.nextAction, next.action, "") || "").trim(),
   };
@@ -387,8 +411,13 @@ export function activeWorkflowStateToWorkflow(state = {}) {
     activeQuestion: state.activeQuestion || state.question || null,
     choices: Array.isArray(state.choices) ? state.choices : [],
     acceptedAnswer: Object.hasOwn(state, "acceptedAnswer") ? state.acceptedAnswer : undefined,
+    answerHistory: Array.isArray(state.answerHistory) ? state.answerHistory : [],
+    resumeCursor: state.resumeCursor || state.question?.resumeCursor || "",
+    blockedDecision: state.blockedDecision ?? null,
     artifacts: Array.isArray(state.artifacts) ? state.artifacts : [],
+    artifactManifest: state.artifactManifest ?? null,
     receipts: Array.isArray(state.receipts) ? state.receipts : [],
+    summaries: Array.isArray(state.summaries) ? state.summaries : [],
     nextCommand: state.nextCommand || "",
     nextAction: state.nextAction || "",
   };
@@ -437,6 +466,10 @@ function validateActiveWorkflowState(state = {}, { file = "active-workflow-state
   } else if (isPlainObject(normalized.question)) {
     validateOptionalString(normalized.question.id, "active-workflow-state-question-invalid", "question.id", file, issues);
     validateOptionalString(normalized.question.prompt, "active-workflow-state-question-invalid", "question.prompt", file, issues);
+    validateOptionalString(normalized.question.resumeCursor, "active-workflow-state-question-invalid", "question.resumeCursor", file, issues);
+    if (!nonEmptyString(normalized.question.resumeCursor)) {
+      issues.push(issue("question-record-resume-cursor-missing", file, "question.resumeCursor is required for deterministic workflow resume"));
+    }
   }
 
   if (!hasAnyOwn(source, ["choices", "questionChoices", "nextQuestionChoices"]) && !Array.isArray(normalized.question?.choices)) {
@@ -537,11 +570,14 @@ function materializeActiveWorkflowState(document = {}) {
   const nestedNext = isPlainObject(source.next) ? source.next : {};
   const command = normalizeCommand(firstNonEmpty(source.command, source.workflow, source.activeCommand, source.nextCommand, nestedNext.command));
   const stage = normalizeWorkflowStage(firstPresent(source.stage, source.phase, "none"));
-  const question = normalizeQuestion(firstPresent(source.question, source.activeQuestion, source.currentQuestion, null));
+  const question = materializeQuestion(firstPresent(source.question, source.activeQuestion, source.currentQuestion, null));
   const choices = normalizeChoices(firstPresent(source.choices, question?.choices, source.questionChoices, source.nextQuestionChoices, []));
   const acceptedAnswer = normalizeAcceptedAnswer(firstPresent(source.acceptedAnswer, source.accepted_answer, null));
+  const answerHistory = normalizeAnswerHistory(firstPresent(source.answerHistory, source.answer_history, source.answers, []));
   const artifacts = normalizeArtifacts(firstPresent(source.artifacts, source.artifactRefs, source.artifactIds, []));
+  const artifactManifest = normalizeArtifactManifestState(firstPresent(source.artifactManifest, source.artifact_manifest, null));
   const receipts = normalizeReceipts(firstPresent(source.receipts, source.receiptIds, source.receipt_ids, []));
+  const summaries = normalizeStageSummaries(firstPresent(source.summaries, source.stageSummaries, source.stage_summaries, []));
   const explicitNextCommand = firstPresent(source.nextCommand, source.next_command, nestedNext.command);
   const explicitNextAction = firstPresent(source.nextAction, source.next_action, nestedNext.action);
   const defaults = defaultNextFieldsForStage(stage, command, { artifacts });
@@ -560,8 +596,13 @@ function materializeActiveWorkflowState(document = {}) {
     question,
     choices,
     acceptedAnswer,
+    answerHistory,
+    resumeCursor: String(firstPresent(source.resumeCursor, source.resume_cursor, question?.resumeCursor, "") || "").trim(),
+    blockedDecision: normalizeBlockedDecision(firstPresent(source.blockedDecision, source.blocked_decision, null)),
     artifacts,
+    artifactManifest,
     receipts,
+    summaries,
   };
   assignOptionalString(state, "host", firstPresent(source.host, source.activeHost));
   assignOptionalString(state, "slug", firstPresent(source.slug, source.prototypeSlug));
@@ -612,9 +653,12 @@ function defaultNextFieldsForStage(stage = "", command = "", state = {}) {
     case "executing":
       return { nextCommand: "/supervibe-loop", nextAction: "continue active execution" };
     case "verification":
-      return { nextCommand: "/supervibe-validate", nextAction: "run workflow verification" };
+      return { nextCommand: "/supervibe-verify", nextAction: "run workflow verification" };
+    case "review":
+      return { nextCommand: "/supervibe-review", nextAction: "run workflow review" };
+    case "ship":
     case "release-ready":
-      return { nextCommand: "/supervibe-loop", nextAction: "archive or continue release handoff" };
+      return { nextCommand: "/supervibe-ship", nextAction: "run release ship readiness" };
     case "ui":
       return { nextCommand: "/supervibe-ui", nextAction: "open active workflow UI" };
     case "resume":
@@ -670,12 +714,58 @@ function normalizeQuestion(value) {
   return value;
 }
 
+function materializeQuestion(value) {
+  const question = normalizeQuestion(value);
+  if (!isPlainObject(question)) return question;
+  if (nonEmptyString(question.resumeCursor) || !nonEmptyString(question.id)) return question;
+  return { ...question, resumeCursor: "question:" + String(question.id).trim() };
+}
+
 function normalizeChoices(value) {
   if (!Array.isArray(value)) return value;
   return value.map((choice) => {
     if (isPlainObject(choice)) return { ...choice };
     return choice;
   });
+}
+
+function normalizeAnswerHistory(value) {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) return value;
+  return value.map((answer) => {
+    if (!isPlainObject(answer)) return answer;
+    const normalized = { ...answer };
+    if (normalized.question_id !== undefined && normalized.questionId === undefined) normalized.questionId = normalized.question_id;
+    if (normalized.choice_id !== undefined && normalized.choiceId === undefined) normalized.choiceId = normalized.choice_id;
+    if (normalized.answered_at !== undefined && normalized.answeredAt === undefined) normalized.answeredAt = normalized.answered_at;
+    if (normalized.receipt_id !== undefined && normalized.receiptId === undefined) normalized.receiptId = normalized.receipt_id;
+    return normalized;
+  });
+}
+
+function normalizeBlockedDecision(value) {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (isPlainObject(value)) return { ...value };
+  return value;
+}
+
+function normalizeStageSummaries(value) {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) return value;
+  return value.map((summary) => isPlainObject(summary) ? { ...summary } : summary);
+}
+
+function normalizeArtifactManifestState(value) {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (!isPlainObject(value)) return value;
+  return {
+    ...value,
+    artifacts: Array.isArray(value.artifacts)
+      ? value.artifacts.map((artifact) => isPlainObject(artifact) ? { ...artifact } : artifact)
+      : [],
+  };
 }
 
 function normalizeAcceptedAnswer(value) {

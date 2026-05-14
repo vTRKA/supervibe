@@ -296,3 +296,32 @@ test("agent retrieval telemetry accepts receipt-backed distributed evidence port
   assert.equal(report.summary.agents, 10);
   assert.equal(report.globalViolations.length, 0);
 });
+
+
+test("agent retrieval telemetry treats low confidence as advisory when evidence is healthy", () => {
+  const invocations = Array.from({ length: 6 }, (_, index) => ({
+    ts: `${`2026-05-02T00:00:${String(index).padStart(2, "0")}.000Z`}`,
+    agent_id: "code-reviewer",
+    task_summary: "review receipt simplification with cited retrieval evidence",
+    confidence_score: 7.8,
+    retrieval_enforcement: { schemaVersion: 1, evidenceLedger: "written", evidencePass: true },
+    retrieval_policy: { memory: "mandatory", rag: "mandatory", codegraph: "mandatory" },
+    subtool_usage: { memory: 1, rag: 1, codegraph: 1 },
+    evidence_gate: { pass: true, score: 10 },
+  }));
+
+  const report = buildAgentRetrievalTelemetryReport({
+    invocations,
+    evidenceEntries: invocations.map((entry) => ({
+      taskId: entry.task_summary,
+      agentId: entry.agent_id,
+      gate: { pass: true, score: 10 },
+    })),
+    thresholds: { minSample: 5, confidence: 8.5 },
+  });
+
+  assert.equal(report.pass, true);
+  assert.equal(report.maturityScore, 10);
+  assert.equal(report.summary.failingAgents, 0);
+  assert.ok(report.agents[0].advisories.some((item) => item.includes("low confidence")));
+});

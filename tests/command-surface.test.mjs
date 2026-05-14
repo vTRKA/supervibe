@@ -44,12 +44,15 @@ const PUBLIC_COMMANDS = new Set([
   "supervibe-plan.md",
   "supervibe-presentation.md",
   "supervibe-preview.md",
+  "supervibe-review.md",
   "supervibe-score.md",
   "supervibe-security-audit.md",
+  "supervibe-ship.md",
   "supervibe-status.md",
   "supervibe-strengthen.md",
   "supervibe-ui.md",
   "supervibe-update.md",
+  "supervibe-verify.md",
 ]);
 
 const INTERNAL_COMMANDS = new Set([
@@ -174,8 +177,6 @@ test("legacy short aliases stay unpublished and unroutable", async () => {
     ["p", "lan"],
     ["bui", "ld"],
     ["te", "st"],
-    ["rev", "iew"],
-    ["sh", "ip"],
     ["code", "-simplify"],
   ].map((parts) => parts.join(""));
   const commandDocs = new Set((await readdir(join(ROOT, "commands"))).filter((file) => file.endsWith(".md")));

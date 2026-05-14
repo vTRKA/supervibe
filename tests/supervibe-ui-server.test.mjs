@@ -344,18 +344,31 @@ test("workflow flow model derives real phase state from graph, run, gates, and a
   assert.equal(verifying.activeId, "verify");
   assert.equal(verifying.metrics.openGates, 1);
 
-  const closing = createWorkflowFlowModel({
+  const readyForReleaseGates = createWorkflowFlowModel({
     run: { status: "COMPLETE", tasks: [{ id: "build-ui", status: "complete" }], gates: [] },
     index: [{ itemId: "build-ui", type: "task", effectiveStatus: "done" }],
   });
-  assert.equal(closing.activeId, "close");
+  assert.equal(readyForReleaseGates.activeId, "verify");
+
+  const closedWithoutReleaseEvents = createWorkflowFlowModel({
+    graph: {
+      graph_id: "epic-closed-no-release-events",
+      status: "closed",
+      items: [
+        { itemId: "epic-closed-no-release-events", type: "epic", status: "closed" },
+        { itemId: "build-ui", type: "task", status: "closed", title: "Build UI" },
+      ],
+    },
+  });
+  assert.equal(closedWithoutReleaseEvents.activeId, "verify");
+  assert.equal(closedWithoutReleaseEvents.steps.find((step) => step.id === "ship").state, "pending");
 
   const archived = createWorkflowFlowModel({
     graph: { graph_id: "epic-archived", archivedAt: "2026-04-30T00:00:00.000Z" },
     index: [{ itemId: "build-ui", type: "task", effectiveStatus: "done" }],
   });
   assert.equal(archived.activeId, "archive");
-  assert.equal(archived.steps.find((step) => step.id === "close").state, "complete");
+  assert.equal(archived.steps.find((step) => step.id === "ship").state, "complete");
 });
 
 async function writeState(statePath) {

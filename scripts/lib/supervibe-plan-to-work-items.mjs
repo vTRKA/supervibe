@@ -339,6 +339,7 @@ export function validateWorkItemGraph(graph = {}) {
     }
   }
 
+  const enforceTerminalScores = Boolean(graph.metadata?.scoreGatesRequired || graph.metadata?.scoreGatesClosedAt);
   for (const item of items) {
     for (const blocked of item.blocks ?? []) {
       if (!ids.has(blocked)) issues.push(issue("unknown-block", item.itemId, `${item.itemId} blocks unknown item ${blocked}.`, { blocked }));
@@ -354,8 +355,14 @@ export function validateWorkItemGraph(graph = {}) {
     }
     for (const field of ["taskScore", "reviewerScore", "evidenceScore"]) {
       if (!(field in item)) continue;
-      const score = validateScoreField(item[field], field, item.itemId);
+      const score = validateScoreField(item[field], field, item.itemId, { terminalStatus: enforceTerminalScores ? item.status : null });
       issues.push(...score);
+    }
+  }
+  for (const task of graph.tasks || []) {
+    for (const field of ["taskScore", "reviewerScore", "evidenceScore"]) {
+      if (!(field in task)) continue;
+      issues.push(...validateScoreField(task[field], field, task.id || task.itemId, { terminalStatus: enforceTerminalScores ? task.status : null }));
     }
   }
   issues.push(...validateWorkItemGraphConsistency(graph, items, ids));
@@ -972,7 +979,7 @@ function normalizeScoreField(value, kind) {
   };
 }
 
-function validateScoreField(value, field, itemId) {
+function validateScoreField(value, field, itemId, { terminalStatus = null } = {}) {
   const issues = [];
   if (!value || typeof value !== "object") {
     issues.push(issue("bad-score-field", itemId, `${itemId} has invalid ${field}.`));
@@ -990,7 +997,14 @@ function validateScoreField(value, field, itemId) {
   if (!value.status) {
     issues.push(issue("missing-score-status", itemId, `${itemId} ${field} status is required.`));
   }
+  if (isTerminalWorkStatus(terminalStatus) && (value.score === null || String(value.status || "").toLowerCase() === "pending")) {
+    issues.push(issue("terminal-score-pending", itemId, `${itemId} ${field} must be scored before terminal graph closure.`));
+  }
   return issues;
+}
+
+function isTerminalWorkStatus(status) {
+  return ["closed", "complete", "completed", "done"].includes(String(status || "").toLowerCase());
 }
 
 function applyCriticalPathBlocks(items, criticalPath) {

@@ -183,6 +183,40 @@ test("routes stale and orphan task graph status queries", async () => {
   assert.match(orphanOutput, /COMMAND: \/supervibe-status --orphan/);
 });
 
+test("routes active explicit slash-command handoff phrases without audit fallback", async () => {
+  const output = await matchCommand("active /supervibe-review handoff verify-review-ship-workflow-review-final-pass");
+
+  assert.match(output, /INTENT: slash_command/);
+  assert.match(output, /COMMAND: \/supervibe-review/);
+  assert.match(output, /COMMAND_ID: \/supervibe-review/);
+  assert.doesNotMatch(output, /COMMAND: \/supervibe-audit/);
+});
+
+test("routes polite explicit slash commands without falling through to natural language", async () => {
+  const output = await matchCommand("please /supervibe-verify");
+
+  assert.match(output, /INTENT: slash_command/);
+  assert.match(output, /COMMAND: \/supervibe-verify/);
+  assert.match(output, /COMMAND_ID: \/supervibe-verify/);
+});
+
+test("routes verify review and ship workflow phrases", async () => {
+  const verifyOutput = await matchCommand("verify implementation goals with tester evidence");
+  assert.match(verifyOutput, /INTENT: supervibe_verify/);
+  assert.match(verifyOutput, /COMMAND: \/supervibe-verify/);
+  assert.match(verifyOutput, /REQUIRED_AGENTS: .*qa-test-engineer/);
+
+  const reviewOutput = await matchCommand("review production readiness after verify evidence");
+  assert.match(reviewOutput, /INTENT: supervibe_review/);
+  assert.match(reviewOutput, /COMMAND: \/supervibe-review/);
+  assert.match(reviewOutput, /REQUIRED_AGENTS: .*code-reviewer/);
+
+  const shipOutput = await matchCommand("ship release with target-aware release readiness");
+  assert.match(shipOutput, /INTENT: supervibe_ship/);
+  assert.match(shipOutput, /COMMAND: \/supervibe-ship/);
+  assert.match(shipOutput, /REQUIRED_AGENTS: .*release-governance-reviewer/);
+});
+
 test("routes task graph maturity requests to the task-graph-specific gate", async () => {
   const output = await matchCommand("task graph maturity");
   assert.match(output, /INTENT: task_graph_maturity/);

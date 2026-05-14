@@ -235,6 +235,7 @@ All checks pass and handoff is complete?
 
 ## Related
 
+- `/supervibe-ship` - release-readiness command surface that consumes verify and review packets, requires target-aware release evidence, and checks Docker only when the detected release target uses Docker.
 - `supervibe:pre-pr-check` provides the final pre-review evidence gate.
 - `supervibe:requesting-code-review` uses the handoff to request reviewer focus.
 - `supervibe:using-git-worktrees` governs worktree cleanup and preservation.

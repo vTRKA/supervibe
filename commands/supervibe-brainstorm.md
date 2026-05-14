@@ -71,14 +71,14 @@ Treat the most recent user message as the topic.
 
 5. **Mandatory handoff.** Print `Step N/M: write the production-ready plan?` with the concrete `/supervibe-plan --from-brainstorm <spec-path>` command. Compute `M` from the active handoff/resume state instead of hard-coding a final-step count. Do not offer direct implementation from brainstorm output.
 
-5a. **Mandatory next user actions.** After showing the brainstorm result, print `NEXT_USER_ACTIONS[]` in the command output block with these visible choices and wait for one choice before moving on. In normal conversational summaries, translate the same choices into a short human-readable next-step sentence instead of exposing the raw marker:
+5a. **Mandatory next user actions.** After showing the brainstorm result, present a human-first Decision Card using `scripts/lib/supervibe-post-stage-actions.mjs`: recommendation, why, `Step N/M` question, visible choices, resume cursor, and next command. Print `NEXT_USER_ACTIONS[]` in the command output block with these visible choices and wait for one choice before moving on. In normal conversational summaries, translate the same choices into a short human-readable next-step sentence instead of exposing the raw marker:
    - **Approve spec and write plan** - run `/supervibe-plan --from-brainstorm <spec-path>`.
    - **Revise idea/spec** - update goals, references, assumptions, scope, or acceptance criteria before planning.
    - **Compare or research deeper** - run additional alternatives, references, risks, or specialist checks before approval.
    - **Exclude or defer items** - record out-of-scope work so it cannot enter the plan silently.
    - **Keep spec draft and stop** - save the candidate spec without planning, review, atomization, or execution.
 
-5b. **Machine-readable handoff.** Include:
+5b. **Secondary machine-readable handoff.** Include the raw block only after the Decision Card. The raw `NEXT_STEP_HANDOFF` block is resume state, not the primary user-facing UX:
 
    ```text
    NEXT_STEP_HANDOFF
@@ -123,6 +123,7 @@ Visual explanation: text-first summary/table/stage map present; browser preview 
 
 Next:      /supervibe-plan --from-brainstorm .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-brainstorm.md
 Post-documentation summary: concise human summary and next actions shown after spec creation
+Decision Card: human-first recommendation, `Step N/M` question, choices, resume cursor, and next command before any raw handoff block
 Documentation Approval Gate: answered before durable spec write
 NEXT_USER_ACTIONS[]: approve spec and write plan | revise idea/spec | compare or research deeper | exclude or defer items | keep spec draft and stop
 Handoff:   NEXT_STEP_HANDOFF with command `/supervibe-plan --from-brainstorm <spec-path>`

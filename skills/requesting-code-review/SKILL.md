@@ -259,7 +259,7 @@ When the input artifact is a plan, produce a review package with:
 
 Plan-review mode must write a durable artifact using `docs/templates/plan-review-template.md`, validate it with `node scripts/validate-plan-review-artifacts.mjs --file <review-artifact>`, and score against `confidence-rubrics/plan-review.yaml`. Inline notes are diagnostic only. The loop can stop with pass only when the Convergence Ledger shows at least one iteration, zero open critical findings, zero open major findings, an explicit stop reason, and a Next User Decision.
 
-If the plan passes, print:
+If the plan passes, first print a human-first Decision Card with recommendation, `Step N/M` question, choices, resume cursor, and next command. Then print the secondary raw resume block:
 
 ```text
 NEXT_STEP_HANDOFF
@@ -279,7 +279,7 @@ Choices:
 END_NEXT_STEP_HANDOFF
 ```
 
-Also print `NEXT_USER_ACTIONS[]`: continue to atomization, revise reviewed plan first, ask for another specialist review, inspect readiness/blockers, or keep reviewed plan and stop. Do not atomize, create an epic, or execute until the user chooses one action.
+Also print `NEXT_USER_ACTIONS[]`: continue to atomization, revise reviewed plan first, ask for another specialist review, inspect readiness/blockers, or keep reviewed plan and stop. Do not atomize, create an epic, or execute until the user chooses one action. Artifact review records must include Pre-Artifact Summary, Post-Artifact Summary, Reviewer Decision, Evidence, Risks And Gaps, Acceptance Mapping, and Next User Decision without raw `NEXT_STEP_HANDOFF` leakage in review prose.
 
 If the plan fails review, do not atomize or execute. Return findings and route back to `/supervibe-plan <plan-path>` for repair.
 

@@ -34,10 +34,32 @@ describe("supervibe chain handoff enforcer", () => {
     assert.match(output, /Next command: \/supervibe-loop --atomize-plan <plan-path> --plan-review-passed/);
   });
 
+  it("formats loop completion as a human-first decision card", () => {
+    const output = formatHandoff("loop_completion");
+
+    assert.match(output, /^Decision Card\nStage: loop_completion/m);
+    assert.match(output, /Run \/supervibe-verify/);
+    assert.match(output, /Run \/supervibe-review/);
+    assert.match(output, /Continue loop/);
+    assert.match(output, /Revise goals/);
+    assert.match(output, /Stop with gaps/);
+    assert.doesNotMatch(output, /Run \/supervibe-ship/);
+    assert.ok(output.indexOf("Decision Card") < output.indexOf("NEXT_STEP_HANDOFF"));
+  });
+
+  it("allows ship choice only after review has passed", () => {
+    const reviewPassedOutput = formatHandoff("review_passed");
+    const verifyPassedOutput = formatHandoff("verify_passed");
+
+    assert.match(reviewPassedOutput, /Run \/supervibe-ship/);
+    assert.doesNotMatch(verifyPassedOutput, /Run \/supervibe-ship/);
+    assert.match(verifyPassedOutput, /Continue loop/);
+  });
+
   it("keeps the full chain in the expected order", () => {
     assert.deepEqual(
       getHandoffChain().map((item) => item.phase),
-      ["brainstorm", "plan", "plan_review_passed", "atomized", "execution_preflight"],
+      ["brainstorm", "plan", "plan_review_passed", "atomized", "execution_preflight", "loop_completion", "verify_passed", "review_passed"],
     );
   });
 });

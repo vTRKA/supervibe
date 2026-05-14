@@ -471,6 +471,27 @@ const COMMAND_AGENT_PROFILES = Object.freeze(Object.fromEntries([
     "accessibility-reviewer",
     "quality-gate-reviewer",
   ], { dynamicAgentSelectors: ["target-platform-designers"] }),
+  profile("/supervibe-verify", [
+    "supervibe-orchestrator",
+    "repo-researcher",
+    "qa-test-engineer",
+    "quality-gate-reviewer",
+  ], { dynamicAgentSelectors: ["risk-reviewers"] }),
+  profile("/supervibe-review", [
+    "supervibe-orchestrator",
+    "architect-reviewer",
+    "code-reviewer",
+    "qa-test-engineer",
+    "release-governance-reviewer",
+    "quality-gate-reviewer",
+  ], { dynamicAgentSelectors: ["changed-artifact-specialists", "risk-reviewers"] }),
+  profile("/supervibe-ship", [
+    "supervibe-orchestrator",
+    "release-governance-reviewer",
+    "devops-sre",
+    "qa-test-engineer",
+    "quality-gate-reviewer",
+  ], { dynamicAgentSelectors: ["changed-stack-specialists", "risk-reviewers"] }),
   profile("/supervibe-score", [
     "supervibe-orchestrator",
     "quality-gate-reviewer",

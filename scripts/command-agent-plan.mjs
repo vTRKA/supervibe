@@ -448,12 +448,13 @@ function inspectReceiptTrust(projectRoot) {
 function inspectScopedReceiptTrust(projectRoot, { command, workflowContext = {}, requiredAgentIds = [] } = {}) {
   const minHostAgentReceipts = requiredAgentIds.length || 1;
   const minAgentInvocations = requiredAgentIds.length || 1;
+  const handoffId = workflowContext.handoffId || workflowContext.handoff || null;
   try {
     return {
       ...validateScopedAgentProducerReceipts(projectRoot, {
         command,
-        handoffId: workflowContext.handoffId || workflowContext.handoff || null,
-        workflowRunId: workflowContext.workflowRunId || null,
+        handoffId,
+        workflowRunId: handoffId ? null : workflowContext.workflowRunId || null,
         requiredAgentIds,
         minHostAgentReceipts,
         minAgentInvocations,

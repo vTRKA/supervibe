@@ -56,7 +56,7 @@ Run this preflight before selecting a chain for non-trivial work.
 
 | Decision question | Command-owned durable work | Direct skill use is enough |
 | --- | --- | --- |
-| Does the work create or mutate `.supervibe/artifacts/specs`, plans, plan reviews, prototypes, brandbook/design-system artifacts, task graphs, loop state, scaffold/adapt state, or workflow ledgers? | Yes. Use the owning `/supervibe-*` command. | No. Direct skills may guide a small answer or edit. |
+| Does the work create or mutate `.supervibe/artifacts/specs`, plans, plan reviews, prototypes, brandbook and design-system artifacts, task graphs, loop state, scaffold/adapt state, or workflow ledgers? | Yes. Use the owning `/supervibe-*` command. | No. Direct skills may guide a small answer or edit. |
 | Does the output claim a command, producer, reviewer, worker, validator, external tool, or specialist agent completed work? | Yes. Require runtime-issued receipts and, for agent output, host invocation ids. | No. Explain that the result is controller/direct-skill work only. |
 | Does the user ask for brainstorm, plan, plan review, atomization, execution loop, design pipeline, security audit, genesis, adapt, update, score recording, or project health? | Yes. Route to the canonical command. | No, unless the request is a narrow read-only explanation of the method. |
 | Is the task a narrow code/doc edit with clear scope and no workflow artifact lifecycle? | Usually no command. Use direct source/retrieval/implementation/verification skills. | Yes. Use direct skills and targeted verification. |

@@ -66,7 +66,7 @@ claims, and keep confidence below gate when evidence is partial.
 
 ## Continuation Contract
 
-Do not stop after individual plan phases. Produce a compact plan-scope preview, ask the approve/revise/exclude-or-defer/stop choice through `plan_delivery`, then continue to Post-plan summary and text-first summary. Let the user exclude or defer items, then write the full plan before handoff. Expose `NEXT_USER_ACTIONS[]` with run plan review and revise plan first, then emit `NEXT_STEP_HANDOFF`.
+Do not stop after individual plan phases. Produce a compact plan-scope preview, ask the approve/revise/exclude-or-defer/stop choice through `plan_delivery`, then continue to Post-plan summary and text-first summary. Let the user exclude or defer items, then write the full plan before handoff. Expose a human-first Decision Card with recommendation, `Step N/M` question, choices, resume cursor, and next command; expose `NEXT_USER_ACTIONS[]` with run plan review and revise plan first, then emit the raw `NEXT_STEP_HANDOFF` only as secondary resume state.
 
 ## Plan Scope Approval Gate
 
@@ -121,9 +121,7 @@ Five or more phases, broad production path, or high regression risk
 9. Save the durable plan only after the save gate is answered. Then summarize
    artifact path, phases, critical path, scope decisions, top risks, validation,
    confidence, and next actions.
-10. Emit `NEXT_STEP_HANDOFF` for plan review and ask one user question. Review is
-    mandatory before atomization. After review passes, ask one separate question
-    before splitting into atomic work items and an epic.
+10. Emit a Decision Card for plan review using `scripts/lib/supervibe-post-stage-actions.mjs`, then emit the secondary raw `NEXT_STEP_HANDOFF` for resume state and ask one user question. Review is mandatory before atomization. After review passes, ask one separate question before splitting into atomic work items and an epic.
 
 ## User Gates
 
@@ -184,7 +182,7 @@ Returns a plan file with these fields/sections: `Goal`, `Architecture`,
 Evidence`, `Critical Path`, `Scope Safety Gate`, `Delivery Strategy`,
 `Production Readiness`, numbered tasks, `Final Acceptance Gate`, `Self-Review`,
 post-plan summary, mandatory review handoff, post-review atomization handoff,
-and machine-readable `NEXT_STEP_HANDOFF`.
+a human-first Decision Card and a secondary machine-readable `NEXT_STEP_HANDOFF`.
 
 The handoff must name: `Current phase`, `Artifact`, `Next phase`, `Next command`,
 `Next skill`, `Stop condition`, `Why`, `Question`, and `Choices`.

@@ -253,7 +253,7 @@ export function validateAgentProducerReceipts(rootDir = process.cwd(), options =
 export function validateScopedAgentProducerReceipts(rootDir = process.cwd(), options = {}) {
   const command = normalizeCommand(options.command);
   const handoffId = normalizeOptional(options.handoffId || options.handoff);
-  const workflowRunId = normalizeOptional(options.workflowRunId || options.workflow_run_id);
+  const workflowRunId = handoffId ? "" : normalizeOptional(options.workflowRunId || options.workflow_run_id);
   const requiredSubjectIds = unique(options.requiredSubjectIds || options.requiredAgentIds || []);
   const requiredSubjectTypes = new Set((options.requiredSubjectTypes || HOST_AGENT_SUBJECT_TYPES).map((item) => String(item).toLowerCase()));
   const stageIds = new Set(unique(options.stageIds || options.stages || []));

@@ -171,6 +171,7 @@ Return a ranked review artifact with stable fields:
 
 ## Related
 
+- `/supervibe-review` - production-readiness command surface that consumes `/supervibe-verify` evidence, requires severity-ranked findings, and blocks ship on missing verification or unresolved critical review findings.
 - `supervibe:requesting-code-review` — prepares the package this skill consumes
 - `supervibe:receiving-code-review` — how the reviewed agent should respond
 - Phase 3 `code-reviewer` agent — primary user of this skill

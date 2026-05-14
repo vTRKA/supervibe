@@ -21,6 +21,7 @@ import {
   resolveHostAgentDispatcher,
   validateCommandAgentProfiles,
 } from "../scripts/lib/command-agent-orchestration-contract.mjs";
+import { validateWorkflowStageId } from "../scripts/lib/workflow-stage-registry.mjs";
 
 const ROOT = process.cwd();
 const COMMANDS_SCRIPT = join(ROOT, "scripts", "supervibe-commands.mjs");
@@ -56,6 +57,58 @@ test("project command catalog exposes slash commands, npm scripts, and fast shor
   assert.match(report, /NPM_SCRIPTS:/);
   assert.match(report, /AGENT_OWNER: supervibe-orchestrator/);
   assert.match(report, /AGENT_BLOCKED_MODE: agent-required-blocked/);
+});
+
+test("verify review ship command surfaces publish profiles, stages, and routes", () => {
+  const catalog = buildProjectCommandCatalog({ pluginRoot: ROOT, projectRoot: ROOT });
+  for (const commandId of ["/supervibe-verify", "/supervibe-review", "/supervibe-ship"]) {
+    assert.ok(catalog.slashCommands.some((entry) => entry.id === commandId), commandId);
+    assert.ok(getCommandAgentProfile(commandId), commandId);
+  }
+
+  const verify = resolveCommandRequest("verify the completed goals with tester evidence", {
+    pluginRoot: ROOT,
+    projectRoot: ROOT,
+  });
+  assert.equal(verify.command, "/supervibe-verify");
+  assert.equal(verify.intent, "supervibe_verify");
+  assert.ok(verify.agentProfile.requiredAgentIds.includes("qa-test-engineer"));
+  assert.ok(verify.agentProfile.requiredAgentIds.includes("quality-gate-reviewer"));
+
+  const review = resolveCommandRequest("review production readiness after verify evidence", {
+    pluginRoot: ROOT,
+    projectRoot: ROOT,
+  });
+  assert.equal(review.command, "/supervibe-review");
+  assert.equal(review.intent, "supervibe_review");
+  assert.ok(review.agentProfile.requiredAgentIds.includes("code-reviewer"));
+  assert.ok(review.agentProfile.requiredAgentIds.includes("release-governance-reviewer"));
+
+  const ship = resolveCommandRequest("ship the release with target-aware release readiness", {
+    pluginRoot: ROOT,
+    projectRoot: ROOT,
+  });
+  assert.equal(ship.command, "/supervibe-ship");
+  assert.equal(ship.intent, "supervibe_ship");
+  assert.ok(ship.agentProfile.requiredAgentIds.includes("release-governance-reviewer"));
+  assert.ok(ship.agentProfile.requiredAgentIds.includes("devops-sre"));
+
+  const shipPlan = buildCommandAgentPlan("/supervibe-ship", {
+    workflowContext: {
+      intent: "ship",
+      artifactType: "release",
+      stage: "release",
+      riskDomains: ["deploy"],
+    },
+  });
+  assert.ok(shipPlan.requiredAgentIds.includes("release-governance-reviewer"));
+  assert.ok(shipPlan.requiredAgentIds.includes("devops-sre"));
+  assert.deepEqual(shipPlan.selectorInputs.stage, "release");
+
+  assert.equal(validateWorkflowStageId({ command: "/supervibe-verify", stage: "goal-evidence" }).pass, true);
+  assert.equal(validateWorkflowStageId({ command: "/supervibe-review", stage: "missing-verify-evidence" }).pass, true);
+  assert.equal(validateWorkflowStageId({ command: "/supervibe-ship", stage: "docker-readiness" }).pass, true);
+  assert.equal(validateWorkflowStageId({ command: "/supervibe-ship", stage: "design-wizard" }).pass, false);
 });
 
 test("command resolver resolves every published slash command explicitly without repo search", () => {
@@ -204,6 +257,54 @@ test("slash command parser keeps command id separate from free-form context", ()
   assert.equal(flagged.command, "/supervibe-genesis --profile minimal --host codex");
   assert.equal(flagged.commandArgs, "--profile minimal --host codex");
   assert.equal(flagged.commandContext, "под next laravel postgres");
+});
+
+test("command resolver prefers explicit review slash command in realistic scoped handoff wording", () => {
+  const match = resolveCommandRequest("final scoped /supervibe-review pass on verify/review/ship workflow", {
+    pluginRoot: ROOT,
+    projectRoot: ROOT,
+  });
+
+  assert.equal(match.intent, "slash_command");
+  assert.equal(match.commandId, "/supervibe-review");
+  assert.equal(match.command, "/supervibe-review");
+  assert.notEqual(match.command, "/supervibe-audit --workflow-chain");
+});
+
+test("command resolver treats required specialist slash handoff as explicit command", () => {
+  const match = resolveCommandRequest("Role: Supervibe required specialist architect-reviewer for scoped /supervibe-review active workflow check", {
+    pluginRoot: ROOT,
+    projectRoot: ROOT,
+  });
+
+  assert.equal(match.intent, "slash_command");
+  assert.equal(match.commandId, "/supervibe-review");
+  assert.equal(match.command, "/supervibe-review");
+  assert.notEqual(match.command, "/supervibe-plan");
+});
+
+test("command resolver treats active slash-command handoff phrases as explicit commands", () => {
+  const match = resolveCommandRequest("active /supervibe-review handoff verify-review-ship-workflow-review-final-pass", {
+    pluginRoot: ROOT,
+    projectRoot: ROOT,
+  });
+
+  assert.equal(match.intent, "slash_command");
+  assert.equal(match.commandId, "/supervibe-review");
+  assert.equal(match.command, "/supervibe-review");
+  assert.match(match.commandContext, /handoff verify-review-ship-workflow-review-final-pass/);
+});
+
+test("command resolver treats polite slash-command requests as explicit commands", () => {
+  const match = resolveCommandRequest("please /supervibe-verify", {
+    pluginRoot: ROOT,
+    projectRoot: ROOT,
+  });
+
+  assert.equal(match.intent, "slash_command");
+  assert.equal(match.commandId, "/supervibe-verify");
+  assert.equal(match.command, "/supervibe-verify");
+  assert.equal(match.doNotSearchProject, true);
 });
 
 test("command resolver prefers explicit slash command embedded in long specialist text", () => {

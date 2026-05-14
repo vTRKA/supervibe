@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
 import { relative, sep } from "node:path";
 
 import {
@@ -23,8 +25,9 @@ export function createEpicAgentContract({
     schemaVersion: EPIC_AGENT_CONTRACT_SCHEMA_VERSION,
     required: Boolean(required),
     stage,
+    allowedStages: [...new Set([stage, "review-gate"].filter(Boolean))],
     outputArtifact,
-    requiredSubjectTypes: ["agent", "worker"],
+    requiredSubjectTypes: ["agent", "worker", "reviewer"],
     allowedAgentIds: [...new Set(agentIds.map((agentId) => String(agentId).trim()).filter(Boolean))],
     trust: "runtime-issued-host-agent-receipt",
   };
@@ -42,6 +45,9 @@ export function validateEpicAgentContract({ rootDir = process.cwd(), graph = {},
     return { pass: false, issues, trustedReceipts: [] };
   }
   if (!contract?.required) return { pass: true, issues, trustedReceipts: [] };
+  if (!Array.isArray(contract.allowedStages) || contract.allowedStages.length === 0) {
+    return { pass: true, issues, trustedReceipts: [], legacyContract: true };
+  }
 
   if (contract.schemaVersion !== EPIC_AGENT_CONTRACT_SCHEMA_VERSION) {
     issues.push(issue("bad-epic-agent-contract-version", graph.epicId, "Epic-agent contract schema version is unsupported."));
@@ -62,6 +68,8 @@ export function validateEpicAgentContract({ rootDir = process.cwd(), graph = {},
     graphPath,
     allowedAgentIds: contract.allowedAgentIds,
     requiredSubjectTypes: contract.requiredSubjectTypes,
+    allowedStages: contract.allowedStages || [contract.stage].filter(Boolean),
+    graphId: graph.epicId || graph.graph_id || graph.id || null,
   });
   if (trustedReceipts.length === 0) {
     issues.push(issue("missing-epic-agent-receipt", graph.epicId, "Durable epic/task graph must have a trusted runtime agent or worker receipt bound to graph.json."));
@@ -77,12 +85,15 @@ export function validateEpicAgentContract({ rootDir = process.cwd(), graph = {},
 function findTrustedEpicAgentReceipts({
   rootDir = process.cwd(),
   graphPath,
+  graphId = null,
   allowedAgentIds = DEFAULT_EPIC_AGENT_IDS,
-  requiredSubjectTypes = ["agent", "worker"],
+  requiredSubjectTypes = ["agent", "worker", "reviewer"],
+  allowedStages = ["work-item-atomization", "review-gate"],
 } = {}) {
   const graphRel = normalizeRel(rootDir, graphPath);
   const allowed = new Set((allowedAgentIds || []).map((id) => String(id).toLowerCase()));
   const subjectTypes = new Set((requiredSubjectTypes || []).map((type) => String(type).toLowerCase()));
+  const stages = new Set((allowedStages || []).map((stage) => String(stage).toLowerCase()).filter(Boolean));
   const trusted = [];
 
   for (const receipt of readWorkflowReceipts(rootDir)) {
@@ -90,8 +101,11 @@ function findTrustedEpicAgentReceipts({
     if (!subjectTypes.has(subjectType)) continue;
     const agentId = String(receipt.agentId || receipt.subjectId || "").toLowerCase();
     if (allowed.size > 0 && !allowed.has(agentId)) continue;
-    const outputArtifacts = Array.isArray(receipt.outputArtifacts) ? receipt.outputArtifacts.map(normalizePath) : [];
-    if (!outputArtifacts.includes(graphRel)) continue;
+    if (stages.size > 0 && !stages.has(String(receipt.stage || "").toLowerCase())) continue;
+    if (!isGraphLevelReceipt(receipt, graphId)) continue;
+    const binding = receiptBindsGraph(receipt, { graphRel });
+    if (!binding.binds) continue;
+    if (binding.mode === "input" && !receiptInputEvidenceCurrent(receipt, { rootDir, graphRel })) continue;
     const trust = validateWorkflowReceiptTrust(rootDir, receipt);
     if (!trust.pass) continue;
     trusted.push({
@@ -99,9 +113,35 @@ function findTrustedEpicAgentReceipts({
       subjectId: receipt.subjectId,
       agentId: receipt.agentId,
       stage: receipt.stage,
+      binding: binding.mode,
     });
   }
   return trusted;
+}
+
+function receiptBindsGraph(receipt = {}, { graphRel = "" } = {}) {
+  const outputArtifacts = Array.isArray(receipt.outputArtifacts) ? receipt.outputArtifacts.map(normalizePath) : [];
+  if (graphRel && outputArtifacts.includes(graphRel)) return { binds: true, mode: "output" };
+  const inputEvidence = Array.isArray(receipt.inputEvidence) ? receipt.inputEvidence.map(normalizePath) : [];
+  if (graphRel && inputEvidence.includes(graphRel)) return { binds: true, mode: "input" };
+  return { binds: false, mode: null };
+}
+
+function isGraphLevelReceipt(receipt = {}, graphId = null) {
+  const taskId = receipt.taskId || receipt.task_id || receipt.workItemBinding?.taskId || receipt.workItemBinding?.task_id || null;
+  if (!taskId) return true;
+  return Boolean(graphId && String(taskId) === String(graphId));
+}
+
+function receiptInputEvidenceCurrent(receipt = {}, { rootDir = process.cwd(), graphRel = "" } = {}) {
+  const normalizedGraph = normalizePath(graphRel);
+  const inputHashes = Array.isArray(receipt.inputHashes) ? receipt.inputHashes : [];
+  const match = inputHashes.find((entry) => normalizePath(entry.path) === normalizedGraph);
+  if (!match?.sha256) return false;
+  const absPath = joinPath(rootDir, normalizedGraph);
+  if (!existsSync(absPath)) return false;
+  const currentHash = createHash("sha256").update(readFileSync(absPath)).digest("hex");
+  return currentHash === match.sha256;
 }
 
 function normalizeRel(rootDir, filePath) {
@@ -113,6 +153,10 @@ function normalizeRel(rootDir, filePath) {
 
 function normalizePath(value) {
   return String(value || "").replace(/\\/g, "/");
+}
+
+function joinPath(rootDir, relPath) {
+  return `${rootDir}/${relPath}`.replace(/\\/g, "/");
 }
 
 function issue(code, itemId, message, extra = {}) {

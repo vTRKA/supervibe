@@ -49,6 +49,8 @@ import { buildExecutionWaves, formatWaveStatus, selectSafeExecutionWave, taskWri
 import { defaultRuntimeCleanupRegistryPath, summarizeHostManagedSubagentDebtSync } from "./lib/runtime-cleanup-registry.mjs";
 import { createHappyPathPlan, formatHappyPathPlan } from "./lib/supervibe-happy-path.mjs";
 import { formatEpicCompletionReport, validateEpicCompletion } from "./lib/supervibe-epic-completion-validator.mjs";
+import { buildLoopCompletionDecision } from "./lib/supervibe-release-path.mjs";
+import { formatStageDecisionCard } from "./lib/supervibe-post-stage-actions.mjs";
 import { createPreLoopSummaryModel } from "./lib/supervibe-ui-server.mjs";
 import {
   readWorkflowReceipts,
@@ -1654,6 +1656,7 @@ async function main() {
     const releaseFullCheckGate = createReleaseFullCheckGate(graph);
     console.log(formatReleaseFullCheckGate(releaseFullCheckGate));
     console.log(`GRAPH: ${graphPath}`);
+    console.log(formatLoopCompletionDecisionCard({ graphPath, report, finalReviewGate, releaseFullCheckGate }));
     if (args["require-release-full-check"] && !releaseFullCheckGate.pass) {
       process.exitCode = 1;
       return;
@@ -1902,6 +1905,12 @@ async function main() {
     console.log(`COMPLETION_SEMANTICS: ${result.state.completion_semantics.status}`);
     console.log(`PRODUCTION_READY: ${result.state.completion_semantics.productionReady === true}`);
     console.log(`NEXT_COMPLETION_ACTION: ${result.state.completion_semantics.nextAction}`);
+    if (result.status === "COMPLETE") {
+      console.log(formatLoopCompletionDecisionCard({
+        graphPath: result.reportPath,
+        completionSemantics: result.state.completion_semantics,
+      }));
+    }
   }
   if (result.state?.native_work_graph_sync) {
     console.log(`NATIVE_WORK_GRAPH_SYNC: ${result.state.native_work_graph_sync.status}`);
@@ -2033,6 +2042,24 @@ async function maybeArchiveWorkItemGraph({ rootDir, target, args = {} } = {}) {
     ? { after: { activeEpicId: "dry-run" } }
     : await repairWorkItemRegistryIntegrity({ rootDir, now });
   return { result, registry };
+}
+
+function formatLoopCompletionDecisionCard({ graphPath = "completed-loop", report = null, finalReviewGate = null, releaseFullCheckGate = null, completionSemantics = null } = {}) {
+  const verified = Boolean(completionSemantics?.verified || completionSemantics?.verifyComplete);
+  const reviewed = Boolean(finalReviewGate?.pass || completionSemantics?.reviewed || completionSemantics?.reviewComplete);
+  const shipped = Boolean(completionSemantics?.shipped || completionSemantics?.shipComplete);
+  const blocked = report && report.pass === false;
+  const decision = buildLoopCompletionDecision({
+    artifact: graphPath,
+    verified,
+    reviewed,
+    shipped,
+    nextCommand: blocked ? "/supervibe-loop --revise-goals" : "",
+    recommendation: blocked
+      ? "Resolve completion blockers or revise scope before production gates."
+      : "Choose the next production-readiness gate for the completed loop.",
+  });
+  return formatStageDecisionCard(decision);
 }
 
 function runtimeInvocationIdFromArgs(args = {}) {

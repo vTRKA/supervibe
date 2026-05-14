@@ -317,6 +317,103 @@ export function readWorkflowReceipts(rootDir = process.cwd()) {
   return readAllWorkflowReceipts(rootDir);
 }
 
+export function normalizeWorkflowReceiptScope(options = {}) {
+  const hostInvocation = options.hostInvocation || buildScopedHostInvocation(options);
+  const handoffId = normalizeOptional(options.handoffId || options.handoff || options.slug);
+  return {
+    command: normalizeCommand(options.command || options.workflowCommand || options.cmd),
+    handoffId,
+    workflowRunId: handoffId ? "" : normalizeOptional(options.workflowRunId || options.workflow_run_id || options.runId),
+    stages: uniqueStrings([options.stage, ...(arrayFrom(options.stages || options.stageIds))]),
+    subjectIds: uniqueStrings([
+      options.subjectId,
+      options.agentId,
+      options.skillId,
+      options.workerId,
+      options.reviewerId,
+      ...(arrayFrom(options.subjectIds || options.requiredSubjectIds || options.requiredAgentIds)),
+    ]),
+    artifactPaths: uniqueStrings([
+      options.artifact,
+      options.artifactPath,
+      options.outputArtifact,
+      ...(arrayFrom(options.artifacts || options.artifactPaths || options.outputArtifacts || options.outputs)),
+    ]).map(normalizeRelPath),
+    artifactHashes: uniqueStrings([
+      options.artifactHash,
+      options.outputHash,
+      ...(arrayFrom(options.artifactHashes || options.outputHashes)),
+    ]).map((item) => item.toLowerCase()),
+    hostInvocation,
+  };
+}
+
+export function workflowReceiptMatchesScope(receipt = {}, options = {}) {
+  const scope = normalizeWorkflowReceiptScope(options);
+  if (receipt.__invalidJson) return invalidReceiptPathMatchesWorkflowScope(receipt, scope);
+  if (scope.command && normalizeCommand(receipt.command) !== scope.command) return false;
+  if (scope.handoffId && receipt.handoffId !== scope.handoffId) return false;
+  if (scope.workflowRunId && receipt.workflowRunId !== scope.workflowRunId && receipt.workflow_run_id !== scope.workflowRunId) return false;
+  if (scope.stages?.length && !scope.stages.includes(String(receipt.stage || ""))) return false;
+  if (scope.subjectIds?.length) {
+    const ids = [receipt.subjectId, receipt.agentId, receipt.skillId].filter(Boolean).map(String);
+    if (!ids.some((id) => scope.subjectIds.includes(id))) return false;
+  }
+  if (scope.artifactPaths?.length) {
+    const paths = [
+      ...(Array.isArray(receipt.outputArtifacts) ? receipt.outputArtifacts : []),
+      ...(Array.isArray(receipt.outputHashes) ? receipt.outputHashes.map((item) => item.path) : []),
+    ].map(normalizeRelPath);
+    if (!paths.some((path) => scope.artifactPaths.some((artifact) => sameWorkflowArtifact(path, artifact)))) return false;
+  }
+  if (scope.artifactHashes?.length) {
+    const hashes = (Array.isArray(receipt.outputHashes) ? receipt.outputHashes : [])
+      .map((item) => String(item.sha256 || "").toLowerCase())
+      .filter(Boolean);
+    if (!hashes.some((hash) => scope.artifactHashes.includes(hash))) return false;
+  }
+  if (scope.hostInvocation && !hostInvocationMatchesScope(receipt.hostInvocation, scope.hostInvocation)) return false;
+  return true;
+}
+
+export function validateScopedWorkflowReceipts(rootDir = process.cwd(), options = {}) {
+  const scope = normalizeWorkflowReceiptScope(options);
+  const allReceipts = readAllWorkflowReceipts(rootDir);
+  const receipts = allReceipts.filter((receipt) => workflowReceiptMatchesScope(receipt, scope));
+  const issues = [];
+  for (const receipt of receipts) {
+    const trust = validateWorkflowReceiptTrust(rootDir, receipt, { ...options, skipLedgerChain: true });
+    for (const message of trust.issues) {
+      issues.push({
+        code: /artifact link manifest missing|artifact link missing/i.test(message)
+          ? "missing-scoped-workflow-artifact-receipt-link"
+          : "untrusted-scoped-workflow-receipt",
+        file: receipt.__file,
+        message: `${receipt.__file}: ${message}`,
+      });
+    }
+  }
+  if (receipts.length === 0 && options.requireReceipts !== false) {
+    issues.push({
+      code: "missing-scoped-workflow-receipt",
+      file: scopedWorkflowReceiptFileHint(scope),
+      message: "no trusted receipt candidate matched the requested command/handoff/stage/artifact/subject/host scope",
+    });
+  }
+  return {
+    pass: issues.length === 0,
+    checked: receipts.length,
+    receipts: receipts.length,
+    totalReceipts: allReceipts.length,
+    ledgerEntries: null,
+    scopeMode: "scoped",
+    scope,
+    batchingOptimization: "scoped-trust-fast-path",
+    nextRepairCommand: repairCommandForReceiptIssues(issues),
+    issues,
+  };
+}
+
 export function validateWorkflowReceipts(rootDir = process.cwd(), options = {}) {
   const receipts = readAllWorkflowReceipts(rootDir);
   const issues = [];
@@ -563,6 +660,79 @@ function normalizeWorkItemBinding({ taskId = null, workItemId = null, graphId = 
     graphId: normalizedGraphId,
     taskId: normalizedTaskId,
   };
+}
+
+function normalizeCommand(value) {
+  const normalized = normalizeOptional(value);
+  if (!normalized) return "";
+  return normalized.startsWith("/") ? normalized : `/${normalized}`;
+}
+
+function normalizeOptional(value) {
+  const normalized = String(value ?? "").trim();
+  return normalized || "";
+}
+
+function arrayFrom(value) {
+  if (Array.isArray(value)) return value.flatMap((item) => arrayFrom(item));
+  if (value === undefined || value === null || value === false) return [];
+  return String(value).split(",").map((item) => item.trim()).filter(Boolean);
+}
+
+function uniqueStrings(values = []) {
+  return [...new Set(values.flatMap((item) => arrayFrom(item)).map(String).filter(Boolean))];
+}
+
+function buildScopedHostInvocation(options = {}) {
+  const invocationId = options.hostInvocationId || options.hostInvocationID || options.invocationId || options["host-invocation-id"];
+  const source = options.hostInvocationSource || options["host-invocation-source"];
+  const evidencePath = options.hostInvocationEvidence || options.hostTrace || options["host-invocation-evidence"] || options["host-trace"];
+  const agentId = options.hostInvocationAgentId || options["host-invocation-agent-id"];
+  if (!invocationId && !source && !evidencePath && !agentId) return null;
+  return {
+    source: source || null,
+    invocationId: invocationId || null,
+    evidencePath: evidencePath || null,
+    agentId: agentId || null,
+  };
+}
+
+function hostInvocationMatchesScope(proof = null, expected = null) {
+  if (!expected) return true;
+  if (!proof) return false;
+  const normalized = {
+    source: proof.source || null,
+    invocationId: proof.invocationId || proof.invocation_id || proof.id || null,
+    evidencePath: proof.evidencePath || proof.evidence_path || null,
+    agentId: proof.agentId || proof.agent_id || null,
+  };
+  if (expected.source && normalized.source !== expected.source) return false;
+  if (expected.invocationId && normalized.invocationId !== expected.invocationId) return false;
+  if (expected.evidencePath && normalizeRelPath(normalized.evidencePath) !== normalizeRelPath(expected.evidencePath)) return false;
+  if (expected.agentId && normalized.agentId !== expected.agentId) return false;
+  return true;
+}
+
+function sameWorkflowArtifact(left, right) {
+  const a = normalizeRelPath(left);
+  const b = normalizeRelPath(right);
+  return a === b || a.endsWith(`/${b}`) || b.endsWith(`/${a}`);
+}
+
+function invalidReceiptPathMatchesWorkflowScope(receipt = {}, scope = {}) {
+  const file = normalizeRelPath(receipt.__file || "");
+  if (!file) return false;
+  const commandPath = normalizeCommand(scope.command).replace(/^\//, "");
+  if (commandPath && !file.includes(`/_workflow-invocations/${commandPath}/`)) return false;
+  if (scope.handoffId && !file.includes(`/${scope.handoffId}/`)) return false;
+  return true;
+}
+
+function scopedWorkflowReceiptFileHint(scope = {}) {
+  const commandPath = normalizeCommand(scope.command).replace(/^\//, "") || "workflow";
+  if (scope.handoffId) return `.supervibe/artifacts/_workflow-invocations/${commandPath}/${scope.handoffId}`;
+  if (scope.workflowRunId) return `.supervibe/artifacts/_workflow-invocations/${commandPath}/${scope.workflowRunId}`;
+  return `.supervibe/artifacts/_workflow-invocations/${commandPath}`;
 }
 
 function repairCommandForReceiptIssues(issues = []) {

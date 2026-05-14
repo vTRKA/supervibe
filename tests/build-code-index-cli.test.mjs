@@ -178,6 +178,53 @@ test("build-code-index --source-only indexes BM25 chunks without graph work", as
   });
 });
 
+test("build-code-index --no-embeddings preserves current graph rows when content is unchanged", async () => {
+  await withFixture(async (rootDir) => {
+    await writeFile(join(rootDir, "src", "graph.js"), [
+      "export function indexedGraphFixture() {",
+      "  return indexedGraphHelper();",
+      "}",
+      "function indexedGraphHelper() {",
+      "  return 1;",
+      "}",
+      "",
+    ].join("\n"), "utf8");
+
+    execFileSync(process.execPath, [scriptPath, "--root", rootDir, "--force", "--graph", "--no-embeddings", "--file", "src/graph.js", "--heartbeat-seconds", "0"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    });
+
+    const before = new CodeStore(rootDir, { useEmbeddings: false });
+    await before.init();
+    let initialSymbols = 0;
+    let initialEdges = 0;
+    try {
+      const stats = before.stats();
+      initialSymbols = stats.totalSymbols;
+      initialEdges = stats.totalEdges;
+      assert.ok(initialSymbols > 0, "fixture must produce graph symbols");
+    } finally {
+      before.close();
+    }
+
+    execFileSync(process.execPath, [scriptPath, "--root", rootDir, "--force", "--no-embeddings", "--file", "src/graph.js", "--heartbeat-seconds", "0"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    });
+
+    const after = new CodeStore(rootDir, { useEmbeddings: false });
+    await after.init();
+    try {
+      const stats = after.stats();
+      assert.equal(stats.totalSymbols, initialSymbols);
+      assert.equal(stats.totalEdges, initialEdges);
+    } finally {
+      after.close();
+    }
+  });
+});
+
 test("build-code-index --maintenance --vacuum runs sqlite maintenance without indexing", async () => {
   await withFixture(async (rootDir) => {
     const out = execFileSync(process.execPath, [scriptPath, "--root", rootDir, "--maintenance", "--vacuum", "--heartbeat-seconds", "0"], {

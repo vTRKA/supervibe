@@ -1,3 +1,5 @@
+import { buildStageDecisionCard, formatStageDecisionCard } from "./supervibe-post-stage-actions.mjs";
+
 const HANDOFFS = {
   brainstorm: {
     phase: "brainstorm",
@@ -39,6 +41,33 @@ const HANDOFFS = {
     artifact: "approved-preflight",
     nextQuestion: "Шаг 1/1: стартовать goal-until-complete run со stop/resume/status контролями?",
   },
+  loop_completion: {
+    phase: "loop_completion",
+    nextPhase: "verify",
+    command: "/supervibe-verify",
+    skill: "supervibe:verification",
+    artifact: "completed-loop",
+    nextQuestion: "Step 1/1: choose the next action after loop completion?",
+    choices: releaseDecisionChoices("/supervibe-verify"),
+  },
+  verify_passed: {
+    phase: "verify_passed",
+    nextPhase: "review",
+    command: "/supervibe-review",
+    skill: "supervibe:code-review",
+    artifact: "verification-packet",
+    nextQuestion: "Step 1/1: review the verified workflow before ship?",
+    choices: releaseDecisionChoices("/supervibe-review"),
+  },
+  review_passed: {
+    phase: "review_passed",
+    nextPhase: "ship",
+    command: "/supervibe-ship",
+    skill: "supervibe:finishing-a-development-branch",
+    artifact: "review-packet",
+    nextQuestion: "Step 1/1: run ship readiness for the reviewed workflow?",
+    choices: releaseDecisionChoices("/supervibe-ship"),
+  },
 };
 
 export function getRequiredHandoff(phase) {
@@ -48,7 +77,7 @@ export function getRequiredHandoff(phase) {
   }
   return {
     ...handoff,
-    questionChoices: buildHandoffChoices(handoff),
+    questionChoices: handoff.choices || buildHandoffChoices(handoff),
     questionEvidence: [
       `phase=${handoff.phase}`,
       `artifact=${handoff.artifact}`,
@@ -61,17 +90,24 @@ export function getRequiredHandoff(phase) {
 
 export function formatHandoff(phaseOrHandoff) {
   const handoff = typeof phaseOrHandoff === "string" ? getRequiredHandoff(phaseOrHandoff) : phaseOrHandoff;
-  return [
-    `Artifact: ${handoff.artifact}`,
-    `Next command: ${handoff.command}`,
-    `Next skill: ${handoff.skill}`,
-    handoff.nextQuestion,
-    "Choices:",
-    ...((handoff.questionChoices || buildHandoffChoices(handoff)).map((choice) => {
-      const recommended = choice.recommended ? " recommended" : "";
-      return `- ${choice.label}${recommended} - ${choice.tradeoff}`;
+  const choices = handoff.questionChoices || handoff.choices || buildHandoffChoices(handoff);
+  return formatStageDecisionCard(buildStageDecisionCard({
+    workflow: "supervibe-chain",
+    currentStage: handoff.phase,
+    artifact: handoff.artifact,
+    recommendation: `Continue with ${handoff.command} when the visible gate is accepted.`,
+    why: `This handoff moves ${handoff.phase} to ${handoff.nextPhase} without hiding the user decision behind machine state.`,
+    question: handoff.nextQuestion,
+    resumeCursor: `chain:${handoff.phase}:${handoff.nextPhase}`,
+    nextCommand: handoff.command,
+    nextSkill: handoff.skill,
+    choices: choices.map((choice) => ({
+      id: choice.id,
+      label: choice.label,
+      description: choice.description || choice.tradeoff || "",
+      recommended: Boolean(choice.recommended),
     })),
-  ].join("\n");
+  }));
 }
 
 export function assertRequiredHandoff(phase, output, context = {}) {
@@ -96,6 +132,52 @@ export function assertRequiredHandoff(phase, output, context = {}) {
 
 export function getHandoffChain() {
   return Object.keys(HANDOFFS).map((phase) => getRequiredHandoff(phase));
+}
+
+function releaseDecisionChoices(recommendedCommand) {
+  const canShip = recommendedCommand === "/supervibe-ship";
+  return [
+    {
+      id: "proceed-verify",
+      label: "Run /supervibe-verify",
+      command: "/supervibe-verify",
+      description: "Build Goal-to-evidence proof before review.",
+      recommended: recommendedCommand === "/supervibe-verify",
+    },
+    {
+      id: "proceed-review",
+      label: "Run /supervibe-review",
+      command: "/supervibe-review",
+      description: "Review verified evidence and readiness.",
+      recommended: recommendedCommand === "/supervibe-review",
+    },
+    canShip
+      ? {
+        id: "proceed-ship",
+        label: "Run /supervibe-ship",
+        command: "/supervibe-ship",
+        description: "Check target-aware ship readiness after verify and review.",
+        recommended: true,
+      }
+      : {
+        id: "continue-loop",
+        label: "Continue loop",
+        command: "/supervibe-loop --status",
+        description: "Resume implementation when completion evidence still has gaps.",
+      },
+    {
+      id: "revise-goals",
+      label: "Revise goals",
+      command: "/supervibe-loop --revise-goals",
+      description: "Repair, split, defer, or narrow goals before the next gate.",
+    },
+    {
+      id: "stop-with-gaps",
+      label: "Stop with gaps",
+      command: "",
+      description: "Persist the current state with explicit remaining gaps.",
+    },
+  ];
 }
 
 function buildHandoffChoices(handoff) {

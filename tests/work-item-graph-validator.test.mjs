@@ -55,6 +55,19 @@ test("validate-work-item-graphs CLI fails invalid graph", async () => {
   }));
 });
 
+test("validateWorkItemGraphFiles rejects terminal graphs with pending score gates", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "work-item-graph-pending-scores-"));
+  const file = join(dir, "graph.json");
+  const graph = atomizePlanToWorkItems(PLAN, { planPath: "plan.md", epicId: "epic-example", planReviewPassed: true, dryRun: true });
+  graph.metadata.scoreGatesRequired = true;
+  for (const item of graph.items) item.status = "closed";
+  for (const task of graph.tasks) task.status = "closed";
+  await writeFile(file, JSON.stringify(graph, null, 2) + "\n");
+
+  const report = await validateWorkItemGraphFiles({ files: [file] });
+  assert.equal(report.pass, false);
+  assert.ok(report.results[0].validation.issues.some((issue) => issue.code === "terminal-score-pending"));
+});
 test("validate-work-item-graphs CLI passes persisted graph", async () => {
   const dir = await mkdtemp(join(tmpdir(), "work-item-graph-cli-"));
   const file = join(dir, "graph.json");

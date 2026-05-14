@@ -153,7 +153,7 @@ const SLASH_COMMAND_SHORTCUTS = Object.freeze([
     command: "/supervibe-brainstorm",
     title: "Brainstorm and capture a spec",
     aliases: ["брейншторм", "давай брейншторм", "start brainstorm", "brainstorm", "new feature", "давай новую фичу", "сделай брейншторм идеи", "brainstorm the feature", "обсудим идею", "придумай решение"],
-    keywordGroups: [["brainstorm", "ideate", "explore", "брейншторм", "обсудим", "придумай"], ["feature", "idea", "solution", "идея", "решение", "фича"]],
+    keywordGroups: [["brainstorm", "ideate", "explore", "брейншторм", "обсудим", "придумай"], ["feature", "idea", "solution", "\u0438\u0434\u0435\u0438", "идея", "решение", "фича"]],
   },
   {
     command: "/supervibe-design",
@@ -233,6 +233,24 @@ const SLASH_COMMAND_SHORTCUTS = Object.freeze([
     title: "Manage preview server",
     aliases: ["запусти превью прототипа", "start preview server", "открой localhost preview", "покажи live preview"],
     keywordGroups: [["preview", "localhost", "server", "превью", "просмотр"], ["start", "open", "run", "запусти", "открой", "покажи"]],
+  },
+  {
+    command: "/supervibe-verify",
+    title: "Verify implementation against goals",
+    aliases: ["verify goals", "verify implementation goals", "verify the completed goals with tester evidence", "prove goals are done"],
+    keywordGroups: [["verify", "validate", "prove", "check"], ["goal", "goals", "evidence", "tester", "acceptance"]],
+  },
+  {
+    command: "/supervibe-review",
+    title: "Review production readiness after verification",
+    aliases: ["review production readiness", "review production readiness after verify evidence", "final review after verify", "review the verified diff"],
+    keywordGroups: [["review", "code review", "final review"], ["production", "readiness", "verify evidence", "verified", "diff", "release"]],
+  },
+  {
+    command: "/supervibe-ship",
+    title: "Ship target-aware release readiness",
+    aliases: ["ship release", "ship the release", "ship the release with target-aware release readiness", "prepare release shipment"],
+    keywordGroups: [["ship", "release", "deploy", "publish"], ["readiness", "release", "target", "docker", "rollback"]],
   },
   {
     command: "/supervibe-score",
@@ -469,6 +487,33 @@ const COMMAND_SHORTCUTS = Object.freeze([
     nextAction: "Run /supervibe-audit as a read-only design workflow audit; do not route to plan review or agent provisioning until scoped design runtime evidence is inspected.",
   },
   {
+    id: "existing-plan-artifact-revision",
+    intent: "supervibe_plan",
+    title: "Revise or adapt an existing plan or spec artifact",
+    command: "/supervibe-plan",
+    description: "Route existing plan/spec artifact check, adaptation, scaling, and revision requests to planning instead of audit or plan-review.",
+    agentContract: copyCommandAgentContract(),
+    agentProfile: getCommandAgentProfile("/supervibe-plan"),
+    aliases: [
+      "check the existing plan artifact",
+      "adapt the existing plan artifact",
+      "revise the existing spec artifact",
+      "scale the current implementation plan",
+      "revise the existing plan text",
+    ],
+    keywordGroups: [
+      ["existing", "current", "active", "artifact", "text", "path", "\u0442\u0435\u043a\u0443\u0449\u0438\u0439", "\u0441\u0443\u0449\u0435\u0441\u0442\u0432\u0443\u044e\u0449\u0438\u0439", "\u0430\u0440\u0442\u0435\u0444\u0430\u043a\u0442", "\u0442\u0435\u043a\u0441\u0442"],
+      ["plan", "spec", "implementation plan", "\u043f\u043b\u0430\u043d", "\u0441\u043f\u0435\u043a", "\u0441\u043f\u0435\u0446\u0438\u0444\u0438\u043a\u0430\u0446\u0438\u044f"],
+      ["check", "adapt", "scale", "revise", "update", "adjust", "refine", "\u043f\u0440\u043e\u0432\u0435\u0440\u044c", "\u0430\u0434\u0430\u043f\u0442\u0438\u0440\u0443\u0439", "\u043c\u0430\u0441\u0448\u0442\u0430\u0431\u0438\u0440\u0443\u0439", "\u043f\u0435\u0440\u0435\u0441\u043c\u043e\u0442\u0440\u0438", "\u043e\u0431\u043d\u043e\u0432\u0438", "\u0434\u043e\u0440\u0430\u0431\u043e\u0442\u0430\u0439"],
+    ],
+    requiredGroupIndexes: [0, 1, 2],
+    priorityPhrases: ["existing plan", "existing spec", "current implementation plan", "plan artifact", "spec artifact", "plan text"],
+    mutationRisk: "delegates-to-slash-command",
+    directRoute: false,
+    commandId: "/supervibe-plan",
+    nextAction: "Run /supervibe-plan against the referenced plan or spec artifact; use --review only when the user explicitly asks for the plan-review loop.",
+  },
+  {
     id: "plan-review-natural-language",
     intent: "plan_review",
     title: "Run mandatory specialist review for an implementation plan",
@@ -672,6 +717,12 @@ export function resolveCommandRequest(request, {
   const slashCommands = readSlashCommands(pluginRoot);
   const projectScripts = readNpmScripts(projectRoot, "project");
   const pluginScripts = readNpmScripts(pluginRoot, "plugin");
+  const explicitSlash = parseExplicitSupervibeSlashCommand(request);
+  if (explicitSlash && !shouldPreserveWorkflowChainAuditRoute(request)) {
+    return resolveSlashCommandMatch(explicitSlash, slashCommands, {
+      reasonPrefix: "explicit Supervibe slash command",
+    });
+  }
   const workflowChainAudit = findWorkflowChainAuditShortcut(request, { shortcuts });
   if (workflowChainAudit) {
     const slashCommand = slashCommands.find((entry) => entry.id === "/supervibe-audit");
@@ -707,8 +758,6 @@ export function resolveCommandRequest(request, {
       agentProfile: getCommandAgentProfile("/supervibe-audit"),
     };
   }
-  const explicitSlash = parseExplicitSupervibeSlashCommand(request);
-
   if (explicitSlash) {
     return resolveSlashCommandMatch(explicitSlash, slashCommands, {
       reasonPrefix: "explicit Supervibe slash command",
@@ -1068,6 +1117,7 @@ function enrichMatch(shortcut, fields = {}) {
 function findWorkflowChainAuditShortcut(request, { shortcuts = COMMAND_SHORTCUTS } = {}) {
   const text = normalizeText(request);
   if (!text) return null;
+  if (looksLikeSlashCommandEvidenceText(text) && !looksLikeExplicitWorkflowChainAudit(text)) return null;
   const chainShortcut = shortcuts.find((shortcut) => shortcut.id === "workflow-chain-audit");
   if (!chainShortcut) return null;
 
@@ -1150,6 +1200,49 @@ function findWorkflowChainAuditShortcut(request, { shortcuts = COMMAND_SHORTCUTS
       : `workflow-chain audit phrase with terms: ${namedWorkflowTerms.join(", ")}`,
     matchedGroups: [hasAuditOrMaturity ? "audit-or-maturity" : "", hasWorkflowChain ? "workflow-chain" : ""].filter(Boolean),
   });
+}
+function looksLikeSlashCommandEvidenceText(text) {
+  return ["/supervibe-brainstorm", "/supervibe-plan", "/supervibe-execute-plan", "/supervibe-loop"].some((command) => includesPhrase(text, command)) && [
+    "example",
+    "examples",
+    "prompt",
+    "spec",
+    "plan text",
+    "review text",
+    "mentions",
+    "lists",
+    "inside",
+    "do not run",
+    "don't run",
+    "dont run",
+    "not run",
+    "evidence",
+    "\u043f\u0440\u0438\u043c\u0435\u0440",
+    "\u043f\u0440\u0438\u043c\u0435\u0440\u044b",
+    "\u043f\u0440\u043e\u043c\u043f\u0442",
+    "\u0441\u043f\u0435\u043a",
+    "\u0441\u043f\u0435\u0446\u0438\u0444\u0438\u043a\u0430\u0446\u0438\u044f",
+    "\u0442\u0435\u043a\u0441\u0442 \u043f\u043b\u0430\u043d\u0430",
+    "\u0443\u043f\u043e\u043c\u0438\u043d\u0430\u0435\u0442",
+    "\u043f\u0435\u0440\u0435\u0447\u0438\u0441\u043b\u044f\u0435\u0442",
+    "\u043d\u0435 \u0437\u0430\u043f\u0443\u0441\u043a\u0430\u0439",
+    "\u043d\u0435 \u0437\u0430\u043f\u0443\u0441\u043a\u0430\u0442\u044c",
+  ].some((phrase) => includesPhrase(text, phrase));
+}
+
+function looksLikeExplicitWorkflowChainAudit(text) {
+  return [
+    "audit workflow chain",
+    "workflow chain audit",
+    "audit brainstorm plan execute loop",
+    "maturity",
+    "10/10",
+    "10 out of 10",
+    "out of 10",
+    "\u0430\u0443\u0434\u0438\u0442 \u0446\u0435\u043f\u043e\u0447\u043a\u0438",
+    "\u0437\u0440\u0435\u043b\u043e\u0441\u0442\u044c",
+    "10 \u0438\u0437 10",
+  ].some((phrase) => includesPhrase(text, phrase));
 }
 
 function copyAgentProfile(profile) {
@@ -1277,7 +1370,90 @@ function parseExplicitSupervibeSlashCommand(request) {
   const text = String(request || "");
   const match = text.match(/(?:^|[\s`"'(])(?<raw>\/supervibe(?:-[a-z0-9-]+)?)(?=$|[\s`"')])(?<args>[^\n]*)/i);
   if (!match?.groups?.raw) return null;
+  if (!isExplicitSupervibeSlashCommandRequest(text, match.index)) return null;
   return parsedSupervibeCommand(match.groups.raw, match.groups.args);
+}
+
+function isExplicitSupervibeSlashCommandRequest(text, matchIndex = -1) {
+  const raw = String(text || "");
+  const prefix = raw.slice(0, Math.max(0, matchIndex));
+  const normalizedPrefix = normalizeText(prefix);
+  if (!normalizedPrefix) return true;
+  if (isNegatedCommandMention(raw, matchIndex)) return false;
+  if (looksLikeSlashCommandEvidencePrefix(normalizedPrefix)) return false;
+  if (countSupervibeSlashMentions(raw) === 1) return true;
+  return [
+    "active command",
+    "current command",
+    "active",
+    "current",
+    "next command",
+    "run command",
+    "execute command",
+    "invoke command",
+    "slash command",
+    "command",
+    "run",
+    "execute",
+    "invoke",
+    "start",
+    "use",
+    "please",
+    "pls",
+    "kindly",
+    "can you",
+    "could you",
+    "\u0434\u0430\u0432\u0430\u0439",
+    "\u043f\u043e\u0436\u0430\u043b\u0443\u0439\u0441\u0442\u0430",
+    "\u0437\u0430\u043f\u0443\u0441\u0442\u0438",
+    "\u0432\u044b\u043f\u043e\u043b\u043d\u0438",
+    "\u0430\u043a\u0442\u0438\u0432\u043d\u0430\u044f \u043a\u043e\u043c\u0430\u043d\u0434\u0430",
+    "\u0442\u0435\u043a\u0443\u0449\u0430\u044f \u043a\u043e\u043c\u0430\u043d\u0434\u0430",
+    "\u0441\u043b\u0435\u0434\u0443\u044e\u0449\u0430\u044f \u043a\u043e\u043c\u0430\u043d\u0434\u0430",
+    "\u043a\u043e\u043c\u0430\u043d\u0434\u0430",
+  ].some((phrase) => {
+    const normalized = normalizeText(phrase);
+    return normalizedPrefix.endsWith(normalized) || normalizedPrefix.endsWith(`${normalized}:`);
+  });
+}
+
+function shouldPreserveWorkflowChainAuditRoute(request) {
+  const text = String(request || "");
+  return countSupervibeSlashMentions(text) > 1 && looksLikeExplicitWorkflowChainAudit(normalizeText(text));
+}
+
+function countSupervibeSlashMentions(value) {
+  return (String(value || "").match(/(?:^|[\s`"'(])\/supervibe(?:-[a-z0-9-]+)?(?=$|[\s`"')])/gi) || []).length;
+}
+
+function looksLikeSlashCommandEvidencePrefix(normalizedPrefix) {
+  return [
+    "example",
+    "examples",
+    "prompt",
+    "spec",
+    "plan text",
+    "review text",
+    "mentions",
+    "mention",
+    "lists",
+    "list",
+    "inside",
+    "include",
+    "includes",
+    "contains",
+    "evidence",
+    "as text",
+    "\u043f\u0440\u0438\u043c\u0435\u0440",
+    "\u043f\u0440\u0438\u043c\u0435\u0440\u044b",
+    "\u043f\u0440\u043e\u043c\u043f\u0442",
+    "\u0441\u043f\u0435\u043a",
+    "\u0441\u043f\u0435\u0446\u0438\u0444\u0438\u043a\u0430\u0446\u0438\u044f",
+    "\u0442\u0435\u043a\u0441\u0442 \u043f\u043b\u0430\u043d\u0430",
+    "\u0443\u043f\u043e\u043c\u0438\u043d\u0430\u0435\u0442",
+    "\u043f\u0435\u0440\u0435\u0447\u0438\u0441\u043b\u044f\u0435\u0442",
+    "\u0432\u043d\u0443\u0442\u0440\u0438",
+  ].some((phrase) => includesPhrase(normalizedPrefix, phrase));
 }
 
 function parseTerminalSupervibeCommand(request) {
@@ -1523,8 +1699,8 @@ function tokenAliases(token) {
 function includesPhrase(text, phrase) {
   const normalized = normalizeText(phrase);
   if (!normalized) return false;
-  if (normalized.length <= 3) return new RegExp(`(^| )${escapeRegExp(normalized)}( |$)`, "u").test(text);
-  return text.includes(normalized);
+  const escaped = escapeRegExp(normalized).replace(/\\ /g, "\\s+");
+  return new RegExp(`(^| )${escaped}( |$)`, "u").test(text);
 }
 
 function normalizeText(value) {

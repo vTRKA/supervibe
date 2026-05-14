@@ -31,9 +31,12 @@ const AI_CLI_ONLY_COMMANDS = Object.freeze(new Set([
   "supervibe-execute-plan",
   "supervibe-plan",
   "supervibe-presentation",
+  "supervibe-review",
   "supervibe-score",
   "supervibe-security-audit",
+  "supervibe-ship",
   "supervibe-strengthen",
+  "supervibe-verify",
 ]));
 
 const SUBCOMMAND_ALIASES = Object.freeze({
@@ -50,16 +53,19 @@ const SUBCOMMAND_ALIASES = Object.freeze({
   loop: "supervibe-loop",
   presentation: "supervibe-presentation",
   preview: "supervibe-preview",
+  review: "supervibe-review",
   stage: "supervibe-stage",
   score: "supervibe-score",
   "security-audit": "supervibe-security-audit",
   security: "supervibe-security-audit",
+  ship: "supervibe-ship",
   status: "supervibe-status",
   strengthen: "supervibe-strengthen",
   ui: "supervibe-ui",
   update: "supervibe-update",
   upgrade: "supervibe-update",
   validate: "supervibe-validate",
+  verify: "supervibe-verify",
 });
 
 const HELP_FORWARD_COMMANDS = Object.freeze(new Set([

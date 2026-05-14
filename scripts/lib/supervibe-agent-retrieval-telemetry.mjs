@@ -129,11 +129,13 @@ export function buildAgentRetrievalTelemetryReport({
       avgConfidence: Number(avgConfidence.toFixed(2)),
     };
     const violations = detectRetrievalViolations(agentId, metrics, policy);
+    const advisories = detectRetrievalAdvisories(metrics, policy);
     agents.push({
       agentId,
       ...metrics,
       violations,
-      recommendedActions: buildRecommendedActions(agentId, violations),
+      advisories,
+      recommendedActions: buildRecommendedActions(agentId, [...violations, ...advisories]),
     });
   }
   const underperformers = detectUnderperformers(scoredInvocations, {
@@ -263,6 +265,7 @@ export function formatAgentRetrievalTelemetryReport(report = {}) {
     const status = agent.violations?.length ? "WARN" : "OK";
     lines.push(`${status}: ${agent.agentId} sample=${agent.sample} mem=${pct(agent.memoryRate)} rag=${pct(agent.ragRate)} graph=${pct(agent.codegraphRate)} evidence=${pct(agent.evidenceContractPassRate)} confidence=${agent.avgConfidence}`);
     for (const violation of agent.violations || []) lines.push(`  - ${violation}`);
+    for (const advisory of agent.advisories || []) lines.push(`  - advisory: ${advisory}`);
   }
   for (const task of report.strengtheningTasks || []) {
     lines.push(`TASK: ${task.id} agent=${task.agentId} priority=${task.priority} reason=${task.reason}`);
@@ -612,10 +615,15 @@ function detectRetrievalViolations(agentId, metrics, thresholds) {
   if (metrics.evidenceGatePassRate !== null && metrics.evidenceGatePassRate < thresholds.evidencePassRate) {
     violations.push(`low evidence ledger pass rate ${pct(metrics.evidenceGatePassRate)} < ${pct(thresholds.evidencePassRate)}`);
   }
-  if (metrics.avgConfidence > 0 && metrics.avgConfidence < thresholds.confidence) {
-    violations.push(`low confidence ${metrics.avgConfidence} < ${thresholds.confidence}`);
-  }
   return violations;
+}
+
+function detectRetrievalAdvisories(metrics, thresholds) {
+  const advisories = [];
+  if (metrics.avgConfidence > 0 && metrics.avgConfidence < thresholds.confidence) {
+    advisories.push(`low confidence ${metrics.avgConfidence} < ${thresholds.confidence}`);
+  }
+  return advisories;
 }
 
 function buildRecommendedActions(agentId, violations = []) {
