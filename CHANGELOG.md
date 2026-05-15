@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.39] - 2026-05-15
+
+### Fixed
+
+- Synchronized release-facing host manifests, marketplace metadata, documentation, and test expectations after the 2.1.39 package bump.
+- Repaired final release-gate drift in question discipline, plan artifacts, trigger replay routing, and CodeGraph freshness found during the release sweep.
+
+### Validation
+
+- Rechecked the final non-graph release gate suite with task/work-item graph validators excluded by operator override.
+
 ## [2.1.38] - 2026-05-15
 
 ### Added

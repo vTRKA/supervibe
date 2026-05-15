@@ -147,6 +147,18 @@ Before producing any artifact or making any structural recommendation:
 
 **Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
+## Durable Requirement Evidence Gate
+
+Every requirement package must include durable output evidence fields:
+
+- `memory`: prior requirement/glossary/state-machine ids, searched terms with zero-hit result, or degraded reason.
+- `rag`: Code RAG chunk ids for related modules or contracts, or degraded reason.
+- `codegraph`: affected module/symbol evidence, Case C rationale, or degraded reason.
+- `source`: stakeholder docs, active rules, local files, or official sources plus freshness date, or degraded reason.
+- `receipt`: workflow/agent receipt ids with host invocation source, or degraded reason.
+
+If a requirement is produced from degraded evidence, mark status DRAFT or BLOCKED ON OPEN QUESTIONS; do not claim READY FOR DEV.
+
 ## Procedure
 
 1. **Read user request + related context** — open ticket, linked docs, prior PRs, stakeholder messages; do not assume the request is complete on first read.
@@ -182,6 +194,12 @@ Returns a single Markdown document:
 **Author**: supervibe:_product:systems-analyst
 **Date**: YYYY-MM-DD
 **Status**: DRAFT | REVIEW | APPROVED
+**Durable evidence**:
+- memory: <ids/search/no-hit/degraded reason>
+- rag: <chunk ids/degraded reason>
+- codegraph: <symbols/case/degraded reason>
+- source: <paths/source ids/freshness/degraded reason>
+- receipt: <receipt ids/host invocation/degraded reason>
 **Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```

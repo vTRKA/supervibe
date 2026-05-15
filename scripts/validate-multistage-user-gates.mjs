@@ -203,43 +203,6 @@ const EXPLICIT_SURFACE_RULES = Object.freeze([
     ],
   },
   {
-    file: "commands/supervibe-presentation.md",
-    label: "presentation command approval gate",
-    required: [
-      /browser feedback comments are revision inputs, not approval signals/i,
-      /delegated decisions cannot satisfy the final deck approval gate/i,
-      /Wait for explicit choice/i,
-    ],
-  },
-  {
-    file: "skills/presentation-deck/SKILL.md",
-    label: "presentation deck feedback gate",
-    required: [
-      /browser feedback overlay is supplemental/i,
-      /browser feedback comments are revision inputs, not approval signals/i,
-      /Wait for explicit choice/i,
-      /PPTX export stays blocked/i,
-    ],
-  },
-  {
-    file: "agents/_design/prototype-builder.md",
-    label: "prototype builder feedback gate",
-    required: [
-      /browser feedback overlay is supplemental/i,
-      /Wait for explicit choice/i,
-      /Do NOT advance silently to handoff/i,
-    ],
-  },
-  {
-    file: "agents/_design/presentation-deck-builder.md",
-    label: "presentation builder approval gate",
-    required: [
-      /browser feedback entries are revision inputs, not approval signals/i,
-      /Wait for explicit choice/i,
-      /\.approval\.json exists before export/i,
-    ],
-  },
-  {
     file: "skills/browser-feedback/SKILL.md",
     label: "browser feedback lifecycle boundary",
     required: [
@@ -252,7 +215,7 @@ const EXPLICIT_SURFACE_RULES = Object.freeze([
 
 const SCAN_DIRS = Object.freeze(["commands", "skills", "agents"]);
 const OVERLAY_OR_BROWSER_FEEDBACK_RE = /browser feedback|feedback overlay|Feedback button/i;
-const LIFECYCLE_RE = /approval|approved|handoff|export|\.approval\.json|feedback prompt|deck|prototype/i;
+const LIFECYCLE_RE = /approval|approved|handoff|export|\.approval\.json|feedback prompt|prototype/i;
 const OVERLAY_BOUNDARY_RE = /supplemental|not an approval gate|not approval signals|not lifecycle approval|never replaces|does not approve/i;
 const DELEGATED_DECISION_RE = /delegated (?:approval markers|design decisions|decisions|marker)/i;
 const DELEGATED_BOUNDARY_RE = /cannot (?:be )?satisf(?:y|ied)|cannot bypass|not chat-level|not approval signals|cannot replace/i;

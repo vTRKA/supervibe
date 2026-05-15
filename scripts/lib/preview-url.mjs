@@ -1,6 +1,6 @@
 import { basename } from 'node:path';
 
-const DESIGN_CONTAINER_ROOTS = new Set(['prototypes', 'mockups', 'presentations']);
+const DESIGN_CONTAINER_ROOTS = new Set(['prototypes', 'mockups']);
 
 export function resolvePreviewUrlPath({ root, label } = {}) {
   const rootName = basename(String(root || ''));

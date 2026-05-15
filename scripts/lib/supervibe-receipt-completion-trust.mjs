@@ -15,10 +15,18 @@ export function graphIdentity(graph = {}) {
 }
 
 export function receiptTaskBinding(receipt = {}) {
-  return {
-    graphId: receipt.graphId || receipt.workGraphId || receipt.workItemBinding?.graphId || null,
-    taskId: receipt.taskId || receipt.workItemId || receipt.graphTaskId || receipt.workItemBinding?.taskId || null,
-  };
+  const taskId = receipt.taskId || receipt.workItemId || receipt.graphTaskId || receipt.workItemBinding?.taskId || null;
+  const graphId = receipt.graphId || receipt.workGraphId || receipt.workItemBinding?.graphId || inferGraphIdFromTaskId(taskId) || null;
+  return compactOptionalObject({ graphId, taskId }) || {};
+}
+
+function inferGraphIdFromTaskId(taskId = "") {
+  const normalizedTaskId = String(taskId || "").trim();
+  if (!normalizedTaskId) return null;
+  const match = /^(.*?)-(?:a\d{3,}|t\d+[a-z]?(?:-sub\d+)?)$/i.exec(normalizedTaskId);
+  const graphId = match?.[1] || null;
+  if (!graphId || graphId === normalizedTaskId) return null;
+  return graphId;
 }
 
 export function isTrustedTaskCompletionReceiptForGraph(receipt = {}, graph = null) {
@@ -53,7 +61,7 @@ export function isTrustedGraphCompletionReceiptForGraph(receipt = {}, graph = {}
 
 export function trustedReceiptScopeFromReceipt(receipt = {}, graph = null) {
   const binding = receiptTaskBinding(receipt);
-  return {
+  const scope = compactOptionalObject({
     receiptId: String(receipt.receiptId || ""),
     command: receipt.command || null,
     subjectType: receipt.subjectType || null,
@@ -64,11 +72,13 @@ export function trustedReceiptScopeFromReceipt(receipt = {}, graph = null) {
     graphWide: Boolean(binding.graphId && !binding.taskId) || isGraphWideCompletionReceipt(receipt, binding.taskId),
     unbound: !binding.graphId && !binding.taskId,
     sourceMatchesGraph: graph ? receiptMatchesGraphSource(receipt, graph) : false,
-    hostInvocation: receipt.hostInvocation ? {
-      source: receipt.hostInvocation.source || null,
-      invocationId: receipt.hostInvocation.invocationId || null,
-    } : null,
-  };
+  }) || {};
+  const hostInvocation = receipt.hostInvocation ? compactOptionalObject({
+    source: receipt.hostInvocation.source || null,
+    invocationId: receipt.hostInvocation.invocationId || null,
+  }) : null;
+  if (hostInvocation) scope.hostInvocation = hostInvocation;
+  return scope;
 }
 
 export function trustedReceiptScopesById(receipts = [], graph = null) {
@@ -148,4 +158,9 @@ function sha256File(file) {
 
 function normalizeComparablePath(value = "") {
   return String(value || "").replace(/\\/g, "/").toLowerCase();
+}
+
+function compactOptionalObject(value = {}) {
+  const entries = Object.entries(value).filter(([, item]) => item !== null && item !== undefined && item !== "");
+  return entries.length > 0 ? Object.fromEntries(entries) : null;
 }

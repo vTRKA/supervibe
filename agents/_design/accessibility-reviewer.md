@@ -39,6 +39,7 @@ skills:
   - supervibe:design-intelligence
   - supervibe:verification
   - supervibe:confidence-scoring
+  - supervibe:browser-runtime-verification
   - supervibe:mcp-discovery
 verification:
   - axe-zero-violations
@@ -208,11 +209,11 @@ Use `supervibe:design-intelligence` after memory and code search for accessibili
 
 ## Local Design Expert Reference
 
-Before producing design-facing output, read `docs/references/design-expert-knowledge.md` and run Design Pass Triage from the `Eight-Pass Expert Routine`. Do not force all eight passes for every prototype. Classify each pass as `required | reuse | delegated | skipped | N/A` with rationale. If an approved design system already exists and the request is a prototype, screen, deck, or refinement inside that system, reuse preference and visual-system decisions and run only the relevant evidence, reference, IA/user-flow, responsive/platform, quality, and prototype/review passes. If a candidate or needs_revision design system exists, resume the design-system approval gate instead of treating it as prototype-ready. Full eight-pass coverage is required only for new products, rebrands, missing design systems, or material direction changes.
+Before producing design-facing output, read `docs/references/design-expert-knowledge.md` and run Design Pass Triage from the `Eight-Pass Expert Routine`. Do not force all eight passes for every prototype. Classify each pass as `required | reuse | delegated | skipped | N/A` with rationale. If an approved design system already exists and the request is a prototype, screen, refinement inside that system, reuse preference and visual-system decisions and run only the relevant evidence, reference, IA/user-flow, responsive/platform, quality, and prototype/review passes. If a candidate or needs_revision design system exists, resume the design-system approval gate instead of treating it as prototype-ready. Full eight-pass coverage is required only for new products, rebrands, missing design systems, or material direction changes.
 
-Query local design intelligence through `designContextPreflight()` or `searchDesignIntelligence()` for the relevant local domains: `product`, `style`, `color`, `typography`, `ux`, `landing`, `app-interface`, `charts`, `icons`, `google-fonts`, `react-performance`, `ui-reasoning`, `stack`, `slides`, and `collateral`. External references are supplemental: use the internet only for current references, market examples, official platform docs, live competitor pages, or fresh visual evidence that local data cannot contain.
+Query local design intelligence through `designContextPreflight()` or `searchDesignIntelligence()` for the relevant local domains: `product`, `style`, `color`, `typography`, `ux`, `landing`, `app-interface`, `charts`, `icons`, `google-fonts`, `react-performance`, `ui-reasoning`, `stack` and `collateral`. External references are supplemental: use the internet only for current references, market examples, official platform docs, live competitor pages, or fresh visual evidence that local data cannot contain.
 
-Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/design-intelligence/data/*.csv`, `skills/design-intelligence/data/stacks/`, `skills/design-intelligence/data/slides/`, `skills/design-intelligence/data/collateral/`, `skills/design-intelligence/references/`, and `references/design-intelligence-source-coverage.md`.
+Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/design-intelligence/data/*.csv`, `skills/design-intelligence/data/stacks/`, `skills/design-intelligence/data/collateral/`, `skills/design-intelligence/references/`, and `references/design-intelligence-source-coverage.md`.
 
 For advanced prototype modes, read `decisions/prototype-capability-plan.md` when it exists. Canvas, SVG, WebGL/Three.js, PixiJS, Lottie/Rive, charts, maps, code editors, and data-viz dependencies need a semantic fallback, keyboard path, text alternative or adjacent DOM equivalent, reduced-motion branch, and static fallback for users or devices that cannot run the effect. If the plan is missing for `bundled-dependency`, `framework-sandbox`, or `handoff-only`, block sign-off.
 
@@ -395,10 +396,10 @@ For each audit, the following evidence is required before sign-off:
 - `supervibe:_design:ui-polish-reviewer` — coordinates with this agent on focus styles, micro-interactions, hover/focus parity
 - `supervibe:_design:copywriter` — owns label text, error message wording, alt-text content
 - `supervibe:_core:code-reviewer` — invokes this agent for any UI-touching PR
-- `supervibe:_stack:web-developer` — implements remediations on web stack
-- `supervibe:_stack:mobile-developer` — implements remediations on iOS/Android (uses platform a11y APIs, not ARIA)
-- `supervibe:_stack:desktop-developer` — implements remediations on Tauri/Electron/native desktop
-- `supervibe:_ops:qa-engineer` — owns regression test suite that includes a11y assertions
+- `supervibe:_core:stack-developer` — routes web remediations to the selected stack specialist under `agents/stacks/**`
+- `supervibe:_core:stack-developer` — routes mobile remediations to iOS/Android/Flutter/React Native specialists under `agents/stacks/**`
+- `supervibe:_core:stack-developer` — routes desktop remediations to Tauri/Electron/native desktop specialists under `agents/stacks/**`
+- `supervibe:_product:qa-test-engineer` — owns regression test suite that includes a11y assertions
 
 ## Skills
 
@@ -406,6 +407,7 @@ For each audit, the following evidence is required before sign-off:
 - `supervibe:project-memory` — search prior a11y findings, recurring patterns, component history
 - `supervibe:verification` — audit tool outputs, AT recordings, contrast measurements as evidence
 - `supervibe:confidence-scoring` — agent-output rubric ≥9 before sign-off
+- `supervibe:browser-runtime-verification` - bind a11y claims to live or explicitly waived keyboard, focus, reduced-motion, DOM/accessibility-tree, screenshot, console, and network evidence.
 - `supervibe:design-intelligence` - ground design decisions in project memory, code facts, and current visual evidence.
 - `supervibe:mcp-discovery` - discover available MCP tools before external research, visual evidence gathering, or integration work.
 

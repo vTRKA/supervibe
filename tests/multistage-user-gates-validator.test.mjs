@@ -38,25 +38,10 @@ test("multistage user-gate validator rejects overlay and delegated approval subs
       "# Preview",
       "The feedback overlay is mandatory for design roots.",
     ].join("\n"),
-    "skills/presentation-deck/SKILL.md": [
-      "# Presentation Deck",
-      "HTML preview, browser feedback, approval, .pptx export.",
-      "Feedback prompt.",
-    ].join("\n"),
-    "commands/supervibe-presentation.md": [
-      "# /supervibe-presentation",
-      "Intermediate story and slide decisions can be recorded as delegated decisions.",
-      "Prompt the user for explicit feedback choice.",
-    ].join("\n"),
     "agents/_design/prototype-builder.md": [
       "# prototype-builder",
       "Feedback button in the lower-right corner lets you click any region.",
       "Wait for explicit choice. Do NOT advance silently to handoff.",
-    ].join("\n"),
-    "agents/_design/presentation-deck-builder.md": [
-      "# presentation-deck-builder",
-      "Browser feedback entries for this slug are tracked and resolved.",
-      "Print the feedback prompt from supervibe:presentation-deck.",
     ].join("\n"),
     "skills/browser-feedback/SKILL.md": [
       "# Browser Feedback",

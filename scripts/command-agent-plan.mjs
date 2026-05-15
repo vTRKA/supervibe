@@ -241,13 +241,26 @@ export function buildRuntimeCommandAgentPlan({
     workflowContext: normalizedContext,
   });
   const effectiveCommand = preliminaryPlan.commandId || command;
-  const scopedContext = withDefaultCommandScopedHandoff(normalizedContext, effectiveCommand);
+  const hasExplicitScopedHandoff = Boolean(
+    normalizedContext.active === true
+    || normalizedContext.handoffId
+    || normalizedContext.handoff
+    || normalizedContext.workflowRunId
+    || normalizedContext.slug
+  );
+  const stageGatePreflightOnly = Boolean(preliminaryPlan.stageGate && !hasExplicitScopedHandoff);
+  const scopedContext = stageGatePreflightOnly
+    ? { ...normalizedContext, commandScopedReceiptGate: false }
+    : withDefaultCommandScopedHandoff(normalizedContext, effectiveCommand);
+  const scopedRequiredAgentIds = stageGatePreflightOnly && preliminaryPlan.immediateAgentIds?.length
+    ? preliminaryPlan.immediateAgentIds
+    : preliminaryPlan.requiredAgentIds;
   const effectiveScopedReceiptTrust = shouldInspectScopedReceiptTrust(scopedContext)
     ? scopedReceiptTrust === undefined && skipScopedReceiptTrustInspection !== true
       ? inspectScopedReceiptTrust(resolvedProjectRoot, {
         command: effectiveCommand,
         workflowContext: scopedContext,
-        requiredAgentIds: preliminaryPlan.requiredAgentIds,
+        requiredAgentIds: scopedRequiredAgentIds,
       })
       : (scopedReceiptTrust ?? null)
     : null;

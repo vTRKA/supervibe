@@ -109,7 +109,7 @@ Match exact pack?
    - Prefer `stack-packs/tauri-react-rust-postgres/pack.yaml` when fingerprint contains Tauri 2, React/Vite, Rust and SQLx/Postgres evidence.
 3. Resolve install profile before copying agents:
    - `minimal` (recommended): orchestrator, repo-researcher, rules-curator, memory-curator, code-reviewer, quality-gate-reviewer, root-cause-debugger, selected stack developer(s), selected stack architect(s)
-   - `product-design`: minimal + product, UX, copy, prototype, presentation, accessibility, polish
+   - `product-design`: minimal + product, UX, copy, prototype, accessibility, polish
    - `full-stack`: all stack-pack groups
    - `research-heavy`: minimal + researcher agents for uncertain stack, stale best practices, security or dependency discovery
    - `custom`: user explicitly selects groups or individual agents

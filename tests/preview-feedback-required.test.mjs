@@ -37,12 +37,10 @@ test("feedback overlay cancel path hides an open comment panel", async () => {
 
 test("design preview roots cannot disable feedback overlay", () => {
   const prototypeRoot = join("workspace", ".supervibe", "artifacts", "prototypes", "checkout");
-  const presentationRoot = join("workspace", ".supervibe", "artifacts", "presentations", "investor");
   const mockupRoot = join("workspace", ".supervibe", "artifacts", "mockups", "landing");
   const publicRoot = join("workspace", "public");
 
   assert.equal(isFeedbackRequiredPreviewRoot(prototypeRoot), true);
-  assert.equal(isFeedbackRequiredPreviewRoot(presentationRoot), true);
   assert.equal(isFeedbackRequiredPreviewRoot(mockupRoot), true);
   assert.equal(isFeedbackRequiredPreviewRoot(publicRoot), false);
 

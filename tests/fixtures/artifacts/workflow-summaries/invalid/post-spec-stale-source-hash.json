@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "workflow-summary-v2",
+  "artifactKind": "workflow-summary",
+  "summaryId": "summary-98843ce2719a",
+  "workflowId": "workflow-summary-fixture",
+  "stage": "post-spec",
+  "stageOrder": 2,
+  "title": "Post-spec summary",
+  "createdAt": "2026-05-15T00:00:00.000Z",
+  "expiresAt": "2026-05-22T00:00:00.000Z",
+  "storagePath": ".supervibe/artifacts/summaries/workflow-summary-fixture/post-spec-summary.json",
+  "sourcePrompt": {
+    "hash": "sha256:a596de8f26f82f4d23e81a1369fef5f5976bb50c99656b26c32966e5dd6d1a3b",
+    "capturedAt": "2026-05-15T00:00:00.000Z",
+    "excerpt": "User asks for workflow summary logic hardening."
+  },
+  "sourceArtifact": {
+    "kind": "spec",
+    "path": ".supervibe/artifacts/specs/example-brainstorm.md",
+    "hashAlgorithm": "sha256",
+    "hash": "sha256:0b07de62d81d8cd6203eaf31acb4f06429f057b59e9c2f88eae2ff59a47b250d",
+    "capturedAt": "2026-05-15T00:00:00.000Z"
+  },
+  "summary": {
+    "objective": "Harden summary workflow lifecycle.",
+    "scope": [
+      "summary routing",
+      "durable artifacts"
+    ],
+    "nonGoals": [
+      "implementation execution"
+    ]
+  },
+  "approvedScope": [
+    "pre/post summary lifecycle"
+  ],
+  "assumptions": [
+    "user approval is required"
+  ],
+  "planningAssumptions": [
+    "validators run at final gate"
+  ],
+  "constraints": [
+    "source hash binding required"
+  ],
+  "risks": [
+    "stale summary can mislead handoff"
+  ],
+  "missingFacts": [],
+  "visualSummary": {
+    "required": true,
+    "summaryTable": [
+      {
+        "label": "Stage",
+        "value": "post-spec"
+      },
+      {
+        "label": "Artifact kind",
+        "value": "post-artifact"
+      },
+      {
+        "label": "Source",
+        "value": ".supervibe/artifacts/specs/example-brainstorm.md"
+      },
+      {
+        "label": "Next",
+        "value": "/supervibe-plan --from-brainstorm <spec-path>"
+      }
+    ],
+    "asciiMap": [
+      "request/source",
+      "  -> post-spec summary (.supervibe/artifacts/summaries/workflow-summary-fixture/post-spec-summary.json)",
+      "    -> /supervibe-plan --from-brainstorm <spec-path>"
+    ]
+  },
+  "decisionSummary": {
+    "addedAndWhy": [
+      "Fixture records required post-stage explanation fields."
+    ],
+    "deferredAndWhy": [
+      "Release execution remains outside fixture scope."
+    ],
+    "validationResult": "fixture source artifact is current",
+    "nextRecommendedCommand": "/supervibe-plan --from-brainstorm <spec-path>",
+    "nextUserActions": [
+      "approve-post-spec-summary: Approve spec summary and plan",
+      "revise-spec-before-plan: Revise spec first",
+      "stop-after-spec: Stop after spec"
+    ]
+  },
+  "staleState": {
+    "status": "current",
+    "reason": "source-artifact-current",
+    "checkedAt": "2026-05-15T00:00:00.000Z",
+    "sourceArtifactHash": "sha256:26e1ad8656cf10b1fd8b65447f2a6890d7bc56a36953c7ed1a8e866b4d426998",
+    "repair": "regenerate summary from current source artifact when stale"
+  },
+  "choices": [
+    {
+      "id": "approve-post-spec-summary",
+      "label": "Approve spec summary and plan",
+      "description": "Allows the workflow to use the current spec summary as the source for planning.",
+      "recommended": true,
+      "ordinal": 1
+    },
+    {
+      "id": "revise-spec-before-plan",
+      "label": "Revise spec first",
+      "description": "Keeps the workflow on the spec artifact before planning starts.",
+      "recommended": false,
+      "ordinal": 2
+    },
+    {
+      "id": "stop-after-spec",
+      "label": "Stop after spec",
+      "description": "Stops after preserving the spec summary and next-step context.",
+      "recommended": false,
+      "ordinal": 3
+    }
+  ],
+  "approvalState": {
+    "status": "pending",
+    "selectedChoiceId": "",
+    "approvedAt": "",
+    "approvedBy": "",
+    "approvalSource": "latest-user-gate",
+    "allowedChoiceIds": [
+      "approve-post-spec-summary"
+    ],
+    "sourcePromptHash": "sha256:a596de8f26f82f4d23e81a1369fef5f5976bb50c99656b26c32966e5dd6d1a3b",
+    "artifactHash": "sha256:ef3f8a37f683a670bee7f3c2120e783041106b1e73b0a344144bdf179e221106",
+    "expiresAt": "2026-05-22T00:00:00.000Z"
+  },
+  "evidenceAppendix": {
+    "schemaPath": "docs/templates/workflow-summary-artifact.schema.json",
+    "contractVersion": "workflow-summary-v2",
+    "storagePath": ".supervibe/artifacts/summaries/workflow-summary-fixture/post-spec-summary.json",
+    "sourcePromptHash": "sha256:a596de8f26f82f4d23e81a1369fef5f5976bb50c99656b26c32966e5dd6d1a3b",
+    "sourceArtifactHash": "sha256:26e1ad8656cf10b1fd8b65447f2a6890d7bc56a36953c7ed1a8e866b4d426998",
+    "artifactHash": "sha256:ef3f8a37f683a670bee7f3c2120e783041106b1e73b0a344144bdf179e221106",
+    "items": []
+  },
+  "artifactHash": "sha256:ef3f8a37f683a670bee7f3c2120e783041106b1e73b0a344144bdf179e221106"
+}

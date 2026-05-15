@@ -108,3 +108,32 @@ Rubric: `plan-review.yaml`
 - verification command: `node scripts/validate-plan-review-artifacts.mjs --file .supervibe/artifacts/plan-reviews/2026-05-11-billing-export-mvp-review.md`.
 - plan-review-passed: proof flag may be issued only after all needs-revision rows become pass.
 - evidenceGatePass: true only when command output, artifact paths, source citations, reviewer coverage, user waivers if any, and runtime receipts are present and trusted.
+
+
+## Workflow Summary V2 Addendum
+
+Plan Review Contract: workflow-summary-v2
+
+## Pre-Artifact Summary
+
+- source: .supervibe/artifacts/plans/2026-05-15-example-plan.md
+- hash: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+- stage: post-plan
+
+## Post-Artifact Summary
+
+- added: source-bound post-plan summary with table and ASCII map
+- why: review and execution need a current source artifact hash before advancing
+- next: approve post-plan summary and run /supervibe-plan --review .supervibe/artifacts/plans/2026-05-15-example-plan.md
+
+## Acceptance Mapping
+
+| Task | Acceptance | Evidence |
+| --- | --- | --- |
+| T27 | Decision Card has source binding and next user choices | workflow-b545f6d261f8 and scripts/lib/supervibe-post-stage-actions.mjs |
+
+## Reviewer Decision
+
+- approve: continue only when all blocker findings are closed and receipts are trusted.
+- revise: update the plan and rerun review when critical or major findings remain.
+- stop: keep the plan as draft and do not atomize or execute.

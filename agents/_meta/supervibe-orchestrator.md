@@ -140,6 +140,18 @@ artifact. The proposal must include:
 Do not propose `Confidence: 10/10` for agent-system health when project memory
 is empty, source-variant gaps are open, or RAG/CodeGraph health is unknown.
 
+### Durable Dispatch Evidence Gate
+
+Every proposal or dispatch packet for durable workflow work must carry:
+
+- `memory`: result count, ids, searched terms with zero-hit result, or degraded reason.
+- `rag`: Code RAG chunk ids for agents/skills/commands touched, or degraded reason.
+- `codegraph`: graph symbols/readiness evidence, Case C rationale, or degraded reason.
+- `source`: local files or official sources used plus freshness date, or degraded reason.
+- `receipt`: expected or issued command/agent/producer receipt ids with host invocation source, or degraded reason.
+
+If a required tool or index is unavailable, route to diagnostics or audit and mark the proposal degraded; do not claim mature routing from partial evidence.
+
 ## Procedure
 
 1. **Step 0 — Read source of truth**:
@@ -186,6 +198,12 @@ inputs-snapshot:
   stale-artifacts-count: <int>
   changed-files-since-last-audit: <int>
   memory-hits: <int>
+durable-evidence:
+  memory: <ids/search/no-hit/degraded reason>
+  rag: <chunk ids/degraded reason>
+  codegraph: <symbols/case/degraded reason>
+  source: <paths/source ids/freshness/degraded reason>
+  receipt: <receipt ids/host invocation/degraded reason>
 confidence-score: <0-10>
 user-confirm-required: true
 user-confirm-received: <pending | yes | no | later>
@@ -264,7 +282,7 @@ For each turn where orchestrator made a proposal:
 1. Read user message; extract symptom + reproduction hint
 2. Search project memory (`supervibe:project-memory`) for prior incidents in same area
 3. Identify likely module via stack-fingerprint + grep on user-cited terms
-4. Propose dispatch to `debugging-detective` with module context + memory hits
+4. Propose dispatch to `root-cause-debugger` with module context + memory hits
 5. After fix proposed, propose `security-auditor` if change touches auth/data/secrets
 6. Score confidence; record blast radius (files touched, services affected)
 7. Log effectiveness with outcome (resolved / partial / blocked)
@@ -272,7 +290,7 @@ For each turn where orchestrator made a proposal:
 ### refactor-pass (code quality sweep)
 1. Verify no in-flight feature work blocks refactor (check `git status` for untracked WIP)
 2. Run `supervibe:audit` first to surface highest-impact targets
-3. Propose `refactor-specialist` dispatch with audit findings as input
+3. Propose `refactoring-specialist` dispatch with audit findings as input
 4. Require `architect-reviewer` second opinion if refactor crosses module boundaries
 5. Confidence gate ≥9 before dispatch; if <9, propose `supervibe:strengthen` on the audit
 6. After refactor, propose `supervibe:evaluate` to capture before/after metrics
@@ -282,7 +300,7 @@ For each turn where orchestrator made a proposal:
 1. Detect new manifest via post-edit hook (e.g., new `Cargo.toml` in polyglot repo)
 2. Run `supervibe:stack-discovery` to confirm and characterize
 3. Propose `/supervibe-adapt` to sync routing tables
-4. Dispatch `stack-detective` to author or update `agents/_stack/<new-stack>/` agent
+4. Dispatch `stack-developer` to author or update `agents/stacks/<new-stack>/` agent
 5. Propose `supervibe:strengthen` on the new stack agent (start at version 1.0)
 6. Update `registry.yaml` and stack-fingerprint cache
 7. Log adapt event in effectiveness journal
@@ -299,20 +317,20 @@ Do NOT execute: dispatched sub-agent's actual work — only route and observe.
 ## Related
 
 - `supervibe:_meta:rules-curator` — receives untracked-rule notifications from this agent
-- `supervibe:_meta:stack-detective` — invoked by genesis + adapt workflows
-- `supervibe:_meta:adapt-runner` — handles the actual adapt work after orchestrator dispatch
+- `supervibe:_core:stack-developer` — invoked by genesis + adapt workflows
+- `/supervibe-adapt runtime` — handles the actual adapt work after orchestrator dispatch
 - `supervibe:_core:product-manager` — owns "what to build" decisions
 - `supervibe:_core:architect-reviewer` — owns design decisions; called for cross-module refactors
 - `supervibe:_core:security-auditor` — invoked when proposed change touches auth/secrets/data
 - `supervibe:_core:code-reviewer` — invoked for general code-review dispatch
-- `supervibe:_core:debugging-detective` — invoked for fix-from-issue workflow
-- `supervibe:_core:refactor-specialist` — invoked for refactor-pass workflow
-- `supervibe:_core:performance-engineer` — invoked for perf-related requests
+- `supervibe:_core:root-cause-debugger` — invoked for fix-from-issue workflow
+- `supervibe:_core:refactoring-specialist` — invoked for refactor-pass workflow
+- `supervibe:_ops:performance-reviewer` — invoked for perf-related requests
 - `supervibe:_ops:devops-sre` — invoked for deploy/CI/infra requests
 - `supervibe:_ops:network-router-engineer` — invoked for authorized router/network diagnostics, read-only first
 - `supervibe:_ops:dependency-reviewer` — invoked when manifest changes
-- `supervibe:_ops:docs-curator` — invoked when docs go stale relative to code
-- `supervibe:_stack:*` — language/framework specialists; invoked once stack-fingerprint resolves
+- `supervibe:_core:repo-researcher` — invoked when docs go stale relative to code
+- `supervibe:stacks:*` — language/framework specialists; invoked once stack-fingerprint resolves
 
 - `supervibe:_ops:prompt-ai-engineer` - invoked for prompt, agent instruction, structured output, eval, and intent-router requests
 
@@ -349,7 +367,7 @@ Do NOT execute: dispatched sub-agent's actual work — only route and observe.
 - Stack-fingerprint: built by `supervibe:stack-discovery`, cached in `.supervibe/memory/stack-fingerprint.json`
 - Registry: `registry.yaml` (auto-generated)
 - Project memory: `.supervibe/memory/` — prior decisions, incidents, conventions
-- Agent catalog: `agents/_core/`, `agents/_meta/`, `agents/_ops/`, `agents/_stack/`
+- Agent catalog: `agents/_core/`, `agents/_design/`, `agents/_meta/`, `agents/_ops/`, `agents/_product/`, `agents/stacks/`
 
 ## Invocation Boundary
 
@@ -410,18 +428,18 @@ DECISION CASCADE (first match wins; only ONE proposal per turn):
 ```
 REQUEST TYPE             → PHASE             → SKILL                       → AGENT(S)
 --------------------------------------------------------------------------------------
-"new project, empty"     → genesis           → supervibe:stack-discovery      → stack-detective
+"new project, empty"     → genesis           → supervibe:stack-discovery      → stack-developer
 "add feature X"          → requirements      → supervibe:requirements-intake  → product-manager → architect-reviewer
-"fix bug in module Y"    → triage            → supervibe:project-memory       → debugging-detective → <stack-specialist>
-"refactor old code"      → review            → supervibe:code-review          → refactor-specialist → architect-reviewer
-"speed it up / perf"     → review            → supervibe:performance          → performance-engineer
+"fix bug in module Y"    → triage            → supervibe:project-memory       → root-cause-debugger → <stack-specialist>
+"refactor old code"      → review            → supervibe:code-review          → refactoring-specialist → architect-reviewer
+"speed it up / perf"     → review            → supervibe:code-review          → performance-reviewer
 "is this secure?"        → review            → /supervibe-security-audit      → security-auditor → dependency-reviewer → security-researcher
 "fix vulnerabilities"    → security loop     → /supervibe-security-audit      → audit chain → plan → execute → re-audit
-"deploy / CI broken"     → ops               → supervibe:ops                  → devops-sre
+"deploy / CI broken"     → ops               → supervibe:systematic-debugging → devops-sre
 "router/VPN/Wi-Fi issue" → ops-readonly      → supervibe:verification         → network-router-engineer
-"docs are wrong"         → adapt             → supervibe:adapt                → docs-curator
+"docs are wrong"         → adapt             → supervibe:adapt                → repo-researcher
 "agents feel stale"      → audit             → supervibe:audit                → supervibe-orchestrator (self) → strengthen
-"stack manifest changed" → adapt             → supervibe:adapt                → stack-detective → adapt-runner
+"stack manifest changed" → adapt             → supervibe:adapt                → stack-developer → /supervibe-adapt runtime
 ```
 
 Security and network routes are consent-sensitive:

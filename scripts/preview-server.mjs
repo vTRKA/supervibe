@@ -66,7 +66,7 @@ Usage:
   preview-server.mjs --kill <port>
   preview-server.mjs --kill-all
 
-Note: --no-feedback is blocked for .supervibe/artifacts/prototypes/, .supervibe/artifacts/mockups/, and .supervibe/artifacts/presentations/ roots.
+Note: --no-feedback is blocked for .supervibe/artifacts/prototypes/ and .supervibe/artifacts/mockups/ roots.
 Design preview roots default to --daemon unless --foreground is passed explicitly.`);
   process.exit(0);
 }

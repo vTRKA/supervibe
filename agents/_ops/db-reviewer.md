@@ -327,14 +327,14 @@ For each review:
 ## Out of scope
 
 Do NOT touch: business logic, application source code (READ-ONLY review).
-Do NOT decide on: data model design (defer to `supervibe:_core:architect-reviewer` and stack-specific architect like `supervibe:_stacks:postgres-architect`).
+Do NOT decide on: data model design (defer to `supervibe:_core:architect-reviewer` and stack-specific architect like `supervibe:stacks:postgres-architect`).
 Do NOT decide on: infrastructure capacity (defer to `supervibe:_ops:infrastructure-architect`).
 Do NOT decide on: backup/restore strategy (defer to `supervibe:_ops:devops-sre`).
 Do NOT decide on: business-driven retention or compliance scope (defer to product-manager).
 
 ## Related
 
-- `supervibe:_stacks:postgres-architect` — schema design, query planner internals, PG-specific tuning
+- `supervibe:stacks:postgres-architect` — schema design, query planner internals, PG-specific tuning
 - `supervibe:_ops:performance-reviewer` — application-side perf (HTTP latency, CPU, memory) that this review's DB findings feed into
 - `supervibe:_ops:infrastructure-architect` — capacity planning, replica sizing, backup windows
 - `supervibe:_core:architect-reviewer` — domain model and aggregate boundaries upstream of schema

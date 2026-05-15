@@ -19,6 +19,13 @@ export const PLAN_REVIEW_REQUIRED_SECTIONS = Object.freeze([
   "Evidence",
 ]);
 
+export const PLAN_REVIEW_V2_REQUIRED_SECTIONS = Object.freeze([
+  "Pre-Artifact Summary",
+  "Post-Artifact Summary",
+  "Acceptance Mapping",
+  "Reviewer Decision",
+]);
+
 export const PLAN_REVIEW_DIMENSION_TERMS = Object.freeze([
   "spec-coverage",
   "mvp-value",
@@ -98,6 +105,16 @@ export function validatePlanReviewArtifact(markdown) {
   }
   for (const section of PLAN_REVIEW_REQUIRED_SECTIONS) {
     if (!hasSection(markdown, section)) issues.push(`missing section: ${section}`);
+  }
+  const usesV2Contract = /Plan Review Contract\s*:\s*workflow-summary-v2/i.test(markdown) || PLAN_REVIEW_V2_REQUIRED_SECTIONS.some((section) => hasSection(markdown, section));
+  if (usesV2Contract) {
+    for (const section of PLAN_REVIEW_V2_REQUIRED_SECTIONS) {
+      if (!hasSection(markdown, section)) issues.push(`missing section: ${section}`);
+    }
+    requireTerms({ issues, section: "Pre-Artifact Summary", body: sectionBody(markdown, "Pre-Artifact Summary"), terms: ["source", "hash", "stage"] });
+    requireTerms({ issues, section: "Post-Artifact Summary", body: sectionBody(markdown, "Post-Artifact Summary"), terms: ["added", "why", "next"] });
+    requireTerms({ issues, section: "Acceptance Mapping", body: sectionBody(markdown, "Acceptance Mapping"), terms: ["task", "acceptance", "evidence"] });
+    requireTerms({ issues, section: "Reviewer Decision", body: sectionBody(markdown, "Reviewer Decision"), terms: ["approve", "revise", "stop"] });
   }
 
   requireTerms({

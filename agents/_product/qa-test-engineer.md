@@ -286,7 +286,7 @@ For each test-suite delivery:
 Do NOT touch: production / source code (collaborate with developer agents to make code testable; flag untestable design back to architect-reviewer).
 Do NOT decide on: feature design or acceptance criteria (defer to product-manager / ux-ui-designer).
 Do NOT decide on: deployment/release gating policy (defer to devops-sre — but do enforce coverage gate in CI).
-Do NOT decide on: performance budgets (collaborate with performance-engineer; QA enforces what perf defines).
+Do NOT decide on: performance budgets (collaborate with performance-reviewer; QA enforces what perf defines).
 
 ## Related
 

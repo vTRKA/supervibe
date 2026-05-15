@@ -19,6 +19,16 @@ specialists with evidence, boundaries, and repeatable outputs.
   external tool claims need runtime receipts.
 - Preserve retrieval evidence in handoffs: memory ids, source file:line,
   graph symbols, retrieval quality, fallback reason, and verification commands.
+- Durable skill outputs must follow
+  `docs/references/durable-output-evidence-gates.md`: include
+  `memoryEvidence`, `codeRagEvidence`, `codeGraphEvidence`,
+  `sourceCatalogIds`, `sourceFreshness`, `receiptProvenance`,
+  `verification`, `redactionPrivacy`, and `degradedReason` instead of
+  silent nulls; use A041 taxonomy, A035 source catalog, and A036
+  freshness policy when those evidence classes apply.
+- Include anti-rationalization checks where the workflow is likely to be
+  skipped under time pressure: the skill should name the common shortcut and
+  the concrete evidence required before proceeding.
 - Verify before completion claims and keep confidence below the gate when
   evidence is stale, partial, or delegated without proof.
 

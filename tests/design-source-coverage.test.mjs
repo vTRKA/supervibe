@@ -11,10 +11,10 @@ test("source coverage document classifies every useful source family", async () 
   for (const phrase of [
     "Main design CSV data",
     "Stack CSV data",
-    "Slide decision CSV data",
+    "Base and platform templates",
     "Logo, icon, CIP collateral CSV data",
     "Search and reasoning scripts",
-    "Brand, design-system, UI styling, slides references",
+    "Brand, design-system, and UI styling references",
     "Font binaries and font license sidecars",
     "Low-signal design/draft backup files",
   ]) {

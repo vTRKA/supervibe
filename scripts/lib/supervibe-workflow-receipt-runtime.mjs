@@ -191,9 +191,9 @@ export async function issueWorkflowInvocationReceipt({
     startedAt: startedAt || resolvedRunTimestamp,
     completedAt: completedAt || resolvedRunTimestamp,
     handoffId,
-    hostInvocation: normalizedHostInvocation,
     runtime,
   };
+  if (normalizedHostInvocation) canonical.hostInvocation = normalizedHostInvocation;
   if (evidenceSnapshot) canonical.evidenceSnapshot = evidenceSnapshot;
   if (workItemBinding) canonical.workItemBinding = workItemBinding;
   const normalizedRecovery = normalizeRecoveryMetadata(recovery);
@@ -1032,13 +1032,22 @@ function assertReceiptableOutputArtifacts(outputArtifacts = [], rootDir = proces
 }
 
 function normalizeWorkItemBinding({ taskId = null, workItemId = null, graphId = null, workGraphId = null } = {}) {
-  const normalizedTaskId = taskId || workItemId || null;
-  const normalizedGraphId = graphId || workGraphId || null;
+  const normalizedTaskId = normalizeOptional(taskId || workItemId) || null;
+  const normalizedGraphId = normalizeOptional(graphId || workGraphId) || inferGraphIdFromTaskId(normalizedTaskId) || null;
   if (!normalizedTaskId && !normalizedGraphId) return null;
-  return {
+  return compactOptionalObject({
     graphId: normalizedGraphId,
     taskId: normalizedTaskId,
-  };
+  });
+}
+
+function inferGraphIdFromTaskId(taskId = "") {
+  const normalizedTaskId = normalizeOptional(taskId);
+  if (!normalizedTaskId) return null;
+  const match = /^(.*?)-(?:a\d{3,}|t\d+[a-z]?(?:-sub\d+)?)$/i.exec(normalizedTaskId);
+  const graphId = match?.[1] || null;
+  if (!graphId || graphId === normalizedTaskId) return null;
+  return graphId;
 }
 
 function normalizeCommand(value) {
@@ -1062,18 +1071,23 @@ function uniqueStrings(values = []) {
   return [...new Set(values.flatMap((item) => arrayFrom(item)).map(String).filter(Boolean))];
 }
 
+function compactOptionalObject(value = {}) {
+  const entries = Object.entries(value).filter(([, item]) => item !== null && item !== undefined && item !== "");
+  return entries.length > 0 ? Object.fromEntries(entries) : null;
+}
+
 function buildScopedHostInvocation(options = {}) {
   const invocationId = options.hostInvocationId || options.hostInvocationID || options.invocationId || options["host-invocation-id"];
   const source = options.hostInvocationSource || options["host-invocation-source"];
   const evidencePath = options.hostInvocationEvidence || options.hostTrace || options["host-invocation-evidence"] || options["host-trace"];
   const agentId = options.hostInvocationAgentId || options["host-invocation-agent-id"];
   if (!invocationId && !source && !evidencePath && !agentId) return null;
-  return {
+  return compactOptionalObject({
     source: source || null,
     invocationId: invocationId || null,
     evidencePath: evidencePath || null,
     agentId: agentId || null,
-  };
+  });
 }
 
 function hostInvocationMatchesScope(proof = null, expected = null) {
@@ -1222,10 +1236,7 @@ async function upsertArtifactLinks(path, receipt, receiptPath) {
   }
   const links = Array.isArray(manifest.links) ? manifest.links : [];
   const nextLinks = links.filter((link) => {
-    if (normalizeRelPath(link.receiptPath) === normalizeRelPath(receiptPath)) return false;
-    return !receipt.outputHashes.some((output) => {
-      return normalizeRelPath(output.path) === normalizeRelPath(link.artifactPath);
-    });
+    return normalizeRelPath(link.receiptPath) !== normalizeRelPath(receiptPath);
   });
   for (const output of receipt.outputHashes) {
     nextLinks.push({
@@ -1402,9 +1413,11 @@ function canonicalReceiptForVerification(receipt) {
     startedAt: receipt.startedAt,
     completedAt: receipt.completedAt,
     handoffId: receipt.handoffId,
-    hostInvocation: receipt.hostInvocation || null,
     runtime,
   };
+  if (Object.prototype.hasOwnProperty.call(receipt, "hostInvocation")) {
+    canonical.hostInvocation = receipt.hostInvocation || null;
+  }
   if (Object.prototype.hasOwnProperty.call(receipt, "evidenceSnapshot")) {
     canonical.evidenceSnapshot = receipt.evidenceSnapshot || null;
   }
@@ -1455,7 +1468,7 @@ function enrichHostInvocationProof(rootDir, proof) {
       out.evidencePath = out.evidencePath || match.structured_output?.json || null;
     }
   }
-  return out;
+  return compactOptionalObject(out);
 }
 
 function assertHostInvocationProofExists(rootDir, proof, expectedAgentId) {

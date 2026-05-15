@@ -8,6 +8,7 @@ import { CODEGRAPH_INDEX_COMMAND, SOURCE_RAG_INDEX_COMMAND } from "./supervibe-c
 import { runRetrievalPipeline } from "./supervibe-retrieval-pipeline.mjs";
 
 export const DEFAULT_REPAIRABLE_CONTENT_CHANGED_ROWS = 2;
+export const DEFAULT_STALE_SOURCE_DETAIL_LIMIT = 25;
 const READ_SNAPSHOT_MODE = "read-only-transaction";
 
 export function repairableContentChangedRowsLimit(value = process.env.SUPERVIBE_INDEX_REPAIRABLE_CONTENT_ROWS) {
@@ -77,6 +78,12 @@ export function buildCodeIndexFreshnessStatus({
     nextAction = SOURCE_RAG_INDEX_COMMAND;
   }
 
+  const staleSourceExplanation = buildCodeIndexStaleSourceExplanation({
+    health,
+    repairCommand: SOURCE_RAG_INDEX_COMMAND,
+    graphRepairCommand: CODEGRAPH_INDEX_COMMAND,
+  });
+
   return {
     status,
     readyForMode,
@@ -98,10 +105,16 @@ export function buildCodeIndexFreshnessStatus({
     effectiveFailedGates,
     warnings: gate.warnings || [],
     snapshot,
+    staleSourceExplanation,
   };
 }
 
 export function buildMissingCodeIndexFreshnessStatus({ dbPath = null } = {}) {
+  const staleSourceExplanation = buildCodeIndexStaleSourceExplanation({
+    health: {},
+    repairCommand: SOURCE_RAG_INDEX_COMMAND,
+    graphRepairCommand: CODEGRAPH_INDEX_COMMAND,
+  });
   return {
     status: "not-built",
     readyForMode: false,
@@ -137,6 +150,46 @@ export function buildMissingCodeIndexFreshnessStatus({ dbPath = null } = {}) {
       dbAgeMs: null,
       retryCount: 0,
     },
+    staleSourceExplanation,
+  };
+}
+
+export function buildCodeIndexStaleSourceExplanation({
+  health = {},
+  repairCommand = SOURCE_RAG_INDEX_COMMAND,
+  graphRepairCommand = CODEGRAPH_INDEX_COMMAND,
+  limit = DEFAULT_STALE_SOURCE_DETAIL_LIMIT,
+} = {}) {
+  const detailLimit = nonNegativeInt(limit, DEFAULT_STALE_SOURCE_DETAIL_LIMIT);
+  const stale = buildSourceRowBucket(health.staleRows || [], { limit: detailLimit });
+  const changedContent = buildSourceRowBucket(health.contentChangedRows || [], { limit: detailLimit });
+  const partial = buildSourceRowBucket(health.partialIndexedFiles || [], { limit: detailLimit });
+  const normalizedChangedRows = normalizeSourceRows(health.contentChangedRows || []);
+  const changedFiles = normalizedChangedRows.slice(0, detailLimit);
+  const counts = {
+    staleRows: stale.count,
+    changedContentRows: changedContent.count,
+    partialRows: partial.count,
+  };
+  const totalRows = counts.staleRows + counts.changedContentRows + counts.partialRows;
+
+  return {
+    schemaVersion: 1,
+    hasDetails: totalRows > 0,
+    rowCounts: counts,
+    totalRows,
+    buckets: {
+      staleRows: stale,
+      changedContentRows: changedContent,
+      partialRows: partial,
+    },
+    changedFiles: {
+      count: normalizedChangedRows.length,
+      shown: changedFiles,
+      omitted: Math.max(0, normalizedChangedRows.length - changedFiles.length),
+    },
+    repairCommand,
+    graphRepairCommand,
   };
 }
 
@@ -183,7 +236,45 @@ export function formatCodeIndexFreshnessStatus(freshness = {}) {
     `READ_SNAPSHOT_RETRIES: ${snapshot.retryCount ?? 0}`,
     `REASON: ${freshness.reason || "unknown"}`,
     `NEXT_ACTION: ${freshness.nextAction || "none"}`,
+    formatCodeIndexStaleSourceExplanation(freshness.staleSourceExplanation || {
+      rowCounts: {
+        staleRows: freshness.staleRows || 0,
+        changedContentRows: freshness.contentChangedRows || 0,
+        partialRows: freshness.partialRows || 0,
+      },
+      totalRows: (freshness.staleRows || 0) + (freshness.contentChangedRows || 0) + (freshness.partialRows || 0),
+      repairCommand: freshness.repairCommand || SOURCE_RAG_INDEX_COMMAND,
+      graphRepairCommand: freshness.graphRepairCommand || CODEGRAPH_INDEX_COMMAND,
+    }),
   ].join("\n");
+}
+
+export function formatCodeIndexStaleSourceExplanation(explanation = {}) {
+  const counts = explanation.rowCounts || {};
+  const hasDetails = explanation.hasDetails === true || Number(explanation.totalRows || 0) > 0;
+  const lines = [
+    "STALE_SOURCE_EXPLANATION",
+    `SCHEMA_VERSION: ${explanation.schemaVersion || 1}`,
+    `HAS_DETAILS: ${hasDetails}`,
+    `ROW_COUNTS: staleRows=${counts.staleRows || 0}, changedContentRows=${counts.changedContentRows || 0}, partialRows=${counts.partialRows || 0}`,
+    `REPAIR_COMMAND: ${explanation.repairCommand || SOURCE_RAG_INDEX_COMMAND}`,
+    `GRAPH_REPAIR_COMMAND: ${explanation.graphRepairCommand || CODEGRAPH_INDEX_COMMAND}`,
+  ];
+
+  if (!hasDetails) {
+    lines.push("DETAILS: none");
+    return lines.join("\n");
+  }
+
+  lines.push("CHANGED_FILES:");
+  lines.push(formatSourceRows(explanation.changedFiles || { shown: [], omitted: 0 }));
+  lines.push("STALE_ROWS:");
+  lines.push(formatSourceRows(explanation.buckets?.staleRows || { shown: [], omitted: 0 }));
+  lines.push("CHANGED_CONTENT_ROWS:");
+  lines.push(formatSourceRows(explanation.buckets?.changedContentRows || { shown: [], omitted: 0 }));
+  lines.push("PARTIAL_ROWS:");
+  lines.push(formatSourceRows(explanation.buckets?.partialRows || { shown: [], omitted: 0 }));
+  return lines.join("\n");
 }
 
 export async function openCodeIndexReadSnapshot({
@@ -399,6 +490,46 @@ function isSqliteLockError(error = {}) {
   return code.includes("SQLITE_BUSY")
     || code.includes("SQLITE_LOCKED")
     || /database is locked|database table is locked|SQLITE_BUSY|SQLITE_LOCKED/i.test(message);
+}
+
+function buildSourceRowBucket(rows = [], { limit = DEFAULT_STALE_SOURCE_DETAIL_LIMIT } = {}) {
+  const normalized = normalizeSourceRows(rows);
+  const detailLimit = nonNegativeInt(limit, DEFAULT_STALE_SOURCE_DETAIL_LIMIT);
+  const shown = normalized.slice(0, detailLimit);
+  return {
+    count: normalized.length,
+    shown,
+    omitted: Math.max(0, normalized.length - shown.length),
+  };
+}
+
+function normalizeSourceRows(rows = []) {
+  return [...new Set((rows || []).map(sourceRowPath).filter(Boolean))].sort();
+}
+
+function sourceRowPath(row) {
+  if (typeof row === "string") return normalizeSourcePath(row);
+  if (!row || typeof row !== "object") return "";
+  return normalizeSourcePath(
+    row.path
+    || row.file
+    || row.relPath
+    || row.sourcePath
+    || row.changedFile
+    || row.id
+    || ""
+  );
+}
+
+function normalizeSourcePath(value = "") {
+  return String(value || "").replace(/\\/g, "/").trim();
+}
+
+function formatSourceRows(bucket = {}) {
+  const rows = bucket.shown || [];
+  const lines = rows.length ? rows.map((row) => `- ${row}`) : ["- none"];
+  if (Number(bucket.omitted || 0) > 0) lines.push(`- ... ${bucket.omitted} more`);
+  return lines.join("\n");
 }
 
 function dedupeGateItems(items = []) {
@@ -717,6 +848,12 @@ function trimMarkdown(markdown, maxChars) {
   const text = String(markdown || "");
   if (text.length <= limit) return text;
   return `${text.slice(0, Math.max(0, limit - 80)).replace(/\s+$/g, "")}\n\n[trimmed to ${limit} chars]`;
+}
+
+function nonNegativeInt(value, fallback) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) return fallback;
+  return Math.trunc(parsed);
 }
 
 function positiveInt(value, fallback) {

@@ -6,7 +6,6 @@ Supervibe 2.0 includes an adapted design intelligence data pack sourced from a p
 
 - CSV design knowledge tables for product type, style, color, typography, UX, app interface, chart, icon, landing, Google Fonts, React performance, and UI reasoning guidance.
 - Stack-specific UI guidance CSVs.
-- Slide strategy, layout, copy, typography, color, background, and chart decision data.
 - Logo, icon, and CIP collateral guidance.
 - Algorithmic ideas for BM25 lookup, token validation, brand context extraction, asset validation, palette comparison, and brand-to-token sync.
 

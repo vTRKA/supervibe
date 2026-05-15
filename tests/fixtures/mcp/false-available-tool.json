@@ -1,0 +1,18 @@
+{
+  "fixture": "false-available-tool",
+  "intent": "negative MCP registry fixture: unavailable tool advertised as available must fail",
+  "mcpRegistry": {
+    "server": "synthetic-browser-server",
+    "advertisedTools": [
+      {
+        "name": "browser_click",
+        "namespace": "mcp__synthetic_browser__browser_click",
+        "available": true,
+        "discovered": false,
+        "lastProbeStatus": "missing"
+      }
+    ]
+  },
+  "expectedGateResult": "fail",
+  "expectedReason": "tool is marked available although discovery/probe evidence says it is missing"
+}

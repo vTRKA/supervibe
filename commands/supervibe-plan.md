@@ -83,7 +83,7 @@ Auto-detect the most recent spec in `.supervibe/artifacts/specs/` and use it. If
 
 3. **Search project memory** for similar past plans (`supervibe:project-memory --query <topic>`). If a near-identical implementation exists, propose adapting it instead of re-planning from scratch.
 
-3a. **Plan Scope Approval Gate.** Before saving the durable implementation plan, print a compact plan-scope preview:
+3a. **Pre-plan summary and Plan Scope Approval Gate.** Before saving the durable implementation plan, produce the durable `pre-plan` summary using `scripts/lib/supervibe-post-stage-actions.mjs`: approved scope, rejected/deferred scope, constraints, planning assumptions, risks, evidence status, markdown table, ASCII lifecycle map, and stable approve/revise/stop choices. Then print a compact plan-scope preview:
    - Proposed phases and task groups
    - Files/modules expected to change
    - Approved, deferred, rejected, and explicitly excluded scope
@@ -124,7 +124,7 @@ Auto-detect the most recent spec in `.supervibe/artifacts/specs/` and use it. If
    scoped runtime receipt, or trusted output artifact. These caps are blockers,
    not stylistic warnings.
 
-8. **Post-plan summary before review.** After the durable plan is saved and validated, give a short human-readable summary: artifact path, phases, critical path, included scope, deferred/rejected scope, highest risks, validation result, score, and the next review choices.
+8. **Post-plan summary before review.** After the durable plan is saved, validated, and scored, produce the durable `post-plan` summary using `scripts/lib/supervibe-post-stage-actions.mjs`: plan path, source artifact hash, markdown table, ASCII lifecycle map, phases, critical path, included scope, deferred/rejected scope, what was added and why, highest risks, validation result, score, and the next review choices.
 
 8a. **Mandatory review handoff before execution.** Print a human-first Decision Card using `scripts/lib/supervibe-post-stage-actions.mjs` before any raw machine state, then print the command output block and wait for one user choice. In normal conversational summaries, translate the available choices into a short human-readable next-step sentence instead of exposing the raw `NEXT_USER_ACTIONS[]` marker. Print:
    ```
@@ -175,8 +175,9 @@ Production readiness: test/security/perf/observability/rollback/release covered
 Development contracts: behavior/architecture/data/API/UI/security/perf/observability/rollout/docs mapped
 Scope safety: approved scope mapped; deferred/rejected extras documented
 Retrieval/graph: required memory, RAG, CodeGraph, citations, fallback and graph-quality checks mapped
-Visual evidence: text-first summary/table/stage map; browser preview only for actual UI/prototype/browser evidence; Mermaid fallback includes accessible title and description when used
-Post-plan summary: concise human summary and next review actions shown after plan creation
+Pre-plan summary: durable pre-plan summary shown before plan write, with approved scope, constraints, markdown table, ASCII lifecycle map, source prompt hash, and latest-user approval gate
+Visual evidence: source-bound text-first summary, markdown table, and ASCII stage map; browser preview only for actual UI/prototype/browser evidence; Mermaid fallback includes accessible title and description when used
+Post-plan summary: source-bound concise human summary, plan path, source artifact hash, added-and-why, deferred-and-why, validation result, table, ASCII map, and next review actions shown after plan validation
 Decision Card: human-first recommendation, `Step N/M` question, choices, resume cursor, and next command before any raw handoff block
 Final gate:  10/10 acceptance + no open blockers
 Score:       <N>/10  Rubric: plan

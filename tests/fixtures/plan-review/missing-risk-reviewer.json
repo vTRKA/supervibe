@@ -1,0 +1,19 @@
+{
+  "fixture": "missing-risk-reviewer",
+  "intent": "negative plan-review fixture: high-risk plan approval without risk reviewer must fail",
+  "planReview": {
+    "planId": "synthetic-high-risk-plan-negative",
+    "claimedStatus": "approved",
+    "riskLevel": "high",
+    "reviewers": [
+      {
+        "role": "implementation-reviewer",
+        "status": "pass",
+        "receiptId": "synthetic-runtime-receipt-implementation"
+      }
+    ],
+    "riskReviewer": null
+  },
+  "expectedGateResult": "fail",
+  "expectedReason": "high-risk plan has no risk reviewer evidence"
+}

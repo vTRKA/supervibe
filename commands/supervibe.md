@@ -2,7 +2,7 @@
 description: >-
   Use WHEN the user asks what to do next, has a brainstorm or plan ready, asks
   for review, atomic task split, epic creation, autonomous run, security audit,
-  router/network diagnostics, design/UI/deck requests, worktree isolation,
+  router/network diagnostics, design/UI requests, worktree isolation,
   status, stop/resume, or diagnose/why-trigger TO route to the next safe
   Supervibe workflow command without mutating first. Triggers: 'what next',
   'brainstorm', 'plan', 'review', 'security audit', 'брейншторм', 'план',
@@ -67,7 +67,6 @@ Design requests route to existing commands only:
 - design review, UI polish, token drift, accessibility review -> `/supervibe-audit --design`
 - mobile UI -> `/supervibe-design --target mobile-native`
 - chart UX -> `/supervibe-design --chart-ux`
-- presentation/deck design -> `/supervibe-design --presentation`
 - brand/collateral asset work -> `/supervibe-design --brand-collateral`
 - stack-aware UI handoff -> `/supervibe-design --handoff`
 - Figma variables/components/tokens drift -> `/supervibe-design --figma-source-of-truth`

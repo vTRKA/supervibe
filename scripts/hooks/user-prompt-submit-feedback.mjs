@@ -17,10 +17,6 @@ function readEvent() {
 }
 
 function routeFeedback(entry) {
-  const isPresentation = String(entry.url || '').includes('/presentations/') ||
-    String(entry.prototypeSlug || '').startsWith('presentation:');
-  if (isPresentation) return 'presentation-deck-builder';
-
   switch (entry.type) {
     case 'visual':
     case 'motion':
@@ -38,11 +34,9 @@ function routeFeedback(entry) {
 function formatEntry(entry) {
   const agent = routeFeedback(entry);
   const slug = String(entry.prototypeSlug || '');
-  const label = slug.startsWith('presentation:')
-    ? 'presentation'
-    : slug.startsWith('mockup:')
-      ? 'mockup'
-      : 'artifact';
+  const label = slug.startsWith('mockup:')
+    ? 'mockup'
+    : 'artifact';
   return [
     `[supervibe] browser-feedback received:`,
     `- id: ${entry.id}`,

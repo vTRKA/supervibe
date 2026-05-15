@@ -63,7 +63,9 @@ export async function buildAgentSystemMaturityReport(rootDir = process.cwd(), op
   const ruleContentQuality = validateRuleContentQuality(rootDir);
   const agentContentQuality = validateAgentContentQuality(rootDir);
   const skillContentQuality = validateSkillContentQuality(rootDir);
-  const continuation = validateWorkflowContinuation(rootDir);
+  const continuation = validateWorkflowContinuation(rootDir, {
+    pluginRoot: options.pluginRoot,
+  });
   const workflowReceipts = validateWorkflowReceipts(rootDir, options.receiptOptions || {});
   const agentReceipts = validateAgentProducerReceipts(rootDir, {
     ...(options.receiptOptions || {}),
@@ -158,8 +160,8 @@ export function scoreAgentSystemMaturity({
     "stage-continuation",
     1.0,
     validators.continuation?.pass ? 1.0 : 0,
-    `workflow continuation pass=${validators.continuation?.pass === true}`,
-    "Restore NEXT_USER_ACTIONS and gated-stage continuation contracts.",
+    workflowContinuationEvidence(validators.continuation),
+    workflowContinuationNextAction(validators.continuation),
   );
   add(
     "receipt-reliability",
@@ -203,15 +205,19 @@ export function scoreAgentSystemMaturity({
   ) || isRetrievalTelemetryOnlySampleGap(indexGate);
   const graphReady = indexGate.ready === true
     && indexGate.retrievalEnforcementPass === true
-    && retrievalTelemetryReady
     && Number(indexGate.missingOrStale ?? Number.NaN) === 0
     && !String(indexGate.warnings || "").includes("symbol-coverage");
+  const codeGraphEvidence = retrievalTelemetryReady
+    ? (indexGate.evidence || "index status unavailable")
+    : `${indexGate.evidence || "index status unavailable"}, retrievalTelemetryStrictPass=false (tracked outside code-graph-readiness)`;
   add(
     "code-graph-readiness",
     1.0,
     graphReady ? 1.0 : indexGate.sourceReady ? 0.5 : 0,
-    indexGate.evidence || "index status unavailable",
-    "Run node scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health, confirm node scripts/build-code-index.mjs --root . --list-missing reports MISSING_OR_STALE: 0, then npm run supervibe:agent-retrieval-health -- --strict.",
+    codeGraphEvidence,
+    graphReady
+      ? null
+      : "Run node scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health, confirm node scripts/build-code-index.mjs --root . --list-missing reports MISSING_OR_STALE: 0, then rerun node scripts/supervibe-agent-maturity.mjs.",
   );
   add(
     "eval-coverage",
@@ -503,6 +509,28 @@ function activeCommandEvidence(validators = {}) {
   const missingCallable = (active.missingCallableAgents || []).join("|") || "none";
   const missingScoped = (active.missingScopedReceipts || []).join("|") || "none";
   return `${base}, activeCommand=${active.command || "unknown"}, activePass=${active.pass === true}, executionMode=${active.executionMode || "unknown"}, callableAgentsReady=${active.callableAgentsReady === true}, durableWritesAllowed=${active.durableWritesAllowed === true}, receiptGate=${active.receiptGate || "none"}, missingCallable=${missingCallable}, missingScoped=${missingScoped}`;
+}
+
+function workflowContinuationEvidence(continuation = {}) {
+  const issues = Array.isArray(continuation.issues) ? continuation.issues : [];
+  if (continuation.pass === true) {
+    return `workflow continuation pass=true, checked=${continuation.checked || 0}, issues=0`;
+  }
+  const issueSummary = issues
+    .slice(0, 3)
+    .map((issue) => `${issue.file || "unknown"}:${issue.code || "issue"}`)
+    .join("|") || "unavailable";
+  return `workflow continuation pass=false, checked=${continuation.checked || 0}, issues=${issues.length}, firstIssues=${issueSummary}`;
+}
+
+function workflowContinuationNextAction(continuation = {}) {
+  if (continuation.pass === true) return null;
+  const issues = Array.isArray(continuation.issues) ? continuation.issues : [];
+  if (issues.length === 0) {
+    return "Rerun node scripts/validate-workflow-continuation.mjs and inspect why continuation status is unavailable.";
+  }
+  const first = issues[0];
+  return `Fix ${first.file || "workflow continuation artifact"}: ${first.message || first.code || "missing continuation evidence"}`;
 }
 
 function inspectBacklogAndDocs(rootDir) {

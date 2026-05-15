@@ -207,6 +207,26 @@ describe("supervibe trigger router", () => {
     assert.equal(route.requiredSafety.includes("semantic-route-coverage"), true);
   });
 
+  it("keeps router implementation complaints out of docs audit cleanup routes", () => {
+    const implementationComplaint = "fix intent routing system. docs-audit wrongly matched by words \u043c\u0443\u0441\u043e\u0440 \u043e\u0447\u0438\u0441\u0442 instead of /supervibe-audit";
+    const route = routeTriggerRequest(implementationComplaint);
+
+    assert.equal(route.intent, "prompt_ai_engineering");
+    assert.equal(route.command, "/supervibe --agent prompt-ai-engineer");
+    assert.notEqual(route.command, "/supervibe-audit --docs");
+    assert.equal(route.intentArbiter.requestType, "router_implementation_request");
+    assert.ok(route.rejectedAlternatives.some((candidate) =>
+      candidate.intent === "docs_audit" && candidate.negativeEvidence?.some((entry) => entry.includes("suspected wrong route"))
+    ));
+
+    const diagnosticComplaint = "why did intent router incorrectly route docs-audit by \u043c\u0443\u0441\u043e\u0440 \u043e\u0447\u0438\u0441\u0442 instead of /supervibe-audit";
+    const diagnosticRoute = routeTriggerRequest(diagnosticComplaint);
+
+    assert.equal(diagnosticRoute.intent, "trigger_diagnostics");
+    assert.equal(diagnosticRoute.command, "/supervibe --diagnose-trigger");
+    assert.notEqual(diagnosticRoute.command, "/supervibe-audit --docs");
+  });
+
   it("keeps small routing questions on diagnostics instead of dispatching agent audits", () => {
     const phrases = [
       "do not call agents for this tiny question, just explain the route",
@@ -479,3 +499,17 @@ function routeQuestion(route) {
     artifactImpact: route.questionArtifactImpact,
   };
 }
+
+
+describe("workflow summary gate routing", () => {
+  it("routes post summary gates with source-bound safety metadata", () => {
+    const route = routeTriggerRequest("show post-plan summary after plan creation before review", {
+      artifacts: { planPath: ".supervibe/artifacts/plans/example.md" },
+    });
+    assert.equal(route.intent, "post_plan_summary_gate");
+    assert.equal(route.summaryStage, "post-plan");
+    assert.equal(route.summaryApprovalContract.stage, "post-plan");
+    assert.equal(route.requiredSafety.includes("visual-table-required"), true);
+    assert.equal(route.requiredSafety.includes("ascii-map-required"), true);
+  });
+});

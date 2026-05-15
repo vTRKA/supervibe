@@ -199,6 +199,18 @@ review must include source-traced no-issue proof: inspected files, searched
 tokens, graph/caller applicability, and why the scenario cannot occur. A review
 that says the area is "not applicable" without that trace is BLOCKED until the missing source trace is produced.
 
+## Durable Review Evidence Gate
+
+Every architecture review must include durable output evidence fields:
+
+- `memory`: prior decisions/incidents ids, searched terms with zero-hit result, or degraded reason.
+- `rag`: Code RAG chunk ids for changed modules/rules, or degraded reason.
+- `codegraph`: callers/callees/neighborhood evidence, Case C rationale, or degraded reason.
+- `source`: active instruction/rule/source file paths plus freshness date, or degraded reason.
+- `receipt`: reviewer/workflow receipt ids with host invocation source, or degraded reason.
+
+Architectural approval is BLOCKED when a required field is absent and no degraded reason is recorded.
+
 ## Procedure
 
 1. **Search project memory** via `supervibe:project-memory` for prior architectural decisions in this area, rejected alternatives, and past coupling incidents:
@@ -260,6 +272,12 @@ Returns Markdown report:
 **Reviewed:** YYYY-MM-DD
 **Scope:** N files, +X / -Y lines
 **Architecture style (per the active host instruction file):** <hexagonal | FSD | modular-monolith | ...>
+**Durable evidence**:
+- memory: <ids/search/no-hit/degraded reason>
+- rag: <chunk ids/degraded reason>
+- codegraph: <symbols/case/degraded reason>
+- source: <paths/source ids/freshness/degraded reason>
+- receipt: <receipt ids/host invocation/degraded reason>
 **Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```

@@ -226,15 +226,6 @@ const RULES = Object.freeze([
     forbidden: [],
   },
   {
-    file: "commands/supervibe-presentation.md",
-    label: "presentation command",
-    required: [
-      /Do not stop after storyboard or first slide/i,
-      /continue through the deck pipeline/i,
-    ],
-    forbidden: [],
-  },
-  {
     file: "commands/supervibe-audit.md",
     label: "audit command receipt mode",
     required: [

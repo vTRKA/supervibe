@@ -13,7 +13,7 @@ task, risk, stack, or review need.
 ### Categories
 
 - Core workflow: process specialists for review, debugging, research, refactoring, and quality gates.
-- Design and UI: product experience, visual direction, accessibility, prototypes, decks, and platform UI specialists.
+- Design and UI: product experience, visual direction, accessibility, prototypes, and platform UI specialists.
 - Operations and security: architecture, infrastructure, AI, data, security, compliance, release, and production-risk specialists.
 - Product planning: PM, analytics, SEO, QA strategy, lifecycle, and systems-analysis specialists.
 - Stack categories: implementation or architecture specialists tied to a concrete technology stack.
@@ -48,7 +48,7 @@ producer, reviewer, worker, validator, external tool, or receipt issuer when the
 real runtime path exists. If the task has no matching trigger, ask for one
 clarifying detail or route through `/supervibe` instead of guessing.
 
-Total agents: 98
+Total agents: 96
 
 ## Core workflow
 
@@ -69,12 +69,10 @@ Total agents: 98
 - `creative-director` - Use WHEN starting any new product or major visual direction shift to define brand language, mood, palette intent, typographic intent, motion intent, and emotional anchors. Stacks: any.
 - `data-visualization-specialist` - Use WHEN designing, reviewing, or implementing dashboards, charts, maps, analytical UX, metric cards, data storytelling, data-density choices, accessibility fallbacks, and chart library handoffs. Stacks: any.
 - `design-data-curator` - Use WHEN importing, auditing, reconciling, or strengthening design-intelligence datasets, manifests, source variants, CSV domains, reference cards, and design retrieval evidence. Stacks: any.
-- `design-system-architect` - Use WHEN defining, reviewing, extending, or auditing the project design-system contract: tokens, component baseline, motion, accessibility platform rules, component-library bridge, token drift, and prototype-to-produc... Stacks: any.
+- `design-system-architect` - Use WHEN defining, reviewing, extending, or auditing the project design-system contract: tokens, component baseline, motion, accessibility platform rules, component-library bridge, source catalog mapping, capability m... Stacks: any.
 - `electron-ui-designer` - Use WHEN designing UI for an Electron desktop application — main window, settings, modals, tray dropdowns, multi-window experiences — to produce platform-faithful mockups that respect macOS / Windows / Linux HIG, nati... Stacks: electron.
 - `extension-ui-designer` - Use WHEN designing UI for a browser extension (Chrome MV3, Edge, Brave, Firefox WebExtensions) — popup, side panel, options, new-tab override — to produce surface-aware mockups that respect host-browser etiquette, CSP... Stacks: chrome-extension.
 - `mobile-ui-designer` - Use WHEN designing UI for a native mobile app — iOS (SwiftUI / UIKit), Android (Jetpack Compose / Views), React Native, or Flutter — to produce platform-faithful mockups that respect iOS HIG and Android Material 3, sa... Stacks: ios, android, react-native, flutter.
-- `presentation-deck-builder` - Use WHEN a storyboard or presentation brief must become a browser-reviewed slide preview, revised through feedback, exported as PPTX, and prepared for Google Drive handoff. Stacks: any.
-- `presentation-director` - Use WHEN a user needs a persuasive, educational, investor, sales, product, or internal presentation to define audience outcome, narrative spine, slide architecture, visual references, and design-system alignment. Stacks: any.
 - `prototype-builder` - Use WHEN materializing design as 1:1 HTML/CSS prototype in .supervibe/artifacts/prototypes/ for brandbook approval and 1:1 production transfer. Stacks: any.
 - `tauri-ui-designer` - Use WHEN designing UI for a Tauri 2 desktop application — main window, secondary windows, tray, system dialogs — to produce mockups that work identically on WKWebView (macOS), WebView2 (Windows), and WebKitGTK (Linux)... Stacks: tauri.
 - `ui-polish-reviewer` - Use BEFORE marking any UI implementation done to review across 8 dimensions (hierarchy/spacing/alignment/states/keyboard/responsive/copy/DS-consistency). Stacks: any.

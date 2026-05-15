@@ -8,7 +8,6 @@ test("design triggers route through existing command surfaces only", () => {
     "/supervibe-design",
     "/supervibe-design --target mobile-native",
     "/supervibe-design --chart-ux",
-    "/supervibe-design --presentation",
     "/supervibe-design --brand-collateral",
     "/supervibe-design --handoff",
     "/supervibe-design --extend-system",
@@ -18,7 +17,6 @@ test("design triggers route through existing command surfaces only", () => {
   for (const entry of getTriggerIntentCorpus().filter((item) => item.intent.startsWith("design_") || [
     "mobile_ui",
     "chart_ux",
-    "presentation_deck",
     "brand_collateral",
     "stack_ui_guidance",
   ].includes(item.intent))) {
@@ -78,8 +76,7 @@ test("routes Russian and English design intents without adding lookup commands",
   assert.deepEqual(handoff.missingArtifacts, []);
 });
 
-test("fuzzy design routing covers mobile, chart, and presentation requests", () => {
+test("fuzzy design routing covers mobile and chart requests", () => {
   assert.equal(routeTriggerRequest("сделай мобильный ui для онбординга", { artifacts: { request: true } }).intent, "mobile_ui");
   assert.equal(routeTriggerRequest("improve chart ux accessibility", { artifacts: { request: true } }).intent, "chart_ux");
-  assert.equal(routeTriggerRequest("build presentation deck design", { artifacts: { request: true } }).intent, "presentation_deck");
 });

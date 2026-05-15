@@ -123,3 +123,7 @@ Reject these patterns before an audit is marked ready:
 ## Runtime Telemetry And Maturity Dashboard
 
 The maturity dashboard must report the state of user-case coverage, source-of-truth coverage, visual explanation coverage, update self-heal, scenario fixtures, Code RAG, CodeGraph, workflow receipts, and content validators. A 10/10 claim is allowed only when the dashboard, scenario evals, `supervibe-agent-maturity`, and `npm run check` pass.
+
+## Prompt Capability Heatmap
+
+The agent capability heatmap is a prompt/static capability view. It scores agent frontmatter, declared skills and tools, body contract sections, and prompt freshness. It must not be cited as runtime proof, workflow receipt proof, Code RAG/CodeGraph readiness, or release maturity. Runtime maturity blockers remain owned by the runtime maturity dashboard, receipt gates, active workflow checks, and release validation.

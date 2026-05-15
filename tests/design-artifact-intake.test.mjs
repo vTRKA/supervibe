@@ -20,8 +20,6 @@ async function fixture() {
   await writeFile(join(root, ".supervibe", "artifacts", "prototypes", "checkout", "index.html"), "<html><body>checkout</body></html>");
   await mkdir(join(root, ".supervibe", "artifacts", "mockups", "pricing"), { recursive: true });
   await writeFile(join(root, ".supervibe", "artifacts", "mockups", "pricing", "index.html"), "<html><body>pricing</body></html>");
-  await mkdir(join(root, ".supervibe", "artifacts", "presentations", "investor"), { recursive: true });
-  await writeFile(join(root, ".supervibe", "artifacts", "presentations", "investor", "deck.json"), JSON.stringify({ title: "Investor" }));
   return root;
 }
 
@@ -31,7 +29,6 @@ test("findExistingDesignArtifacts returns prototype candidates with metadata", a
     const artifacts = await findExistingDesignArtifacts({ projectRoot: root });
     assert.equal(artifacts.some((artifact) => artifact.path === ".supervibe/artifacts/prototypes/checkout"), true);
     assert.equal(artifacts.some((artifact) => artifact.path === ".supervibe/artifacts/mockups/pricing"), true);
-    assert.equal(artifacts.some((artifact) => artifact.path === ".supervibe/artifacts/presentations/investor"), true);
     const checkout = artifacts.find((artifact) => artifact.path === ".supervibe/artifacts/prototypes/checkout");
     assert.equal(checkout.status, "draft");
     assert.equal(checkout.target, "web");

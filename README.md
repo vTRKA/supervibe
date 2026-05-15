@@ -9,7 +9,7 @@ Runs locally. No Docker. Windows, macOS, and Linux.
 
 Supervibe commands are agent-gated by default: every `/supervibe-*` workflow has required specialist agents, active durable work is blocked until scoped runtime receipts exist, and inline/controller-only output stays diagnostic. Design and prototype flows additionally require their producer and reviewer agents before completion can be claimed.
 
-**v2.1** - current plugin `v2.1.38` - MIT - 2276 tests
+**v2.1** - current plugin `v2.1.39` - MIT - 2276 tests
 
 > **Compliance notice:** This tool is designed exclusively for development assistance. By using it, you agree to comply with the Terms of Service (ToS) and Acceptable Use Policy (AUP) of all involved services, including Anthropic. Unauthorized automated usage, OAuth token abuse, or violation of third-party policies is the sole responsibility of the end user.
 
@@ -51,6 +51,49 @@ For the deeper system map, use [agent roster](docs/agent-roster.md) for speciali
 | Refresh an already configured project | [Update Or Refresh](#update-or-refresh) | `/supervibe-adapt` |
 | Check health or fix install trouble | [Troubleshooting](#troubleshooting) | Find your symptom |
 
+## Plain-English Map
+
+Use this when you do not know which section to read.
+
+```text
+I am on a new computer
+  -> Install Supervibe once
+  -> restart the AI coding tool
+  -> open a project
+  -> run /supervibe-genesis
+  -> run /supervibe-status
+
+I already installed Supervibe, but this is a new project
+  -> open that project
+  -> run /supervibe-genesis
+  -> read the dry-run
+  -> approve only if it looks right
+
+I already use Supervibe and want the latest version
+  -> run /supervibe-update, or the update script
+  -> restart the AI coding tool
+  -> run /supervibe-adapt inside each old project
+
+Something looks broken
+  -> run /supervibe-status
+  -> if it still looks wrong, run /supervibe-doctor
+```
+
+The smallest mental model:
+
+```text
+Install tool once
+      |
+      v
+Connect each project with /supervibe-genesis
+      |
+      v
+Use /supervibe to pick the next safe workflow
+      |
+      v
+Check health with /supervibe-status
+```
+
 ## Quick Start
 
 The beginner path is one loop:
@@ -83,9 +126,21 @@ This is the rule that prevents most confusion.
 |---|---|---|
 | Slash commands | In Claude Code, Codex, Gemini, Cursor, or OpenCode chat | `/supervibe-genesis` |
 | Terminal commands | In PowerShell, Terminal, bash, or zsh | `npm run supervibe:status` |
+| Terminal dispatcher | In a terminal after bin links are installed | `supervibe commands`, `supervibe doctor` |
 | Installer commands | In your operating system terminal | `irm ... | iex` |
 
 > **Warning:** Do not type slash commands like `/supervibe-adapt` in PowerShell, bash, or zsh. Slash commands belong in the AI CLI chat.
+
+Command compass:
+
+```text
+Starts with /supervibe-...  -> type it in the AI chat
+Starts with npm run ...     -> type it in a terminal
+Starts with node ...        -> type it in a terminal
+Starts with curl or irm     -> type it in your OS terminal
+```
+
+`supervibe-stage` and `supervibe-validate` are terminal/bin aliases for runtime tooling. They are not slash commands unless a matching file exists under `commands/`.
 
 ## Memory-Safe Node Runs
 
@@ -133,6 +188,20 @@ node scripts/supervibe-runtime-cleanup.mjs --unused --older-than-minutes 15 --dr
 On Windows, cleanup uses a process-tree stop for managed Node daemons so child
 processes do not remain behind after the parent exits.
 
+For `.supervibe` artifact lifecycle cleanup, use the reversible GC flow. Dry-run
+and review modes classify hot, protected, warm, archivable, cold, trash, and
+unclassified files before any apply path:
+
+```powershell
+npm run supervibe:gc -- --lifecycle --mode dry-run
+npm run supervibe:gc -- --lifecycle --mode review
+npm run supervibe:gc -- --artifacts --dry-run --archive-keep-last 5 --archive-retention-days 90
+```
+
+Reachability wins over age: active roots, trusted receipts, receipt-linked
+outputs, compact manifests, and protected provenance are not cleanup candidates
+just because they are old. See [cleanup lifecycle](docs/supervibe-cleanup-lifecycle.md).
+
 ## Install
 
 Requirements:
@@ -144,6 +213,26 @@ Requirements:
 The installer checks Node.js before registration. If Node.js is missing or too old, it asks for explicit consent before installing or upgrading it.
 
 Release integrity evidence lives in [release security](docs/release-security.md), [install integrity](docs/install-integrity.md), [third-party licenses](docs/third-party-licenses.md), and [LICENSE](LICENSE).
+
+Install picture:
+
+```text
+Your OS terminal
+      |
+      v
+Run install.sh or install.ps1
+      |
+      +-- checks Node.js and Git
+      +-- installs npm dependencies
+      +-- downloads the ONNX model
+      +-- registers Claude/Codex/Gemini/etc. when found
+      |
+      v
+Restart the AI coding tool
+      |
+      v
+Open your project and run /supervibe-genesis
+```
 
 ### macOS / Linux
 
@@ -169,7 +258,7 @@ The installer:
 After restart, you should see something like:
 
 ```text
-[supervibe] welcome  plugin v2.1.38 initialized for this project
+[supervibe] welcome  plugin v2.1.39 initialized for this project
 [supervibe] code RAG  N files / M chunks (fresh)
 [supervibe] code graph  N symbols / M edges (X% resolved)
 ```
@@ -227,8 +316,11 @@ Approve only after the dry-run looks right. Supervibe managed blocks are updated
 | UI, landing page, or product screen | `/supervibe-design <brief>` | Creates brand direction, prototype, preview, feedback loop, and handoff |
 | Execute an approved plan | `/supervibe-execute-plan <plan-path>` | Runs plan steps with verification gates |
 | Long task with visible state | `/supervibe-loop --guided --file <graph.json>` | Runs a visible, cancellable loop from an atomized work graph |
+| Verify, review, or ship completed work | `/supervibe-verify`, `/supervibe-review`, then `/supervibe-ship` | Maps evidence to goals, runs production-readiness review, then checks release readiness |
 | Security review | `/supervibe-security-audit` | Produces read-only findings first |
+| Documentation or command sync | `/supervibe-plan --docs-sync` | Plans a README/docs refresh against the current command catalog and workflow evidence |
 | See tasks in a browser | `/supervibe-ui` | Opens a local control plane |
+| Audit or strengthen Supervibe itself | `/supervibe-audit`, `/supervibe-score`, `/supervibe-strengthen` | Finds stale artifacts, scores outputs, and repairs weak agents or skills from telemetry |
 | Check health | `/supervibe-status` or `/supervibe --status` | Shows memory, RAG, graph, policy, and workflow state |
 
 ### Safe Planning Path
@@ -247,7 +339,19 @@ Validator label:
 Brainstorm -> Plan -> Review -> Atomize -> Safe Run
 ```
 
+Workflow summary gates are durable artifacts, not chat-only prose. The summary
+flow has explicit `pre-spec`, `post-spec`, `pre-plan`, and `post-plan` stages
+under `.supervibe/artifacts/summaries/`, validated at release with
+`npm run validate:workflow-summary-artifacts`.
+
 Plans are contract artifacts, not loose task lists. A production-ready plan should carry a Development Contract Map for behavior, architecture, data/schema, API/event, UI state, security/privacy, performance, observability, rollout/rollback, and docs/support, then pass `node scripts/validate-plan-artifacts.mjs --file <plan>`.
+
+Plan review is a gate before atomization. `/supervibe-plan --review <plan-path>`
+must produce a durable review artifact with baseline reviewer coverage,
+risk-triggered reviewers when needed, zero critical or major unresolved
+findings, and scoped real-agent receipts. Maintainers can inspect it with
+`node scripts/validate-plan-review-artifacts.mjs --file <review-artifact>` or
+`node scripts/validate-plan-review-artifacts.mjs --plan <plan> --require-active-review`.
 
 Copy-paste example:
 
@@ -301,11 +405,40 @@ Supervibe is built to show work before it changes project files.
 | User approval | You choose when managed files are written |
 | Confidence gates | Agents must show verification before claiming completion |
 | Local memory | Project decisions are stored under `.supervibe/memory/` |
+| Agent dispatch and receipt proof | Durable command work uses real specialist agents and runtime receipts |
 | Provider boundaries | Provider prompts, rate limits, network/MCP approvals, secrets, billing, production mutations, and credential changes are never bypassed |
 
 Autonomous execution is opt-in by invoking the loop and is not the default for ordinary status, planning, or audit summaries. Once invoked, bare `/supervibe-loop` uses the provider-recommended real execution mode; pass `--dry-run` when you explicitly want preview artifacts without mutation.
 
 Unreleased capability label: durable autonomous loop features are implemented in this workspace and remain opt-in until the release gate publishes them.
+
+For command-owned workflow work, inspect the selected agents before mutating:
+
+```bash
+node scripts/command-agent-plan.mjs --command /supervibe-plan --host codex --strict
+```
+
+`CALLABLE_AGENTS_READY`, `SCOPED_RECEIPT_GATE`, and `HOST_DISPATCH` tell you
+whether the current host can run the required specialists. Command or skill
+receipts are diagnostic only; they do not replace required agent, worker, or
+reviewer receipts for durable outputs.
+
+## Context Intelligence And Index Health
+
+Supervibe separates project memory, Code RAG, Code Graph, host context,
+citations, freshness, confidence, and token budget instead of mixing them into
+one opaque prompt. Useful inspection commands:
+
+```bash
+npm run supervibe:status
+npm run code:search -- --query "..."
+node scripts/supervibe-context-pack.mjs --query "..." --json
+node scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health --no-embeddings
+```
+
+Reference details live in [reference packs](docs/reference-packs.md),
+[context intelligence contract](docs/references/context-intelligence-contract.md),
+and [RAG, memory, and CodeGraph evals](docs/references/rag-memory-codegraph-evals.md).
 
 ## Update Or Refresh
 
@@ -319,6 +452,24 @@ flowchart TD
   D --> E["Run /supervibe-adapt"]
   E --> F["Review diff"]
   F --> G["Approve selected managed files"]
+```
+
+Same flow as ASCII:
+
+```text
+Update the plugin
+  /supervibe-update
+  or update.sh / update.ps1
+        |
+        v
+Restart the AI coding tool
+        |
+        v
+For every project that already used Supervibe:
+  open project
+  run /supervibe-adapt
+  read the diff
+  approve only the managed files you want
 ```
 
 ### 1. Update the plugin itself
@@ -379,16 +530,18 @@ Most users only need these five ideas:
 
 | Feature | What it means |
 |---|---|
-| 98 specialist agents | Role-specific agents for repositories, architecture, design, security, QA, operations, and stacks |
+| 96 specialist agents | Role-specific agents for repositories, architecture, design, security, QA, operations, and stacks |
 | Code graph | Tree-sitter symbols and edges; query callers, callees, neighbors, and impact |
 | Semantic code search | Offline multilingual source search with local embeddings |
 | Project memory | Decisions, patterns, incidents, learnings, and solutions under `.supervibe/memory/` |
 | 31 project rules | Safety, scope, git, terminal I/O, design governance, refactor discipline, and anti-hallucination rules |
 | Visible context intelligence | Context packs show memory, RAG, codegraph, repo-map citations, confidence delta, omitted context, repair actions, and no-silent-done lifecycle evidence |
+| Command router and receipts | Natural language command matching, required-agent planning, scoped runtime receipts, and receipt recovery diagnostics |
+| Cleanup lifecycle | Reachability-aware `.supervibe` artifact classification before archive or delete decisions |
 | Performance SLOs | Local release gates report context-pack latency, token ceilings, watcher overhead, index size, eval runtime, and resource drift |
 | Feedback learning loop | User corrections become reviewed memory candidates, eval cases, and regression fixtures |
 | Live preview server | Local `localhost:PORT` preview with reload and feedback support |
-| Design pipeline | Web, Chrome extension, Electron, Tauri, and mobile-native design targets |
+| Design pipeline | Web, Chrome extension, Electron, Tauri, and mobile-native targets with approved direction, tokens, styleboard, prototype, review, and handoff gates |
 | Component library bridges | shadcn, MUI, Mantine, Radix, and HeadlessUI token bridges |
 | Multi-CLI install | One installer covers the common local host setup |
 
@@ -400,7 +553,7 @@ Agent roster: [docs/agent-roster.md](docs/agent-roster.md)
 
 ## Commands
 
-### Daily Slash Commands
+### Slash Commands
 
 Run these in the AI CLI chat.
 
@@ -408,14 +561,23 @@ Run these in the AI CLI chat.
 |---|---|
 | `/supervibe` | Auto-router for the next safe action |
 | `/supervibe-genesis` | First-time project setup |
+| `/supervibe-doctor` | Read-only multi-host installation and registration diagnostics |
+| `/supervibe-status` | Project health, indexes, memory, workflow state, delegated inbox, and tracker visibility |
+| `/supervibe-audit` | Read-only audit for agents, rules, memory, indexes, routing, and stale artifacts |
 | `/supervibe-brainstorm <topic>` | Turn an idea into an approved spec |
-| `/supervibe-plan [<spec-path>]` | Turn a spec into an implementation plan |
+| `/supervibe-plan [<spec-path>]` | Turn a spec into a reviewed implementation plan; also supports docs-sync and summary-gate flows |
 | `/supervibe-execute-plan [<plan-path>]` | Execute a plan with gates |
 | `/supervibe-loop --request/--file/--epic` | Visible goal-until-complete loop over native work graphs with status, resume, stop, and completion gates |
+| `/supervibe-verify` | Tester-style verification against explicit goals and evidence |
+| `/supervibe-review` | Production-readiness review after verification |
+| `/supervibe-ship` | Release-readiness gate covering deployment, rollback, support, and target constraints |
 | `/supervibe-design <brief>` | Design pipeline from direction to prototype and handoff |
 | `/supervibe-security-audit` | Read-only security audit first |
 | `/supervibe-ui` | Local browser control plane |
 | `/supervibe-preview` | Manage preview servers |
+| `/supervibe-gc` | Reversible cleanup preview/apply flow for stale Supervibe artifacts |
+| `/supervibe-score` | Score an artifact against its confidence rubric and list gaps |
+| `/supervibe-strengthen` | Improve underperforming agents or skills from telemetry |
 | `/supervibe-update` | Update the plugin |
 | `/supervibe-adapt` | Refresh managed project files after plugin update |
 
@@ -426,15 +588,30 @@ Run these in a terminal, usually from the plugin checkout.
 | Command | What it does |
 |---|---|
 | `npm run supervibe:status` | Health check across indexes and workflow state |
+| `npm run supervibe:commands` | Deterministic catalog of shortcuts, slash commands, npm scripts, and command matching |
+| `npm run supervibe:agent-plan -- --command /supervibe-plan --strict` | Show required agents, host dispatch readiness, and receipt gate for a command |
 | `npm run supervibe:doctor -- --host all` | Host registration diagnostics |
 | `npm run supervibe:install-doctor` | Post-install lifecycle audit |
 | `npm run supervibe:upgrade` | Manual plugin checkout upgrade |
 | `npm run supervibe:upgrade-check` | Check upstream for new commits |
 | `npm run supervibe:ui -- --file <graph.json>` | Open the local control plane from a graph file |
 | `npm run supervibe:preview -- --list` | List preview servers |
+| `npm run supervibe:gc -- --lifecycle --mode dry-run` | Classify `.supervibe` artifacts before cleanup |
+| `npm run supervibe:memory-health` | Inspect project memory quality and lifecycle |
+| `npm run supervibe:agent-heatmap` | Inspect empirical agent capability and weak spots |
+| `npm run supervibe:runtime-doctor` | Runtime cleanup and daemon safety diagnostics |
 | `npm run supervibe:docs-audit` | User-facing docs relevance audit |
 | `npm run code:search -- --query "..."` | Manual semantic search |
+| `npm run workflow:receipt -- inspect` | Inspect workflow receipt trust and drift |
 | `npm run check` | Full maintainer validation suite |
+
+Release-only or maintainer gates include `npm run validate:workflow-summary-artifacts`,
+`npm run validate:supervibe-cleanup-lifecycle`,
+`npm run validate:command-agent-enforcement`,
+`npm run validate:workflow-receipts`,
+`npm run supervibe:runtime-10of10-targeted`, and
+`npm run supervibe:runtime-10of10-proof`. For plan, graph, and task workflows,
+defer tests and validators until the final release or merge gate.
 
 ## Troubleshooting
 
@@ -459,6 +636,17 @@ node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --re
 ```
 
 Use `--force --health` only for a deliberate full rebuild.
+
+Receipt diagnostics from the plugin checkout:
+
+```bash
+node scripts/workflow-receipt.mjs inspect
+node scripts/workflow-receipt.mjs recovery-status
+node scripts/workflow-receipt.mjs reissue --receipt <receipt-json>
+node scripts/workflow-receipt.mjs prune-stale --apply
+node scripts/workflow-receipt.mjs rebuild-ledger --prune-stale
+npm run validate:workflow-receipts
+```
 
 ## Uninstall
 

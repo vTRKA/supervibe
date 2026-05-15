@@ -44,6 +44,7 @@ skills:
   - supervibe:design-intelligence
   - supervibe:mcp-discovery
   - supervibe:browser-feedback
+  - supervibe:preview-server
 verification:
   - approved-design-flow-state-before-build
   - all-states-rendered
@@ -175,9 +176,9 @@ Use `supervibe:design-intelligence` after memory and code search for style, comp
 
 Before producing design-facing output, read `docs/references/design-expert-knowledge.md` and run Design Pass Triage from the `Eight-Pass Expert Routine`. Classify each pass as `required | reuse | delegated | skipped | N/A` with rationale. Do not force all eight passes when an approved design system already answers the question; candidate or needs_revision systems must resume approval instead of being treated as production-ready.
 
-Use `supervibe:design-intelligence`, `designContextPreflight()`, or `searchDesignIntelligence()` for local evidence across `product`, `style`, `color`, `typography`, `ux`, `landing`, `app-interface`, `charts`, `icons`, `google-fonts`, `react-performance`, `ui-reasoning`, `stack`, `slides`, and `collateral`. External references are supplemental; local memory, approved tokens, accessibility, and code evidence win.
+Use `supervibe:design-intelligence`, `designContextPreflight()`, or `searchDesignIntelligence()` for local evidence across `product`, `style`, `color`, `typography`, `ux`, `landing`, `app-interface`, `charts`, `icons`, `google-fonts`, `react-performance`, `ui-reasoning`, `stack` and `collateral`. External references are supplemental; local memory, approved tokens, accessibility, and code evidence win.
 
-Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/design-intelligence/data/*.csv`, `skills/design-intelligence/data/stacks/`, `skills/design-intelligence/data/slides/`, `skills/design-intelligence/data/collateral/`, `skills/design-intelligence/references/`, and `references/design-intelligence-source-coverage.md`.
+Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/design-intelligence/data/*.csv`, `skills/design-intelligence/data/stacks/`, `skills/design-intelligence/data/collateral/`, `skills/design-intelligence/references/`, and `references/design-intelligence-source-coverage.md`.
 
 Detailed reusable patterns live in `references/agents/design-prototype-patterns.md`. Load that one-hop reference only when this task needs the deeper matrix, template, or examples.
 
@@ -198,7 +199,7 @@ Detailed reusable patterns live in `references/agents/design-prototype-patterns.
 - Verify responsiveness, accessibility, motion, browser console, and reviewer evidence before reporting.
 ## Design Preview Daemon
 
-Serve design preview roots from `.supervibe/artifacts/prototypes`, `.supervibe/artifacts/mockups`, or `.supervibe/artifacts/presentations` through `supervibe:preview-server --daemon`. Do not hand off a foreground-only preview for user review; the daemon keeps the feedback overlay and hot reload active across the design loop.
+Serve design preview roots from `.supervibe/artifacts/prototypes` or `.supervibe/artifacts/mockups` through `supervibe:preview-server --daemon`. Do not hand off a foreground-only preview for user review; the daemon keeps the feedback overlay and hot reload active across the design loop.
 
 ## Output contract
 
@@ -285,7 +286,7 @@ Do NOT touch: production CSS, design system source code, or anything outside `.s
 
 - `supervibe:_design:ux-ui-designer` — provides screen specs + owns token catalog this agent consumes
 - `supervibe:_design:ui-polish-reviewer` — invoked at step 15 to verify token discipline + visual hierarchy
-- `supervibe:_frontend:react-implementer` — receives prototype handoff for 1:1 framework transfer
+- `supervibe:stacks:react:react-implementer` — receives prototype handoff for 1:1 framework transfer
 - `supervibe:_design:accessibility-reviewer` — invoked at step 16 for keyboard + a11y audit
 - `supervibe:_design:creative-director` — owns brand language; escalation point for token gaps
 

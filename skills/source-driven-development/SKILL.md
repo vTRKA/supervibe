@@ -57,6 +57,14 @@ real producers with runtime receipts for durable delegated outputs, verify
 before completion claims, and keep confidence below gate when evidence is
 partial.
 
+Also apply
+[`docs/references/authoritative-source-catalog.md`](../../docs/references/authoritative-source-catalog.md)
+and
+[`docs/references/source-freshness-policy.md`](../../docs/references/source-freshness-policy.md):
+map official sources to catalog ids when available, record freshness state and
+fallback used, and treat unknown source freshness as a blocker for 10/10 claims
+in the affected specialty.
+
 ## Step 0 - Read source of truth
 
 Before implementation, read the local source of truth in this order:
@@ -69,7 +77,10 @@ Before implementation, read the local source of truth in this order:
    extraction, shared behavior, or public API changes.
 4. Official docs, release notes, API references, source repositories, standards,
    provider capability matrices, and security advisories for the detected
-   version.
+   version, mapped to catalog ids and freshness states from
+   [`docs/references/authoritative-source-catalog.md`](../../docs/references/authoritative-source-catalog.md)
+   and
+   [`docs/references/source-freshness-policy.md`](../../docs/references/source-freshness-policy.md).
 5. [`references/source-driven-official-doc-cache.md`](../../references/source-driven-official-doc-cache.md)
    and [`scripts/lib/source-driven-doc-cache.mjs`](../../scripts/lib/source-driven-doc-cache.mjs)
    when cached official docs need freshness-aware revalidation decisions.
@@ -107,6 +118,7 @@ switches, or policy exceptions by itself.
 Library version unknown? -> inspect lockfile/config before using docs or examples
 Provider/model capability unknown? -> read provider config and current capability docs
 Docs are stale, undated, cached, or version-mismatched? -> revalidate origin or mark unverified
+Source freshness is unknown? -> cap confidence per policy and block 10/10 for the affected specialty
 Local code contradicts current docs? -> preserve local compatibility unless security or data-loss risk is proven
 Official docs contradict security advisory or changelog? -> prefer advisory/changelog and escalate risk
 Security/compliance/payment/auth/API boundary? -> require primary source, exact citation, and residual-risk note
@@ -125,7 +137,8 @@ Security/compliance/payment/auth/API boundary? -> require primary source, exact 
 3. Build the source hierarchy. Prefer local code for actual deployed behavior;
    prefer official current docs for intended upstream behavior; prefer release
    notes, migration guides, API specs, source repositories, and advisories over
-   tutorials; use secondary sources only as search leads.
+   tutorials; use secondary sources only as search leads. Cite catalog ids from
+   `docs/references/authoritative-source-catalog.md` when present.
 4. Revalidate official docs. For unstable, provider, release, auth, payment,
    security, or API facts, fetch the origin or use the official doc cache runtime
    to plan conditional requests. A cached entry is not final proof until origin
@@ -189,6 +202,9 @@ Citation format for the output contract:
 - Cache: cache status from `planOfficialDocCacheRead` or
   `applyOfficialDocCacheResponse`, revalidation headers used, and whether the
   result is final proof.
+- Freshness: catalog id, freshness state, last verified date, refresh cadence,
+  fallback used, and confidence cap from
+  `docs/references/source-freshness-policy.md`.
 
 ## Common rationalizations
 
@@ -278,7 +294,11 @@ Return:
 - `localPattern`: local files, tests, symbols, adapters, Code RAG chunks, and
   CodeGraph symbols or fallback reason.
 - `officialSources`: primary-source citations with URL, product version,
-  retrieval/revalidation date, cache status, and proof status.
+  retrieval/revalidation date, cache status, proof status, and catalog ids when
+  available.
+- `freshnessPolicy`: freshness state, last verified date, refresh cadence,
+  fallback used, confidence cap, and whether unknown freshness blocks 10/10 for
+  the affected specialty.
 - `sourceHierarchy`: sources used in priority order and any secondary sources
   used only as leads.
 - `conflicts`: docs-vs-local-code, stale-doc, version, provider-capability, or
@@ -294,6 +314,9 @@ Return:
 - Prefer official docs, source repositories, specs, and local code over generic summaries.
 - Do not browse or cache secrets.
 - Do not claim current behavior without dated/source evidence.
+- Do not claim 10/10 for an affected specialty when source freshness is
+  `unknown`, `stale`, or `unavailable`; apply the confidence caps in
+  `docs/references/source-freshness-policy.md`.
 - Never paste secrets, tokens, customer data, private provider responses, or
   proprietary docs into the official doc cache.
 - Do not let source-driven evidence bypass workflow receipts, specialist

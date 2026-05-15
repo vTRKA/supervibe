@@ -1,9 +1,19 @@
+export const HOST_NEUTRAL_CAPABILITY_NAMES = Object.freeze([
+  "browser",
+  "context7",
+  "figma",
+  "firecrawl",
+  "openai-docs",
+  "tauri",
+]);
+
 const BUILT_IN_AGENT_CAPABILITIES = Object.freeze([
   profile("stack-developer", {
     stacks: ["javascript", "typescript", "node", "web"],
     moduleTypes: ["CORE_LOGIC", "ENTRY_POINT", "UTILITY", "INTEGRATION"],
     riskLevels: ["low", "medium"],
     testTypes: ["unit", "integration", "deterministic"],
+    capabilityNames: ["context7", "openai-docs"],
     integration: true,
     reviewer: false,
     worktree: true,
@@ -12,6 +22,7 @@ const BUILT_IN_AGENT_CAPABILITIES = Object.freeze([
     moduleTypes: ["CORE_LOGIC", "INTEGRATION", "UI_COMPONENT", "DOCUMENTATION"],
     riskLevels: ["low", "medium", "high"],
     testTypes: ["unit", "integration", "browser", "trace"],
+    capabilityNames: ["browser"],
     reviewer: true,
     worktree: false,
   }),
@@ -27,6 +38,7 @@ const BUILT_IN_AGENT_CAPABILITIES = Object.freeze([
     moduleTypes: ["INTEGRATION", "INFRASTRUCTURE", "ENTRY_POINT"],
     riskLevels: ["medium", "high"],
     testTypes: ["security", "integration"],
+    capabilityNames: ["context7", "firecrawl"],
     reviewer: true,
     worktree: false,
   }),
@@ -34,6 +46,7 @@ const BUILT_IN_AGENT_CAPABILITIES = Object.freeze([
     moduleTypes: ["AI_PROMPT", "INTEGRATION", "DOCUMENTATION"],
     riskLevels: ["low", "medium", "high"],
     testTypes: ["eval", "security", "trace"],
+    capabilityNames: ["context7", "openai-docs"],
     integration: true,
     reviewer: false,
     worktree: true,
@@ -42,6 +55,7 @@ const BUILT_IN_AGENT_CAPABILITIES = Object.freeze([
     moduleTypes: ["UI_COMPONENT"],
     riskLevels: ["low", "medium"],
     testTypes: ["browser"],
+    capabilityNames: ["figma", "firecrawl", "browser"],
     ui: true,
     browser: true,
     reviewer: false,
@@ -51,6 +65,7 @@ const BUILT_IN_AGENT_CAPABILITIES = Object.freeze([
     moduleTypes: ["INFRASTRUCTURE"],
     riskLevels: ["medium", "high"],
     testTypes: ["runtime", "integration"],
+    capabilityNames: ["firecrawl"],
     integration: true,
     releasePrep: true,
     reviewer: false,
@@ -69,9 +84,31 @@ const BUILT_IN_AGENT_CAPABILITIES = Object.freeze([
     moduleTypes: ["DOCUMENTATION", "CORE_LOGIC"],
     riskLevels: ["low", "medium"],
     testTypes: ["read-only"],
+    capabilityNames: ["context7", "firecrawl", "openai-docs"],
     docs: true,
     reviewer: false,
     worktree: false,
+  }),
+  profile("tauri-ui-designer", {
+    stacks: ["tauri", "desktop", "web"],
+    moduleTypes: ["UI_COMPONENT", "DOCUMENTATION"],
+    riskLevels: ["low", "medium", "high"],
+    testTypes: ["browser", "runtime", "trace"],
+    capabilityNames: ["tauri", "figma", "browser"],
+    ui: true,
+    browser: true,
+    reviewer: false,
+    worktree: true,
+  }),
+  profile("tauri-rust-engineer", {
+    stacks: ["tauri", "rust", "react", "typescript"],
+    moduleTypes: ["CORE_LOGIC", "INTEGRATION", "INFRASTRUCTURE", "UI_COMPONENT"],
+    riskLevels: ["low", "medium", "high"],
+    testTypes: ["unit", "integration", "runtime", "browser"],
+    capabilityNames: ["tauri", "browser", "context7"],
+    integration: true,
+    browser: true,
+    worktree: true,
   }),
 ]);
 
@@ -150,13 +187,19 @@ function scoreAgent(agent, task, priorOutcomes = []) {
   let score = agent.source === "local-override" ? 1 : 0;
   const moduleType = task.moduleType || inferModuleType(task);
   const risk = task.policyRiskLevel || "low";
-  const stack = task.stack || "node";
+  const stack = task.stack || inferStack(task);
   const testType = inferTestType(task);
+  const requiredCapabilityNames = inferRequiredCapabilityNames(task);
 
   if (includes(cap.moduleTypes, moduleType)) { score += 3; reasons.push(`module=${moduleType}`); }
   if (includes(cap.riskLevels, risk)) { score += 1.5; reasons.push(`risk=${risk}`); }
   if (includes(cap.stacks, stack)) { score += 1.5; reasons.push(`stack=${stack}`); }
   if (includes(cap.testTypes, testType)) { score += 1; reasons.push(`test=${testType}`); }
+  const matchedCapabilityNames = requiredCapabilityNames.filter((name) => includes(cap.capabilityNames, name));
+  if (matchedCapabilityNames.length) {
+    score += matchedCapabilityNames.length * 2;
+    reasons.push(`capability=${matchedCapabilityNames.join(",")}`);
+  }
   if (/integration|api|mcp/i.test(`${task.category} ${task.goal}`) && cap.integration) { score += 1; reasons.push("integration capable"); }
   if (/prompt|intent|router|agent instruction|system instruction|eval/i.test(`${task.category} ${task.goal}`) && cap.moduleTypes?.includes("AI_PROMPT")) { score += 2; reasons.push("prompt capable"); }
   if (/router|vpn|wifi|wi-fi|network|firewall|dns|dhcp/i.test(`${task.category} ${task.goal}`) && cap.moduleTypes?.includes("NETWORK")) { score += 2; reasons.push("network capable"); }
@@ -177,14 +220,22 @@ function profile(agentId, capabilities) {
 }
 
 function normalizeAgentProfile(agent = {}) {
+  const stacks = asArray(agent.capabilities?.stacks);
+  const capabilityNames = normalizeCapabilityNames([
+    ...asArray(agent.capabilities?.capabilityNames),
+    ...asArray(agent.capabilities?.hostCapabilities),
+    ...(agent.capabilities?.browser ? ["browser"] : []),
+    ...(stacks.includes("tauri") ? ["tauri"] : []),
+  ]);
   return {
     agentId: agent.agentId,
     source: agent.source || "built-in",
     capabilities: {
-      stacks: asArray(agent.capabilities?.stacks),
+      stacks,
       moduleTypes: asArray(agent.capabilities?.moduleTypes),
       riskLevels: asArray(agent.capabilities?.riskLevels),
       testTypes: asArray(agent.capabilities?.testTypes),
+      capabilityNames,
       ui: Boolean(agent.capabilities?.ui),
       browser: Boolean(agent.capabilities?.browser),
       integration: Boolean(agent.capabilities?.integration),
@@ -210,7 +261,7 @@ function redactOutcome(outcome = {}) {
 function inferModuleType(task = {}) {
   const text = `${task.category || ""} ${task.goal || ""}`.toLowerCase();
   if (/ui|browser|component|design/.test(text)) return "UI_COMPONENT";
-  if (/prompt|intent|agent instruction|system instruction|eval|llm/.test(text)) return "AI_PROMPT";
+  if (/prompt|intent|agent instruction|system instruction|eval|llm|openai/.test(text)) return "AI_PROMPT";
   if (/router|vpn|wifi|wi-fi|network|firewall|dns|dhcp/.test(text)) return "NETWORK";
   if (/integration|api|mcp|external/.test(text)) return "INTEGRATION";
   if (/doc|readme/.test(text)) return "DOCUMENTATION";
@@ -219,9 +270,19 @@ function inferModuleType(task = {}) {
   return "CORE_LOGIC";
 }
 
+function inferStack(task = {}) {
+  const text = taskText(task);
+  if (/tauri|src-tauri/.test(text)) return "tauri";
+  if (/rust|cargo/.test(text)) return "rust";
+  if (/next.js|nextjs/.test(text)) return "nextjs";
+  if (/react/.test(text)) return "react";
+  return "node";
+}
+
 function inferTestType(task = {}) {
   const text = `${task.category || ""} ${task.goal || ""} ${(task.verificationCommands || []).join(" ")}`.toLowerCase();
   if (/browser|playwright|preview/.test(text)) return "browser";
+  if (/tauri|desktop|webview/.test(text)) return "runtime";
   if (/integration|api|mcp/.test(text)) return "integration";
   if (/security/.test(text)) return "security";
   if (/prompt|intent|eval|red-team/.test(text)) return "eval";
@@ -229,6 +290,62 @@ function inferTestType(task = {}) {
   if (/runtime|docker/.test(text)) return "runtime";
   if (/trace|refactor|caller|callee/.test(text)) return "trace";
   return "unit";
+}
+
+function inferRequiredCapabilityNames(task = {}) {
+  const explicit = [
+    ...asArray(task.capabilityNames),
+    ...asArray(task.hostCapabilities),
+    ...asArray(task.requiredCapabilities),
+    ...asArray(task.requiredHostCapabilities),
+    task.requiredCapability,
+    task.hostCapability,
+    task.mcpCapability,
+  ];
+  const inferred = [];
+  const text = taskText(task);
+  if (/figma/.test(text)) inferred.push("figma");
+  if (/firecrawl|web-crawl|crawl|scrap|competitor|website reference/.test(text)) inferred.push("firecrawl");
+  if (/browser|playwright|preview|screenshot|visual evidence/.test(text)) inferred.push("browser");
+  if (/context7|library docs|current docs|official docs|api docs/.test(text)) inferred.push("context7");
+  if (/openai-docs|openaideveloperdocs|openai developer|openai api|codex docs/.test(text)) inferred.push("openai-docs");
+  if (/tauri|src-tauri|webview|desktop app/.test(text)) inferred.push("tauri");
+  return normalizeCapabilityNames([...explicit, ...inferred]);
+}
+
+export function normalizeCapabilityNames(values = []) {
+  return unique(asArray(values).flatMap((value) => {
+    const normalized = normalizeCapabilityName(value);
+    return normalized ? [normalized] : [];
+  })).sort();
+}
+
+function normalizeCapabilityName(value) {
+  const original = String(value || "").trim();
+  if (!original) return null;
+  const lower = original.replace(/_/g, "-").replace(/\s+/g, "-").toLowerCase();
+  if (lower === "browser" || lower.includes("playwright")) return "browser";
+  if (lower === "context7" || lower.includes("context7")) return "context7";
+  if (lower === "figma" || lower.includes("figma")) return "figma";
+  if (lower === "firecrawl" || lower.includes("firecrawl")) return "firecrawl";
+  if (lower === "openai-docs" || lower.includes("openaideveloperdocs") || lower.includes("openai-developer-doc")) return "openai-docs";
+  if (lower === "tauri" || lower.includes("src-tauri") || lower.includes("tauri-mcp")) return "tauri";
+  return null;
+}
+
+function taskText(task = {}) {
+  return [
+    task.category,
+    task.goal,
+    task.title,
+    task.stack,
+    task.target,
+    task.requiredAgentCapability,
+    task.filesTouched?.join?.(" "),
+    task.fileImpact?.join?.(" "),
+    task.targetFiles?.join?.(" "),
+    task.verificationCommands?.join?.(" "),
+  ].filter(Boolean).join(" ").toLowerCase();
 }
 
 function includes(values = [], value) {
@@ -239,4 +356,8 @@ function asArray(value) {
   if (Array.isArray(value)) return value.filter(Boolean);
   if (value === undefined || value === null || value === "") return [];
   return [value];
+}
+
+function unique(values) {
+  return [...new Set(values.filter(Boolean))];
 }

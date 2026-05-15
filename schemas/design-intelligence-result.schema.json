@@ -8,7 +8,7 @@
   "properties": {
     "id": { "type": "string", "minLength": 3 },
     "domain": { "type": "string", "minLength": 2 },
-    "kind": { "type": "string", "enum": ["core", "stack", "slides", "collateral"] },
+    "kind": { "type": "string", "enum": ["core", "stack", "collateral"] },
     "stack": { "type": ["string", "null"] },
     "rowNo": { "type": "string" },
     "score": { "type": "number", "minimum": 0 },

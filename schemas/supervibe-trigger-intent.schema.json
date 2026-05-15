@@ -29,13 +29,20 @@
     },
     "locale": {
       "type": "string",
-      "enum": ["ru", "en"]
+      "enum": [
+        "ru",
+        "en"
+      ]
     },
     "intent": {
       "type": "string",
       "enum": [
         "brainstorm_to_plan",
         "documentation_summary_gate",
+        "post_plan_summary_gate",
+        "pre_plan_summary_gate",
+        "post_spec_summary_gate",
+        "pre_spec_summary_gate",
         "plan_review",
         "atomize_plan",
         "create_epic",
@@ -53,7 +60,6 @@
         "design_system_extension",
         "mobile_ui",
         "chart_ux",
-        "presentation_deck",
         "brand_collateral",
         "stack_ui_guidance",
         "work_control_ui",
@@ -88,7 +94,13 @@
     },
     "mutationRisk": {
       "type": "string",
-      "enum": ["none", "writes-docs", "writes-tracker", "creates-worktree", "executes-code"]
+      "enum": [
+        "none",
+        "writes-docs",
+        "writes-tracker",
+        "creates-worktree",
+        "executes-code"
+      ]
     },
     "prerequisites": {
       "type": "array",

@@ -5,7 +5,6 @@ const SUPERVIBE_ARTIFACT_ROOT = ".supervibe/artifacts";
 const LEGACY_TO_CANONICAL = Object.freeze([
   ["prototypes", `${SUPERVIBE_ARTIFACT_ROOT}/prototypes`],
   ["mockups", `${SUPERVIBE_ARTIFACT_ROOT}/mockups`],
-  ["presentations", `${SUPERVIBE_ARTIFACT_ROOT}/presentations`],
   ["docs/specs", `${SUPERVIBE_ARTIFACT_ROOT}/specs`],
   ["docs/plans", `${SUPERVIBE_ARTIFACT_ROOT}/plans`],
   ["docs/prd", `${SUPERVIBE_ARTIFACT_ROOT}/prd`],

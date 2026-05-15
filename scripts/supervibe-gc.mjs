@@ -52,13 +52,14 @@ try {
       "  npm run supervibe:gc -- --lifecycle --mode auto-safe",
       "  npm run supervibe:gc -- --lifecycle --completed-grace-hours 24",
       "  npm run supervibe:gc -- --artifacts --dry-run --archive-keep-last 5",
+      "  npm run supervibe:gc -- --artifacts --apply --purge --purge-archives",
       "  npm run supervibe:gc -- --code-db-maintenance --vacuum",
       "  npm run supervibe:gc -- --memory --scheduled --auto --apply",
       "  npm run supervibe:gc -- --all --apply",
       "  npm run supervibe:gc -- --memory --restore <memory-id>",
       "  npm run supervibe:gc -- --work-items --restore <graph-id>",
       "",
-      "Default mode is dry-run. Use --apply for reversible archival writes.",
+      "Default mode is dry-run. Use --apply for reversible archival writes; add --purge for physical deletion of safe candidates.",
     ].join("\n"));
     process.exit(0);
   }
@@ -133,6 +134,7 @@ try {
       archiveRetentionDays: args["archive-retention-days"] || 90,
       maxArchiveBytes: args["max-archive-bytes"] || 0,
       archiveKeepLast: args["archive-keep-last"] || 0,
+      purgeArchives: Boolean(args["purge-archives"] || args.purge),
     });
     const schedule = await evaluateArtifactGcSchedule({ rootDir, scan });
     blocks.push(formatArtifactGcSchedule(schedule));
@@ -144,6 +146,7 @@ try {
     const archiveResult = await archiveSupervibeArtifactGcCandidates(scan, {
       rootDir,
       dryRun: !args.apply,
+      purge: Boolean(args.purge),
     });
     if (args.apply && args.scheduled) await writeArtifactGcScheduleRun({ rootDir });
     blocks.push(formatSupervibeArtifactGcReport(scan, archiveResult));
@@ -156,6 +159,7 @@ try {
         archiveRetentionDays: args["archive-retention-days"] || 90,
         maxArchiveBytes: args["max-archive-bytes"] || 0,
         archiveKeepLast: args["archive-keep-last"] || 0,
+        purgeArchives: Boolean(args["purge-archives"] || args.purge),
       });
       if (strict.pass !== true) strictFailed = true;
       blocks.push(formatSupervibeGcStrictReport(strict));
@@ -204,6 +208,8 @@ function parseArgs(argv) {
     else if (arg === "--disabled") parsed.disabled = true;
     else if (arg === "--code-db-maintenance") parsed["code-db-maintenance"] = true;
     else if (arg === "--vacuum") parsed.vacuum = true;
+    else if (arg === "--purge") parsed.purge = true;
+    else if (arg === "--purge-archives") parsed["purge-archives"] = true;
     else if (arg === "--include-stale-open") parsed["include-stale-open"] = true;
     else if (arg === "--mode") parsed.mode = argv[++i];
     else if (arg.startsWith("--mode=")) parsed.mode = arg.slice("--mode=".length);

@@ -42,15 +42,6 @@ test("design flow asks before reusing old artifacts and requires preview feedbac
   }
 });
 
-test("presentation director and deck builder keep separate responsibilities", async () => {
-  const director = await readFile("agents/_design/presentation-director.md", "utf8");
-  const builder = await readFile("agents/_design/presentation-deck-builder.md", "utf8");
-  assert.match(director, /audience/i);
-  assert.match(director, /narrative arc/i);
-  assert.match(director, /copy formula/i);
-  assert.match(builder, /slide layout, chart, typography, color, copy/i);
-});
-
 test("design lookup output remains compact and citation-oriented", async () => {
   const skill = await readFile("skills/design-intelligence/SKILL.md", "utf8");
   assert.match(skill, /query:/);

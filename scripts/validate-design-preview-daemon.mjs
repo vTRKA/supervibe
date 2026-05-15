@@ -7,18 +7,15 @@ const PLUGIN_ROOT = resolve(fileURLToPath(new URL("../", import.meta.url)));
 
 const PREVIEW_CONTRACT_FILES = Object.freeze([
   "commands/supervibe-design.md",
-  "commands/supervibe-presentation.md",
   "skills/prototype/SKILL.md",
   "skills/landing-page/SKILL.md",
-  "skills/presentation-deck/SKILL.md",
   "skills/preview-server/SKILL.md",
   "skills/browser-feedback/SKILL.md",
   "skills/interaction-design-patterns/SKILL.md",
   "agents/_design/prototype-builder.md",
-  "agents/_design/presentation-deck-builder.md",
 ]);
 
-const DESIGN_ROOT_PATTERN = /\.supervibe\/artifacts\/(?:prototypes|mockups|presentations)|<mockup-root>|<output-dir>/i;
+const DESIGN_ROOT_PATTERN = /\.supervibe\/artifacts\/(?:prototypes|mockups)|<mockup-root>|<output-dir>/i;
 
 function readProjectFile(rootDir, relPath) {
   const absPath = join(rootDir, ...relPath.split("/"));

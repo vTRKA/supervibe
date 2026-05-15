@@ -36,7 +36,6 @@ test("design intelligence manifest covers required domains and provenance", asyn
     assert.equal(data.domains.includes(domain), true, domain);
   }
   assert.equal(data.stacks.includes("nextjs"), true);
-  assert.equal(data.domains.some((domain) => domain.startsWith("slides:")), true);
   assert.equal(data.domains.some((domain) => domain.startsWith("collateral:")), true);
 });
 
@@ -79,7 +78,7 @@ test("csv parser handles quoted commas and newlines", () => {
   assert.deepEqual(rows, [{ id: "1", name: "A, B", notes: "line one\nline two" }]);
 });
 
-test("search returns cited design rows for product, stack, and slide queries", async () => {
+test("search returns cited design rows for product and stack queries", async () => {
   const productRows = await searchDesignIntelligence({ query: "fintech dashboard trust analytics", domain: "product", maxResults: 3 });
   assert.ok(productRows.length > 0);
   assert.equal(productRows[0].domain, "product");
@@ -89,10 +88,6 @@ test("search returns cited design rows for product, stack, and slide queries", a
   const stackRows = await searchDesignIntelligence({ query: "server component hydration accessibility", stack: "next.js", maxResults: 3 });
   assert.ok(stackRows.length > 0);
   assert.equal(stackRows.every((row) => row.kind === "stack" && row.stack === "nextjs"), true);
-
-  const slideRows = await searchDesignIntelligence({ query: "investor deck narrative metrics chart", domain: "slides", maxResults: 3 });
-  assert.ok(slideRows.length > 0);
-  assert.equal(slideRows.every((row) => row.kind === "slides"), true);
 });
 
 test("design intelligence resolves plugin data when project root has no data pack", async () => {
@@ -132,9 +127,8 @@ test("composed recommendation validates against schema and preserves precedence"
 });
 
 test("domain inference and evidence formatter are public helper APIs", async () => {
-  const domains = inferDesignDomains("mobile investor deck with charts and logo");
+  const domains = inferDesignDomains("mobile analytics with charts and logo");
   assert.ok(domains.includes("app-interface"));
-  assert.ok(domains.includes("slides"));
   assert.ok(domains.includes("charts"));
   assert.ok(domains.includes("collateral"));
 

@@ -100,6 +100,17 @@ test("routes broken design workflow audits before plan-review", async () => {
   assert.doesNotMatch(output, /COMMAND: \/supervibe-security-audit/);
 });
 
+test("does not route router misroute complaints to docs audit by cleanup terms", async () => {
+  const request = "fix intent routing system. docs-audit wrongly matched by words \u043c\u0443\u0441\u043e\u0440 \u043e\u0447\u0438\u0441\u0442 instead of /supervibe-audit";
+  const output = await matchCommand(request);
+
+  assert.match(output, /MATCH: semantic-trigger:prompt_ai_engineering/);
+  assert.match(output, /INTENT: prompt_ai_engineering/);
+  assert.match(output, /COMMAND: \/supervibe --agent prompt-ai-engineer/);
+  assert.doesNotMatch(output, /INTENT: docs_audit/);
+  assert.doesNotMatch(output, /COMMAND: \/supervibe-audit --docs/);
+});
+
 test("routes plain brainstorm and new feature phrases to brainstorm command", async () => {
   for (const request of [
     "брейншторм",
@@ -265,4 +276,27 @@ test("routes task graph maturity requests to the task-graph-specific gate", asyn
   const russianOutput = await matchCommand("проверь task graph maturity");
   assert.match(russianOutput, /INTENT: task_graph_maturity/);
   assert.doesNotMatch(russianOutput, /COMMAND: \/supervibe-audit/);
+});
+
+
+test("routes explicit summary gates before generic plan shortcuts", async () => {
+  const cases = [
+    ["show pre-spec summary before requirements spec approval", /INTENT: pre_spec_summary_gate/, /COMMAND: \/supervibe-brainstorm --summary-gate --stage pre-spec/],
+    ["show post-spec summary after spec creation with table and ascii map", /INTENT: post_spec_summary_gate/, /COMMAND: \/supervibe-brainstorm --summary-gate --stage post-spec/],
+    ["show pre-plan summary before implementation plan approval", /INTENT: pre_plan_summary_gate/, /COMMAND: \/supervibe-plan --summary-gate --stage pre-plan/],
+    ["show post-plan summary after plan creation before review", /INTENT: post_plan_summary_gate/, /COMMAND: \/supervibe-plan --summary-gate --stage post-plan/],
+  ];
+  for (const [request, intentRe, commandRe] of cases) {
+    const output = await matchCommand(request);
+    assert.match(output, intentRe);
+    assert.match(output, commandRe);
+    assert.doesNotMatch(output, /COMMAND: \/supervibe-execute-plan/);
+  }
+});
+
+test("routes plan-only review requests away from execution", async () => {
+  const output = await matchCommand("create a temporary plan with all tasks and run plan reviewers; do not execute");
+  assert.match(output, /INTENT: plan_review/);
+  assert.match(output, /COMMAND: \/supervibe-plan --review/);
+  assert.doesNotMatch(output, /COMMAND: \/supervibe-execute-plan/);
 });

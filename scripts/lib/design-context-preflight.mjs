@@ -105,7 +105,6 @@ function recommendNextQueries({ query, designLookup, stack }) {
   recommendations.add(`${query} accessibility token states`);
   recommendations.add(`${query} approved design system extensions`);
   if (stack) recommendations.add(`${query} ${stack} implementation handoff`);
-  if (designLookup.some((row) => row.kind === "slides")) recommendations.add(`${query} slide narrative chart copy`);
   if (designLookup.some((row) => row.domain === "charts")) recommendations.add(`${query} chart fallback color accessibility`);
   return [...recommendations].slice(0, 5);
 }

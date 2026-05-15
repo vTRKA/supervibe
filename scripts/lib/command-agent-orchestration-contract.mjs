@@ -27,6 +27,105 @@ export const COMMAND_AGENT_SELECTOR_INPUT_FIELDS = Object.freeze([
   "stage",
 ]);
 
+export const COMMAND_AGENT_ROUTING_SIGNAL_FIELDS = Object.freeze([
+  "signalId",
+  "source",
+  "expectedInputs",
+  "freshness",
+  "confidenceContribution",
+  "privacyLevel",
+  "failureHandling",
+]);
+
+export const COMMAND_AGENT_ROUTING_EXPLANATION_FIELDS = Object.freeze([
+  "trigger",
+  "stackDomains",
+  "riskDomains",
+  "selectedAgent",
+  "rejectedAlternatives",
+  "recentOutcomes",
+  "confidence",
+  "fallback",
+  "missingCapabilities",
+  "routingSignals",
+]);
+
+export const COMMAND_AGENT_ROUTING_SIGNAL_INVENTORY = Object.freeze([
+  routingSignal({
+    signalId: "agent-telemetry",
+    source: ".supervibe/memory/agent-invocations.jsonl or caller-provided host invocation telemetry",
+    expectedInputs: ["agentTelemetry", "agentInvocations", "hostInvocation"],
+    freshness: "recent workflow or host invocation window; stale telemetry caps confidence instead of training a model",
+    confidenceContribution: "supports agents with trusted recent invocations; missing or stale telemetry cannot raise confidence",
+    privacyLevel: "local-private",
+    failureHandling: "treat missing telemetry as neutral for initial routing and blocking for receipt-backed completion claims",
+  }),
+  routingSignal({
+    signalId: "score-logs",
+    source: "supervibe score/evaluation logs supplied by caller",
+    expectedInputs: ["scoreLogs", "agentScores", "taskScore", "reviewerScore", "evidenceScore"],
+    freshness: "latest score row per agent/command wins; stale scores may only cap confidence",
+    confidenceContribution: "raises confidence only for explicit pass/high score rows; weak or failed rows lower priority deterministically",
+    privacyLevel: "local-private",
+    failureHandling: "ignore absent scores; never infer quality from absence",
+  }),
+  routingSignal({
+    signalId: "validator-failures",
+    source: "validator or final-gate failure summaries supplied by caller",
+    expectedInputs: ["validatorFailures", "failedValidators", "validationIssues"],
+    freshness: "current task, active graph, or final release gate failure window",
+    confidenceContribution: "penalizes agents or routes tied to unresolved failures; resolved failures are neutral",
+    privacyLevel: "local-private",
+    failureHandling: "unresolved failures block release confidence and must be named rather than learned around",
+  }),
+  routingSignal({
+    signalId: "workflow-receipts",
+    source: "runtime-issued workflow receipts and scoped receipt trust summaries",
+    expectedInputs: ["receipts", "receiptTrust", "scopedReceiptTrust", "activeReceiptTrust"],
+    freshness: "active command/handoff scope; scoped receipts override global receipts for active work",
+    confidenceContribution: "trusted receipts unlock durable-output confidence; missing scoped receipts block completion claims",
+    privacyLevel: "local-private",
+    failureHandling: "do not substitute command, skill, or controller-authored proof for host-agent receipts",
+  }),
+  routingSignal({
+    signalId: "command-agent-plan",
+    source: "buildCommandAgentPlan output or equivalent command-agent plan object",
+    expectedInputs: ["commandAgentPlan", "agentPlan", "requiredAgentIds", "dynamicAgentSelectors"],
+    freshness: "current command, host, workflow context, and available agent registry",
+    confidenceContribution: "authoritative baseline for required agents, blocked mode, stage gates, and fallback instructions",
+    privacyLevel: "publishable-summary",
+    failureHandling: "blocked plan stops durable routing; callers must repair the missing host, agent, or receipt condition",
+  }),
+  routingSignal({
+    signalId: "memory-freshness",
+    source: "project memory, Code RAG, or CodeGraph freshness summaries supplied by caller",
+    expectedInputs: ["memoryFreshness", "indexHealth", "codeRagHealth", "codeGraphHealth"],
+    freshness: "latest index/memory health check; stale evidence caps confidence and adds repair guidance",
+    confidenceContribution: "fresh memory/index evidence supports routing context; stale or missing evidence cannot improve confidence",
+    privacyLevel: "local-private",
+    failureHandling: "report stale source and repair command; avoid broad source inspection as a substitute for freshness",
+  }),
+  routingSignal({
+    signalId: "host-capabilities",
+    source: "host dispatcher registry and caller-provided host capability matrix",
+    expectedInputs: ["hostCapabilities", "hostCapabilityMatrix", "hostAdapterId", "dispatcher"],
+    freshness: "current host adapter runtime and callable-agent support",
+    confidenceContribution: "supported host dispatch enables real-agent routing; unsupported or unproven dispatch selects blocked mode",
+    privacyLevel: "publishable-summary",
+    failureHandling: "degrade to agent-required-blocked when invocation proof is unavailable",
+  }),
+  routingSignal({
+    signalId: "user-corrections",
+    source: "explicit user corrections already represented in workflow context or correction logs",
+    expectedInputs: ["userCorrections", "corrections", "feedback"],
+    freshness: "current conversation or active workflow correction scope",
+    confidenceContribution: "directly adjusts deterministic route preference only when the correction is explicit and represented",
+    privacyLevel: "local-private",
+    failureHandling: "absent corrections are neutral; do not infer preferences from implicit behavior",
+    optional: true,
+  }),
+]);
+
 export const REGULATED_DOMAIN_REVIEWER_GATES = Object.freeze({
   finance: regulatedGate("finance", [
     "payments-billing-architect",
@@ -229,7 +328,7 @@ const DYNAMIC_AGENT_SELECTOR_HANDLERS = Object.freeze({
   ],
   "design-reviewers": (context) => [
     ...selectArtifactOwners({ ...context, artifactType: context.artifactType || "prototype" }),
-    select("copywriter", "presentation/design output needs copy review"),
+    select("copywriter", "design output needs copy review"),
   ],
   "detected-stack-specialists": (context) => [
     ...selectStackAgents(context, "architects"),
@@ -371,7 +470,6 @@ const CODEX_EXECUTION_MODE_HINT_OVERRIDES = Object.freeze({
   "ui-polish-reviewer": "default",
   "ux-ui-designer": "default",
   "prototype-builder": "worker",
-  "presentation-deck-builder": "worker",
   "react-implementer": "worker",
   "tauri-rust-engineer": "worker",
 });
@@ -466,14 +564,6 @@ const COMMAND_AGENT_PROFILES = Object.freeze(Object.fromEntries([
     "architect-reviewer",
     "quality-gate-reviewer",
   ], { dynamicAgentSelectors: ["stack-architects", "domain-specialists", "reviewers"] }),
-  profile("/supervibe-presentation", [
-    "supervibe-orchestrator",
-    "presentation-director",
-    "presentation-deck-builder",
-    "copywriter",
-    "accessibility-reviewer",
-    "quality-gate-reviewer",
-  ], { dynamicAgentSelectors: ["design-reviewers"] }),
   profile("/supervibe-preview", [
     "supervibe-orchestrator",
     "prototype-builder",
@@ -547,6 +637,178 @@ export function getCommandAgentProfile(commandId) {
   const normalized = normalizeCommandId(commandId);
   const profile = COMMAND_AGENT_PROFILES[normalized];
   return profile ? copyCommandAgentProfile(profile) : null;
+}
+
+export function listCommandAgentRoutingSignals({ includeOptional = true } = {}) {
+  return COMMAND_AGENT_ROUTING_SIGNAL_INVENTORY
+    .filter((signal) => includeOptional || signal.optional !== true)
+    .map(copyRoutingSignal);
+}
+
+export function getCommandAgentRoutingSignal(signalId) {
+  const normalized = normalizeSignalId(signalId);
+  const signal = COMMAND_AGENT_ROUTING_SIGNAL_INVENTORY.find((entry) => entry.signalId === normalized);
+  return signal ? copyRoutingSignal(signal) : null;
+}
+
+export function resolveCommandAgentRoutingSignalInventory(inputs = {}) {
+  const signals = COMMAND_AGENT_ROUTING_SIGNAL_INVENTORY.map((signal) => {
+    const evidence = routingSignalEvidence(signal, inputs);
+    const status = routingSignalStatus(signal, evidence);
+    return {
+      ...copyRoutingSignal(signal),
+      available: evidence.available,
+      representedInputs: evidence.representedInputs,
+      missingInputs: evidence.missingInputs,
+      evidenceSummary: evidence.summary,
+      status: status.status,
+      confidenceEffect: status.confidenceEffect,
+      failureMode: status.failureMode,
+      blocking: status.blocking,
+      explanation: status.explanation,
+    };
+  });
+  return {
+    schemaVersion: 1,
+    deterministic: true,
+    opaqueLearningAllowed: false,
+    fields: [...COMMAND_AGENT_ROUTING_SIGNAL_FIELDS],
+    signals,
+    summary: {
+      availableSignalIds: signals.filter((signal) => signal.available).map((signal) => signal.signalId),
+      missingRequiredSignalIds: signals
+        .filter((signal) => !signal.available && signal.optional !== true)
+        .map((signal) => signal.signalId),
+      blockingSignalIds: signals.filter((signal) => signal.blocking).map((signal) => signal.signalId),
+      privacyLevels: unique(signals.map((signal) => signal.privacyLevel)),
+    },
+  };
+}
+
+export function buildCommandAgentRoutingExplanation({
+  commandId = null,
+  selectedAgent = null,
+  selectedAgentId = null,
+  candidates = [],
+  alternatives = [],
+  trigger = null,
+  stackTags = [],
+  riskDomains = [],
+  recentOutcomes = [],
+  confidence = null,
+  fallback = null,
+  missingCapabilities = [],
+  routingSignals = [],
+  selectorInputs = {},
+  selectedReason = null,
+} = {}) {
+  const selected = normalizeRoutingAgentCandidate(selectedAgent || selectedAgentId, {
+    selected: true,
+    reason: selectedReason || "selected by caller-provided routing decision",
+  });
+  const selectedId = selected.agentId || normalizeContextToken(selectedAgentId || "");
+  const normalizedAlternativeInput = normalizeListOrArray(alternatives);
+  const normalizedCandidateInput = normalizeListOrArray(candidates);
+  const normalizedAlternatives = normalizeRoutingAlternatives(
+    normalizedAlternativeInput.length ? normalizedAlternativeInput : normalizedCandidateInput,
+    selectedId,
+  );
+  const normalizedSignals = normalizeRoutingSignals(routingSignals);
+  const normalizedOutcomes = normalizeRoutingOutcomes(recentOutcomes);
+  const normalizedFallback = normalizeRoutingFallback(fallback);
+  const normalizedMissingCapabilities = unique([
+    ...normalizeList(missingCapabilities),
+    ...normalizeList(normalizedFallback.missingCapabilities),
+    ...normalizedAlternatives.flatMap((alternative) => alternative.missingCapabilities || []),
+  ]);
+  const normalizedSelectorInputs = normalizeSelectorContext(selectorInputs);
+  const stackDomains = unique([
+    ...normalizeList(stackTags),
+    ...normalizedSelectorInputs.stackTags,
+  ]).map(normalizeStackToken);
+  const normalizedRiskDomains = unique([
+    ...normalizeList(riskDomains),
+    ...normalizedSelectorInputs.riskDomains,
+  ]).map(normalizeRiskDomainToken);
+
+  return {
+    schemaVersion: 1,
+    kind: "supervibe-command-agent-routing-explanation",
+    deterministic: true,
+    opaqueLearningAllowed: false,
+    commandId: commandId ? normalizeCommandId(commandId) : null,
+    fields: [...COMMAND_AGENT_ROUTING_EXPLANATION_FIELDS],
+    trigger: normalizeRoutingTrigger(trigger),
+    stackDomains,
+    riskDomains: normalizedRiskDomains,
+    selectorInputs: {
+      intent: normalizedSelectorInputs.intent || null,
+      stackTags: [...normalizedSelectorInputs.stackTags],
+      riskDomains: [...normalizedSelectorInputs.riskDomains],
+      artifactType: normalizedSelectorInputs.artifactType || null,
+      stage: normalizedSelectorInputs.stage || null,
+    },
+    selectedAgent: selected,
+    rejectedAlternatives: normalizedAlternatives,
+    recentOutcomes: normalizedOutcomes,
+    confidence: normalizeRoutingConfidence(confidence),
+    fallback: normalizedFallback,
+    missingCapabilities: normalizedMissingCapabilities,
+    routingSignals: normalizedSignals,
+    summary: {
+      selectedAgentId: selected.agentId || null,
+      rejectedAlternativeIds: normalizedAlternatives.map((alternative) => alternative.agentId || alternative.subject).filter(Boolean),
+      trigger: routeExplanationValue(normalizeRoutingTrigger(trigger)),
+      stackDomains: stackDomains.length ? stackDomains : ["none"],
+      riskDomains: normalizedRiskDomains.length ? normalizedRiskDomains : ["none"],
+      recentOutcomeStatus: normalizedOutcomes.length ? "represented" : "not-provided",
+      confidence: routeExplanationValue(normalizeRoutingConfidence(confidence)),
+      fallback: routeExplanationValue(normalizedFallback),
+      missingCapabilities: normalizedMissingCapabilities.length ? normalizedMissingCapabilities : ["none"],
+      blockingSignalIds: normalizedSignals.filter((signal) => signal.blocking === true).map((signal) => signal.signalId),
+    },
+  };
+}
+
+export function formatCommandAgentRoutingExplanation(explanation = {}) {
+  const selected = explanation.selectedAgent || {};
+  const confidence = explanation.confidence || {};
+  const fallback = explanation.fallback || {};
+  const lines = [
+    "SUPERVIBE_COMMAND_AGENT_ROUTING_EXPLANATION",
+    "COMMAND: " + (explanation.commandId || "unknown"),
+    "TRIGGER: " + routeExplanationValue(explanation.trigger),
+    "STACK_DOMAINS: " + ((explanation.stackDomains || []).join(", ") || "none"),
+    "RISK_DOMAINS: " + ((explanation.riskDomains || []).join(", ") || "none"),
+    "SELECTED_AGENT: " + (selected.agentId || selected.subject || "none"),
+    "SELECTED_REASON: " + (selected.reason || "none"),
+    "RECENT_OUTCOME: " + formatRoutingOutcomes(explanation.recentOutcomes || []),
+    "CONFIDENCE: " + routeExplanationValue(confidence),
+    "FALLBACK: " + routeExplanationValue(fallback),
+    "MISSING_CAPABILITY: " + ((explanation.missingCapabilities || []).join(", ") || "none"),
+  ];
+  if (explanation.rejectedAlternatives?.length) {
+    lines.push("REJECTED_ALTERNATIVES:");
+    for (const alternative of explanation.rejectedAlternatives) {
+      const id = alternative.agentId || alternative.subject || "unknown";
+      const missing = alternative.missingCapabilities?.length
+        ? " missing=" + alternative.missingCapabilities.join(",")
+        : "";
+      lines.push("- " + id + ": " + (alternative.reason || "not selected") + missing);
+    }
+  } else {
+    lines.push("REJECTED_ALTERNATIVES: none");
+  }
+  if (explanation.routingSignals?.length) {
+    lines.push("ROUTING_SIGNALS:");
+    for (const signal of explanation.routingSignals) {
+      lines.push("- " + (signal.signalId || "unknown") + ": status=" + (signal.status || "unknown") + " confidence=" + (signal.confidenceEffect || "neutral") + " blocking=" + (signal.blocking === true));
+    }
+  } else {
+    lines.push("ROUTING_SIGNALS: none");
+  }
+  lines.push("OPAQUE_LEARNING_ALLOWED: false");
+  return lines.join("\n");
 }
 
 export function buildCommandAgentPlan(commandId, {
@@ -1511,6 +1773,372 @@ function riskFromArtifact(artifactType = "") {
   if (artifact === "prototype" || artifact === "ui" || artifact === "design") return "accessibility";
   if (artifact === "release" || artifact === "deploy") return "release";
   return "";
+}
+
+function normalizeRoutingAgentCandidate(candidate, defaults = {}) {
+  if (typeof candidate === "string") {
+    return {
+      agentId: normalizeContextToken(candidate),
+      decision: defaults.selected ? "selected" : "candidate",
+      selected: defaults.selected === true,
+      reason: defaults.reason || "caller-provided agent id",
+      missingCapabilities: [],
+    };
+  }
+  const row = candidate && typeof candidate === "object" ? candidate : {};
+  const agentId = normalizeContextToken(row.agentId || row.id || row.agent || defaults.agentId || "");
+  const subject = normalizeContextToken(row.subject || row.selectorId || defaults.subject || "");
+  return {
+    agentId: agentId || null,
+    subject: agentId ? undefined : subject || null,
+    decision: row.decision || (defaults.selected ? "selected" : "candidate"),
+    selected: defaults.selected === true || row.selected === true,
+    reason: row.reason || row.rationale || defaults.reason || "caller-provided routing candidate",
+    trigger: row.trigger || null,
+    selectorId: row.selectorId || null,
+    confidence: normalizeRoutingConfidence(row.confidence || row.score || null),
+    recentOutcome: row.recentOutcome || row.outcome || null,
+    missingCapabilities: normalizeList(row.missingCapabilities || row.missingCapability || row.capabilityGap || row.capabilityGaps),
+  };
+}
+
+function normalizeRoutingAlternatives(candidates = [], selectedAgentId = "") {
+  return normalizeListOrArray(candidates)
+    .map((candidate) => normalizeRoutingAgentCandidate(candidate, { reason: "not selected by caller-provided routing decision" }))
+    .filter((candidate) => (candidate.agentId || candidate.subject) && candidate.agentId !== selectedAgentId)
+    .map((candidate) => ({
+      ...candidate,
+      selected: false,
+      decision: candidate.decision === "select" ? "not-selected" : candidate.decision,
+    }));
+}
+
+function normalizeRoutingTrigger(trigger) {
+  if (trigger && typeof trigger === "object" && !Array.isArray(trigger)) {
+    return {
+      id: normalizeContextToken(trigger.id || trigger.triggerId || trigger.name || ""),
+      source: trigger.source || "caller-provided",
+      reason: trigger.reason || trigger.summary || trigger.value || "caller-provided trigger",
+    };
+  }
+  const value = String(trigger || "").trim();
+  return {
+    id: normalizeContextToken(value),
+    source: value ? "caller-provided" : "not-provided",
+    reason: value || "none",
+  };
+}
+
+function normalizeRoutingConfidence(confidence) {
+  if (confidence === undefined || confidence === null || confidence === "") {
+    return { score: null, label: "not-provided", source: "not-provided", caps: [], reasons: [] };
+  }
+  if (typeof confidence === "number") {
+    return { score: confidence, label: String(confidence), source: "caller-provided", caps: [], reasons: [] };
+  }
+  if (typeof confidence === "string") {
+    return { score: null, label: confidence, source: "caller-provided", caps: [], reasons: [] };
+  }
+  return {
+    score: Number.isFinite(Number(confidence.score ?? confidence.value)) ? Number(confidence.score ?? confidence.value) : null,
+    label: confidence.label || confidence.level || confidence.status || String(confidence.score ?? confidence.value ?? "represented"),
+    source: confidence.source || "caller-provided",
+    caps: normalizeList(confidence.caps || confidence.cap || confidence.confidenceCaps),
+    reasons: normalizeList(confidence.reasons || confidence.reason || confidence.evidence),
+  };
+}
+
+function normalizeRoutingFallback(fallback) {
+  if (fallback === undefined || fallback === null || fallback === "") {
+    return { mode: "none", agentId: null, reason: "none", allowed: false, missingCapabilities: [] };
+  }
+  if (typeof fallback === "string") {
+    return { mode: fallback, agentId: null, reason: fallback, allowed: fallback !== "none", missingCapabilities: [] };
+  }
+  return {
+    mode: fallback.mode || fallback.status || "represented",
+    agentId: fallback.agentId || fallback.agent || null,
+    reason: fallback.reason || fallback.rationale || "caller-provided fallback",
+    allowed: fallback.allowed === true,
+    nextAction: fallback.nextAction || null,
+    missingCapabilities: normalizeList(fallback.missingCapabilities || fallback.missingCapability),
+  };
+}
+
+function normalizeRoutingOutcomes(outcomes = []) {
+  return normalizeListOrArray(outcomes).map((outcome) => {
+    if (typeof outcome === "string") {
+      return { agentId: null, outcome, source: "caller-provided", sampleCount: null, summary: outcome };
+    }
+    const row = outcome && typeof outcome === "object" ? outcome : {};
+    return {
+      agentId: row.agentId || row.agent || null,
+      outcome: row.outcome || row.status || "represented",
+      source: row.source || "caller-provided",
+      sampleCount: Number.isFinite(Number(row.sampleCount ?? row.samples)) ? Number(row.sampleCount ?? row.samples) : null,
+      summary: row.summary || row.reason || row.outcome || row.status || "represented",
+    };
+  });
+}
+
+function normalizeRoutingSignals(routingSignals = []) {
+  const signals = Array.isArray(routingSignals)
+    ? routingSignals
+    : Array.isArray(routingSignals?.signals)
+      ? routingSignals.signals
+      : normalizeListOrArray(routingSignals);
+  return signals.map((signal) => {
+    if (typeof signal === "string") {
+      return { signalId: normalizeSignalId(signal), status: "represented", confidenceEffect: "neutral", blocking: false, explanation: signal };
+    }
+    const row = signal && typeof signal === "object" ? signal : {};
+    return {
+      signalId: normalizeSignalId(row.signalId || row.id || row.name || ""),
+      status: row.status || row.state || "represented",
+      confidenceEffect: row.confidenceEffect || row.effect || "neutral",
+      blocking: row.blocking === true,
+      failureMode: row.failureMode || null,
+      explanation: row.explanation || row.reason || "caller-provided routing signal",
+    };
+  }).filter((signal) => signal.signalId);
+}
+
+function formatRoutingOutcomes(outcomes = []) {
+  if (!outcomes.length) return "not-provided";
+  return outcomes.map((outcome) => {
+    const agent = outcome.agentId ? outcome.agentId + ":" : "";
+    const samples = outcome.sampleCount === null || outcome.sampleCount === undefined ? "" : " samples=" + outcome.sampleCount;
+    return agent + (outcome.outcome || "represented") + samples;
+  }).join("; ");
+}
+
+function routeExplanationValue(value) {
+  if (value === undefined || value === null || value === "") return "none";
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return String(value);
+  if (Array.isArray(value)) return value.length ? value.map(routeExplanationValue).join(", ") : "none";
+  if (value.label) return value.score === null || value.score === undefined ? String(value.label) : value.label + " (" + value.score + ")";
+  if (value.reason && value.mode) return value.mode + ": " + value.reason;
+  if (value.reason) return String(value.reason);
+  if (value.status) return String(value.status);
+  return JSON.stringify(value);
+}
+
+function normalizeListOrArray(value) {
+  if (Array.isArray(value)) return value;
+  if (value === undefined || value === null || value === "") return [];
+  return [value];
+}
+
+function routingSignal(fields = {}) {
+  return Object.freeze({
+    signalId: normalizeSignalId(fields.signalId),
+    source: fields.source || "caller-provided",
+    expectedInputs: Object.freeze(unique(fields.expectedInputs || [])),
+    freshness: fields.freshness || "current caller-provided evidence",
+    confidenceContribution: fields.confidenceContribution || "neutral unless represented by explicit evidence",
+    privacyLevel: fields.privacyLevel || "local-private",
+    failureHandling: fields.failureHandling || "missing evidence is neutral and must not be inferred",
+    deterministic: true,
+    opaqueLearningAllowed: false,
+    optional: fields.optional === true,
+  });
+}
+
+function copyRoutingSignal(signal = {}) {
+  return {
+    signalId: signal.signalId,
+    source: signal.source,
+    expectedInputs: [...(signal.expectedInputs || [])],
+    freshness: signal.freshness,
+    confidenceContribution: signal.confidenceContribution,
+    privacyLevel: signal.privacyLevel,
+    failureHandling: signal.failureHandling,
+    deterministic: signal.deterministic === true,
+    opaqueLearningAllowed: signal.opaqueLearningAllowed === true,
+    optional: signal.optional === true,
+  };
+}
+
+function routingSignalEvidence(signal = {}, inputs = {}) {
+  const representedInputs = [];
+  const missingInputs = [];
+  const values = [];
+  for (const inputName of signal.expectedInputs || []) {
+    const value = inputs?.[inputName];
+    if (hasRepresentedSignalValue(value)) {
+      representedInputs.push(inputName);
+      values.push({ inputName, value });
+    } else {
+      missingInputs.push(inputName);
+    }
+  }
+  return {
+    available: representedInputs.length > 0,
+    representedInputs,
+    missingInputs,
+    summary: summarizeRoutingSignalValues(signal.signalId, values),
+  };
+}
+
+function routingSignalStatus(signal = {}, evidence = {}) {
+  const summary = evidence.summary || {};
+  if (!evidence.available) {
+    return {
+      status: signal.optional ? "not-represented-optional" : "not-represented",
+      confidenceEffect: "neutral",
+      failureMode: signal.optional ? "optional-signal-absent" : "required-signal-absent",
+      blocking: false,
+      explanation: signal.optional
+        ? "Optional signal is absent; routing must not infer it."
+        : "Signal is absent; routing may continue but this signal cannot improve confidence.",
+    };
+  }
+  if (summary.stale) {
+    return {
+      status: "represented-stale",
+      confidenceEffect: "cap",
+      failureMode: "stale-evidence",
+      blocking: false,
+      explanation: "Represented evidence is stale; cap confidence and surface repair guidance.",
+    };
+  }
+
+  if (signal.signalId === "validator-failures") {
+    const hasFailures = summary.failed || summary.itemCount > 0;
+    return {
+      status: hasFailures ? "represented-with-failures" : "represented-current",
+      confidenceEffect: hasFailures ? "penalty" : "neutral",
+      failureMode: hasFailures ? "unresolved-validator-failure" : "none",
+      blocking: hasFailures,
+      explanation: hasFailures
+        ? "Validator failures are explicit and must be named in routing confidence."
+        : "Validator evidence is represented with no unresolved failure signal.",
+    };
+  }
+
+  if (signal.signalId === "workflow-receipts") {
+    const trusted = summary.trusted && !summary.failed && !summary.blocked;
+    return {
+      status: trusted ? "trusted" : "represented-untrusted",
+      confidenceEffect: trusted ? "support" : "block",
+      failureMode: trusted ? "none" : "missing-or-untrusted-runtime-receipts",
+      blocking: !trusted,
+      explanation: trusted
+        ? "Runtime receipt evidence is trusted for the represented scope."
+        : "Receipt evidence is represented but not trusted enough for durable completion claims.",
+    };
+  }
+
+  if (signal.signalId === "command-agent-plan") {
+    const blocked = summary.blocked || summary.failed;
+    return {
+      status: blocked ? "represented-blocked" : "represented-current",
+      confidenceEffect: blocked ? "block" : "support",
+      failureMode: blocked ? "blocked-command-agent-plan" : "none",
+      blocking: blocked,
+      explanation: blocked
+        ? "The represented command-agent plan is blocked and must stop durable routing."
+        : "The represented command-agent plan can anchor deterministic routing.",
+    };
+  }
+
+  if (signal.signalId === "host-capabilities") {
+    const supported = summary.supported && !summary.failed && !summary.blocked;
+    return {
+      status: supported ? "supported" : "represented-degraded",
+      confidenceEffect: supported ? "support" : "block",
+      failureMode: supported ? "none" : "host-dispatch-proof-unavailable",
+      blocking: !supported,
+      explanation: supported
+        ? "Host capability evidence supports real-agent dispatch."
+        : "Host capability evidence is degraded; use blocked/degraded routing rather than emulation.",
+    };
+  }
+
+  if (signal.signalId === "user-corrections") {
+    return {
+      status: "represented-current",
+      confidenceEffect: "deterministic-adjustment",
+      failureMode: "none",
+      blocking: false,
+      explanation: "Explicit represented user correction may adjust deterministic route preference.",
+    };
+  }
+
+  const failed = summary.failed || summary.blocked;
+  return {
+    status: failed ? "represented-negative" : "represented-current",
+    confidenceEffect: failed ? "penalty" : "support",
+    failureMode: failed ? "negative-evidence" : "none",
+    blocking: false,
+    explanation: failed
+      ? "Represented evidence lowers routing confidence deterministically."
+      : "Represented evidence can support routing confidence.",
+  };
+}
+
+function summarizeRoutingSignalValues(signalId, values = []) {
+  let itemCount = 0;
+  let stale = false;
+  let failed = false;
+  let trusted = false;
+  let supported = false;
+  let blocked = false;
+  for (const { value } of values) {
+    itemCount += countRepresentedSignalItems(value);
+    stale = stale || valueHasSignalFlag(value, ["stale"]) || valueHasSignalStatus(value, ["stale", "outdated"]);
+    failed = failed || valueHasSignalFlag(value, ["failed", "failure", "error"]) || valueHasSignalStatus(value, ["fail", "failed", "error"]);
+    trusted = trusted || valueHasSignalFlag(value, ["trusted", "pass", "ready"]);
+    supported = supported || valueHasSignalStatus(value, ["supported", "ready", "pass", "ok"]) || valueHasSignalFlag(value, ["supported", "ready", "callableAgentsReady"]);
+    blocked = blocked || valueHasSignalFlag(value, ["blocked", "hostProofBlocked"]) || valueHasSignalStatus(value, ["blocked", "agent-required-blocked"]);
+  }
+  return {
+    signalId,
+    representedInputCount: values.length,
+    itemCount,
+    stale,
+    failed,
+    trusted,
+    supported,
+    blocked,
+  };
+}
+
+function hasRepresentedSignalValue(value) {
+  if (value === undefined || value === null || value === "") return false;
+  if (Array.isArray(value)) return value.length > 0;
+  if (value instanceof Map || value instanceof Set) return value.size > 0;
+  if (typeof value === "object") return Object.keys(value).length > 0;
+  return true;
+}
+
+function countRepresentedSignalItems(value) {
+  if (Array.isArray(value)) return value.length;
+  if (value instanceof Map || value instanceof Set) return value.size;
+  if (value && typeof value === "object") {
+    if (Array.isArray(value.issues)) return value.issues.length;
+    if (Array.isArray(value.failures)) return value.failures.length;
+    if (Array.isArray(value.errors)) return value.errors.length;
+    return Object.keys(value).length;
+  }
+  return 1;
+}
+
+function valueHasSignalFlag(value, names = []) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  return names.some((name) => value[name] === true);
+}
+
+function valueHasSignalStatus(value, statuses = []) {
+  if (typeof value === "string") return statuses.includes(normalizeContextToken(value));
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  return [value.status, value.state, value.executionMode]
+    .filter(Boolean)
+    .some((status) => statuses.includes(normalizeContextToken(status)));
+}
+
+function normalizeSignalId(signalId = "") {
+  return normalizeContextToken(signalId);
 }
 
 function regulatedGate(domain, reviewerGateAgentIds = [], mandatoryEvidence = []) {

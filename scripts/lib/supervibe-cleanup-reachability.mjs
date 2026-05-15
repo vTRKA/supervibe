@@ -5,6 +5,9 @@ import {
   readWorkflowReceipts,
   validateWorkflowReceiptTrust,
 } from "./supervibe-workflow-receipt-runtime.mjs";
+import {
+  validateWorkflowReceiptEvidenceSnapshot,
+} from "./supervibe-receipt-snapshot-store.mjs";
 import { normalizeRelPath, namespaceForCleanupPath } from "./supervibe-cleanup-policy.mjs";
 
 export const CLEANUP_LIFECYCLE_CLASSES = Object.freeze([
@@ -64,16 +67,19 @@ export function collectCleanupRoots({ rootDir = process.cwd(), now = new Date().
     }
     if (item.relPath.endsWith("artifact-links.json")) {
       for (const linked of readArtifactLinks(rootDir, item.relPath)) {
-        setReason(receiptLinked, linked, "artifact-link");
+        if (!isArchivePath(linked)) setReason(receiptLinked, linked, "artifact-link");
       }
     }
   }
 
   for (const receipt of readTrustedReceipts(rootDir)) {
     const receiptPath = normalizeRelPath(receipt.__file || "");
+    const snapshot = validateWorkflowReceiptEvidenceSnapshot(rootDir, receipt);
+    const liveRequired = snapshot.legacy === true || snapshot.pass !== true;
     if (receiptPath) setReason(protectedRoots, receiptPath, "trusted-workflow-receipt");
     for (const output of receipt.outputArtifacts || []) {
       const normalized = normalizeRelPath(output);
+      if (isArchivePath(normalized) && !liveRequired) continue;
       setReason(receiptLinked, normalized, "trusted-receipt-output");
       setReason(protectedRoots, normalized, "trusted-receipt-output");
     }
@@ -202,6 +208,10 @@ function setReason(map, relPath, reason) {
   if (!normalized) return;
   if (!map.has(normalized)) map.set(normalized, new Set());
   map.get(normalized).add(reason);
+}
+
+function isArchivePath(relPath) {
+  return normalizeRelPath(relPath).startsWith(".supervibe/.archive/");
 }
 
 function findReason(map, relPath) {

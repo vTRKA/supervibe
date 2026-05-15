@@ -1,0 +1,13 @@
+{
+  "fixture": "null-host-invocation",
+  "intent": "negative provenance fixture: null hostInvocation must fail release provenance scanning",
+  "receipt": {
+    "receiptId": "synthetic-null-host-invocation",
+    "issuedAt": "2026-05-15T12:30:00Z",
+    "artifact": "tests/fixtures/provenance/null-host-invocation.json",
+    "producer": "quality-gate-reviewer",
+    "hostInvocation": null
+  },
+  "expectedGateResult": "fail",
+  "expectedReason": "runtime receipt provenance has null hostInvocation"
+}

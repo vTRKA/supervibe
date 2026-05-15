@@ -49,6 +49,8 @@ skills:
   - supervibe:project-memory
   - supervibe:design-intelligence
   - supervibe:confidence-scoring
+  - supervibe:mcp-discovery
+  - supervibe:browser-runtime-verification
   - supervibe:chrome-extension-build
 verification:
   - target-surfaces-declared
@@ -137,11 +139,11 @@ Use `supervibe:design-intelligence` after memory and code search for app-interfa
 
 ## Local Design Expert Reference
 
-Before producing design-facing output, read `docs/references/design-expert-knowledge.md` and run Design Pass Triage from the `Eight-Pass Expert Routine`. Do not force all eight passes for every prototype. Classify each pass as `required | reuse | delegated | skipped | N/A` with rationale. If an approved design system already exists and the request is a prototype, screen, deck, or refinement inside that system, reuse preference and visual-system decisions and run only the relevant evidence, reference, IA/user-flow, responsive/platform, quality, and prototype/review passes. If a candidate or needs_revision design system exists, resume the design-system approval gate instead of treating it as prototype-ready. Full eight-pass coverage is required only for new products, rebrands, missing design systems, or material direction changes.
+Before producing design-facing output, read `docs/references/design-expert-knowledge.md` and run Design Pass Triage from the `Eight-Pass Expert Routine`. Do not force all eight passes for every prototype. Classify each pass as `required | reuse | delegated | skipped | N/A` with rationale. If an approved design system already exists and the request is a prototype, screen, refinement inside that system, reuse preference and visual-system decisions and run only the relevant evidence, reference, IA/user-flow, responsive/platform, quality, and prototype/review passes. If a candidate or needs_revision design system exists, resume the design-system approval gate instead of treating it as prototype-ready. Full eight-pass coverage is required only for new products, rebrands, missing design systems, or material direction changes.
 
-Query local design intelligence through `designContextPreflight()` or `searchDesignIntelligence()` for the relevant local domains: `product`, `style`, `color`, `typography`, `ux`, `landing`, `app-interface`, `charts`, `icons`, `google-fonts`, `react-performance`, `ui-reasoning`, `stack`, `slides`, and `collateral`. External references are supplemental: use the internet only for current references, market examples, official platform docs, live competitor pages, or fresh visual evidence that local data cannot contain.
+Query local design intelligence through `designContextPreflight()` or `searchDesignIntelligence()` for the relevant local domains: `product`, `style`, `color`, `typography`, `ux`, `landing`, `app-interface`, `charts`, `icons`, `google-fonts`, `react-performance`, `ui-reasoning`, `stack` and `collateral`. External references are supplemental: use the internet only for current references, market examples, official platform docs, live competitor pages, or fresh visual evidence that local data cannot contain.
 
-Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/design-intelligence/data/*.csv`, `skills/design-intelligence/data/stacks/`, `skills/design-intelligence/data/slides/`, `skills/design-intelligence/data/collateral/`, `skills/design-intelligence/references/`, and `references/design-intelligence-source-coverage.md`.
+Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/design-intelligence/data/*.csv`, `skills/design-intelligence/data/stacks/`, `skills/design-intelligence/data/collateral/`, `skills/design-intelligence/references/`, and `references/design-intelligence-source-coverage.md`.
 
 ## Procedure
 
@@ -306,6 +308,8 @@ Do NOT design custom new-tab override unless the product brief explicitly reques
 - `supervibe:ui-review-and-polish` — review the produced mockup against the 8-dimension checklist, scoped to extension viewports
 - `supervibe:project-memory` — search prior popup decisions, abandoned side-panel structures, permission-prompt copy
 - `supervibe:confidence-scoring` — apply `agent-delivery` rubric ≥9 before handoff to chrome-extension-developer
+- `supervibe:mcp-discovery` - discover available Figma, browser, desktop, and scrape MCP tools before requesting live visual evidence or external design data.
+- `supervibe:browser-runtime-verification` - require browser-facing UI proof through real or explicitly waived screenshots, console/network checks, viewport sweeps, and interaction evidence.
 - `supervibe:design-intelligence` - ground design decisions in project memory, code facts, and current visual evidence.
 - `supervibe:chrome-extension-build` - validate MV3 extension build, manifest, icons, and store-ready packaging.
 

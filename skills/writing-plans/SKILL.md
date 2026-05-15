@@ -54,7 +54,7 @@ claims, and keep confidence below gate when evidence is partial.
 
 ## Step 0 - Read source of truth
 
-1. Read the approved spec at `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-design.md`.
+1. Read the approved spec at `.supervibe/artifacts/specs/YYYY-MM-DD-<topic>-brainstorm.md` by default; also support explicitly provided approved spec paths. If multiple recent specs, a renamed/moved spec, or an unapproved spec is found, stop and ask one bounded selection/approval question before planning.
    If no approved spec exists, STOP and tell the user to create one or pass an
    explicit existing spec path.
 2. Read the active host instruction file and available verification scripts.
@@ -66,7 +66,7 @@ claims, and keep confidence below gate when evidence is partial.
 
 ## Continuation Contract
 
-Do not stop after individual plan phases. Produce a compact plan-scope preview, ask the approve/revise/exclude-or-defer/stop choice through `plan_delivery`, then continue to Post-plan summary and text-first summary. Let the user exclude or defer items, then write the full plan before handoff. Expose a human-first Decision Card with recommendation, `Step N/M` question, choices, resume cursor, and next command; expose `NEXT_USER_ACTIONS[]` with run plan review and revise plan first, then emit the raw `NEXT_STEP_HANDOFF` only as secondary resume state.
+Do not stop after individual plan phases. Produce a durable pre-plan summary with table, ASCII map, source prompt hash, and approve/revise/stop choices, then show a compact plan-scope preview, ask the approve/revise/exclude-or-defer/stop choice through `plan_delivery`, then continue to a source-bound Post-plan summary with added-and-why, deferred-and-why, validation result, table, ASCII map, and text-first summary. Let the user exclude or defer items, then write the full plan before handoff. Expose a human-first Decision Card with recommendation, `Step N/M` question, choices, resume cursor, and next command; expose `NEXT_USER_ACTIONS[]` with run plan review and revise plan first, then emit the raw `NEXT_STEP_HANDOFF` only as secondary resume state.
 
 ## Plan Scope Approval Gate
 
@@ -126,7 +126,7 @@ Five or more phases, broad production path, or high regression risk
 ## User Gates
 
 Each gate requires a current explicit answer after the question is shown:
-plan-scope preview, durable save, post-plan review handoff, post-review
+pre-plan summary, plan-scope preview, durable save, post-plan review handoff, post-review
 atomization handoff, and execution handoff. Earlier broad consent never answers a
 later gate.
 
@@ -181,7 +181,7 @@ Returns a plan file with these fields/sections: `Goal`, `Architecture`,
 `Tech Stack`, `Constraints`, `File Structure`, `Retrieval, CodeGraph, And Visual
 Evidence`, `Critical Path`, `Scope Safety Gate`, `Delivery Strategy`,
 `Production Readiness`, numbered tasks, `Final Acceptance Gate`, `Self-Review`,
-post-plan summary, mandatory review handoff, post-review atomization handoff,
+source-bound post-plan summary with table and ASCII map, mandatory review handoff, post-review atomization handoff,
 a human-first Decision Card and a secondary machine-readable `NEXT_STEP_HANDOFF`.
 
 The handoff must name: `Current phase`, `Artifact`, `Next phase`, `Next command`,

@@ -44,9 +44,10 @@ anti-patterns:
   - generic-agent-without-specialist-context
   - broad-unowned-refactor
   - skipping-memory-or-code-search
+  - asking-multiple-questions-at-once
   - running-release-gate-validators-during-development
   - changing-unrelated-files
-version: 1.0
+version: 1.1
 last-verified: 2026-05-15T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
@@ -75,25 +76,44 @@ Apply `docs/references/scope-safety-standard.md` before widening scope. Name the
 
 Invoke this agent for implementation tasks that are not better owned by a concrete stack agent such as `react-implementer`, `express-developer`, `fastapi-developer`, or `tauri-rust-engineer`. When a narrower specialist exists and the task clearly belongs to it, delegate there instead. In durable workflows, this agent must be invoked through the runtime path with receipts; controller-authored drafts do not satisfy worker proof.
 
+If the task packet does not name the owned write set, acceptance signal, and allowed verification policy, stop and return a `missing-context` blocker instead of improvising as a generic implementer. This keeps MVP work fast by avoiding speculative reads and follow-up cleanup.
+
 ## RAG + Memory pre-flight (pre-work check)
 
 Before non-trivial implementation work, run `supervibe:project-memory` for prior decisions and `supervibe:code-search` for local patterns. Use Code Graph for structural edits: `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers "<symbol>"`, plus `--callees` or `--neighbors "<symbol>" --depth 2` when blast radius is unclear. Record whether this was Case A/B/C in the handoff, or state why Code Graph was not applicable.
 
+## Durable Output Evidence Gate
+
+Implementation handoffs must record these fields before claiming ready or complete:
+
+- `memory`: prior decision ids, searched terms with zero-hit result, or degraded reason.
+- `rag`: Code RAG chunk ids for local patterns, or degraded reason.
+- `codegraph`: callers/callees/neighborhood evidence, Case C rationale, or degraded reason.
+- `source`: local files or official docs used plus freshness date, or degraded reason.
+- `receipt`: worker/command/producer receipt ids with host invocation source, or degraded reason.
+
+If the task policy defers tests or a tool is unavailable, record it as a degraded reason rather than omitting the field.
+
 ## Procedure
 
-1. Read the active task packet, write set, verification policy, and any knowledge bootstrap paths before editing.
+1. Read the active task packet, write set, verification policy, and any knowledge bootstrap paths before editing. If any are missing, stop before editing and report `BLOCKED - MISSING CONTEXT`; do not infer the write set or verification policy.
 2. Run `supervibe:project-memory` or `node <resolved-supervibe-plugin-root>/scripts/search-memory.mjs --query "<task topic>" --include-history --graph --limit 8` for prior decisions.
 3. Run `supervibe:code-search` or `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --context "<task topic>" --limit 12` and read the closest local patterns before changing code.
 4. Use Code Graph before structural changes, exported symbol changes, or public contract changes: run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers "<symbol>"`, and use `--callees` or `--neighbors "<symbol>" --depth 2` when blast radius is unclear. Record Case A/B/C in the handoff.
 5. If the work needs external API/provider/library behavior, use `supervibe:source-driven-development` and prefer official current docs.
 6. For behavioral changes, define the smallest failing check first with `supervibe:tdd`; for workflow/plan/graph tasks, respect the controller policy that tests and validators may be deferred to release gate.
 7. Edit only files inside the owned write set unless the task packet explicitly expands ownership.
-8. Run the allowed targeted verification commands from the task packet. Do not substitute broad release validators during development when the workflow says they are deferred.
+8. Run the allowed targeted verification commands from the task packet. Do not substitute broad release validators during development when the workflow says they are deferred; report the exact deferred release gate instead.
 9. Self-review with `supervibe:code-review`, score confidence with `supervibe:confidence-scoring`, and report changed files, evidence, deferred checks, blockers, and residual risk.
 
 ## User dialogue discipline
 
-Ask one question per message when user input is required. Use a `Step N/M:` label, explain why the answer matters, and make the recommended choice explicit. Do not bundle scope, runtime, and verification questions together; resolve the blocker that changes the next action first. Match the user language.
+Ask one question per message when user input is required. Do not bundle scope, runtime, and verification questions together; resolve the blocker that changes the next action first. Match the user language.
+
+- Use localized `Step N/M:` labels. Keep an adaptive progress indicator: compute `M` from current triage, saved workflow state, skipped stages, and delegated safe decisions instead of fixed totals.
+- Explain the blocker before choices. Use `Why:` or `Why this matters:` to state why the answer matters, `Decision unlocked:` to name the decision the answer will unlock, and `If skipped:` to state the safe default or assumption.
+- Use outcome-oriented labels for choices, not generic option labels. Labels should describe the resulting path, such as "Ship with targeted tests" or "Pause for missing context".
+- If the user changes topic, preserve saved handoff/workflow state, emit or retain `NEXT_STEP_HANDOFF` when needed, and state whether the workflow should continue, skip/delegate, pause and switch, or stop/archive.
 
 ## Verification
 
@@ -119,6 +139,12 @@ Return:
 ```markdown
 # Implementation Result: <task id or title>
 
+Context consumed:
+- task packet / write set: <path, provided text, or missing>
+- verification policy: <allowed commands, release-gate deferral, or missing>
+- knowledge bootstrap: <memory/code-search/graph evidence or N/A reason>
+- durable evidence: memory/rag/codegraph/source/receipt ids or degraded reasons
+
 Changed files:
 - <path>
 
@@ -142,6 +168,7 @@ Rubric: agent-delivery
 - Ignoring a missing agent or skill file and proceeding anyway.
 - Reverting edits made by another worker or the user.
 - Expanding beyond the owned write set without explicit controller approval.
+- `asking-multiple-questions-at-once`: asking multiple questions at once when one decision blocks the next action.
 - Running broad release validators during development when the graph policy defers them.
 - Reporting complete without command evidence or an explicit blocker.
 

@@ -130,7 +130,7 @@ Before producing any artifact or making any structural recommendation:
 ## Procedure
 
 1. **Search project memory** for prior incidents and SLO definitions
-2. **Use `supervibe:mcp-discovery`** to fetch current OpenTelemetry, Prometheus best practices, Google SRE workbook docs via context7
+2. **Use `docs/references/authoritative-source-catalog.md` catalog id `observability-opentelemetry-spec`**, then `supervibe:mcp-discovery` as needed for current OpenTelemetry, Prometheus best practices, and Google SRE workbook docs via context7
 3. **Read instrumentation entry points** — startup, middleware, queue producers/consumers
 4. **Grep for log call sites** — confirm structured (JSON/logfmt), confirm correlation id present
 5. **Grep for metric definitions** — estimate cardinality per label
@@ -258,7 +258,7 @@ Do NOT implement instrumentation (defer to devops-sre + service team).
 ## Skills
 
 - `supervibe:code-search` — locate instrumentation, log calls, metric definitions
-- `supervibe:mcp-discovery` — pull current OpenTelemetry spec, Prometheus best practices, SRE workbook docs via context7
+- `supervibe:mcp-discovery` - pull current OpenTelemetry spec through catalog id `observability-opentelemetry-spec`, plus Prometheus best practices and SRE workbook docs via context7
 - `supervibe:project-memory` — search prior incidents, SLO history
 - `supervibe:code-review` — base methodology framework
 - `supervibe:confidence-scoring` — agent-output rubric ≥9

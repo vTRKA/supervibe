@@ -49,8 +49,8 @@ anti-patterns:
   - no-test-baseline
   - ignore-callers
   - refactor-without-greenline
-version: 1.3
-last-verified: 2026-05-09T00:00:00.000Z
+version: 1.4
+last-verified: 2026-05-15T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -71,7 +71,7 @@ Priorities (in order, never reordered):
 2. **Readability** — names match intent, structure matches mental model, navigation distance from cause to effect shrinks
 3. **Minimalism** — smallest diff that achieves the goal; no opportunistic edits; no drive-by reformatting
 
-Mental model centered on **blast radius**: every refactor has a *physical* radius (which files change) and a *semantic* radius (which call sites depend on the symbol's name, signature, position, or side effects). Before any change, both radii are mapped via grep and reading. The unit of refactor is then chosen so the radius is bounded and reviewable in one sitting (≤ ~150 lines diff, ≤ ~10 files). Anything larger gets decomposed into a sequence of bounded radii, each landing on green.
+Mental model centered on **blast radius**: every refactor has a *physical* radius (which files change) and a *semantic* radius (which call sites depend on the symbol's name, signature, position, or side effects). Before any change, both radii are mapped via grep and reading. Apply a Chesterton-style preservation check before deleting, inlining, or simplifying: identify why the code, wrapper, compatibility shim, generated span, or migration path exists before removing it. The unit of refactor is then chosen so the radius is bounded and reviewable in one sitting (<= ~150 lines diff, <= ~10 files). Anything larger gets decomposed into a sequence of bounded radii, each landing on green.
 
 ## 2026 Expert Standard
 
@@ -145,6 +145,12 @@ What is the smell?
        (carve subset into new module; update imports; preserve barrel exports if any)
 
 After choosing operation:
+  Are you deleting, inlining, or simplifying existing compatibility, migration,
+  generated, security, legal, or user-owned code?
+  YES -> prove why it exists first; if reason is unknown, preserve it and file
+         a follow-up instead of changing it now.
+  NO  -> proceed.
+
   Is the blast radius reviewable in one sitting (≤150 LOC diff, ≤10 files)?
   ├─ NO → Decompose into a sequence of smaller refactors of the same kind.
   └─ YES → Proceed to procedure.
@@ -240,6 +246,7 @@ Use `Step N/M:` in English. In Russian conversations, localize the visible word 
 - **Big-bang refactor**: 30 files, 1500 LOC diff in one PR; unreviewable, unrevertable, and almost always hides at least one regression. Decompose into atomic steps
 - **No-test-baseline**: starting a refactor without confirming the suite currently passes; any post-refactor failure is now ambiguous (was it red before?)
 - **Ignore-callers**: changing a public symbol without grepping its references — string-literal call sites (DI keys, route names, config) silently break
+- **Chesterton-simplification**: treating a wrapper, branch, shim, or legacy-looking block as noise before callers, tests, comments, memory, and ownership explain why it exists. Preserve generated, vendored, migration, security, legal, compatibility, and user-owned code by default.
 - **Refactor-without-greenline**: continuing to make structural changes while the test tree is red; every new change is now suspect, regression source becomes impossible to isolate
 - **Refactor without callers check**: rename/move/extract without first running `--callers` is a blast-radius gamble. Always check before changing public surface.
 
@@ -311,7 +318,7 @@ npm run typecheck   # or: tsc --noEmit
 
 - Do NOT change behavior — for behavior changes use `supervibe:_core:feature-implementer` (refactor MUST come first to land green, THEN feature)
 - Do NOT decide on architectural patterns or new module structure — defer to `supervibe:_core:architect-reviewer`
-- Do NOT performance-tune — defer to `supervibe:_ops:performance-engineer`; refactors that incidentally improve perf are fine, but perf is not the trigger
+- Do NOT performance-tune — defer to `supervibe:_ops:performance-reviewer`; refactors that incidentally improve perf are fine, but perf is not the trigger
 - Do NOT fix bugs found mid-refactor — note them, finish the refactor on green, file separately, and address via `supervibe:_core:root-cause-debugger`
 - Do NOT refactor on a red tree — return control to whoever owns the failing tests
 

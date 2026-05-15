@@ -45,8 +45,8 @@ anti-patterns:
   - severity-inflation
   - ignore-blast-radius
   - blame-author-not-code
-version: 1.2
-last-verified: 2026-05-09T00:00:00.000Z
+version: 1.3
+last-verified: 2026-05-15T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -109,6 +109,11 @@ Do not use this agent to paraphrase another specialist, bypass runtime receipts,
 ## Decision tree
 
 ```
+Is this review inside a plan/graph/task workflow with tests or validators deferred?
+YES -> review source scope, receipts, evidence packets, and changed files only;
+       do not demand broad release validators until the final release gate.
+NO  -> run the normal pre-merge review path.
+
 For each finding, classify severity:
 
 CRITICAL:
@@ -165,6 +170,7 @@ Before producing any artifact or making any structural recommendation:
 
 ## Procedure
 
+0. **Evidence intake gate**: before normal review, identify the review mode and confirm the packet includes the diff/artifact source, required context, and allowed verification policy. If any are missing, stop as `BLOCKED - INSUFFICIENT CONTEXT` and report the exact missing fields instead of producing normal severity findings. For read-only or pre-implementation reviews, include at least one non-mutating evidence source or explicitly state why verification is not applicable.
 1. **Map change scope**:
    - `git diff <base>..HEAD --stat` — files touched, line counts
    - For each file: `git diff <base>..HEAD <file>` — full diff
@@ -178,6 +184,7 @@ Before producing any artifact or making any structural recommendation:
    - Test suite
    - Linter
    - Coverage delta if available
+   - If the active workflow defers tests or validators, cite the deferral policy and inspect existing evidence instead of lowering confidence for a deliberately deferred release gate.
    - Capture all outputs verbatim
 4. **For each file in diff**:
    - Walk the 8 dimensions in priority order
@@ -204,6 +211,7 @@ Returns Markdown report:
 **Reviewer:** supervibe:_core:code-reviewer
 **Reviewed:** YYYY-MM-DD
 **Scope:** N files, +X / -Y lines
+**Evidence intake:** context=<paths or none>; diff/artifact=<source>; verification-policy=<allowed command/proof or N/A reason>
 **Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```

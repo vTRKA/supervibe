@@ -27,7 +27,6 @@ The useful local domains are:
 - `react-performance`: UI performance constraints for React-like surfaces.
 - `ui-reasoning`: design critique, tradeoff, and decision framing examples.
 - `stack`: framework or platform-specific UI implementation guidance.
-- `slides`: deck strategy, layout, chart, visual hierarchy, and audience fit.
 - `collateral`: logo, icon, brand asset, identity, mockup and CIP guidance.
 
 ## Local Knowledge Folders
@@ -42,12 +41,11 @@ handoffs so they know where the expertise lives:
   reasoning rows used by `searchDesignIntelligence()`.
 - `skills/design-intelligence/data/stacks/`: stack-specific UI handoff guidance
   for web, mobile, native, component-library, and 3D surfaces.
-- `skills/design-intelligence/data/slides/`: presentation strategy, layout,
   copy, chart, typography, color, and background evidence.
 - `skills/design-intelligence/data/collateral/`: logo, icon, brand asset, CIP,
   and mockup context evidence.
 - `skills/design-intelligence/references/`: compact local reference cards for
-  brand, design system, UI styling, slide decks, collateral, and priority order.
+  brand, design system, UI styling, collateral, and priority order.
 - `skills/design-intelligence/references/creative/`: curated creative
   reference packs for editorial, luxury, experimental web, mobile-native,
   data-product, AI-product, devtool, and regulated-trust directions. These are
@@ -68,7 +66,7 @@ repository or external skill for baseline design expertise.
 Design agents must treat the local pack as broad by default, not scarce. Before
 claiming "no data available", check all relevant domains: product, style, color,
 typography, UX, landing, app-interface, charts, icons, google-fonts,
-react-performance, ui-reasoning, stack, slides, collateral, and creative packs.
+react-performance, ui-reasoning, stack, collateral, and creative packs.
 For creative or WOW requests, combine these local domains with current
 references and a Prototype Capability Plan so the agent can choose stronger
 tools without bypassing security, accessibility, or performance gates.
@@ -123,7 +121,7 @@ when a new system or rebrand needs a real point of view.
 Path selection:
 
 - Fast path: approved design system exists and the task is a narrow screen,
-  deck, or extension. Reuse the system and cite only the packs needed for the
+   or extension. Reuse the system and cite only the packs needed for the
   missing capability.
 - Medium path: candidate or needs_revision system exists. Use one or two packs
   to refine the candidate, but route back to section approval instead of
@@ -278,7 +276,7 @@ rationale in the owning artifact, config, or handoff.
 Do not force all eight passes for every prototype. Full eight-pass coverage is
 required for a new product, rebrand, missing design system, major audience or
 brand-positioning change, or material visual direction change. If an approved
-design system already exists and the request is a prototype, screen, flow, deck,
+design system already exists and the request is a prototype, screen, flow,
 or refinement inside that system, reuse preference and visual-system decisions
 instead of asking the user to approve palette, typography, spacing, radius,
 motion, and component baseline again. If the system is candidate or

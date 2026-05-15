@@ -33,7 +33,7 @@ This rule does NOT apply to the plugin marketplace checkout itself; the marketpl
 - `custom`
 - Recommend `minimal` by default.
 - Show how many agents each profile installs.
-- For `custom`, group choices by core, product, design, presentation, ops, data, and stack.
+- For `custom`, group choices by core, product, design, ops, data, and stack.
 - After profile selection, ask one explicit add-on question. Default: `none`.
 - Add-ons must be opt-in:
   - `security-audit` — multi-agent vulnerability audit chain for `/supervibe-security-audit`
@@ -62,7 +62,7 @@ Then it asks "Optional add-ons?" and defaults to none. User can select `security
 
 Why this is good: users start with the agents they need and add more intentionally.
 
-For design-heavy projects, `product-design` may add presentation agents as part of the design workflow, but it still must be an explicit profile choice rather than an automatic full install.
+For design-heavy projects, `product-design` may add UI, prototype, accessibility, and design-system agents, but it still must be an explicit profile choice rather than an automatic full install.
 
 ## Enforcement
 

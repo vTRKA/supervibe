@@ -36,6 +36,160 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     requiredSafety: [...baseSafety, "documentation-approval-before-write", "summary-before-durable-artifact", "post-documentation-summary"],
   },
   {
+    id: "en-pre-spec-summary-gate",
+    phrase: "show the pre spec summary before creating the spec",
+    locale: "en",
+    intent: "pre_spec_summary_gate",
+    phase: "brainstorm",
+    command: "/supervibe-brainstorm --summary-gate --stage pre-spec",
+    skill: "supervibe:brainstorming",
+    confidenceFloor: 0.96,
+    mutationRisk: "writes-docs",
+    prerequisites: ["user-request"],
+    nextQuestionIncludes: "Step 1/1: approve, revise, or stop before the spec is written?",
+    requiredSafety: [...baseSafety, "summary-before-durable-artifact", "latest-user-approval-required", "no-inline-artifact-substitution"],
+  },
+  {
+    id: "en-post-spec-summary-gate",
+    phrase: "after creating the spec show a short source bound summary with table and ascii map",
+    locale: "en",
+    intent: "post_spec_summary_gate",
+    phase: "brainstorm",
+    command: "/supervibe-brainstorm --summary-gate --stage post-spec",
+    skill: "supervibe:brainstorming",
+    confidenceFloor: 0.96,
+    mutationRisk: "writes-docs",
+    prerequisites: ["spec-path-or-content"],
+    nextQuestionIncludes: "Step 1/1: approve, revise, or stop after reviewing the saved spec summary?",
+    requiredSafety: [...baseSafety, "source-artifact-hash-bound", "visual-table-required", "ascii-map-required", "next-user-actions-required"],
+  },
+  {
+    id: "en-pre-plan-summary-gate",
+    phrase: "show the pre plan summary before writing the implementation plan",
+    locale: "en",
+    intent: "pre_plan_summary_gate",
+    phase: "plan",
+    command: "/supervibe-plan --summary-gate --stage pre-plan",
+    skill: "supervibe:writing-plans",
+    confidenceFloor: 0.96,
+    mutationRisk: "writes-docs",
+    prerequisites: ["approved-spec"],
+    nextQuestionIncludes: "Step 1/1: approve, revise, or stop before the plan is written?",
+    requiredSafety: [...baseSafety, "summary-before-durable-artifact", "latest-user-approval-required", "approved-spec-required"],
+  },
+  {
+    id: "en-post-plan-summary-gate",
+    phrase: "after writing the plan show what was added why and next actions",
+    locale: "en",
+    intent: "post_plan_summary_gate",
+    phase: "plan",
+    command: "/supervibe-plan --summary-gate --stage post-plan",
+    skill: "supervibe:writing-plans",
+    confidenceFloor: 0.96,
+    mutationRisk: "writes-docs",
+    prerequisites: ["plan-path-or-plan-content"],
+    nextQuestionIncludes: "Step 1/1: approve, revise, review, or stop after the saved plan summary?",
+    requiredSafety: [...baseSafety, "source-artifact-hash-bound", "visual-table-required", "ascii-map-required", "next-user-actions-required"],
+  },
+  {
+    id: "ru-pre-spec-summary-gate",
+    phrase: "\u043f\u043e\u043a\u0430\u0436\u0438 \u0441\u0430\u043c\u043c\u0430\u0440\u0438 \u043f\u0435\u0440\u0435\u0434 \u0441\u043e\u0437\u0434\u0430\u043d\u0438\u0435\u043c \u0441\u043f\u0435\u043a\u0438",
+    locale: "ru",
+    intent: "pre_spec_summary_gate",
+    phase: "brainstorm",
+    command: "/supervibe-brainstorm --summary-gate --stage pre-spec",
+    skill: "supervibe:brainstorming",
+    confidenceFloor: 0.96,
+    mutationRisk: "writes-docs",
+    prerequisites: ["user-request"],
+    nextQuestionIncludes: "\u0428\u0430\u0433 1/1: \u0443\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044c, \u0438\u0441\u043f\u0440\u0430\u0432\u0438\u0442\u044c \u0438\u043b\u0438 \u043e\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c \u0434\u043e \u0437\u0430\u043f\u0438\u0441\u0438 \u0441\u043f\u0435\u043a\u0438?",
+    requiredSafety: [...baseSafety, "summary-before-durable-artifact", "latest-user-approval-required", "no-inline-artifact-substitution"],
+  },
+  {
+    id: "ru-post-spec-summary-gate",
+    phrase: "\u043f\u043e\u0441\u043b\u0435 \u0441\u043e\u0437\u0434\u0430\u043d\u0438\u044f \u0441\u043f\u0435\u043a\u0438 \u043f\u043e\u043a\u0430\u0436\u0438 \u043a\u0440\u0430\u0442\u043a\u043e\u0435 \u0441\u0430\u043c\u043c\u0430\u0440\u0438 \u0441 \u0442\u0430\u0431\u043b\u0438\u0446\u0435\u0439 \u0438 ascii \u0441\u0445\u0435\u043c\u043e\u0439",
+    locale: "ru",
+    intent: "post_spec_summary_gate",
+    phase: "brainstorm",
+    command: "/supervibe-brainstorm --summary-gate --stage post-spec",
+    skill: "supervibe:brainstorming",
+    confidenceFloor: 0.96,
+    mutationRisk: "writes-docs",
+    prerequisites: ["spec-path-or-content"],
+    nextQuestionIncludes: "\u0428\u0430\u0433 1/1: \u0443\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044c, \u0438\u0441\u043f\u0440\u0430\u0432\u0438\u0442\u044c \u0438\u043b\u0438 \u043e\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c \u043f\u043e\u0441\u043b\u0435 \u0441\u0430\u043c\u043c\u0430\u0440\u0438 \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u043d\u043e\u0439 \u0441\u043f\u0435\u043a\u0438?",
+    requiredSafety: [...baseSafety, "source-artifact-hash-bound", "visual-table-required", "ascii-map-required", "next-user-actions-required"],
+  },
+  {
+    id: "ru-pre-plan-summary-gate",
+    phrase: "\u043f\u043e\u043a\u0430\u0436\u0438 \u0441\u0430\u043c\u043c\u0430\u0440\u0438 \u043f\u0435\u0440\u0435\u0434 \u0441\u043e\u0437\u0434\u0430\u043d\u0438\u0435\u043c \u043f\u043b\u0430\u043d\u0430",
+    locale: "ru",
+    intent: "pre_plan_summary_gate",
+    phase: "plan",
+    command: "/supervibe-plan --summary-gate --stage pre-plan",
+    skill: "supervibe:writing-plans",
+    confidenceFloor: 0.96,
+    mutationRisk: "writes-docs",
+    prerequisites: ["approved-spec"],
+    nextQuestionIncludes: "\u0428\u0430\u0433 1/1: \u0443\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044c, \u0438\u0441\u043f\u0440\u0430\u0432\u0438\u0442\u044c \u0438\u043b\u0438 \u043e\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c \u0434\u043e \u0437\u0430\u043f\u0438\u0441\u0438 \u043f\u043b\u0430\u043d\u0430?",
+    requiredSafety: [...baseSafety, "summary-before-durable-artifact", "latest-user-approval-required", "approved-spec-required"],
+  },
+  {
+    id: "ru-post-plan-summary-gate",
+    phrase: "\u043f\u043e\u0441\u043b\u0435 \u0441\u043e\u0437\u0434\u0430\u043d\u0438\u044f \u043f\u043b\u0430\u043d\u0430 \u043f\u043e\u043a\u0430\u0436\u0438 \u0447\u0442\u043e \u0434\u043e\u0431\u0430\u0432\u043b\u0435\u043d\u043e \u0437\u0430\u0447\u0435\u043c \u0438 \u0441\u043b\u0435\u0434\u0443\u044e\u0449\u0438\u0435 \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u044f",
+    locale: "ru",
+    intent: "post_plan_summary_gate",
+    phase: "plan",
+    command: "/supervibe-plan --summary-gate --stage post-plan",
+    skill: "supervibe:writing-plans",
+    confidenceFloor: 0.96,
+    mutationRisk: "writes-docs",
+    prerequisites: ["plan-path-or-plan-content"],
+    nextQuestionIncludes: "\u0428\u0430\u0433 1/1: \u0443\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044c, \u0438\u0441\u043f\u0440\u0430\u0432\u0438\u0442\u044c, \u043e\u0442\u043f\u0440\u0430\u0432\u0438\u0442\u044c \u043d\u0430 \u0440\u0435\u0432\u044c\u044e \u0438\u043b\u0438 \u043e\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u044c \u043f\u043e\u0441\u043b\u0435 \u0441\u0430\u043c\u043c\u0430\u0440\u0438 \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u043d\u043e\u0433\u043e \u043f\u043b\u0430\u043d\u0430?",
+    requiredSafety: [...baseSafety, "source-artifact-hash-bound", "visual-table-required", "ascii-map-required", "next-user-actions-required"],
+  },
+  {
+    id: "ru-plan-review-only-temp-plan",
+    phrase: "\u0414\u0430\u0432\u0430\u0439 \u0441\u043e\u0431\u0435\u0440\u0435\u043c \u0432\u0441\u0435 30+ \u0437\u0430\u0434\u0430\u0447 \u0432\u043e \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u044b\u0439 \u043f\u043b\u0430\u043d, \u043f\u043e\u0442\u043e\u043c \u0437\u0430\u043f\u0443\u0441\u0442\u0438 \u0440\u0435\u0432\u044c\u044e\u0435\u0440\u043e\u0432 \u043d\u0430 \u043a\u0430\u0447\u0435\u0441\u0442\u0432\u043e \u0441\u043e\u0431\u0440\u0430\u043d\u043d\u044b\u0445 \u0437\u0430\u0434\u0430\u0447",
+    locale: "ru",
+    intent: "plan_review",
+    phase: "plan",
+    command: "/supervibe-plan --review",
+    skill: "supervibe:requesting-code-review",
+    confidenceFloor: 0.97,
+    mutationRisk: "none",
+    prerequisites: ["plan-path-or-plan-content"],
+    nextQuestionIncludes: "\u0428\u0430\u0433 1/1: \u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c read-only review loop \u043f\u043e \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e\u043c\u0443 \u043f\u043b\u0430\u043d\u0443 \u0431\u0435\u0437 \u0438\u0441\u043f\u043e\u043b\u043d\u0435\u043d\u0438\u044f?",
+    requiredSafety: [...baseSafety, "read-only-review", "no-execution-without-approval", "reviewer-receipts-required"],
+  },
+  {
+    id: "en-plan-review-only-temp-plan",
+    phrase: "create a temporary plan with all tasks and run reviewers without executing it",
+    locale: "en",
+    intent: "plan_review",
+    phase: "plan",
+    command: "/supervibe-plan --review",
+    skill: "supervibe:requesting-code-review",
+    confidenceFloor: 0.97,
+    mutationRisk: "none",
+    prerequisites: ["plan-path-or-plan-content"],
+    nextQuestionIncludes: "Step 1/1: run the read-only plan review loop without execution?",
+    requiredSafety: [...baseSafety, "read-only-review", "no-execution-without-approval", "reviewer-receipts-required"],
+  },
+  {
+    id: "en-execute-approved-reviewed-plan",
+    phrase: "execute the reviewed implementation plan after approval",
+    locale: "en",
+    intent: "execute_plan",
+    phase: "execution",
+    command: "/supervibe-execute-plan",
+    skill: "supervibe:executing-plans",
+    confidenceFloor: 0.94,
+    mutationRisk: "executes-code",
+    prerequisites: ["approved-reviewed-plan"],
+    nextQuestionIncludes: "Step 1/1: execute the approved reviewed plan phase by phase?",
+    requiredSafety: [...baseSafety, "approved-plan-required", "verification-deferred-to-final-gate", "workflow-receipts-required"],
+  },
+  {
     id: "en-text-first-visual",
     phrase: "explain this system visually with a text-first summary before implementation",
     locale: "en",
@@ -652,20 +806,6 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
     requiredSafety: baseSafety,
   },
   {
-    id: "ru-presentation-deck",
-    phrase: "сделай дизайн презентации",
-    locale: "ru",
-    intent: "presentation_deck",
-    phase: "design",
-    command: "/supervibe-design --presentation",
-    skill: "supervibe:presentation-deck",
-    confidenceFloor: 0.9,
-    mutationRisk: "writes-docs",
-    prerequisites: ["design-brief"],
-    nextQuestionIncludes: "Шаг 1/1: запустить deck flow с narrative, slide и brand evidence?",
-    requiredSafety: baseSafety,
-  },
-  {
     id: "en-design-new-professional",
     phrase: "make the ui look professional",
     locale: "en",
@@ -765,6 +905,284 @@ const TRIGGER_INTENT_CORPUS = Object.freeze([
   },
 ]);
 
+export const TRIGGER_INTENT_NEGATIVE_CORPUS = Object.freeze([
+  {
+    id: "en-audit-maturity-not-plan-review",
+    phrase: "audit agent system maturity and review routing evidence; this is not an implementation plan review",
+    locale: "en",
+    routeKind: "expected-route",
+    protects: ["audit", "plan", "review"],
+    reason: "Agent-system audit wording should not be captured by plan-review terms that appear as negation or context.",
+    expected: {
+      intent: "supervibe_audit",
+      command: "/supervibe-audit",
+      minConfidence: 0.9,
+      notIntent: ["plan_review", "design_review", "ready_query", "blocked_query"],
+      notCommand: ["/supervibe-plan --review", "/supervibe-audit --design", "/supervibe-status --ready", "/supervibe-status --blocked"],
+      requiredSafety: ["read-only-audit"],
+    },
+  },
+  {
+    id: "ru-audit-maturity-not-plan-review",
+    phrase: "\u043f\u0440\u043e\u0432\u0435\u0434\u0438 \u0430\u0443\u0434\u0438\u0442 \u0430\u0433\u0435\u043d\u0442\u0441\u043a\u043e\u0439 \u0441\u0438\u0441\u0442\u0435\u043c\u044b \u0438 \u0440\u043e\u0443\u0442\u0438\u043d\u0433\u0430, \u044d\u0442\u043e \u043d\u0435 \u0440\u0435\u0432\u044c\u044e \u043f\u043b\u0430\u043d\u0430",
+    locale: "ru",
+    routeKind: "expected-route",
+    protects: ["audit", "plan", "review"],
+    reason: "Russian audit and routing-maturity requests take audit precedence over nearby plan-review wording.",
+    expected: {
+      intent: "supervibe_audit",
+      command: "/supervibe-audit",
+      minConfidence: 0.9,
+      notIntent: ["plan_review", "design_review", "ready_query", "blocked_query"],
+      notCommand: ["/supervibe-plan --review", "/supervibe-audit --design", "/supervibe-status --ready", "/supervibe-status --blocked"],
+      requiredSafety: ["read-only-audit"],
+    },
+  },
+  {
+    id: "en-plan-context-not-audit-design-status",
+    phrase: "show the pre plan summary before writing the implementation plan; audit design status and review are only section labels",
+    locale: "en",
+    routeKind: "expected-route",
+    protects: ["plan", "audit", "design", "status", "review"],
+    reason: "Planning-summary requests may mention future sections without starting audit, design, status, or review workflows.",
+    expected: {
+      intent: "pre_plan_summary_gate",
+      command: "/supervibe-plan --summary-gate --stage pre-plan",
+      minConfidence: 0.9,
+      notIntent: ["supervibe_audit", "design_review", "ready_query", "blocked_query", "plan_review"],
+      notCommand: ["/supervibe-audit", "/supervibe-audit --design", "/supervibe-status --ready", "/supervibe-status --blocked", "/supervibe-plan --review"],
+      requiredSafety: ["summary-before-durable-artifact"],
+    },
+  },
+  {
+    id: "ru-plan-context-not-audit-design-status",
+    phrase: "\u043e\u0431\u043d\u043e\u0432\u0438 \u043f\u043b\u0430\u043d: \u0440\u0430\u0437\u0434\u0435\u043b\u044b \u0430\u0443\u0434\u0438\u0442 \u0434\u0438\u0437\u0430\u0439\u043d \u0441\u0442\u0430\u0442\u0443\u0441 \u0438 \u0440\u0435\u0432\u044c\u044e \u044d\u0442\u043e \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442, \u043d\u0435 \u0437\u0430\u043f\u0443\u0441\u043a\u0430\u0439 \u044d\u0442\u0438 \u043a\u043e\u043c\u0430\u043d\u0434\u044b",
+    locale: "ru",
+    routeKind: "expected-non-route",
+    protects: ["plan", "audit", "design", "status", "review"],
+    reason: "A context-only edit request that names route families should not dispatch a Supervibe command without a clear executable intent.",
+    expected: {
+      intent: "unknown",
+      command: "/supervibe --diagnose-trigger",
+      clarifyingQuestion: true,
+      notIntent: ["supervibe_audit", "design_new", "design_review", "ready_query", "blocked_query", "plan_review"],
+      notCommand: ["/supervibe-audit", "/supervibe-design", "/supervibe-audit --design", "/supervibe-status --ready", "/supervibe-status --blocked", "/supervibe-plan --review"],
+    },
+  },
+  {
+    id: "en-design-brief-not-status-review",
+    phrase: "make the ui look professional; status and review are labels inside the design brief, do not open status or audit",
+    locale: "en",
+    routeKind: "expected-route",
+    protects: ["design", "status", "review", "audit"],
+    reason: "A design-brief request should stay on the design-new route even when status/review/audit are label text.",
+    expected: {
+      intent: "design_new",
+      command: "/supervibe-design",
+      minConfidence: 0.88,
+      notIntent: ["ready_query", "blocked_query", "design_review", "supervibe_audit", "plan_review"],
+      notCommand: ["/supervibe-status --ready", "/supervibe-status --blocked", "/supervibe-audit --design", "/supervibe-audit", "/supervibe-plan --review"],
+      requiredSafety: ["creative-direction-first"],
+    },
+  },
+  {
+    id: "ru-design-brief-not-status",
+    phrase: "\u0441\u0434\u0435\u043b\u0430\u0439 \u0434\u0438\u0437\u0430\u0439\u043d-\u0431\u0440\u0438\u0444; \u0441\u043b\u043e\u0432\u043e \u0441\u0442\u0430\u0442\u0443\u0441 \u043e\u0442\u043d\u043e\u0441\u0438\u0442\u0441\u044f \u043a \u043f\u0430\u043d\u0435\u043b\u0438, \u043d\u0435 \u0437\u0430\u043f\u0443\u0441\u043a\u0430\u0439 \u0441\u0442\u0430\u0442\u0443\u0441",
+    locale: "ru",
+    routeKind: "expected-route",
+    protects: ["design", "status"],
+    reason: "Russian design-brief requests should not become status queries just because the UI contains a status panel.",
+    expected: {
+      intent: "design_new",
+      command: "/supervibe-design",
+      minConfidence: 0.88,
+      notIntent: ["ready_query", "blocked_query", "supervibe_audit", "plan_review"],
+      notCommand: ["/supervibe-status --ready", "/supervibe-status --blocked", "/supervibe-audit", "/supervibe-plan --review"],
+      requiredSafety: ["creative-direction-first"],
+    },
+  },
+  {
+    id: "en-ready-status-not-design-plan-review",
+    phrase: "show ready tasks; do not start design, write a plan, or run review",
+    locale: "en",
+    routeKind: "expected-route",
+    protects: ["status", "design", "plan", "review"],
+    reason: "Status-like ready queries are read-only status routes, not design, planning, or review commands.",
+    expected: {
+      intent: "ready_query",
+      command: "/supervibe-status --ready",
+      minConfidence: 0.84,
+      notIntent: ["design_new", "design_review", "plan_review", "pre_plan_summary_gate"],
+      notCommand: ["/supervibe-design", "/supervibe-audit --design", "/supervibe-plan --review", "/supervibe-plan --summary-gate --stage pre-plan"],
+    },
+  },
+  {
+    id: "ru-ready-status-not-design-plan-review",
+    phrase: "\u0447\u0442\u043e \u0433\u043e\u0442\u043e\u0432\u043e \u043f\u043e \u0433\u0440\u0430\u0444\u0443? \u043d\u0435 \u043d\u0430\u0447\u0438\u043d\u0430\u0439 \u0434\u0438\u0437\u0430\u0439\u043d, \u043f\u043b\u0430\u043d \u0438\u043b\u0438 \u0440\u0435\u0432\u044c\u044e",
+    locale: "ru",
+    routeKind: "expected-route",
+    protects: ["status", "design", "plan", "review"],
+    reason: "Russian ready/status phrasing should remain read-only even when negating design, plan, and review work.",
+    expected: {
+      intent: "ready_query",
+      command: "/supervibe-status --ready",
+      minConfidence: 0.84,
+      notIntent: ["design_new", "design_review", "plan_review", "pre_plan_summary_gate"],
+      notCommand: ["/supervibe-design", "/supervibe-audit --design", "/supervibe-plan --review", "/supervibe-plan --summary-gate --stage pre-plan"],
+    },
+  },
+  {
+    id: "en-plan-review-not-status-design-audit",
+    phrase: "review plan with specialist agents; do not show status and do not run design audit",
+    locale: "en",
+    routeKind: "expected-route",
+    protects: ["review", "plan", "status", "design", "audit"],
+    reason: "Plan-review requests should not be stolen by status or design-audit terms inside negated instructions.",
+    expected: {
+      intent: "plan_review",
+      command: "/supervibe-plan --review",
+      minConfidence: 0.9,
+      notIntent: ["ready_query", "blocked_query", "design_review", "supervibe_audit"],
+      notCommand: ["/supervibe-status --ready", "/supervibe-status --blocked", "/supervibe-audit --design", "/supervibe-audit"],
+    },
+  },
+  {
+    id: "ru-plan-review-not-status-design-audit",
+    phrase: "\u043f\u0440\u043e\u0432\u0435\u0440\u044c \u043f\u043b\u0430\u043d \u0440\u0435\u0432\u044c\u044e\u0435\u0440\u0430\u043c\u0438; \u043d\u0435 \u043e\u0442\u043a\u0440\u044b\u0432\u0430\u0439 \u0441\u0442\u0430\u0442\u0443\u0441 \u0438 \u043d\u0435 \u0437\u0430\u043f\u0443\u0441\u043a\u0430\u0439 \u0434\u0438\u0437\u0430\u0439\u043d-\u0430\u0443\u0434\u0438\u0442",
+    locale: "ru",
+    routeKind: "expected-route",
+    protects: ["review", "plan", "status", "design", "audit"],
+    reason: "Russian plan-review wording should keep review precedence over negated status and design-audit terms.",
+    expected: {
+      intent: "plan_review",
+      command: "/supervibe-plan --review",
+      minConfidence: 0.9,
+      notIntent: ["ready_query", "blocked_query", "design_review", "supervibe_audit"],
+      notCommand: ["/supervibe-status --ready", "/supervibe-status --blocked", "/supervibe-audit --design", "/supervibe-audit"],
+    },
+  },
+  {
+    id: "en-keyword-list-non-route",
+    phrase: "labels only: audit, plan, visual design, status, critique",
+    locale: "en",
+    routeKind: "expected-non-route",
+    protects: ["audit", "plan", "design", "status", "review"],
+    reason: "A bare keyword list is not an executable Supervibe request and should fall through to diagnostics/clarification.",
+    expected: {
+      intent: "unknown",
+      command: "/supervibe --diagnose-trigger",
+      clarifyingQuestion: true,
+      notIntent: ["supervibe_audit", "plan_review", "design_new", "design_review", "ready_query", "blocked_query"],
+      notCommand: ["/supervibe-audit", "/supervibe-plan --review", "/supervibe-design", "/supervibe-audit --design", "/supervibe-status --ready", "/supervibe-status --blocked"],
+    },
+  },
+  {
+    id: "en-explicit-status-command-not-semantic",
+    phrase: "run /supervibe-status --ready; plan review and design are just context words",
+    locale: "en",
+    routeKind: "expected-command",
+    protects: ["command", "status", "plan", "review", "design"],
+    reason: "An explicit published slash command should resolve as command intent before semantic status/plan/design routing.",
+    expected: {
+      intent: "slash_command",
+      command: "/supervibe-status --ready",
+      minConfidence: 1,
+      doNotSearchProject: true,
+      hardStop: false,
+      notIntent: ["plan_review", "design_review", "ready_query"],
+      notCommand: ["/supervibe-plan --review", "/supervibe-audit --design"],
+    },
+  },
+  {
+    id: "en-missing-design-slash-hard-stop",
+    phrase: "/supervibe-design create a desktop design system",
+    locale: "en",
+    routeKind: "expected-hard-stop",
+    protects: ["missing-slash", "design"],
+    reason: "If /supervibe-design is absent from the active command catalog, the router must hard-stop instead of using design keywords.",
+    catalogFixture: {
+      publishedCommands: ["/supervibe-status"],
+      omittedCommands: ["/supervibe-design"],
+    },
+    expected: {
+      intent: "missing_slash_command",
+      command: null,
+      hardStop: true,
+      doNotSearchProject: true,
+      stopCondition: "report-missing-command",
+      requestedCommand: "/supervibe-design",
+      notIntent: ["design_new", "design_review", "supervibe_audit"],
+      notCommand: ["/supervibe-design", "/supervibe-audit --design", "/supervibe-audit"],
+      requiredSafety: ["report-missing-command"],
+    },
+  },
+  {
+    id: "ru-missing-plan-slash-hard-stop",
+    phrase: "/supervibe-plan \u043f\u0440\u043e\u0432\u0435\u0440\u044c \u0447\u0435\u0440\u043d\u043e\u0432\u0438\u043a, \u043d\u043e \u043a\u043e\u043c\u0430\u043d\u0434\u0430 \u043d\u0435 \u043e\u043f\u0443\u0431\u043b\u0438\u043a\u043e\u0432\u0430\u043d\u0430 \u0432 \u043a\u0430\u0442\u0430\u043b\u043e\u0433\u0435",
+    locale: "ru",
+    routeKind: "expected-hard-stop",
+    protects: ["missing-slash", "plan", "review"],
+    reason: "If /supervibe-plan is absent from the active command catalog, Russian plan/review wording must not emulate the command.",
+    catalogFixture: {
+      publishedCommands: ["/supervibe-status"],
+      omittedCommands: ["/supervibe-plan"],
+    },
+    expected: {
+      intent: "missing_slash_command",
+      command: null,
+      hardStop: true,
+      doNotSearchProject: true,
+      stopCondition: "report-missing-command",
+      requestedCommand: "/supervibe-plan",
+      notIntent: ["plan_review", "pre_plan_summary_gate", "supervibe_audit"],
+      notCommand: ["/supervibe-plan", "/supervibe-plan --review", "/supervibe-audit"],
+      requiredSafety: ["report-missing-command"],
+    },
+  },
+]);
+
+const NEGATIVE_EXPECTATION_ARRAY_FIELDS = Object.freeze([
+  "notIntent",
+  "forbiddenIntents",
+  "notCommand",
+  "forbiddenCommands",
+  "requiredSafety",
+  "agentIncludes",
+  "expectedAgents",
+]);
+
+function cloneExpectedRoute(expected = {}) {
+  const copy = { ...expected };
+  for (const field of NEGATIVE_EXPECTATION_ARRAY_FIELDS) {
+    if (Array.isArray(copy[field])) copy[field] = [...copy[field]];
+  }
+  return copy;
+}
+
+function cloneCatalogFixture(fixture) {
+  if (!fixture) return undefined;
+  return {
+    ...fixture,
+    publishedCommands: Array.isArray(fixture.publishedCommands) ? [...fixture.publishedCommands] : [],
+    omittedCommands: Array.isArray(fixture.omittedCommands) ? [...fixture.omittedCommands] : [],
+  };
+}
+
+function cloneNegativeRouteEntry(entry) {
+  const copy = {
+    ...entry,
+    protects: [...entry.protects],
+    expected: cloneExpectedRoute(entry.expected),
+  };
+  const catalogFixture = cloneCatalogFixture(entry.catalogFixture);
+  if (catalogFixture) copy.catalogFixture = catalogFixture;
+  return copy;
+}
+
+export function getTriggerIntentNegativeCorpus() {
+  return TRIGGER_INTENT_NEGATIVE_CORPUS.map(cloneNegativeRouteEntry);
+}
+
 export function getTriggerIntentCorpus() {
   return TRIGGER_INTENT_CORPUS.map((entry) => ({
     ...entry,
@@ -793,6 +1211,57 @@ export function validateTriggerIntentCorpus(corpus = TRIGGER_INTENT_CORPUS) {
     }
     if (!Array.isArray(entry.prerequisites) || !Array.isArray(entry.requiredSafety)) {
       issues.push({ id: prefix, code: "bad-arrays", message: "prerequisites and requiredSafety must be arrays" });
+    }
+  }
+
+  return { pass: issues.length === 0, issues };
+}
+
+export function validateTriggerIntentNegativeCorpus(corpus = TRIGGER_INTENT_NEGATIVE_CORPUS) {
+  const issues = [];
+  const ids = new Set();
+  const validLocales = new Set(["en", "ru"]);
+  const validRouteKinds = new Set(["expected-route", "expected-non-route", "expected-command", "expected-hard-stop"]);
+
+  for (const [index, entry] of corpus.entries()) {
+    const prefix = entry?.id ?? "negative-entry-" + index;
+    for (const field of ["id", "phrase", "locale", "routeKind", "reason"]) {
+      if (typeof entry?.[field] !== "string" || entry[field].trim() === "") {
+        issues.push({ id: prefix, code: "missing-field", message: "Missing " + field });
+      }
+    }
+    if (ids.has(entry.id)) {
+      issues.push({ id: entry.id, code: "duplicate-id", message: "Duplicate negative corpus id " + entry.id });
+    }
+    ids.add(entry.id);
+    if (!validLocales.has(entry.locale)) {
+      issues.push({ id: prefix, code: "bad-locale", message: "locale must be ru or en" });
+    }
+    if (!validRouteKinds.has(entry.routeKind)) {
+      issues.push({ id: prefix, code: "bad-route-kind", message: "routeKind is not recognized" });
+    }
+    if (!Array.isArray(entry.protects) || entry.protects.length === 0) {
+      issues.push({ id: prefix, code: "bad-protects", message: "protects must list at least one route family" });
+    }
+    if (!entry.expected || typeof entry.expected !== "object" || Array.isArray(entry.expected)) {
+      issues.push({ id: prefix, code: "bad-expected", message: "expected route expectation is required" });
+      continue;
+    }
+    if (typeof entry.expected.intent !== "string" || entry.expected.intent.trim() === "") {
+      issues.push({ id: prefix, code: "missing-expected-intent", message: "expected.intent is required" });
+    }
+    if (!("command" in entry.expected)) {
+      issues.push({ id: prefix, code: "missing-expected-command", message: "expected.command must be explicit, including null for hard stops" });
+    }
+    for (const field of NEGATIVE_EXPECTATION_ARRAY_FIELDS) {
+      if (field in entry.expected && !Array.isArray(entry.expected[field])) {
+        issues.push({ id: prefix, code: "bad-expected-array", message: "expected." + field + " must be an array" });
+      }
+    }
+    if (entry.catalogFixture) {
+      if (!Array.isArray(entry.catalogFixture.publishedCommands) || !Array.isArray(entry.catalogFixture.omittedCommands)) {
+        issues.push({ id: prefix, code: "bad-catalog-fixture", message: "catalogFixture must list publishedCommands and omittedCommands arrays" });
+      }
     }
   }
 

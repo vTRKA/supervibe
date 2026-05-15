@@ -179,7 +179,7 @@ User-facing copy should say "run required specialists" or "continue from the
 last trusted stage"; reserve receipt/producers/stage ids for machine output and
 developer commands.
 
-Only pause when the user explicitly chooses stop/pause, the brief has a real ambiguity that blocks the next artifact, the Preference Coverage Matrix Gate is incomplete for a new/rebrand design run, the Design Flow State Machine requires explicit approval, a safety/policy gate requires explicit approval (for example Figma writeback, external upload, production mutation, or reusing an old artifact), or the final prototype/deck approval gate is reached. Do not stop after internal draft generation, storyboard, first screen, first review, or any other non-gated phase if the next stage can be completed with the current brief and safe defaults.
+Only pause when the user explicitly chooses stop/pause, the brief has a real ambiguity that blocks the next artifact, the Preference Coverage Matrix Gate is incomplete for a new/rebrand design run, the Design Flow State Machine requires explicit approval, a safety/policy gate requires explicit approval (for example Figma writeback, external upload, production mutation, or reusing an old artifact), or the final prototype approval gate is reached. Do not stop after internal draft generation, storyboard, first screen, first review, or any other non-gated phase if the next stage can be completed with the current brief and safe defaults.
 
 Every run must persist a `stageTriage` map in `.supervibe/artifacts/prototypes/<slug>/config.json`. Mark each stage as `required`, `reuse`, `delegated`, `skipped`, or `N/A` with rationale. Existing approved design systems enter `system-reuse mode` by default for prototype/refinement work, so the command reuses prior preference and visual-system decisions instead of forcing the user through a fresh eight-stage path. Existing candidate systems enter design-system review/resume mode and cannot unlock prototype generation.
 
@@ -266,11 +266,11 @@ Non-English visible labels:
 
 ## Design Intelligence Integration
 
-Design intelligence is an internal evidence source for this existing command, not a new workflow surface. Before style, palette, typography, chart, icon, presentation, collateral, mobile, or stack handoff decisions, design agents must run:
+Design intelligence is an internal evidence source for this existing command, not a new workflow surface. Before style, palette, typography, chart, icon, collateral, mobile, or stack handoff decisions, design agents must run:
 
 1. project memory preflight for accepted and rejected design decisions
 2. code search over tokens, components, prototypes, and brand assets
-3. internal `designContextPreflight()` or `searchDesignIntelligence()` lookup over the relevant local domains: `product`, `style`, `color`, `typography`, `ux`, `landing`, `app-interface`, `charts`, `icons`, `google-fonts`, `react-performance`, `ui-reasoning`, `stack`, `slides`, and `collateral`
+3. internal `designContextPreflight()` or `searchDesignIntelligence()` lookup over the relevant local domains: `product`, `style`, `color`, `typography`, `ux`, `landing`, `app-interface`, `charts`, `icons`, `google-fonts`, `react-performance`, `ui-reasoning`, `stack` and `collateral`
 
 The output must include `Design Intelligence Evidence` when retrieved rows influenced the decision. Generic lookup can suggest options, but the precedence order is strict: **approved design system > project memory > codebase patterns > accessibility constraints > external references**. The design system line item is valid only when `.supervibe/artifacts/prototypes/_design-system/manifest.json` has `status: approved`. External references are supplemental: use the internet only for current references, market examples, official platform docs, live competitor pages, or fresh visual evidence that local data cannot contain.
 
@@ -280,7 +280,7 @@ Use `docs/references/design-expert-knowledge.md` as the adapted UI/UX coverage c
 
 Run **Design Pass Triage** from the `Eight-Pass Expert Routine` for every substantial design request. This is an adaptive coverage map, not a mandatory eight-question path. Record each pass as `required | reuse | delegated | skipped | N/A` with rationale.
 
-Full eight-pass coverage is required for a new product, rebrand, missing design system, or material direction/audience change. If an approved design system already exists and the request is a prototype, screen, deck, or refinement inside that system, reuse preference intake and visual-system decisions and run only the relevant evidence, reference, IA/user-flow, responsive/platform, quality, and prototype/review/feedback passes. If the system is candidate or needs_revision, resume the design-system approval gate; do not treat it as prototype-ready. Do not force all eight passes for every prototype. If the current brief needs a missing token, component, asset, or interaction, ask one narrow extension approval question instead of reopening the full design system.
+Full eight-pass coverage is required for a new product, rebrand, missing design system, or material direction/audience change. If an approved design system already exists and the request is a prototype, screen, refinement inside that system, reuse preference intake and visual-system decisions and run only the relevant evidence, reference, IA/user-flow, responsive/platform, quality, and prototype/review/feedback passes. If the system is candidate or needs_revision, resume the design-system approval gate; do not treat it as prototype-ready. Do not force all eight passes for every prototype. If the current brief needs a missing token, component, asset, or interaction, ask one narrow extension approval question instead of reopening the full design system.
 
 Before finalizing direction, spec, prototype, review, or handoff, confirm the relevant domains are either covered or explicitly marked N/A with rationale:
 
@@ -319,10 +319,10 @@ Run a product-fit style matrix before committing to a visual direction: product 
 6. **Feedback loop after every delivery.** No silent "done" state — always ask for explicit approve / refine / try-alternative / stop.
 7. **Alternatives are first-class.** When user rejects, agent produces 2 alternatives with explicit tradeoffs, not random regen.
 8. **Approved → handoff** automatically invokes `supervibe:prototype-handoff` and copies prototype to `.supervibe/artifacts/prototypes/<slug>/handoff/` ready for development and promotion into the chosen stack later.
-9. **Existing design files are never reused silently.** If any `.supervibe/artifacts/prototypes/`, `.supervibe/artifacts/mockups/`, or `.supervibe/artifacts/presentations/` artifact exists and the brief does not explicitly say "continue/refine existing" or "new/from scratch", stop at Stage 0a and ask one artifact-mode question before reading or editing an old file.
-10. **Preview feedback button is mandatory.** Design preview servers must run with feedback overlay enabled. Do not pass `--no-feedback` for `.supervibe/artifacts/prototypes/`, `.supervibe/artifacts/mockups/`, or `.supervibe/artifacts/presentations/`; verify the visible `Feedback` button before presenting the preview URL.
+9. **Existing design files are never reused silently.** If any `.supervibe/artifacts/prototypes/`, `.supervibe/artifacts/mockups/`, or artifact exists and the brief does not explicitly say "continue/refine existing" or "new/from scratch", stop at Stage 0a and ask one artifact-mode question before reading or editing an old file.
+10. **Preview feedback button is mandatory.** Design preview servers must run with feedback overlay enabled. Do not pass `--no-feedback` for `.supervibe/artifacts/prototypes/`, `.supervibe/artifacts/mockups/`, or; verify the visible `Feedback` button before presenting the preview URL.
 11. **Draft-to-dev boundary is mandatory.** Draft visuals are not production guidance. Stack agents only implement from `approved prototype + final tokens` in the handoff bundle.
-12. **Design previews are silent by default.** Use `--daemon` for `.supervibe/artifacts/prototypes/`, `.supervibe/artifacts/mockups/`, and `.supervibe/artifacts/presentations/` preview servers. Use `--foreground` only for an explicit debugging request.
+12. **Design previews are silent by default.** Use `--daemon` for `.supervibe/artifacts/prototypes/`, `.supervibe/artifacts/mockups/`, and preview servers. Use `--foreground` only for an explicit debugging request.
 
 ## Invocation forms
 
@@ -383,7 +383,7 @@ What should I do?
 - Create an alternative next to the old one - keep the old artifact parked for comparison.
 ```
 
-Do not read, edit, copy, or treat any prior `.supervibe/artifacts/prototypes/<slug>/`, `.supervibe/artifacts/mockups/<slug>/`, or `.supervibe/artifacts/presentations/<slug>/` artifact as source until the user chooses. If the brief explicitly says "from scratch/new" then create a new slug. If it explicitly says "continue/refine existing" or names a path, reuse only that selected artifact.
+Do not read, edit, copy, or treat any prior `.supervibe/artifacts/prototypes/<slug>/`, `.supervibe/artifacts/mockups/<slug>/`, or artifact as source until the user chooses. If the brief explicitly says "from scratch/new" then create a new slug. If it explicitly says "continue/refine existing" or names a path, reuse only that selected artifact.
 
 **Step 0b/N: Target surface.** Ask the user the target surface (one question, markdown):
 

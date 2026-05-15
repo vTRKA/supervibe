@@ -1,0 +1,23 @@
+{
+  "fixture": "missing-runtime-receipts",
+  "intent": "negative plan-review fixture: named delegated work without runtime-issued receipts must fail",
+  "planReview": {
+    "planId": "synthetic-plan-review-negative",
+    "claimedStatus": "approved",
+    "namedInvocations": [
+      {
+        "role": "quality-gate-reviewer",
+        "type": "reviewer",
+        "claimed": true
+      },
+      {
+        "role": "workflow-validator",
+        "type": "validator",
+        "claimed": true
+      }
+    ],
+    "runtimeReceipts": []
+  },
+  "expectedGateResult": "fail",
+  "expectedReason": "review claims delegated reviewer and validator work but has no runtime-issued receipts"
+}

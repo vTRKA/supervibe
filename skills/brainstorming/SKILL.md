@@ -72,7 +72,7 @@ Do not write a durable spec until the Documentation Approval Gate is answered.
 
 ## Continuation Contract
 
-Do not stop after individual brainstorm sections. Continue until you complete the full requirements package, then show a Pre-documentation summary, Documentation Approval Gate, and Post-documentation summary. The user-facing recap must be a text-first summary and a human-first Decision Card with recommendation, `Step N/M` question, choices, resume cursor, and next command. It must expose `NEXT_USER_ACTIONS[]` with choices including approve spec and write plan and revise idea/spec. Emit the raw `NEXT_STEP_HANDOFF` only after the Documentation Approval Gate is answered and only after the Decision Card.
+Do not stop after individual brainstorm sections. Continue until you complete the full requirements package, then show a durable pre-spec summary, Documentation Approval Gate, and source-bound Post-documentation summary / Post-spec summary. The user-facing recap must be a text-first summary and a human-first Decision Card with recommendation, `Step N/M` question, choices, resume cursor, and next command. It must expose `NEXT_USER_ACTIONS[]` with choices including approve spec and write plan and revise idea/spec. Emit the raw `NEXT_STEP_HANDOFF` only after the Documentation Approval Gate is answered and only after the Decision Card.
 
 Do not write the spec until the user explicitly approves the documentation gate.
 
@@ -124,7 +124,7 @@ If a saved brainstorm, `NEXT_STEP_HANDOFF`, or workflow state exists and the use
     reported gaps.
 14. Score with the requirements confidence rubric; do not claim 10/10 unless
     every scorecard row has evidence or an explicit blocker.
-15. Print a post-documentation summary and a Decision Card built with `scripts/lib/supervibe-post-stage-actions.mjs`; then print the secondary raw `NEXT_STEP_HANDOFF` to `supervibe:writing-plans`; wait for the user's next-action choice.
+15. Print a source-bound post-spec summary built with `scripts/lib/supervibe-post-stage-actions.mjs`; it must include the spec path, source hash, markdown table, ASCII lifecycle map, added-and-why, deferred-and-why, validation result, and next actions. Then print the Decision Card and secondary raw `NEXT_STEP_HANDOFF` to `supervibe:writing-plans`; wait for the user's next-action choice.
 
 ## Examples
 

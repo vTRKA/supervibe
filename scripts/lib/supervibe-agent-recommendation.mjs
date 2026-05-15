@@ -13,7 +13,7 @@ import { selectHostAdapter } from "./supervibe-host-detector.mjs";
 
 const PROFILE_CHOICES = Object.freeze([
   choice("minimal", "Recommended default: core routing, review, debugging and detected stack specialists.", true),
-  choice("product-design", "Adds product, UX, prototype, presentation and polish agents."),
+  choice("product-design", "Adds product, UX, prototype and polish agents."),
   choice("full-stack", "Adds security, data, performance and ops coverage for larger systems."),
   choice("research-heavy", "Adds researcher-style agents for uncertain stacks and stale best practices."),
   choice("custom", "Lets the user add, remove or defer exact groups before writing files."),
@@ -27,14 +27,13 @@ const ADD_ON_CHOICES = Object.freeze([
   choice("creative-brand", "Add brand direction, copy and competitive design research."),
   choice("web-design", "Add web UI, accessibility and polish specialists without mobile or desktop designers."),
   choice("prototype", "Add prototype build and polish specialists."),
-  choice("presentation", "Add deck direction and presentation build specialists."),
   choice("mobile", "Add mobile UI design specialists only when a mobile target is intended."),
   choice("desktop", "Add Electron/Tauri desktop UI specialists only when a desktop target is intended."),
   choice("github-actions", "Opt-in GitHub Actions CI scaffold. Base scaffold creates no CI workflow."),
   choice("gitlab-ci", "Opt-in GitLab CI scaffold. Base scaffold creates no CI workflow."),
   choice("ci-ready", "Opt-in CI readiness notes without choosing a CI provider."),
   choice("redis", "Explicit add-on for Redis cache or queue architecture."),
-  choice("product-design-extended", "Legacy-compatible web product design add-on; target-specific mobile, desktop and presentation designers are separate add-ons."),
+  choice("product-design-extended", "Legacy-compatible web product design add-on; target-specific mobile and desktop designers are separate add-ons."),
   choice("network-ops", "Explicit add-on for read-only router/network diagnostics; never selected by default."),
 ]);
 
@@ -80,7 +79,6 @@ const ADD_ON_AGENTS = Object.freeze({
   "creative-brand": ["creative-director", "design-system-architect", "copywriter", "competitive-design-researcher"],
   "web-design": ["ux-ui-designer", "accessibility-reviewer", "ui-polish-reviewer"],
   prototype: ["prototype-builder", "ui-polish-reviewer"],
-  presentation: ["presentation-director", "presentation-deck-builder"],
   mobile: ["mobile-ui-designer"],
   desktop: ["electron-ui-designer", "tauri-ui-designer"],
   "product-design-extended": [

@@ -4,7 +4,7 @@ import { basename, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { artifactRoot } from "./supervibe-artifact-roots.mjs";
 
-const DESIGN_ROOTS = ["prototypes", "mockups", "presentations"];
+const DESIGN_ROOTS = ["prototypes", "mockups"];
 const RESERVED_PROTOTYPE_DIRS = new Set(["_brandbook", "_design-system"]);
 
 const FRESH_PATTERNS = [
@@ -32,7 +32,6 @@ const REUSE_PATTERNS = [
   /\brefine\b/i,
   /\.supervibe[\\/]artifacts[\\/]prototypes[\\/]/i,
   /\.supervibe[\\/]artifacts[\\/]mockups[\\/]/i,
-  /\.supervibe[\\/]artifacts[\\/]presentations[\\/]/i,
   /\bдоработ/i,
   /\bулучш/i,
   /\bпродолж/i,
@@ -201,11 +200,10 @@ async function collectArtifact(projectRoot, rootName, entryName) {
   const approvalPath = join(absPath, ".approval.json");
   const specPath = join(absPath, "spec.md");
   const indexPath = join(absPath, "index.html");
-  const deckPath = join(absPath, "deck.json");
   const config = await readJson(configPath);
   const approval = await readJson(approvalPath);
 
-  const signalPaths = [configPath, approvalPath, specPath, indexPath, deckPath];
+  const signalPaths = [configPath, approvalPath, specPath, indexPath];
   const signalStats = await Promise.all(signalPaths.map(safeStat));
   const presentSignals = signalStats
     .map((item, index) => item ? signalPaths[index] : null)

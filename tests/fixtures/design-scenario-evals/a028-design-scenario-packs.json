@@ -1,0 +1,534 @@
+{
+  "schemaVersion": 1,
+  "taskId": "A028",
+  "description": "Design scenario eval packs for active design capability proof. This is scaffolding for A029-A034 and is not a validator schema.",
+  "sourceOfTruth": [
+    "AGENTS.md",
+    ".supervibe/artifacts/plans/2026-05-15-supervibe-logic-10of10-modernization-plan.md",
+    "agents/_design",
+    "tests/fixtures/design-capability-plan.json",
+    "tests/fixtures/design-diversity-benchmark.json",
+    "tests/fixtures/scenario-evals/supervibe-user-flows.json"
+  ],
+  "globalRequirements": {
+    "notAccepted": [
+      "synthetic 15/15 invocation metrics",
+      "global-only design maturity",
+      "controller-authored specialist outputs",
+      "browser proof for non-UI-only copy/data tasks unless they emit UI"
+    ],
+    "receipts": [
+      "runtime-issued workflow receipt for every claimed specialist producer, reviewer, validator, or external tool invocation",
+      "hostInvocation.source and invocationId bound to durable outputs",
+      "scenario owner receipt separate from command or skill receipt when a named design agent owns the scenario"
+    ],
+    "retrieval": [
+      "project memory decision or explicit no-prior-memory reason",
+      "Code RAG citation or explicit non-code-artifact reason",
+      "CodeGraph symbol evidence when the scenario changes runtime code, agent wiring, or validator behavior"
+    ],
+    "browserRuntimeProof": [
+      "desktop and mobile viewport screenshots for UI-emitting scenarios",
+      "console and network diagnostics with secrets, cookies, localStorage, tokens, and private URLs excluded",
+      "interaction evidence for controls, navigation, animation, chart drilldown, or deck navigation when present",
+      "reduced-motion or non-motion fallback evidence for motion-heavy artifacts"
+    ],
+    "privacy": [
+      "synthetic fixtures by default",
+      "no raw provider config, tokens, cookies, localStorage, secrets, or private screenshots in public artifacts",
+      "sensitive browser captures must be private/non-committable and cannot satisfy public release evidence"
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "web-prototype-product-flow",
+      "requiredSurface": "web",
+      "intent": "Prove a web product prototype from brief through visual direction, responsive UI, runtime proof, and polish review.",
+      "primaryAgents": [
+        "creative-director",
+        "ux-ui-designer",
+        "prototype-builder",
+        "ui-polish-reviewer"
+      ],
+      "supportingAgents": [
+        "design-data-curator",
+        "design-system-architect",
+        "accessibility-reviewer",
+        "copywriter"
+      ],
+      "evidenceRequirements": [
+        "brief interpretation and target=web resolution",
+        "design-intelligence source packet with product, style, color, typography, UX, landing, app-interface, and creative-pack evidence",
+        "design diversity evidence when alternatives are shown",
+        "prototype capability plan if advanced interaction, charts, media, or dependency use is proposed",
+        "artifact links for direction, tokens or local CSS variables, prototype files, and review notes"
+      ],
+      "runtimeBrowserProof": {
+        "required": true,
+        "viewports": [
+          "desktop",
+          "mobile"
+        ],
+        "interactions": [
+          "primary navigation",
+          "primary task flow",
+          "focus state",
+          "reduced motion when applicable"
+        ],
+        "diagnostics": [
+          "console",
+          "network",
+          "screenshot"
+        ]
+      },
+      "acceptanceSignal": "A reviewer can trace the web artifact from brief to source evidence to runtime proof without relying on global maturity."
+    },
+    {
+      "id": "presentation-deck-storyline",
+      "requiredSurface": "deck",
+      "intent": "Prove deck design capability despite no dedicated deck agent in the current agents/_design tree.",
+      "primaryAgents": [
+        "creative-director",
+        "copywriter",
+        "design-system-architect"
+      ],
+      "supportingAgents": [
+        "prototype-builder",
+        "ui-polish-reviewer",
+        "accessibility-reviewer"
+      ],
+      "evidenceRequirements": [
+        "audience, narrative arc, slide count, and decision objective",
+        "brand/token reuse or documented deck-specific extension",
+        "slide-level hierarchy, chart/copy notes, and speaker-context evidence",
+        "export or preview artifact link when runtime deck tooling exists",
+        "documented absence of dedicated presentation-deck agents if still true at execution time"
+      ],
+      "runtimeBrowserProof": {
+        "required": "conditional",
+        "condition": "required when deck is emitted as HTML preview or interactive presentation; not required for outline-only copy proof",
+        "viewports": [
+          "desktop"
+        ],
+        "interactions": [
+          "next slide",
+          "previous slide",
+          "chart or build step when present"
+        ],
+        "diagnostics": [
+          "console",
+          "screenshot"
+        ]
+      },
+      "acceptanceSignal": "Deck proof is scenario-based and receipt-bound, not inferred from removed or missing presentation-specific agents."
+    },
+    {
+      "id": "mobile-native-critical-flow",
+      "requiredSurface": "mobile",
+      "intent": "Prove mobile-native UI judgment for a task-heavy flow with platform constraints and accessibility.",
+      "primaryAgents": [
+        "mobile-ui-designer",
+        "ux-ui-designer",
+        "accessibility-reviewer"
+      ],
+      "supportingAgents": [
+        "creative-director",
+        "design-system-architect",
+        "prototype-builder",
+        "ui-polish-reviewer",
+        "copywriter"
+      ],
+      "evidenceRequirements": [
+        "mobile-native target resolution and platform assumptions",
+        "touch target, safe-area, keyboard, permission, loading, empty, and error state plan",
+        "source packet with mobile-native creative pack, app-interface, typography, icons, and accessibility evidence",
+        "prototype or handoff artifact with iOS/Android distinctions when applicable"
+      ],
+      "runtimeBrowserProof": {
+        "required": true,
+        "viewports": [
+          "mobile"
+        ],
+        "interactions": [
+          "tap flow",
+          "form input",
+          "focus or accessibility state",
+          "reduced motion when applicable"
+        ],
+        "diagnostics": [
+          "console",
+          "screenshot"
+        ]
+      },
+      "acceptanceSignal": "Mobile capability is proven by platform-aware artifacts and runtime viewport evidence."
+    },
+    {
+      "id": "desktop-shell-operations",
+      "requiredSurface": "desktop",
+      "intent": "Prove desktop app UI capability for dense operational workflows in Tauri or Electron shells.",
+      "primaryAgents": [
+        "tauri-ui-designer",
+        "electron-ui-designer",
+        "ux-ui-designer"
+      ],
+      "supportingAgents": [
+        "design-system-architect",
+        "prototype-builder",
+        "ui-polish-reviewer",
+        "accessibility-reviewer",
+        "copywriter"
+      ],
+      "evidenceRequirements": [
+        "desktop viewport policy and shell target selection",
+        "menu, command palette, window chrome, density, resize, empty/error/loading state plan",
+        "source packet with app-interface, stack guidance, interaction patterns, and platform standards",
+        "artifact links for desktop shell mock, states, and reviewer notes"
+      ],
+      "runtimeBrowserProof": {
+        "required": true,
+        "viewports": [
+          "desktop",
+          "wide-desktop"
+        ],
+        "interactions": [
+          "resize behavior",
+          "keyboard navigation",
+          "command or menu flow",
+          "focus state"
+        ],
+        "diagnostics": [
+          "console",
+          "network when app preview loads remote assets",
+          "screenshot"
+        ]
+      },
+      "acceptanceSignal": "Desktop proof handles shell constraints instead of presenting a generic web dashboard."
+    },
+    {
+      "id": "design-system-token-component-contract",
+      "requiredSurface": "design-system",
+      "intent": "Prove design-system architecture from brand direction to tokens, components, states, and implementation handoff.",
+      "primaryAgents": [
+        "design-system-architect",
+        "creative-director"
+      ],
+      "supportingAgents": [
+        "ux-ui-designer",
+        "prototype-builder",
+        "accessibility-reviewer",
+        "ui-polish-reviewer",
+        "design-data-curator",
+        "copywriter"
+      ],
+      "evidenceRequirements": [
+        "approved or proposed brand direction with token rationale",
+        "component catalog scope and ownership contract",
+        "color, typography, spacing, motion, icon, and state token evidence",
+        "contrast, focus, disabled, error, empty, loading, and density states",
+        "handoff path to component library or custom implementation"
+      ],
+      "runtimeBrowserProof": {
+        "required": "conditional",
+        "condition": "required when a component specimen, styleboard, or prototype preview is emitted; not required for pure contract inventory",
+        "viewports": [
+          "desktop",
+          "mobile"
+        ],
+        "interactions": [
+          "component states",
+          "keyboard focus",
+          "theme or density toggle when present"
+        ],
+        "diagnostics": [
+          "console",
+          "screenshot"
+        ]
+      },
+      "acceptanceSignal": "The system proof names implementable tokens and component states, not only visual adjectives."
+    },
+    {
+      "id": "accessibility-review-remediation",
+      "requiredSurface": "accessibility",
+      "intent": "Prove accessibility review capability with actionable remediation for UI artifacts.",
+      "primaryAgents": [
+        "accessibility-reviewer"
+      ],
+      "supportingAgents": [
+        "ux-ui-designer",
+        "prototype-builder",
+        "ui-polish-reviewer",
+        "design-system-architect",
+        "copywriter"
+      ],
+      "evidenceRequirements": [
+        "WCAG-oriented review checklist scoped to artifact type",
+        "keyboard path, focus order, landmark, label, contrast, motion, and error-message evidence",
+        "screen-size and zoom risk notes",
+        "remediation plan with owner and acceptance criteria"
+      ],
+      "runtimeBrowserProof": {
+        "required": true,
+        "viewports": [
+          "desktop",
+          "mobile"
+        ],
+        "interactions": [
+          "keyboard traversal",
+          "focus visible",
+          "form error",
+          "reduced motion"
+        ],
+        "diagnostics": [
+          "console",
+          "screenshot",
+          "accessibility tree or DOM evidence when available"
+        ]
+      },
+      "acceptanceSignal": "Accessibility proof is artifact-specific and includes fixes, not just a checklist pass claim."
+    },
+    {
+      "id": "data-visualization-decision-surface",
+      "requiredSurface": "data-viz",
+      "intent": "Prove chart and dense data interface capability using synthetic data and chart-specific accessibility.",
+      "primaryAgents": [
+        "data-visualization-specialist",
+        "design-data-curator"
+      ],
+      "supportingAgents": [
+        "ux-ui-designer",
+        "prototype-builder",
+        "accessibility-reviewer",
+        "ui-polish-reviewer",
+        "copywriter"
+      ],
+      "evidenceRequirements": [
+        "synthetic dataset contract with edge cases",
+        "chart selection rationale and rejected chart alternatives",
+        "axis, scale, annotation, tooltip, legend, empty, loading, and error state plan",
+        "table or text fallback for chart meaning",
+        "color semantics and contrast evidence"
+      ],
+      "runtimeBrowserProof": {
+        "required": true,
+        "viewports": [
+          "desktop",
+          "mobile"
+        ],
+        "interactions": [
+          "tooltip or drilldown",
+          "filter state",
+          "legend behavior",
+          "fallback table access"
+        ],
+        "diagnostics": [
+          "console",
+          "screenshot"
+        ]
+      },
+      "acceptanceSignal": "Data visualization proof shows decision accuracy, accessibility, and responsive behavior with synthetic data."
+    },
+    {
+      "id": "copy-voice-conversion-flow",
+      "requiredSurface": "copy",
+      "intent": "Prove UX/product copy capability for voice, conversion, empty/error states, and regulated-risk wording.",
+      "primaryAgents": [
+        "copywriter"
+      ],
+      "supportingAgents": [
+        "creative-director",
+        "ux-ui-designer",
+        "accessibility-reviewer",
+        "design-system-architect"
+      ],
+      "evidenceRequirements": [
+        "audience, intent, voice, trust burden, and regulated-risk classification",
+        "headline, CTA, onboarding, empty, error, success, disclosure, and microcopy variants",
+        "plain-language and accessibility review notes",
+        "approved/rejected wording rationale and source packet when factual claims are used"
+      ],
+      "runtimeBrowserProof": {
+        "required": "conditional",
+        "condition": "required when copy is placed into a UI artifact; not required for standalone copy deck or voice matrix",
+        "viewports": [
+          "desktop",
+          "mobile when UI-bound"
+        ],
+        "interactions": [
+          "form error or CTA path when UI-bound"
+        ],
+        "diagnostics": [
+          "screenshot when UI-bound"
+        ]
+      },
+      "acceptanceSignal": "Copy proof distinguishes standalone language quality from UI-bound runtime readability."
+    }
+  ],
+  "agentCoverage": [
+    {
+      "agentId": "accessibility-reviewer",
+      "path": "agents/_design/accessibility-reviewer.md",
+      "coverage": [
+        "accessibility-review-remediation"
+      ],
+      "supportingCoverage": [
+        "web-prototype-product-flow",
+        "mobile-native-critical-flow",
+        "desktop-shell-operations",
+        "design-system-token-component-contract",
+        "data-visualization-decision-surface",
+        "copy-voice-conversion-flow"
+      ],
+      "exemption": null
+    },
+    {
+      "agentId": "copywriter",
+      "path": "agents/_design/copywriter.md",
+      "coverage": [
+        "copy-voice-conversion-flow"
+      ],
+      "supportingCoverage": [
+        "presentation-deck-storyline",
+        "web-prototype-product-flow",
+        "mobile-native-critical-flow",
+        "desktop-shell-operations",
+        "design-system-token-component-contract",
+        "data-visualization-decision-surface"
+      ],
+      "exemption": null
+    },
+    {
+      "agentId": "creative-director",
+      "path": "agents/_design/creative-director.md",
+      "coverage": [
+        "web-prototype-product-flow",
+        "presentation-deck-storyline",
+        "design-system-token-component-contract"
+      ],
+      "supportingCoverage": [
+        "mobile-native-critical-flow",
+        "desktop-shell-operations",
+        "copy-voice-conversion-flow"
+      ],
+      "exemption": null
+    },
+    {
+      "agentId": "data-visualization-specialist",
+      "path": "agents/_design/data-visualization-specialist.md",
+      "coverage": [
+        "data-visualization-decision-surface"
+      ],
+      "supportingCoverage": [],
+      "exemption": null
+    },
+    {
+      "agentId": "design-data-curator",
+      "path": "agents/_design/design-data-curator.md",
+      "coverage": [
+        "data-visualization-decision-surface"
+      ],
+      "supportingCoverage": [
+        "web-prototype-product-flow",
+        "design-system-token-component-contract"
+      ],
+      "exemption": null
+    },
+    {
+      "agentId": "design-system-architect",
+      "path": "agents/_design/design-system-architect.md",
+      "coverage": [
+        "design-system-token-component-contract"
+      ],
+      "supportingCoverage": [
+        "web-prototype-product-flow",
+        "presentation-deck-storyline",
+        "mobile-native-critical-flow",
+        "desktop-shell-operations",
+        "accessibility-review-remediation",
+        "copy-voice-conversion-flow"
+      ],
+      "exemption": null
+    },
+    {
+      "agentId": "electron-ui-designer",
+      "path": "agents/_design/electron-ui-designer.md",
+      "coverage": [
+        "desktop-shell-operations"
+      ],
+      "supportingCoverage": [],
+      "exemption": null
+    },
+    {
+      "agentId": "extension-ui-designer",
+      "path": "agents/_design/extension-ui-designer.md",
+      "coverage": [],
+      "supportingCoverage": [],
+      "exemption": "A028 required surfaces do not include browser-extension UI. Extension proof should be added as a separate scenario if A029-A034 route a design target to extension."
+    },
+    {
+      "agentId": "mobile-ui-designer",
+      "path": "agents/_design/mobile-ui-designer.md",
+      "coverage": [
+        "mobile-native-critical-flow"
+      ],
+      "supportingCoverage": [],
+      "exemption": null
+    },
+    {
+      "agentId": "prototype-builder",
+      "path": "agents/_design/prototype-builder.md",
+      "coverage": [
+        "web-prototype-product-flow"
+      ],
+      "supportingCoverage": [
+        "presentation-deck-storyline",
+        "mobile-native-critical-flow",
+        "desktop-shell-operations",
+        "design-system-token-component-contract",
+        "accessibility-review-remediation",
+        "data-visualization-decision-surface"
+      ],
+      "exemption": null
+    },
+    {
+      "agentId": "tauri-ui-designer",
+      "path": "agents/_design/tauri-ui-designer.md",
+      "coverage": [
+        "desktop-shell-operations"
+      ],
+      "supportingCoverage": [],
+      "exemption": null
+    },
+    {
+      "agentId": "ui-polish-reviewer",
+      "path": "agents/_design/ui-polish-reviewer.md",
+      "coverage": [
+        "web-prototype-product-flow"
+      ],
+      "supportingCoverage": [
+        "presentation-deck-storyline",
+        "mobile-native-critical-flow",
+        "desktop-shell-operations",
+        "design-system-token-component-contract",
+        "accessibility-review-remediation",
+        "data-visualization-decision-surface"
+      ],
+      "exemption": null
+    },
+    {
+      "agentId": "ux-ui-designer",
+      "path": "agents/_design/ux-ui-designer.md",
+      "coverage": [
+        "web-prototype-product-flow",
+        "mobile-native-critical-flow",
+        "desktop-shell-operations"
+      ],
+      "supportingCoverage": [
+        "accessibility-review-remediation",
+        "data-visualization-decision-surface",
+        "copy-voice-conversion-flow",
+        "design-system-token-component-contract"
+      ],
+      "exemption": null
+    }
+  ]
+}

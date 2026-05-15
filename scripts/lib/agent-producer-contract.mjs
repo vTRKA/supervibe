@@ -92,6 +92,23 @@ function normalizeHostInvocationProof(rootDir = process.cwd(), proof = null) {
   return out;
 }
 
+function selectHostInvocationRecord(matches = [], { proof = {}, expectedAgentId = null } = {}) {
+  if (!matches.length) return null;
+  const valid = matches.filter((entry) => !entry.__invalidJson);
+  if (proof.taskSummaryHash) {
+    const exact = valid.find((entry) => {
+      return (!expectedAgentId || entry.agent_id === expectedAgentId)
+        && taskSummaryHash(entry.task_summary || "") === proof.taskSummaryHash;
+    });
+    if (exact) return exact;
+  }
+  if (expectedAgentId) {
+    const sameAgent = valid.find((entry) => entry.agent_id === expectedAgentId);
+    if (sameAgent) return sameAgent;
+  }
+  return valid[0] || matches[0];
+}
+
 export function validateHostInvocationProof(rootDir = process.cwd(), receipt = {}, options = {}) {
   if (!isHostAgentReceipt(receipt)) return [];
 
@@ -121,7 +138,8 @@ export function validateHostInvocationProof(rootDir = process.cwd(), receipt = {
   }
 
   const invocationLog = options.agentInvocationLog || readAgentInvocationLog(rootDir);
-  const match = invocationLog.find((entry) => entry.invocation_id === proof.invocationId);
+  const matches = invocationLog.filter((entry) => entry.invocation_id === proof.invocationId);
+  const match = selectHostInvocationRecord(matches, { proof, expectedAgentId });
   if (!match) {
     issues.push({
       code: "missing-host-agent-invocation",

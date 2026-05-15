@@ -14,6 +14,21 @@ and use the same manifest rows.
 
 Checked date for all rows: 2026-05-13.
 
+## Host-Neutral Capability Names
+
+Supervibe agent matching and provider handoff use stable capability names instead
+of provider-specific MCP server or tool ids. These names are selectors, not a
+claim that the configured host currently exposes the backing tool.
+
+| Capability | Meaning | Common backing surfaces |
+| --- | --- | --- |
+| `browser` | Browser runtime automation, screenshots, DOM snapshots, and preview QA | Playwright MCP, browser preview tools, provider browser automation |
+| `context7` | Current library and framework documentation lookup | Context7 MCP or equivalent provider docs retrieval |
+| `figma` | Figma design source extraction and read-only asset/token evidence | Figma MCP, exported Figma files, approved local design exports |
+| `firecrawl` | Web research, scraping, and source capture | Firecrawl MCP, provider web search or scrape tools |
+| `openai-docs` | OpenAI developer documentation and API reference lookup | OpenAI developer docs MCP, official OpenAI docs retrieval |
+| `tauri` | Tauri desktop, webview, IPC, logs, and window testing | Tauri MCP, Tauri CLI/runtime, desktop webview test hooks |
+
 | Provider | Config path | Instructions path | Agents | Memory | MCP | Hooks | Background execution | Permissions | Schema | Sources |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Codex | `~/.codex/config.toml`; trusted project `.codex/config.toml` | `AGENTS.md`, `AGENTS.override.md`, `project_doc_max_bytes`, `project_doc_fallback_filenames` | Built-in multi-agent runtime plus `~/.codex/agents/` and `.codex/agents/`; `[agents].max_threads`, `max_depth`, `job_max_runtime_seconds` | `[features].memories`, `[memories]`, local `CODEX_HOME` / `sqlite_home` state | `[mcp_servers.<id>]` stdio or streamable HTTP with enabled/disabled tools, scopes, startup and tool timeouts | `[features].codex_hooks`; inline `[hooks]` or hook files; managed hooks in requirements | Local spawned agent jobs plus experimental `/goal` durable objectives through `[features].goals`; no automatic remote writeback by Supervibe | `approval_policy`, `sandbox_mode`, `default_permissions`, `web_search`, named filesystem and network permission profiles | TOML config reference plus `config-schema.json`; `features.apps`, `features.goals`, `apps._default`, and `tool_suggest.discoverables` are documented config surfaces | https://developers.openai.com/codex/config-reference; https://developers.openai.com/codex/subagents; https://developers.openai.com/codex/use-cases/follow-goals; Checked: 2026-05-13 |

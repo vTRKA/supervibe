@@ -19,7 +19,7 @@ test("all agents have generated per-agent eval packs and score heatmap rows", ()
   const packs = buildPerAgentEvalPacks({ rootDir: process.cwd() });
   const heatmap = buildAgentCapabilityHeatmap({ rootDir: process.cwd() });
 
-  assert.equal(records.agents.length, 98);
+  assert.equal(records.agents.length, 96);
   assert.equal(packs.length, records.agents.length);
   assert.equal(heatmap.length, records.agents.length);
   assert.ok(packs.every((pack) => pack.cases.length >= 3));
@@ -49,10 +49,10 @@ test("empirical hardening validator covers evals, heatmap, stack fixtures, and R
   const report = validateAgentEmpiricalHardening({ rootDir: process.cwd() });
 
   assert.equal(report.pass, true, formatAgentEmpiricalHardeningReport(report));
-  assert.equal(report.checkedAgents, 98);
-  assert.equal(report.evalPacks, 98);
-  assert.ok(report.evalCases >= 294);
-  assert.equal(report.heatmapRows, 98);
+  assert.equal(report.checkedAgents, 96);
+  assert.equal(report.evalPacks, 96);
+  assert.ok(report.evalCases >= 288);
+  assert.equal(report.heatmapRows, 96);
   assert.ok(report.stackScenarios >= REQUIRED_STACK_SCENARIO_COUNT);
   assert.ok(report.russianCases >= 8);
   assert.ok(report.minimumScore >= 9);

@@ -70,7 +70,7 @@ runtime retrieval agree."**
 - `supervibe:code-search` - locate validators, search runtime, data loaders,
   and generated surfaces before editing CSV or JSON contracts.
 - `supervibe:design-intelligence` - query product, style, color, typography,
-  UX, app-interface, stack, slide, and collateral domains as runtime evidence.
+  UX, app-interface, stack, and collateral domains as runtime evidence.
 - `supervibe:audit` - run read-only source-coverage and maturity audits before
   proposing strengthen work.
 - `supervibe:verification` - capture command output for row counts, checksums,
@@ -98,7 +98,7 @@ Use local design intelligence first through `designContextPreflight()`,
 `searchDesignIntelligence()`, or `supervibe:design-intelligence` for
 `product`, `style`, `color`, `typography`, `ux`, `landing`, `app-interface`,
 `charts`, `icons`, `google-fonts`, `react-performance`, `ui-reasoning`,
-`stack`, `slides`, and `collateral`. External references are supplemental:
+`stack` and `collateral`. External references are supplemental:
 they never override project memory, current code evidence, approved tokens,
 accessibility constraints, or manifest source-variant metadata.
 
@@ -106,12 +106,11 @@ Design Pass Triage must stay explicit:
 
 | pass | required | reuse | delegated | skipped | N/A |
 | --- | --- | --- | --- | --- | --- |
-| product, style, color, typography, ux, landing, app-interface, charts, icons, google-fonts, react-performance, ui-reasoning, stack, slides, collateral | new source family, changed canonical data, missing approved design system, or material direction change | approved design system or unchanged manifest already covers it | another specialist owns the pass | out of current scope with reason | not relevant to target |
+| product, style, color, typography, ux, landing, app-interface, charts, icons, google-fonts, react-performance, ui-reasoning, stack, collateral | new source family, changed canonical data, missing approved design system, or material direction change | approved design system or unchanged manifest already covers it | another specialist owns the pass | out of current scope with reason | not relevant to target |
 
 Local folder map: `skills/design-intelligence/data/manifest.json`,
 `skills/design-intelligence/data/*.csv`,
 `skills/design-intelligence/data/stacks/`,
-`skills/design-intelligence/data/slides/`,
 `skills/design-intelligence/data/collateral/`,
 `skills/design-intelligence/references/`, and
 `references/design-intelligence-source-coverage.md`.

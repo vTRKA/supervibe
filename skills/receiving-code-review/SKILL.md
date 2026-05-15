@@ -238,7 +238,7 @@ Compact table form:
 ```
 | Finding | Severity | File line | Decision | Action | Evidence | Verification | Residual risk |
 | #1 ... | MAJOR | src/a.ts:42 | ACCEPT | fixed | reviewer evidence + diff | npm test exit 0 | none |
-| #2 ... | MINOR | docs/x.md:17 | REJECT-WITH-EVIDENCE | no code change | spec.md:42 | not applicable | none |
+| #2 ... | MINOR | <example-doc-path>.md:17 | REJECT-WITH-EVIDENCE | no code change | spec.md:42 | not applicable | none |
 | #3 ... | SUGGESTION | src/b.ts:88 | DEFER | follow-up reported | scope packet | not applicable | owner + trigger |
 ```
 

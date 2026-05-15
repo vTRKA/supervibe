@@ -110,6 +110,7 @@ const SEMANTIC_EPIC_GROUPING_VERSION = 1;
 const DEFAULT_SEMANTIC_EPIC_MAX_TASKS = 25;
 const DEFAULT_AGENT_STALL_TIMEOUT_MINUTES = 7;
 const DEFAULT_AGENT_STALL_MAX_RETRIES = 2;
+const ADOPTABLE_TASK_RECEIPT_SUBJECT_TYPES = new Set(["agent", "worker", "reviewer"]);
 const SEMANTIC_EPIC_BUCKETS = Object.freeze([
   {
     key: "ui",
@@ -2716,6 +2717,9 @@ async function runReceiptAdoptionCommand({ rootDir, args } = {}) {
   console.log(`GRAPH: ${graphPath}`);
   console.log(`APPLIED: ${!previewOnly}`);
   console.log(`ALLOW_UNBOUND_RECEIPTS: ${Boolean(args["allow-unbound-receipts"])}`);
+  if (args["allow-unbound-receipts"]) {
+    console.log("UNSAFE_BYPASS_REVIEW_REQUIRED: --allow-unbound-receipts only bypasses graph-source binding; it does not bypass subject type, hostInvocation, trust, graphId, or taskId checks.");
+  }
   console.log(`CANDIDATES: ${adoption.candidates.length}`);
   for (const candidate of adoption.candidates) {
     console.log(`CANDIDATE: ${candidate.taskId}<=${candidate.receiptId} SOURCE: ${candidate.matchSource}`);
@@ -2724,7 +2728,12 @@ async function runReceiptAdoptionCommand({ rootDir, args } = {}) {
     console.log(`REJECTED: ${rejected.receiptId || rejected.taskId || "unknown"} REASON: ${rejected.reason}`);
   }
   if (previewOnly) {
-    console.log(`NEXT_ACTION: run /supervibe-loop --adopt-completed --apply --file ${graphPath}${adoption.candidates.length ? "" : " after adding --map <task-id>=<receipt-id>"}`);
+    const previewNextAction = adoption.candidates.length
+      ? `run /supervibe-loop --adopt-completed --apply --file ${graphPath}`
+      : adoption.rejected.length
+        ? "inspect rejected receipt reasons, run the scoped repair path, then rerun adoption with trusted host-agent receipts"
+        : `run /supervibe-loop --adopt-completed --apply --file ${graphPath} after adding --map <task-id>=<receipt-id>`;
+    console.log(`NEXT_ACTION: ${previewNextAction}`);
     if (adoption.rejected.some((item) => item.reason === "ambiguous-task-match")) process.exitCode = 1;
     return;
   }
@@ -2834,9 +2843,12 @@ function validateReceiptAdoptionForWorkItem({ rootDir, graph, taskId, receiptId,
   if (resolvedReceipt && !["/supervibe-loop", "/supervibe-execute-plan"].includes(String(resolvedReceipt.command || ""))) {
     issues.push(`receipt command is not adoptable: ${resolvedReceipt.command || "unknown"}`);
   }
-  const subjectType = String(resolvedReceipt?.subjectType || "").toLowerCase();
-  if (resolvedReceipt && !["agent", "worker", "reviewer"].includes(subjectType)) {
-    issues.push(`receipt subject type is not adoptable: ${resolvedReceipt.subjectType || "unknown"}`);
+  if (resolvedReceipt) {
+    const adoptionClass = classifyReceiptForTaskAdoption(resolvedReceipt);
+    if (!adoptionClass.adoptable) {
+      issues.push(adoptionClass.reason);
+      if (adoptionClass.repairHint) issues.push(`receipt adoption repair: ${adoptionClass.repairHint}`);
+    }
   }
   if (resolvedReceipt) {
     const trust = validateWorkflowReceiptTrust(rootDir, resolvedReceipt, { requireHostInvocationProof: true });
@@ -2851,6 +2863,35 @@ function validateReceiptAdoptionForWorkItem({ rootDir, graph, taskId, receiptId,
     }
   }
   return { pass: issues.length === 0, issues, receipt: resolvedReceipt || null, receiptId: normalizedReceiptId, taskId: normalizedTaskId };
+}
+
+function classifyReceiptForTaskAdoption(receipt = {}) {
+  const subjectType = String(receipt.subjectType || "").toLowerCase();
+  const displayType = receipt.subjectType || "unknown";
+  if (ADOPTABLE_TASK_RECEIPT_SUBJECT_TYPES.has(subjectType)) return { adoptable: true, reason: null, repairHint: null };
+  if (subjectType === "command") {
+    return {
+      adoptable: false,
+      reason: `receipt subject type is not adoptable: ${displayType}; controller-authored command/diagnostic receipts cannot satisfy durable task completion or required producer/reviewer/worker/validator proof`,
+      repairHint: durableTaskAdoptionRepairHint(),
+    };
+  }
+  if (subjectType === "validator") {
+    return {
+      adoptable: false,
+      reason: `receipt subject type is not adoptable: ${displayType}; validator receipts are release/validator-gate evidence and cannot substitute for producer/reviewer/worker task proof`,
+      repairHint: "cite validator receipts at the validator or release gate, and use host agent/worker/reviewer receipts for task adoption",
+    };
+  }
+  return {
+    adoptable: false,
+    reason: `receipt subject type is not adoptable: ${displayType}; task adoption accepts only host-invoked agent, worker, or reviewer receipts`,
+    repairHint: durableTaskAdoptionRepairHint(),
+  };
+}
+
+function durableTaskAdoptionRepairHint() {
+  return "run the real host agent/worker/reviewer, log its host invocation, then issue a receipt with --agent/--worker/--reviewer, --host-invocation-id, --graph-id, and --task-id";
 }
 
 function assertCanonicalWorkItemGraphPath(rootDir, graphPath, operation = "work item graph mutation") {
@@ -2911,10 +2952,21 @@ function inferReceiptAdoptionTaskId({ receipt = {}, graph = {} } = {}) {
 }
 
 function receiptTaskBinding(receipt = {}) {
+  const taskId = receipt.taskId || receipt.workItemId || receipt.graphTaskId || receipt.workItemBinding?.taskId || null;
+  const graphId = receipt.graphId || receipt.workGraphId || receipt.workItemBinding?.graphId || inferGraphIdFromTaskId(taskId) || null;
   return {
-    graphId: receipt.graphId || receipt.workGraphId || receipt.workItemBinding?.graphId || null,
-    taskId: receipt.taskId || receipt.workItemId || receipt.graphTaskId || receipt.workItemBinding?.taskId || null,
+    graphId,
+    taskId,
   };
+}
+
+function inferGraphIdFromTaskId(taskId = "") {
+  const normalizedTaskId = String(taskId || "").trim();
+  if (!normalizedTaskId) return null;
+  const match = /^(.*?)-(?:a\d{3,}|t\d+[a-z]?(?:-sub\d+)?)$/i.exec(normalizedTaskId);
+  const graphId = match?.[1] || null;
+  if (!graphId || graphId === normalizedTaskId) return null;
+  return graphId;
 }
 
 function receiptMatchesGraphSource(receipt = {}, graph = {}) {

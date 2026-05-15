@@ -180,15 +180,15 @@ export function scoreDesignAgentMaturity({ checks = {} } = {}) {
   const intelligencePass = checks.intelligence?.sourceCoverage?.pass === true
     && checks.intelligence?.expertKnowledge?.pass === true
     && checks.intelligence?.referenceQuality?.pass === true
-    && Number(checks.intelligence?.domains || 0) >= 44
-    && Number(checks.intelligence?.rows || 0) >= 4165
+    && Number(checks.intelligence?.domains || 0) >= 36
+    && Number(checks.intelligence?.rows || 0) >= 4052
     && checks.intelligence?.manifestHasPrecedence === true;
   add(
     "design-intelligence-resources",
     1.5,
     intelligencePass,
     `sourceCoverage=${checks.intelligence?.sourceCoverage?.pass === true}, expertKnowledge=${checks.intelligence?.expertKnowledge?.pass === true}, referenceQuality=${checks.intelligence?.referenceQuality?.pass === true}, domains=${checks.intelligence?.domains || 0}, rows=${checks.intelligence?.rows || 0}, precedence=${checks.intelligence?.manifestHasPrecedence === true}`,
-    "Restore the local design intelligence manifest, reference cards, design expert knowledge coverage, and reference-quality gate.",
+    "Restore the local design intelligence manifest, reference cards, design expert knowledge coverage, and reference-quality gate for the active non-presentation domains.",
   );
 
   const workflowPass = checks.workflow?.readiness?.pass === true

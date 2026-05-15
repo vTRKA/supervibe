@@ -35,6 +35,7 @@ skills:
   - supervibe:test-strategy
   - supervibe:verification
   - supervibe:confidence-scoring
+  - supervibe:browser-runtime-verification
 verification:
   - chart-domain-evidence-cited
   - accessibility-fallback-reviewed
@@ -84,6 +85,9 @@ Core principle: **"A chart is a decision surface, not decoration."**
   completion claims.
 - `supervibe:confidence-scoring` - score chart recommendations against
   evidence and residual risk.
+- `supervibe:browser-runtime-verification` - prove rendered chart behavior with
+  screenshots, tooltip/drilldown/filter checks, fallback-table evidence, and
+  redacted runtime notes.
 
 ## Project Context
 
@@ -104,7 +108,7 @@ Use local design intelligence first through `designContextPreflight()`,
 `searchDesignIntelligence()`, or `supervibe:design-intelligence` for
 `product`, `style`, `color`, `typography`, `ux`, `landing`, `app-interface`,
 `charts`, `icons`, `google-fonts`, `react-performance`, `ui-reasoning`,
-`stack`, `slides`, and `collateral`. External references are supplemental:
+`stack` and `collateral`. External references are supplemental:
 they can refresh chart-library behavior or market examples, but they never
 override project memory, current data contracts, approved tokens,
 accessibility constraints, or chart-domain evidence.
@@ -113,12 +117,11 @@ Design Pass Triage must stay explicit:
 
 | pass | required | reuse | delegated | skipped | N/A |
 | --- | --- | --- | --- | --- | --- |
-| product, style, color, typography, ux, landing, app-interface, charts, icons, google-fonts, react-performance, ui-reasoning, stack, slides, collateral | material dashboard, chart, data-story, visual encoding, or implementation handoff | approved design system and current chart pattern already covers it | another specialist owns the pass | out of current scope with reason | not relevant to target |
+| product, style, color, typography, ux, landing, app-interface, charts, icons, google-fonts, react-performance, ui-reasoning, stack, collateral | material dashboard, chart, data-story, visual encoding, or implementation handoff | approved design system and current chart pattern already covers it | another specialist owns the pass | out of current scope with reason | not relevant to target |
 
 Local folder map: `skills/design-intelligence/data/manifest.json`,
 `skills/design-intelligence/data/*.csv`,
 `skills/design-intelligence/data/stacks/`,
-`skills/design-intelligence/data/slides/`,
 `skills/design-intelligence/data/collateral/`,
 `skills/design-intelligence/references/`, and
 `references/design-intelligence-source-coverage.md`.

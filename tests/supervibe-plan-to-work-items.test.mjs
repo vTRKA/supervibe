@@ -460,6 +460,42 @@ test("atomization keeps suffix task ids distinct", () => {
   assert.ok(t55a.blocks.includes(t55b.itemId));
 });
 
+test("atomization keeps phase-scoped dotted task ids distinct", () => {
+  const graph = atomizePlanToWorkItems(`# Phase Dotted Implementation Plan
+
+Critical path: P1.1 -> P1.2 -> P2.1
+
+## Phase 1 - One Next Action Engine
+
+### Task P1.1 - Canonical State Inventory
+**Acceptance Criteria:**
+- Inventory is complete.
+
+### Task P1.2 - Blocker Priority Model
+**Acceptance Criteria:**
+- Priority model is deterministic.
+
+## Phase 2 - Thin Facade
+
+### Task P2.1 - Facade Contract
+**Acceptance Criteria:**
+- Contract is documented.
+`, {
+    planPath: ".supervibe/artifacts/plans/phase-dotted.md",
+    epicId: "epic-phase-dotted",
+    planReviewPassed: true,
+  });
+
+  assert.equal(graph.validation.valid, true);
+  assert.ok(graph.items.some((item) => item.itemId === "epic-phase-dotted-p1-1"));
+  assert.ok(graph.items.some((item) => item.itemId === "epic-phase-dotted-p1-2"));
+  assert.ok(graph.items.some((item) => item.itemId === "epic-phase-dotted-p2-1"));
+  assert.equal(graph.items.find((item) => item.itemId === "epic-phase-dotted-p1-1").title, "Canonical State Inventory");
+
+  const ids = graph.items.map((item) => item.itemId);
+  assert.equal(new Set(ids).size, ids.length);
+});
+
 test("atomization collapses plan steps when expansion would exceed child item budget", () => {
   const plan = buildLargeReviewedPlanWithSteps({ taskCount: 30, stepsPerTask: 3 });
   const graph = atomizePlanToWorkItems(plan, {
@@ -748,4 +784,26 @@ test("loop CLI rejects invalid reviewed plan without writing graph artifacts", a
   } finally {
     await rm(temp, { recursive: true, force: true });
   }
+});
+
+
+test("phase-level critical path creates executable task chain", () => {
+  const graph = atomizePlanToWorkItems("# Phase Path Plan\n\n## Critical Path\n\n```text\nP0 review -> P1 engine -> P2 facade\n```\n\n## Phase 0 - Review\n\n### Task P0.1 - First gate\n\n**Acceptance Criteria:**\n- Gate is complete.\n\n### Task P0.2 - Second gate\n\n**Acceptance Criteria:**\n- Gate follows first.\n\n## Phase 1 - Engine\n\n### Task P1.1 - Inventory\n\n**Acceptance Criteria:**\n- Inventory is complete.\n\n### Task P1.2 - Priority model\n\n**Acceptance Criteria:**\n- Model follows inventory.\n\n## Phase 2 - Facade\n\n### Task P2.1 - Contract\n\n**Acceptance Criteria:**\n- Contract follows engine.\n", {
+    planPath: ".supervibe/artifacts/plans/phase-path.md",
+    epicId: "epic-phase-path",
+    planReviewPassed: true,
+  });
+
+  const p01 = graph.items.find((item) => item.itemId === "epic-phase-path-p0-1");
+  const p02 = graph.items.find((item) => item.itemId === "epic-phase-path-p0-2");
+  const p11 = graph.items.find((item) => item.itemId === "epic-phase-path-p1-1");
+  const p12 = graph.items.find((item) => item.itemId === "epic-phase-path-p1-2");
+  const p21 = graph.items.find((item) => item.itemId === "epic-phase-path-p2-1");
+
+  assert.equal(graph.validation.valid, true);
+  assert.ok(p02.blockedBy.includes(p01.itemId));
+  assert.ok(p11.blockedBy.includes(p02.itemId));
+  assert.ok(p12.blockedBy.includes(p11.itemId));
+  assert.ok(p21.blockedBy.includes(p12.itemId));
+  assert.deepEqual(graph.tasks.filter((task) => task.dependencies.length === 0).map((task) => task.id), [p01.itemId]);
 });

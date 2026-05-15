@@ -16,11 +16,11 @@ Moved content type: design-expert and prototype-specific reference gates
 
 ## Local Design Expert Reference
 
-Before producing design-facing output, read `docs/references/design-expert-knowledge.md` and run Design Pass Triage from the `Eight-Pass Expert Routine`. Do not force all eight passes for every prototype. Classify each pass as `required | reuse | delegated | skipped | N/A` with rationale. If an approved design system already exists and the request is a prototype, screen, deck, or refinement inside that system, reuse preference and visual-system decisions and run only the relevant evidence, reference, IA/user-flow, responsive/platform, quality, and prototype/review passes. If a candidate or needs_revision design system exists, resume the design-system approval gate instead of building. Full eight-pass coverage is required only for new products, rebrands, missing design systems, or material direction changes.
+Before producing design-facing output, read `docs/references/design-expert-knowledge.md` and run Design Pass Triage from the `Eight-Pass Expert Routine`. Do not force all eight passes for every prototype. Classify each pass as `required | reuse | delegated | skipped | N/A` with rationale. If an approved design system already exists and the request is a prototype, screen, refinement inside that system, reuse preference and visual-system decisions and run only the relevant evidence, reference, IA/user-flow, responsive/platform, quality, and prototype/review passes. If a candidate or needs_revision design system exists, resume the design-system approval gate instead of building. Full eight-pass coverage is required only for new products, rebrands, missing design systems, or material direction changes.
 
-Query local design intelligence through `designContextPreflight()` or `searchDesignIntelligence()` for the relevant local domains: `product`, `style`, `color`, `typography`, `ux`, `landing`, `app-interface`, `charts`, `icons`, `google-fonts`, `react-performance`, `ui-reasoning`, `stack`, `slides`, and `collateral`. External references are supplemental: use the internet only for current references, market examples, official platform docs, live competitor pages, or fresh visual evidence that local data cannot contain.
+Query local design intelligence through `designContextPreflight()` or `searchDesignIntelligence()` for the relevant local domains: `product`, `style`, `color`, `typography`, `ux`, `landing`, `app-interface`, `charts`, `icons`, `google-fonts`, `react-performance`, `ui-reasoning`, `stack` and `collateral`. External references are supplemental: use the internet only for current references, market examples, official platform docs, live competitor pages, or fresh visual evidence that local data cannot contain.
 
-Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/design-intelligence/data/*.csv`, `skills/design-intelligence/data/stacks/`, `skills/design-intelligence/data/slides/`, `skills/design-intelligence/data/collateral/`, `skills/design-intelligence/references/`, and `references/design-intelligence-source-coverage.md`.
+Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/design-intelligence/data/*.csv`, `skills/design-intelligence/data/stacks/`, `skills/design-intelligence/data/collateral/`, `skills/design-intelligence/references/`, and `references/design-intelligence-source-coverage.md`.
 
 ### Dataset Family Matrix
 
@@ -31,7 +31,7 @@ Prototype setup must translate design-intelligence rows into build constraints:
 | product/style/color/typography | first-viewport hierarchy, palette, type scale, density, and token usage |
 | ux/app-interface | state matrix, keyboard/touch behavior, focus, forms, feedback, and platform-specific rules |
 | charts/icons/landing | chart shell, icon affordances, landing structure, and non-color fallback |
-| stack/collateral/slides | framework handoff, asset treatment, deck/collateral transfer, and implementation limits |
+| stack/collateral | framework handoff, asset treatment, collateral transfer, and implementation limits |
 
 If a prototype uses advanced visuals, data-viz, 3D, maps, animation libraries,
 or canvas, the matrix must connect those choices to tokens, accessibility, and
@@ -63,7 +63,7 @@ Moved content type: full prototype build procedure
 
 0. **MCP discovery**: invoke `supervibe:mcp-discovery` with category=`figma` for token + asset extraction. Fall back to WebFetch / manual import if MCP unavailable.
 1. **Search project memory** for prior prototypes of similar features — reuse interpretation precedents.
-2. **Artifact mode gate (MANDATORY)** — run `node "<resolved-supervibe-plugin-root>/scripts/lib/design-artifact-intake.mjs" --json --brief "<brief>"`. If existing artifacts are present and the brief is ambiguous, ask the user one question: continue an existing artifact, create a new design from scratch, or create an alternative next to the old one. Do not read, copy, or edit old `.supervibe/artifacts/prototypes/`, `.supervibe/artifacts/mockups/`, or `.supervibe/artifacts/presentations/` files until this choice is explicit.
+2. **Artifact mode gate (MANDATORY)** — run `node "<resolved-supervibe-plugin-root>/scripts/lib/design-artifact-intake.mjs" --json --brief "<brief>"`. If existing artifacts are present and the brief is ambiguous, ask the user one question: continue an existing artifact, create a new design from scratch, or create an alternative next to the old one. Do not read, copy, or edit old `.supervibe/artifacts/prototypes/` or `.supervibe/artifacts/mockups/` files until this choice is explicit.
 3. **Design system gate (MANDATORY)** - load `.supervibe/artifacts/prototypes/_design-system/design-flow-state.json` and `.supervibe/artifacts/prototypes/_design-system/manifest.json`. If `design_system.status !== "approved"` or any required section is missing from `approved_sections` (`palette`, `typography`, `spacing-density`, `radius-elevation`, `motion`, `component-set`, `copy-language`, `accessibility-platform`) -> STOP and tell user: "Design system is not approved yet. Return to the review packet and approve the missing sections; candidate status does not unlock prototype work." Do not proceed.
 
 3a. **Target-specific scaffolding.** Read `.supervibe/artifacts/prototypes/<feature>/config.json` for `target`. Branch directory layout:

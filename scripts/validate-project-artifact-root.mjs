@@ -25,7 +25,6 @@ const TEXT_EXTENSIONS = new Set(["", ".md", ".mjs", ".js", ".json", ".yaml", ".y
 const FORBIDDEN = Object.freeze([
   { label: "prototypes/", pattern: /(^|[^A-Za-z0-9_.\\/-])prototypes\//, canonical: ".supervibe/artifacts/prototypes/" },
   { label: "mockups/", pattern: /(^|[^A-Za-z0-9_.\\/-])mockups\//, canonical: ".supervibe/artifacts/mockups/" },
-  { label: "presentations/", pattern: /(^|[^A-Za-z0-9_.\\/-])presentations\//, canonical: ".supervibe/artifacts/presentations/" },
   { label: "docs/specs/", pattern: /docs\/specs\//, canonical: ".supervibe/artifacts/specs/" },
   { label: "docs/plans/", pattern: /docs\/plans\//, canonical: ".supervibe/artifacts/plans/" },
   { label: "docs/prd/", pattern: /docs\/prd\//, canonical: ".supervibe/artifacts/prd/" },

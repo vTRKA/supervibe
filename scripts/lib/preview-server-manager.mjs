@@ -320,7 +320,7 @@ function deriveRegistrySlug(root = '', target = null) {
     }
   }
   const normalized = String(root || '').replace(/\\/g, '/');
-  for (const segment of ['prototypes', 'mockups', 'presentations']) {
+  for (const segment of ['prototypes', 'mockups']) {
     const match = normalized.match(new RegExp(`/${segment}/([^/]+)`));
     if (match) return segment === 'prototypes' ? match[1] : `${segment.slice(0, -1)}:${match[1]}`;
   }

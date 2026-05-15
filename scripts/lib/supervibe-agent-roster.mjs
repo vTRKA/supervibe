@@ -99,7 +99,7 @@ export function formatAgentRosterMarkdown(roster = { agents: [], count: 0, categ
     "### Categories",
     "",
     "- Core workflow: process specialists for review, debugging, research, refactoring, and quality gates.",
-    "- Design and UI: product experience, visual direction, accessibility, prototypes, decks, and platform UI specialists.",
+    "- Design and UI: product experience, visual direction, accessibility, prototypes, and platform UI specialists.",
     "- Operations and security: architecture, infrastructure, AI, data, security, compliance, release, and production-risk specialists.",
     "- Product planning: PM, analytics, SEO, QA strategy, lifecycle, and systems-analysis specialists.",
     "- Stack categories: implementation or architecture specialists tied to a concrete technology stack.",

@@ -47,6 +47,7 @@ export async function buildCodeGraphContext({
     });
     const graphHealth = store.getGraphHealthMetrics();
     const quality = buildContextQuality({ retrievalPipeline, graphHealth, semanticAnchors, relatedFiles });
+    const unresolvedEdges = collectUnresolvedEdgeRows(store.db, { files: relatedFiles, limit: limit * 4 });
     const taskTypeGate = evaluateCodeGraphTaskTypeGate({
       taskType,
       quality,
@@ -57,6 +58,19 @@ export async function buildCodeGraphContext({
         graphNodes: dedupedGraph.length,
         impactNodes: impact.nodes.length,
       },
+    });
+    const impactSummary = summarizeCodeGraphQueryOutput({
+      queryType: "impact",
+      query: searchQuery,
+      seedNames,
+      impact,
+      graphEvidence: dedupedGraph,
+      relatedFiles,
+      graphHealth,
+      quality,
+      taskTypeGate,
+      unresolvedEdges,
+      limit,
     });
     const context = {
       schemaVersion: 1,
@@ -72,6 +86,7 @@ export async function buildCodeGraphContext({
       graphHealth,
       quality,
       taskTypeGate,
+      impactSummary,
       stats: {
         ragChunks: ragChunks.length,
         entrySymbols: entrySymbols.length,
@@ -106,6 +121,9 @@ function formatCodeGraphContextMarkdown(context = {}) {
     "",
     "## Impact Radius",
     formatGraphRows((context.impact?.nodes || []).filter((row) => row.distance > 0)),
+    "",
+    "## Impact Summary",
+    formatCodeGraphImpactSummary(context.impactSummary),
     "",
     "## Related Files",
     formatList(context.relatedFiles || []),
@@ -273,6 +291,93 @@ export function evaluateCodeGraphUsefulness({
   };
 }
 
+export function summarizeCodeGraphQueryOutput({
+  queryType = "impact",
+  query = "",
+  seedNames = [],
+  callers = [],
+  callees = [],
+  impact = {},
+  graphEvidence = [],
+  relatedFiles = [],
+  graphHealth = {},
+  quality = {},
+  taskTypeGate = {},
+  unresolvedEdges = [],
+  limit = 8,
+} = {}) {
+  const normalizedType = normalizeQueryType(queryType);
+  const impactNodes = impact?.nodes || [];
+  const impactEdges = impact?.edges || [];
+  const roots = impact?.roots || [];
+  const focusedRows = rowsForQueryType({ normalizedType, callers, callees, impactNodes, graphEvidence });
+  const unresolvedDiagnostics = summarizeUnresolvedEdges(unresolvedEdges, graphHealth, { limit });
+  const topAffectedFiles = summarizeAffectedFiles({
+    rows: focusedRows,
+    relatedFiles,
+    unresolvedFiles: unresolvedDiagnostics.topAffectedFiles,
+    limit,
+  });
+  const resolvedEdgeRate = graphHealth?.crossResolvedEdges
+    ? {
+        resolved: numberOrZero(graphHealth.crossResolvedEdges.resolved),
+        total: numberOrZero(graphHealth.crossResolvedEdges.total),
+        rate: normalizeRate(graphHealth.crossResolvedEdges.rate, graphHealth.crossResolvedEdges.total === 0 ? 1 : 0),
+      }
+    : inferResolvedEdgeRate({ impactEdges, callers, callees });
+  const caveats = buildImpactCaveats({
+    normalizedType,
+    roots,
+    focusedRows,
+    resolvedEdgeRate,
+    unresolvedDiagnostics,
+    quality,
+    taskTypeGate,
+  });
+  const nextInvestigationHints = buildNextInvestigationHints({
+    normalizedType,
+    query,
+    seedNames,
+    roots,
+    focusedRows,
+    topAffectedFiles,
+    resolvedEdgeRate,
+    unresolvedDiagnostics,
+  });
+
+  return {
+    schemaVersion: 1,
+    queryType: normalizedType,
+    query,
+    seeds: [...new Set(seedNames || [])].filter(Boolean),
+    counts: {
+      callers: callers.length,
+      callees: callees.length,
+      impactNodes: impactNodes.length,
+      impactEdges: impactEdges.length,
+      graphRows: graphEvidence.length,
+      relatedFiles: relatedFiles.length,
+    },
+    resolvedEdgeRate,
+    unresolvedClasses: unresolvedDiagnostics.classBreakdown,
+    unresolvedSampleTotal: unresolvedDiagnostics.total,
+    caveats,
+    topAffectedFiles,
+    nextInvestigationHints,
+  };
+}
+
+export function formatCodeGraphImpactSummary(summary = {}) {
+  return formatList([
+    `queryType=${summary.queryType || "unknown"}`,
+    `resolvedEdgeRate=${formatResolvedEdgeRate(summary.resolvedEdgeRate)}`,
+    `unresolvedClasses=${formatUnresolvedClasses(summary.unresolvedClasses)}`,
+    `caveats=${(summary.caveats || []).join("; ") || "none"}`,
+    `topAffectedFiles=${formatAffectedFilesInline(summary.topAffectedFiles)}`,
+    `next=${(summary.nextInvestigationHints || []).join("; ") || "none"}`,
+  ]);
+}
+
 function collectRelatedFiles({ ragChunks, entrySymbols, graphEvidence, impact }) {
   const files = new Set();
   for (const row of ragChunks || []) files.add(row.file);
@@ -296,6 +401,27 @@ function collectSemanticAnchors(db, files, query) {
   return rows
     .map((row) => ({ ...row, score: scoreAnchor(row, terms) }))
     .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path) || a.startLine - b.startLine);
+}
+
+function collectUnresolvedEdgeRows(db, { files = [], limit = 32 } = {}) {
+  const cleanFiles = [...new Set(files || [])].filter(Boolean);
+  if (!cleanFiles.length) return [];
+  const placeholders = cleanFiles.map(() => "?").join(",");
+  return db.prepare(`
+    SELECT s.path AS fromPath,
+           e.to_name AS toName,
+           e.kind AS edgeKind,
+           COUNT(candidate.id) AS candidateCount,
+           COUNT(*) AS count
+    FROM code_edges e
+    JOIN code_symbols s ON s.id = e.from_id
+    LEFT JOIN code_symbols candidate ON candidate.name = e.to_name
+    WHERE e.to_id IS NULL
+      AND s.path IN (${placeholders})
+    GROUP BY s.path, e.to_name, e.kind
+    ORDER BY count DESC, s.path ASC, e.to_name ASC
+    LIMIT ?
+  `).all(...cleanFiles, Number(limit) || 32);
 }
 
 function scoreAnchor(anchor, terms) {
@@ -363,8 +489,192 @@ function formatTaskTypeGate(gate = {}) {
   ]);
 }
 
+function rowsForQueryType({ normalizedType, callers, callees, impactNodes, graphEvidence }) {
+  if (normalizedType === "callers") return callers || [];
+  if (normalizedType === "callees") return callees || [];
+  return (impactNodes || []).filter((row) => Number(row.distance || 0) > 0).length
+    ? (impactNodes || []).filter((row) => Number(row.distance || 0) > 0)
+    : graphEvidence || [];
+}
+
+function summarizeUnresolvedEdges(rows = [], graphHealth = {}, { limit = 8 } = {}) {
+  const classes = new Map();
+  const files = new Map();
+  let total = 0;
+  for (const row of rows || []) {
+    const count = numberOrZero(row.count || row.n || 1);
+    total += count;
+    const name = classifyUnresolvedEdge(row);
+    classes.set(name, (classes.get(name) || 0) + count);
+    const path = normalizeAffectedPath(row.fromPath || row.path || "unknown");
+    const current = files.get(path) || { path, count: 0, classes: new Map(), examples: [] };
+    current.count += count;
+    current.classes.set(name, (current.classes.get(name) || 0) + count);
+    if (current.examples.length < 3) current.examples.push(`${row.edgeKind || "edge"}:${row.toName || "unknown"}`);
+    files.set(path, current);
+  }
+  if (total === 0 && numberOrZero(graphHealth?.unresolvedImportRate?.unresolved) > 0) {
+    classes.set("unresolved-outside-sample", numberOrZero(graphHealth.unresolvedImportRate.unresolved));
+  }
+  return {
+    total,
+    classBreakdown: [...classes.entries()]
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)),
+    topAffectedFiles: [...files.values()]
+      .map((file) => ({
+        path: file.path,
+        unresolvedCount: file.count,
+        classes: [...file.classes.entries()].map(([name, count]) => ({ name, count })),
+        examples: file.examples,
+      }))
+      .sort((a, b) => b.unresolvedCount - a.unresolvedCount || String(a.path).localeCompare(String(b.path)))
+      .slice(0, limit),
+  };
+}
+
+function summarizeAffectedFiles({ rows = [], relatedFiles = [], unresolvedFiles = [], limit = 8 } = {}) {
+  const files = new Map();
+  for (const row of rows || []) {
+    const path = normalizeAffectedPath(row.path || row.fromPath || row.file);
+    if (!path) continue;
+    const current = files.get(path) || { path, graphHits: 0, nearestDistance: null, unresolvedCount: 0, symbols: [] };
+    current.graphHits++;
+    if (Number.isFinite(Number(row.distance))) {
+      const distance = Number(row.distance);
+      current.nearestDistance = current.nearestDistance === null ? distance : Math.min(current.nearestDistance, distance);
+    }
+    if (row.name && current.symbols.length < 4 && !current.symbols.includes(row.name)) current.symbols.push(row.name);
+    files.set(path, current);
+  }
+  for (const item of relatedFiles || []) {
+    const path = normalizeAffectedPath(item);
+    if (!path || files.has(path)) continue;
+    files.set(path, { path, graphHits: 0, nearestDistance: null, unresolvedCount: 0, symbols: [] });
+  }
+  for (const item of unresolvedFiles || []) {
+    const path = normalizeAffectedPath(item);
+    if (!path) continue;
+    const current = files.get(path) || { path, graphHits: 0, nearestDistance: null, unresolvedCount: 0, symbols: [] };
+    current.unresolvedCount += numberOrZero(item.unresolvedCount || item.count);
+    files.set(path, current);
+  }
+  return [...files.values()]
+    .sort((a, b) => b.graphHits - a.graphHits || b.unresolvedCount - a.unresolvedCount || String(a.path).localeCompare(String(b.path)))
+    .slice(0, limit);
+}
+
+function normalizeAffectedPath(value) {
+  if (value === undefined || value === null || value === "") return "";
+  if (typeof value === "object") {
+    return normalizeAffectedPath(value.path || value.file || value.fromPath || value.toPath || value.id || "");
+  }
+  return String(value);
+}
+
+function buildImpactCaveats({ normalizedType, roots, focusedRows, resolvedEdgeRate, unresolvedDiagnostics, quality, taskTypeGate }) {
+  const caveats = [];
+  if (!focusedRows.length) caveats.push(`${normalizedType} query returned no structural rows`);
+  if ((roots || []).length > 1) caveats.push("bare symbol matched multiple roots; disambiguate by full symbol id for exact impact");
+  if (numberOrZero(resolvedEdgeRate.total) > 0 && normalizeRate(resolvedEdgeRate.rate) < 0.5) {
+    caveats.push("resolved edge rate is low; impact may miss cross-file callers or callees");
+  }
+  if ((unresolvedDiagnostics.classBreakdown || []).length) {
+    caveats.push("unresolved edge classes are present; treat affected files as partial evidence");
+  }
+  for (const warning of quality?.warnings || []) caveats.push(warning);
+  for (const failure of quality?.failures || []) caveats.push(`quality failure: ${failure}`);
+  for (const warning of taskTypeGate?.warnings || []) if (!caveats.includes(warning)) caveats.push(warning);
+  return [...new Set(caveats)].slice(0, 8);
+}
+
+function buildNextInvestigationHints({
+  normalizedType,
+  query,
+  seedNames,
+  roots,
+  focusedRows,
+  topAffectedFiles,
+  resolvedEdgeRate,
+  unresolvedDiagnostics,
+}) {
+  const hints = [];
+  if ((roots || []).length > 1) hints.push("rerun with a full symbol id from the matching root path");
+  if (!focusedRows.length && query) hints.push("narrow the query to an exact exported function, class, or command name");
+  if (topAffectedFiles.length) hints.push(`inspect ${topAffectedFiles[0].path} first`);
+  if (normalizedType === "impact" && (seedNames || []).length) hints.push(`check callers and callees for ${seedNames[0]}`);
+  if (numberOrZero(resolvedEdgeRate.total) > 0 && normalizeRate(resolvedEdgeRate.rate) < 0.5) {
+    hints.push("refresh CodeGraph before using this as refactor blast-radius evidence");
+  }
+  if ((unresolvedDiagnostics.classBreakdown || []).length) {
+    hints.push(`sample unresolved ${unresolvedDiagnostics.classBreakdown[0].name} edges in affected files`);
+  }
+  return [...new Set(hints)].slice(0, 6);
+}
+
+function inferResolvedEdgeRate({ impactEdges = [], callers = [], callees = [] } = {}) {
+  const rows = [...(impactEdges || []), ...(callers || []), ...(callees || [])];
+  const total = rows.length;
+  const resolved = rows.filter((row) => row.toId || row.id || row.fromId).length;
+  return {
+    resolved,
+    total,
+    rate: total === 0 ? 1 : resolved / total,
+  };
+}
+
+function classifyUnresolvedEdge(row = {}) {
+  const toName = String(row.toName || row.to_name || "").trim();
+  const edgeKind = String(row.edgeKind || row.kind || "").toLowerCase();
+  const candidateCount = numberOrZero(row.candidateCount || row.candidates);
+  if (candidateCount > 1) return "ambiguous-local-symbol";
+  if (candidateCount === 1) return "import-or-scope-limitation";
+  if (edgeKind.includes("import") || /^\.{1,2}\//.test(toName) || isExternalOrReexportName(toName)) return "external-or-reexport";
+  if (/^(?:this|module|exports|default|constructor|prototype|require|import|then|catch|map|filter|reduce|forEach|push|set|get|has|emit|on|off)$/i.test(toName) || /[.[\]?$]/.test(toName)) {
+    return "dynamic-language-pattern";
+  }
+  return "missing-symbol";
+}
+
+function isExternalOrReexportName(value) {
+  return /^@?[a-z0-9][a-z0-9._-]*(?:\/[a-z0-9._-]+)+$/i.test(value);
+}
+
+function formatResolvedEdgeRate(rate = {}) {
+  const resolved = numberOrZero(rate.resolved);
+  const total = numberOrZero(rate.total);
+  return `${formatPercent(rate.rate)} (${resolved}/${total})`;
+}
+
+function formatUnresolvedClasses(classes = []) {
+  return (classes || []).map((item) => `${item.name}:${item.count}`).join(", ") || "none";
+}
+
+function formatAffectedFilesInline(files = []) {
+  return (files || []).map((file) => {
+    const distance = file.nearestDistance === null || file.nearestDistance === undefined ? "n/a" : file.nearestDistance;
+    return `${file.path} hits=${file.graphHits || 0} unresolved=${file.unresolvedCount || 0} d=${distance}`;
+  }).join("; ") || "none";
+}
 function formatPercent(value) {
   return Number.isFinite(Number(value)) ? `${(Number(value) * 100).toFixed(1)}%` : "unknown";
+}
+
+function normalizeQueryType(queryType) {
+  const value = String(queryType || "impact").toLowerCase();
+  if (/callers?/.test(value)) return "callers";
+  if (/callees?/.test(value)) return "callees";
+  return "impact";
+}
+
+function normalizeRate(value, fallback = 0) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+}
+
+function numberOrZero(value) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : 0;
 }
 
 function dedupeBy(items, keyFn) {

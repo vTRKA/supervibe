@@ -4,6 +4,26 @@
   "type": "object",
   "required": ["agentId", "capabilities"],
   "additionalProperties": true,
+  "definitions": {
+    "hostNeutralCapabilityName": {
+      "type": "string",
+      "enum": ["browser", "context7", "figma", "firecrawl", "openai-docs", "tauri"]
+    },
+    "customCapabilityName": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "capabilityNameArray": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "anyOf": [
+          { "$ref": "#/definitions/hostNeutralCapabilityName" },
+          { "$ref": "#/definitions/customCapabilityName" }
+        ]
+      }
+    }
+  },
   "properties": {
     "agentId": { "type": "string", "minLength": 1 },
     "source": { "type": "string" },
@@ -14,6 +34,14 @@
         "moduleTypes": { "type": "array", "items": { "type": "string" } },
         "riskLevels": { "type": "array", "items": { "type": "string" } },
         "testTypes": { "type": "array", "items": { "type": "string" } },
+        "capabilityNames": {
+          "$ref": "#/definitions/capabilityNameArray",
+          "description": "Host-neutral capability selectors such as figma, firecrawl, browser, context7, openai-docs, and tauri."
+        },
+        "hostCapabilities": {
+          "$ref": "#/definitions/capabilityNameArray",
+          "description": "Backward-compatible alias for capabilityNames; values normalize to the same host-neutral selectors."
+        },
         "ui": { "type": "boolean" },
         "browser": { "type": "boolean" },
         "integration": { "type": "boolean" },

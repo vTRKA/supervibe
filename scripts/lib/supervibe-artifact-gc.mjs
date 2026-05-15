@@ -1,13 +1,16 @@
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
-import { dirname, join, relative, sep } from "node:path";
+import { mkdir, readFile, rename, rmdir, rm, writeFile } from "node:fs/promises";
+import { dirname, isAbsolute, join, relative, sep } from "node:path";
 import { gzipSync, gunzipSync } from "node:zlib";
 
 import {
   readWorkflowReceipts,
   validateWorkflowReceiptTrust,
 } from "./supervibe-workflow-receipt-runtime.mjs";
+import {
+  validateWorkflowReceiptEvidenceSnapshot,
+} from "./supervibe-receipt-snapshot-store.mjs";
 import { buildCleanupReachability } from "./supervibe-cleanup-reachability.mjs";
 
 const RETENTION_TIERS = Object.freeze({
@@ -47,6 +50,7 @@ export async function scanSupervibeArtifactGc({
   archiveRetentionDays = 90,
   maxArchiveBytes = 0,
   archiveKeepLast = 0,
+  purgeArchives = false,
 } = {}) {
   const candidates = [];
   const activeNoise = [];
@@ -57,7 +61,7 @@ export async function scanSupervibeArtifactGc({
   const workflowReceipts = workflowReceiptsWithTrust(rootDir);
   const referencedPaths = [...referenced.keys()];
   const reachability = buildCleanupReachability({ rootDir, now });
-  const protectedArchivePaths = new Set((reachability.roots?.compactArchiveBlobs || []).map((item) => normalizeRelPath(item.relPath)));
+  const protectedArchivePaths = buildArchiveCleanupProtectedPathSet({ referenced, reachability });
   const cutoffMs = Date.parse(now) - Number(retentionDays) * DAY_MS;
   const compactCutoffMs = Date.parse(now) - Number(compactAgentOutputDays) * DAY_MS;
 
@@ -251,6 +255,7 @@ export async function scanSupervibeArtifactGc({
     maxArchiveBytes,
     keepLast: archiveKeepLast,
     protectedPaths: protectedArchivePaths,
+    purgeArchives,
   }));
 
   candidates.sort((left, right) => left.relPath.localeCompare(right.relPath));
@@ -265,6 +270,7 @@ export async function scanSupervibeArtifactGc({
     archiveRetentionDays: Number(archiveRetentionDays),
     maxArchiveBytes: Number(maxArchiveBytes || 0),
     archiveKeepLast: Number(archiveKeepLast || 0),
+    purgeArchives: Boolean(purgeArchives),
     candidates,
     activeNoise,
     compactable,
@@ -286,30 +292,41 @@ export async function archiveSupervibeArtifactGcCandidates(scan = {}, {
   rootDir = process.cwd(),
   dryRun = true,
   runTimestamp = scan.generatedAt || new Date().toISOString(),
+  purge = false,
 } = {}) {
   const archived = [];
   const compacted = [];
   const archiveRemoved = [];
+  const deleted = [];
   const errors = [];
-  if (dryRun) return { dryRun: true, archived, compacted, archiveRemoved, errors };
+  if (dryRun) return { dryRun: true, purge: Boolean(purge), archived, compacted, archiveRemoved, deleted, errors };
 
   const guardErrors = await validateApplyDeletionGuards({ rootDir, scan, now: runTimestamp });
-  if (guardErrors.length) return { dryRun: false, archived, compacted, archiveRemoved, errors: guardErrors };
+  if (guardErrors.length) return { dryRun: false, purge: Boolean(purge), archived, compacted, archiveRemoved, deleted, errors: guardErrors };
 
   const archiveRoot = join(rootDir, ".supervibe", ".archive", "gc", sanitizeId(runTimestamp));
-  const auditLogPath = await writeArtifactGcApplyAudit({ rootDir, archiveRoot, scan, runTimestamp });
+  const auditRoot = purge || scan.purgeArchives === true
+    ? join(rootDir, ".supervibe", "artifacts", "_gc-runs", sanitizeId(runTimestamp))
+    : archiveRoot;
+  const auditLogPath = await writeArtifactGcApplyAudit({ rootDir, archiveRoot: auditRoot, scan, runTimestamp, purge });
   for (const candidate of scan.candidates || []) {
     const relPath = normalizeRelPath(candidate.relPath);
     const source = join(rootDir, ...relPath.split("/"));
     if (!existsSync(source)) continue;
     const target = join(archiveRoot, ...relPath.split("/"));
     try {
-      await mkdir(dirname(target), { recursive: true });
-      await rename(source, target);
-      archived.push({
-        ...candidate,
-        archivePath: normalizeRelPath(relative(rootDir, target)),
-      });
+      if (purge) {
+        await rm(source, { recursive: true, force: true });
+        await pruneEmptySupervibeParentDirs({ rootDir, relPath });
+        deleted.push({ ...candidate, purge: true });
+      } else {
+        await mkdir(dirname(target), { recursive: true });
+        await rename(source, target);
+        archived.push({
+          ...candidate,
+          archivePath: normalizeRelPath(relative(rootDir, target)),
+        });
+      }
     } catch (error) {
       errors.push(`${relPath}: ${error.message}`);
     }
@@ -332,14 +349,17 @@ export async function archiveSupervibeArtifactGcCandidates(scan = {}, {
     if (!existsSync(source)) continue;
     try {
       await rm(source, { force: true });
+      await pruneEmptyArchiveParentDirs({ rootDir, relPath });
       archiveRemoved.push(candidate);
     } catch (error) {
       errors.push(`${relPath}: ${error.message}`);
     }
   }
 
-  if (archived.length > 0 || compacted.length > 0 || archiveRemoved.length > 0 || errors.length > 0) {
-    const logPath = join(archiveRoot, "artifact-gc.jsonl");
+  if (scan.purgeArchives === true) await removeEmptyDir({ rootDir, relPath: ".supervibe/.archive" });
+
+  if (archived.length > 0 || compacted.length > 0 || archiveRemoved.length > 0 || deleted.length > 0 || errors.length > 0) {
+    const logPath = join(auditRoot, "artifact-gc.jsonl");
     await mkdir(dirname(logPath), { recursive: true });
     const lines = archived.map((entry) => JSON.stringify({
       schemaVersion: 1,
@@ -348,6 +368,15 @@ export async function archiveSupervibeArtifactGcCandidates(scan = {}, {
       archivePath: entry.archivePath,
       reason: entry.reason,
     }));
+    for (const entry of deleted) {
+      lines.push(JSON.stringify({
+        schemaVersion: 1,
+        deletedAt: runTimestamp,
+        relPath: entry.relPath,
+        reason: entry.reason,
+        purge: true,
+      }));
+    }
     for (const entry of compacted) {
       lines.push(JSON.stringify({
         schemaVersion: 1,
@@ -370,7 +399,7 @@ export async function archiveSupervibeArtifactGcCandidates(scan = {}, {
     await writeFile(logPath, `${lines.join("\n")}${lines.length ? "\n" : ""}`, "utf8");
   }
 
-  return { dryRun: false, archived, compacted, archiveRemoved, errors, auditLogPath: auditLogPath ? normalizeRelPath(relative(rootDir, auditLogPath)) : null };
+  return { dryRun: false, purge: Boolean(purge), archived, compacted, archiveRemoved, deleted, errors, auditLogPath: auditLogPath ? normalizeRelPath(relative(rootDir, auditLogPath)) : null };
 }
 
 async function validateApplyDeletionGuards({ rootDir, scan, now }) {
@@ -393,11 +422,47 @@ async function validateApplyDeletionGuards({ rootDir, scan, now }) {
   return [...new Set(errors)];
 }
 
-async function writeArtifactGcApplyAudit({ rootDir, archiveRoot, scan, runTimestamp }) {
+async function pruneEmptyArchiveParentDirs({ rootDir, relPath }) {
+  await pruneEmptyParentDirs({ rootDir, relPath, stopRelPath: ".supervibe" });
+}
+
+async function pruneEmptySupervibeParentDirs({ rootDir, relPath }) {
+  await pruneEmptyParentDirs({ rootDir, relPath, stopRelPath: ".supervibe" });
+}
+
+async function pruneEmptyParentDirs({ rootDir, relPath, stopRelPath }) {
+  const stopRoot = join(rootDir, ...normalizeRelPath(stopRelPath).split("/"));
+  let current = dirname(join(rootDir, ...normalizeRelPath(relPath).split("/")));
+  while (isPathInsideDirectory(current, stopRoot)) {
+    try {
+      await rmdir(current);
+    } catch (error) {
+      if (["ENOENT", "ENOTDIR", "ENOTEMPTY"].includes(error?.code)) return;
+      throw error;
+    }
+    current = dirname(current);
+  }
+}
+
+async function removeEmptyDir({ rootDir, relPath }) {
+  try {
+    await rmdir(join(rootDir, ...normalizeRelPath(relPath).split("/")));
+  } catch (error) {
+    if (["ENOENT", "ENOTDIR", "ENOTEMPTY"].includes(error?.code)) return;
+    throw error;
+  }
+}
+
+function isPathInsideDirectory(candidate, root) {
+  const relativePath = relative(root, candidate);
+  return Boolean(relativePath) && !relativePath.startsWith("..") && !isAbsolute(relativePath);
+}
+
+async function writeArtifactGcApplyAudit({ rootDir, archiveRoot, scan, runTimestamp, purge = false }) {
   const auditLogPath = join(archiveRoot, "artifact-gc-plan.jsonl");
   await mkdir(dirname(auditLogPath), { recursive: true });
   const actions = [
-    ...(scan.candidates || []).map((entry) => ({ action: "archive", entry })),
+    ...(scan.candidates || []).map((entry) => ({ action: purge ? "delete" : "archive", entry })),
     ...(scan.compactable || []).map((entry) => ({ action: "compact", entry })),
     ...(scan.archiveCleanup || []).map((entry) => ({ action: "remove-archive", entry })),
   ];
@@ -480,6 +545,7 @@ export async function validateSupervibeGcStrict({
   archiveRetentionDays = 90,
   maxArchiveBytes = 0,
   archiveKeepLast = 0,
+  purgeArchives = false,
 } = {}) {
   const resolvedScan = scan || await scanSupervibeArtifactGc({
     rootDir,
@@ -489,6 +555,7 @@ export async function validateSupervibeGcStrict({
     archiveRetentionDays,
     maxArchiveBytes,
     archiveKeepLast,
+    purgeArchives,
   });
   const inventory = collectSupervibeInventory(rootDir, now);
   const referenced = referencedOutputArtifacts(rootDir);
@@ -634,6 +701,9 @@ export function formatSupervibeArtifactGcReport(scan = {}, archiveResult = {}) {
   const removed = (archiveResult.archiveRemoved || [])
     .slice(0, 10)
     .map((item) => `  - ${item.relPath} (${item.reason})`);
+  const deleted = (archiveResult.deleted || [])
+    .slice(0, 10)
+    .map((item) => `  - ${item.relPath} (${item.reason})`);
   return [
     "SUPERVIBE_ARTIFACT_GC",
     `SCANNED: ${scan.summary?.scanned || 0}`,
@@ -652,6 +722,8 @@ export function formatSupervibeArtifactGcReport(scan = {}, archiveResult = {}) {
     ...(cleanupTop.length ? cleanupTop : ["  - none"]),
     "ARCHIVED:",
     ...(archived.length ? archived : ["  - none"]),
+    "DELETED:",
+    ...(deleted.length ? deleted : ["  - none"]),
     "COMPACTED:",
     ...(compacted.length ? compacted : ["  - none"]),
     "ARCHIVE_REMOVED:",
@@ -717,11 +789,13 @@ function referencedOutputArtifacts(rootDir) {
   try {
     const references = new Map();
     for (const { receipt, trusted } of workflowReceiptsWithTrust(rootDir)) {
+      const snapshot = validateWorkflowReceiptEvidenceSnapshot(rootDir, receipt);
+      const liveRequired = snapshot.legacy === true || snapshot.pass !== true;
       for (const item of receipt.outputArtifacts || []) {
         const path = normalizeRelPath(typeof item === "string" ? item : item?.path);
         if (!path) continue;
         const list = references.get(path) || [];
-        list.push({ receiptId: receipt.receiptId, trusted });
+        list.push({ receiptId: receipt.receiptId, trusted, liveRequired });
         references.set(path, list);
       }
     }
@@ -784,6 +858,7 @@ function collectArchiveCleanupCandidates({
   maxArchiveBytes,
   keepLast = 0,
   protectedPaths = new Set(),
+  purgeArchives = false,
 }) {
   const sortedFiles = listFiles(rootDir, ".supervibe/.archive", { includeArchive: true })
     .filter((item) => !isProtectedArchivePath(item.relPath, protectedPaths))
@@ -792,6 +867,9 @@ function collectArchiveCleanupCandidates({
   const keepLastPaths = new Set(sortedFiles.slice(0, keepCount).map((item) => normalizeRelPath(item.relPath)));
   const files = sortedFiles.filter((item) => !keepLastPaths.has(normalizeRelPath(item.relPath)));
   const cleanup = [];
+  if (purgeArchives) {
+    return files.map((item) => archiveCleanupItem(item, "archive-purge", now));
+  }
   const nowMs = Date.parse(now);
   const ttlDays = Number(archiveRetentionDays);
   if (Number.isFinite(ttlDays) && ttlDays > 0 && Number.isFinite(nowMs)) {
@@ -942,10 +1020,27 @@ function collectSupervibeInventory(rootDir, now) {
 
 function buildReceiptProtectedPathSet(referenced) {
   const paths = new Set();
-  for (const path of referenced.keys()) {
+  for (const [path, refs] of referenced.entries()) {
     const normalized = normalizeRelPath(path);
     if (!normalized) continue;
-    paths.add(normalized);
+    if (!normalized.startsWith(".supervibe/.archive/") || refs.some((ref) => ref.liveRequired === true)) {
+      paths.add(normalized);
+    }
+  }
+  return paths;
+}
+
+function buildArchiveCleanupProtectedPathSet({ referenced = new Map(), reachability = {} } = {}) {
+  const paths = new Set();
+  for (const [path, refs] of referenced.entries()) {
+    const normalized = normalizeRelPath(path);
+    if (normalized.startsWith(".supervibe/.archive/") && refs.some((ref) => ref.liveRequired === true)) {
+      paths.add(normalized);
+    }
+  }
+  for (const item of reachability.roots?.compactArchiveBlobs || []) {
+    const normalized = normalizeRelPath(item.relPath);
+    if (normalized) paths.add(normalized);
   }
   return paths;
 }

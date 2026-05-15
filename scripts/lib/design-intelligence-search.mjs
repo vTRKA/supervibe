@@ -31,9 +31,6 @@ const DOMAIN_ALIASES = new Map([
   ["react-performance", "react-performance"],
   ["reasoning", "ui-reasoning"],
   ["ui-reasoning", "ui-reasoning"],
-  ["slides", "slides"],
-  ["deck", "slides"],
-  ["presentation", "slides"],
   ["collateral", "collateral"],
   ["brand asset", "collateral"],
 ]);
@@ -115,7 +112,7 @@ export async function searchDesignIntelligence({
 
   let candidates = data.documents;
   if (requestedDomain) {
-    candidates = requestedDomain === "slides" || requestedDomain === "collateral"
+    candidates = requestedDomain === "collateral"
       ? candidates.filter((doc) => doc.kind === requestedDomain || doc.domain.startsWith(`${requestedDomain}:`))
       : candidates.filter((doc) => doc.domain === requestedDomain);
   }
@@ -216,7 +213,6 @@ export function inferDesignDomains(query = "") {
   if (hasAny(text, ["chart", "graph", "data viz", "график", "диаграм"])) domains.add("charts");
   if (hasAny(text, ["icon", "икон", "lucide"])) domains.add("icons");
   if (hasAny(text, ["mobile", "ios", "android", "touch", "мобиль"])) domains.add("app-interface");
-  if (hasAny(text, ["deck", "slide", "presentation", "презентац", "слайд"])) domains.add("slides");
   if (hasAny(text, ["logo", "brand asset", "collateral", "cip", "фирстиль", "логотип"])) domains.add("collateral");
   if (hasAny(text, ["react performance", "render", "memo", "hydrate"])) domains.add("react-performance");
   return [...domains];
@@ -410,7 +406,6 @@ function buildChecklist(evidence) {
     if (row.severity) checklist.add(`Handle ${row.domain} severity ${row.severity}: ${row.title}.`);
     if (row.domain === "charts") checklist.add("Include chart fallback and accessibility notes.");
     if (row.kind === "stack") checklist.add(`Preserve stack guidance for ${row.stack}.`);
-    if (row.kind === "slides") checklist.add("Validate deck narrative, layout, copy, and chart fit.");
   }
   return [...checklist];
 }

@@ -175,6 +175,18 @@ Before producing any artifact or making any structural recommendation:
 
 **Step 3 (refactor only): Code graph.** Before rename/extract/move/inline/delete on a public symbol, always run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers "<symbol>"` first. Cite Case A (callers found, listed) / Case B (zero callers verified) / Case C (N/A with reason) in your output. Skipping this may miss call sites - verify with the graph tool.
 
+## Durable Research Evidence Gate
+
+Every repo research report must include durable output evidence fields:
+
+- `memory`: prior map/decision ids, searched terms with zero-hit result, or degraded reason.
+- `rag`: Code RAG chunk ids and retrieval mode, or degraded reason.
+- `codegraph`: callers/callees/neighborhood evidence, Case C rationale, or degraded reason.
+- `source`: file paths, generated state, official sources, and freshness tier, or degraded reason.
+- `receipt`: workflow/agent receipt ids with host invocation source, or degraded reason.
+
+When any field is degraded, label the affected finding [PARTIAL] or [UNKNOWN] instead of [EXISTS] or [PATTERN].
+
 ## Procedure
 
 1. **Search project memory first** — `supervibe:project-memory` query the research goal against `.supervibe/memory/learnings/`. If a recent map (<180d) exists, start there and only update stale sections.
@@ -210,6 +222,12 @@ Returns Markdown report with these mandatory sections (in order):
 **Researcher**: supervibe:_core:repo-researcher
 **Date**: YYYY-MM-DD
 **Scope**: <module / question / area>
+**Durable evidence**:
+- memory: <ids/search/no-hit/degraded reason>
+- rag: <chunk ids/degraded reason>
+- codegraph: <symbols/case/degraded reason>
+- source: <paths/source ids/freshness/degraded reason>
+- receipt: <receipt ids/host invocation/degraded reason>
 **Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 Confidence: <N>.<dd>/10

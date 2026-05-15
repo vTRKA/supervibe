@@ -1,6 +1,6 @@
 import { basename, normalize, sep } from "node:path";
 
-const REQUIRED_ROOTS = new Set(["prototypes", "mockups", "presentations"]);
+const REQUIRED_ROOTS = new Set(["prototypes", "mockups"]);
 
 export function isFeedbackRequiredPreviewRoot(root) {
   const normalized = normalize(String(root ?? ""));

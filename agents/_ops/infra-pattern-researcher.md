@@ -323,7 +323,7 @@ Before producing any artifact or making any structural recommendation:
 2. **Identify vendor + version** from project's stack-fingerprint
 3. **Identify scale envelope** from project context (RPS, data volume, region count)
 4. **Vendor docs primary** — fetch official docs for that version
-5. **Practitioner sources** — fetch named case studies, post-mortems, conference talks with public slides
+5. **Practitioner sources** — fetch named case studies, post-mortems, conference talks with public materials
 6. **Academic/book sources** — cite chapter/page from DDIA, SRE Book, Release It!, Building Microservices
 7. **Compare alternatives** (e.g., Sentinel vs Cluster, streaming vs logical, Kafka vs Kinesis)
 8. **Document trade-offs** (latency / consistency / availability / cost / complexity / failure-mode)

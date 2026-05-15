@@ -27,7 +27,7 @@ Usage:
   feedback-status.mjs --list --target <feedback-target-id>
   feedback-status.mjs --list --all
   feedback-status.mjs --progress <id>
-  feedback-status.mjs --resolve <id> --resolution .supervibe/artifacts/<prototypes|mockups|presentations>/<slug>/feedback-resolutions/<id>.md
+  feedback-status.mjs --resolve <id> --resolution .supervibe/artifacts/<prototypes|mockups>/<slug>/feedback-resolutions/<id>.md
   feedback-status.mjs --reject <id>`);
   process.exit(0);
 }

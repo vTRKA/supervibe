@@ -1590,8 +1590,6 @@ test("command catalog covers primary workflow intents in English and Russian", (
     ["adapt project artifacts after update", "/supervibe-adapt"],
     ["покажи kanban доску задач", "/supervibe-ui"],
     ["open kanban dashboard", "/supervibe-ui"],
-    ["сделай презентацию", "/supervibe-presentation"],
-    ["build slide deck", "/supervibe-presentation"],
   ];
 
   for (const [request, command] of cases) {

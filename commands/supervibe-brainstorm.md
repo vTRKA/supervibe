@@ -56,7 +56,7 @@ Treat the most recent user message as the topic.
    - Production readiness contract and 10/10 acceptance scorecard
    - Approved spec output
 
-4. **Pre-documentation summary.** Before creating any durable brainstorm documentation, show a compact human summary of the proposed requirements package: problem, chosen option, rejected/deferred scope, key risks, evidence still needed, and the visual explanation mode. This is the user's decision point before a spec file exists.
+4. **Pre-documentation summary / Pre-spec summary.** Before creating any durable brainstorm documentation, produce the durable `pre-spec` summary using `scripts/lib/supervibe-post-stage-actions.mjs`: objective, chosen option, rejected/deferred scope, key risks, missing facts, evidence still needed, markdown table, ASCII lifecycle map, and stable approve/revise/stop choices. This is the user's decision point before a spec file exists.
 
 4a. **Documentation Approval Gate.** Ask one explicit `documentation_approval` question and wait for the user choice. Do not write, save, or claim a spec until the user chooses **Create brainstorm documentation**. Valid choices:
    - **Create brainstorm documentation** - write the durable brainstorm spec.
@@ -67,18 +67,20 @@ Treat the most recent user message as the topic.
 
 4b. **Save the approved spec.** Only after the Documentation Approval Gate is answered with **Create brainstorm documentation**, write `.supervibe/artifacts/specs/YYYY-MM-DD-<topic-slug>-brainstorm.md`. Record the approval source in the spec as `Documentation approval source`.
 
-4c. **Post-documentation summary.** After the spec is saved and validated, give the user a short summary: artifact path, chosen recommendation, what was included, what was deferred/rejected, validation result, confidence score, and the available next actions.
+5. **Machine-validate the spec.** Run `node scripts/validate-spec-artifacts.mjs --file <spec>` only at the command's validation gate. Any failure blocks the post-spec summary and handoff.
 
-5. **Mandatory handoff.** Print `Step N/M: write the production-ready plan?` with the concrete `/supervibe-plan --from-brainstorm <spec-path>` command. Compute `M` from the active handoff/resume state instead of hard-coding a final-step count. Do not offer direct implementation from brainstorm output.
+6. **Score against `requirements.yaml` rubric.** Gate >=9 to declare the spec ready for planning. <9 means iterate; <8 with explicit override must be logged to `.supervibe/confidence-log.jsonl`.
 
-5a. **Mandatory next user actions.** After showing the brainstorm result, present a human-first Decision Card using `scripts/lib/supervibe-post-stage-actions.mjs`: recommendation, why, `Step N/M` question, visible choices, resume cursor, and next command. Print `NEXT_USER_ACTIONS[]` in the command output block with these visible choices and wait for one choice before moving on. In normal conversational summaries, translate the same choices into a short human-readable next-step sentence instead of exposing the raw marker:
+7. **Post-spec summary.** After the spec is saved, validated, and scored, produce the durable `post-spec` summary using `scripts/lib/supervibe-post-stage-actions.mjs`. It must include the spec path, source artifact hash, markdown table, ASCII lifecycle map, what was added and why, deferred/rejected scope, validation result, confidence score, and the available next actions.
+
+8. **Mandatory next user actions.** After showing the post-spec summary, present a human-first Decision Card using `scripts/lib/supervibe-post-stage-actions.mjs`: recommendation, why, `Step N/M` question, visible choices, resume cursor, and next command. Print `NEXT_USER_ACTIONS[]` in the command output block with these visible choices and wait for one choice before moving on. In normal conversational summaries, translate the same choices into a short human-readable next-step sentence instead of exposing the raw marker:
    - **Approve spec and write plan** - run `/supervibe-plan --from-brainstorm <spec-path>`.
    - **Revise idea/spec** - update goals, references, assumptions, scope, or acceptance criteria before planning.
    - **Compare or research deeper** - run additional alternatives, references, risks, or specialist checks before approval.
    - **Exclude or defer items** - record out-of-scope work so it cannot enter the plan silently.
    - **Keep spec draft and stop** - save the candidate spec without planning, review, atomization, or execution.
 
-5b. **Secondary machine-readable handoff.** Include the raw block only after the Decision Card. The raw `NEXT_STEP_HANDOFF` block is resume state, not the primary user-facing UX:
+8a. **Secondary machine-readable handoff.** Include the raw block only after the Decision Card. The raw `NEXT_STEP_HANDOFF` block is resume state, not the primary user-facing UX:
 
    ```text
    NEXT_STEP_HANDOFF
@@ -99,12 +101,7 @@ Treat the most recent user message as the topic.
    END_NEXT_STEP_HANDOFF
    ```
 
-5. **Machine-validate the spec.** Run `node scripts/validate-spec-artifacts.mjs --file <spec>`. Any failure blocks handoff.
-
-6. **Score against `requirements.yaml` rubric.** Gate ≥9 to declare done. <9 → iterate; <8 with explicit override → log to `.supervibe/confidence-log.jsonl`.
-
-7. **Hand off.** Print the spec path + `/supervibe-plan --from-brainstorm <spec-path>` for every completed brainstorm unless the user explicitly cancels planning. Small changes may get a compact plan, but brainstorm must not silently jump to implementation.
-
+9. **Hand off.** Print the spec path + `/supervibe-plan --from-brainstorm <spec-path>` only after the post-spec summary and Decision Card exist. Brainstorm must not silently jump to implementation.
 ## Output contract
 
 ```
@@ -118,6 +115,8 @@ Validator: validate-spec-artifacts PASS
 Production readiness: covered
 Scope safety: present, with deferred/rejected additions explained
 Evidence plan: memory/RAG/CodeGraph commands and citations present
+Pre-spec summary: durable pre-spec summary shown before spec write, with markdown table, ASCII lifecycle map, approval choices, source prompt hash, and latest-user approval gate
+Post-spec summary: source-bound post-spec summary shown after spec validation, with spec path, source artifact hash, added-and-why, deferred-and-why, validation result, table, ASCII map, and next actions
 Visual explanation: text-first summary/table/stage map present; browser preview is optional only for UI/prototype/browser evidence; Mermaid fallback includes accessible title and description when used
 10/10 scorecard: present
 

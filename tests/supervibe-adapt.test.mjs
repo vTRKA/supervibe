@@ -644,7 +644,7 @@ test("supervibe-adapt provisions agents through first-class add-agents mode", ()
   }
 });
 
-test("supervibe-adapt profile add-ons keep web design separate from desktop and presentation", () => {
+test("supervibe-adapt profile add-ons keep web design separate from desktop", () => {
   const projectRoot = createCodexProject();
   try {
     const out = runAdapt(projectRoot, ["--profile", "product-design", "--addons", "creative-brand,web-design", "--no-color"]);
@@ -654,7 +654,6 @@ test("supervibe-adapt profile add-ons keep web design separate from desktop and 
     assert.match(out, /SELECTED_AGENTS: .*competitive-design-researcher/);
     assert.doesNotMatch(out, /SELECTED_AGENTS: .*electron-ui-designer/);
     assert.doesNotMatch(out, /SELECTED_AGENTS: .*mobile-ui-designer/);
-    assert.doesNotMatch(out, /SELECTED_AGENTS: .*presentation-director/);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }

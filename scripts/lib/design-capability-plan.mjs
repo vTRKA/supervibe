@@ -54,7 +54,6 @@ const REQUIRED_DATASET_TERMS = Object.freeze([
   "react-performance",
   "ui-reasoning",
   "stack",
-  "slides",
   "collateral",
   "creative packs",
 ]);

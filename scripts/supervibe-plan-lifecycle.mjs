@@ -4,6 +4,7 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
+import { buildSafeRepairPreview } from "./lib/supervibe-next-action-engine.mjs";
 
 export const PLAN_LIFECYCLE_STATUSES = Object.freeze([
   "active",
@@ -284,6 +285,7 @@ export async function repairPlanLifecycle({
       type: "index-archived-plan",
       path: plan.path,
       status: plan.status,
+      indexPath: normalizeProjectPath(resolvedRoot, defaultPlanArchiveIndexPath(resolvedRoot)),
       archivePath: plan.archivePath || `.supervibe/artifacts/plans/_archive/${basename(plan.path)}`,
       mode: "index-only",
     });
@@ -294,6 +296,7 @@ export async function repairPlanLifecycle({
     actions.push({
       type: "set-active-plan-pointer",
       path: currentPlan,
+      pointerPath: normalizeProjectPath(resolvedRoot, defaultActivePlanPointerPath(resolvedRoot)),
       status: "executing",
     });
   }
@@ -312,6 +315,7 @@ export async function repairPlanLifecycle({
     actions.push({
       type: "refresh-tracker-map",
       path: normalizeProjectPath(resolvedRoot, trackerMapPath),
+      trackerMapPath: normalizeProjectPath(resolvedRoot, trackerMapPath),
       activePlanPath: currentPlan,
       activeGraphPath: report.activeSource?.graphPath ? normalizeProjectPath(resolvedRoot, report.activeSource.graphPath) : null,
     });
@@ -356,29 +360,48 @@ export async function repairPlanLifecycle({
     }
   }
 
+  const previewCommand = `node scripts/supervibe-plan-lifecycle.mjs --repair --plan "${currentPlan}"`;
+  const applyCommand = `node scripts/supervibe-plan-lifecycle.mjs --repair --plan "${currentPlan}" --apply --receipt-id <workflow-id>`;
+  const preview = buildSafeRepairPreview({
+    actions,
+    apply,
+    previewCommand,
+    applyCommand,
+  });
+
   return {
     schemaVersion: SCHEMA_VERSION,
     applied: Boolean(apply),
     receiptId: receiptId || null,
     currentPlanPath: currentPlan,
     actions,
+    preview,
     report,
   };
 }
 
 export function formatPlanLifecycleRepairResult(result = {}) {
+  const preview = result.preview || buildSafeRepairPreview({ actions: result.actions || [], apply: result.applied });
   const lines = [
     "SUPERVIBE_PLAN_LIFECYCLE_REPAIR",
+    `MODE: ${preview.mode}`,
+    `SAFE_READ_ONLY: ${preview.safeReadOnly ? "true" : "false"}`,
+    `MUTATES_STATE: ${preview.mutatesState ? "true" : "false"}`,
+    `WOULD_MUTATE_ON_APPLY: ${preview.wouldMutateOnApply ? "true" : "false"}`,
+    `DISTINCTION: ${preview.distinction}`,
     `APPLIED: ${result.applied ? "true" : "false"}`,
     `RECEIPT_ID: ${result.receiptId || "none"}`,
     `CURRENT_PLAN: ${result.currentPlanPath || "none"}`,
     `ACTIONS: ${result.actions?.length || 0}`,
   ];
+  if (preview.previewCommand) lines.push(`PREVIEW_COMMAND: ${preview.previewCommand}`);
+  if (preview.applyCommand) lines.push(`APPLY_COMMAND: ${preview.applyCommand}`);
+  for (const file of preview.files || []) lines.push(`FILE: ${file}`);
   for (const action of result.actions || []) {
     if (action.type === "index-archived-plan") lines.push(`ACTION: ${action.type} ${action.path} status=${action.status} mode=${action.mode}`);
     else if (action.type === "set-active-plan-pointer") lines.push(`ACTION: ${action.type} ${action.path} status=${action.status}`);
     else if (action.type === "rewrite-active-graph-source") lines.push(`ACTION: ${action.type} ${action.from || "missing"} -> ${action.to}`);
-    else if (action.type === "refresh-tracker-map") lines.push(`ACTION: ${action.type} ${action.path}`);
+    else if (action.type === "refresh-tracker-map") lines.push(`ACTION: ${action.type} ${action.path} activePlan=${action.activePlanPath || "none"}`);
     else lines.push(`ACTION: ${action.type}`);
   }
   lines.push(`NEXT_ACTION: ${result.applied ? "rerun status and validators" : "rerun with --apply --receipt-id <workflow-id> after issuing a receipt"}`);
@@ -624,7 +647,8 @@ async function main() {
   if (values.help) {
     console.log(`Usage:
   node scripts/supervibe-plan-lifecycle.mjs --status [--root <dir>]
-  node scripts/supervibe-plan-lifecycle.mjs --repair --plan <plan.md> [--apply --receipt-id <workflow-id>]
+  node scripts/supervibe-plan-lifecycle.mjs --repair --plan <plan.md> [--dry-run]
+  node scripts/supervibe-plan-lifecycle.mjs --repair --plan <plan.md> --apply --receipt-id <workflow-id>
   node scripts/supervibe-plan-lifecycle.mjs --delete-plan <plan.md> --receipt-id <workflow-id>`);
     return;
   }
@@ -633,6 +657,10 @@ async function main() {
   if (values["delete-plan"]) {
     if (!values["receipt-id"]) throw new Error("--delete-plan requires --receipt-id and explicit destructive operator approval");
     throw new Error("Plan deletion is intentionally not automatic; archive first, then remove manually with the cited receipt if still required");
+  }
+
+  if (values.apply && values["dry-run"]) {
+    throw new Error("--apply and --dry-run are mutually exclusive; omit --apply for preview");
   }
 
   if (values.repair) {

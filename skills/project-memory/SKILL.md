@@ -28,7 +28,7 @@ state the `supervibe-retrieval-decision-policy` reason explicitly.
 
 ## Design Memory Taxonomy
 
-Design intelligence writes only accepted, rejected, or learned decisions into existing memory categories. Use tags such as `design`, `brand`, `ux`, `a11y`, `tokens`, `prototype`, `slides`, `collateral`, and `rejected`. Do not create a separate design memory root.
+Design intelligence writes only accepted, rejected, or learned decisions into existing memory categories. Use tags such as `design`, `brand`, `ux`, `a11y`, `tokens`, `prototype`, `collateral`, and `rejected`. Do not create a separate design memory root.
 
 ## When to Use
 

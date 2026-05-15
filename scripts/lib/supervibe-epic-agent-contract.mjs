@@ -63,7 +63,7 @@ export function createGraphProducerProof({
     evidencePath: hostInvocationEvidence,
     agentId: agentId || normalizedSubjectId,
   });
-  return {
+  const proof = {
     schemaVersion: GRAPH_PRODUCER_PROOF_SCHEMA_VERSION,
     kind: GRAPH_PRODUCER_PROOF_KIND,
     required: Boolean(required),
@@ -74,16 +74,18 @@ export function createGraphProducerProof({
     agentId: normalizeOptional(agentId || normalizedSubjectId),
     graphId: normalizeOptional(graphId),
     handoffId: normalizeOptional(handoffId || graphId),
-    hostInvocation: normalizedHostInvocation,
     outputBinding: normalizeOutputBinding({
       outputBinding,
       outputArtifact,
       outputArtifacts,
       graphId,
     }),
-    receipt: normalizeReceiptBinding({ receiptId, receiptPath }),
     createdAt: createdAt || new Date().toISOString(),
   };
+  if (normalizedHostInvocation) proof.hostInvocation = normalizedHostInvocation;
+  const receipt = normalizeReceiptBinding({ receiptId, receiptPath });
+  if (receipt) proof.receipt = receipt;
+  return proof;
 }
 
 export function bindGraphProducerProofOutput(proof = null, { rootDir = process.cwd(), graphPath = null, graphId = null } = {}) {
@@ -606,7 +608,7 @@ function normalizeProofHostInvocation(proof = null) {
   const evidencePath = normalizeOptional(proof.evidencePath || proof.evidence_path || proof.hostInvocationEvidence);
   const agentId = normalizeOptional(proof.agentId || proof.agent_id || proof.subjectId);
   if (!source && !invocationId && !evidencePath && !agentId) return null;
-  return { source, invocationId, evidencePath, agentId };
+  return compactOptionalObject({ source, invocationId, evidencePath, agentId });
 }
 
 function normalizeOutputBinding({ outputBinding = null, outputArtifact = null, outputArtifacts = [], graphId = null } = {}) {
@@ -626,10 +628,10 @@ function normalizeOutputBinding({ outputBinding = null, outputArtifact = null, o
 
 function normalizeReceiptBinding({ receiptId = null, receiptPath = null } = {}) {
   if (!receiptId && !receiptPath) return null;
-  return {
+  return compactOptionalObject({
     receiptId: normalizeOptional(receiptId),
     receiptPath: normalizeOptional(receiptPath) ? normalizePath(receiptPath) : null,
-  };
+  });
 }
 
 function normalizeCommand(value) {
@@ -645,6 +647,11 @@ function normalizeOptional(value) {
 
 function uniqueStrings(values = []) {
   return [...new Set(values.map((item) => String(item || "").trim()).filter(Boolean))];
+}
+
+function compactOptionalObject(value = {}) {
+  const entries = Object.entries(value).filter(([, item]) => item !== null && item !== undefined && item !== "");
+  return entries.length > 0 ? Object.fromEntries(entries) : null;
 }
 
 function issue(code, itemId, message, extra = {}) {

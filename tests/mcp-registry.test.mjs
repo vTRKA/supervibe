@@ -4,7 +4,7 @@ import { mkdir, readFile, readdir, writeFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
-  discoverMcps, getRegistry, hasMcp, getMcpTools, pickMcp,
+  discoverMcps, getRegistry, hasMcp, getMcpTools, getMcpToolBindings, pickMcp,
   REGISTRY_PATH_FOR_TEST
 } from '../scripts/lib/mcp-registry.mjs';
 
@@ -81,9 +81,66 @@ test('getMcpTools: returns tool prefix list for an MCP', () => {
   assert.ok(tools.includes('mcp__mcp-server-context7__resolve-library-id'));
 });
 
+test('getMcpTools: returns adapter-specific Codex namespace overlays', () => {
+  const tools = getMcpTools('context7', { host: 'codex' });
+  assert.ok(tools.includes('mcp__mcp_server_context7__resolve_library_id'));
+  assert.ok(!tools.includes('mcp__mcp-server-context7__resolve-library-id'));
+
+  const bindings = getMcpToolBindings('figma');
+  assert.ok(bindings.adapterTools.codex.includes('mcp__mcp_server_figma__get_figma_data'));
+});
+
 test('getMcpTools: returns full Tauri desktop testing catalog', () => {
   const tools = getMcpTools('tauri');
   assert.deepStrictEqual([...tools].sort(), [...FULL_TAURI_MCP_TOOLS].sort());
+});
+
+test('discoverMcps: parses Codex TOML MCP servers and skips disabled entries', async () => {
+  const fakeConfig = [
+    '[mcp_servers.openaiDeveloperDocs]',
+    'url = "https://developers.openai.com/mcp"',
+    'enabled = true',
+    '',
+    '[mcp_servers.disabledDocs]',
+    'url = "https://example.invalid/mcp"',
+    'enabled = false',
+  ].join('\n');
+  const cfgPath = join(sandbox, 'fake-codex.toml');
+  await writeFile(cfgPath, fakeConfig);
+
+  const found = await discoverMcps({ configPath: cfgPath, host: 'codex' });
+  const names = found.map(m => m.name);
+  assert.ok(names.includes('openaiDeveloperDocs'));
+  assert.ok(!names.includes('disabledDocs'));
+
+  const registry = await getRegistry();
+  const openaiDocs = registry.mcps.find(mcp => mcp.capabilityId === 'openai-docs');
+  assert.ok(openaiDocs);
+  assert.strictEqual(openaiDocs.transport, 'http');
+  assert.ok(openaiDocs.hostSources.includes('codex'));
+  assert.strictEqual(openaiDocs.toolNamespace, 'mcp__openaiDeveloperDocs__');
+  assert.ok(registry.toolNamespacesByHost.codex['openai-docs'] === 'mcp__openaiDeveloperDocs__');
+  assert.ok(registry.configuredMcps.some(mcp => mcp.providerName === 'openaiDeveloperDocs'));
+  assert.ok(getMcpTools('openai-docs').includes('mcp__openaiDeveloperDocs__fetch_openai_doc'));
+});
+
+test('discoverMcps: binds Codex runtime tool namespaces by host', async () => {
+  await discoverMcps({
+    host: 'codex',
+    runtimeTools: [
+      'mcp__mcp_server_context7__query_docs',
+      'mcp__mcp_server_figma__get_figma_data',
+    ],
+    allowConfigToolFallback: false,
+  });
+
+  const registry = await getRegistry();
+  const context7 = registry.mcps.find(mcp => mcp.name === 'context7');
+  assert.ok(context7);
+  assert.strictEqual(context7.toolNamespace, 'mcp__mcp_server_context7__');
+  assert.ok(context7.adapterBinding.adapterTools.includes('mcp__mcp_server_context7__query_docs'));
+  assert.ok(registry.availableToolsByHost.codex.context7.includes('mcp__mcp_server_context7__query_docs'));
+  assert.strictEqual(registry.toolNamespacesByHost.codex.context7, 'mcp__mcp_server_context7__');
 });
 
 test('discoverMcps: persists full Tauri desktop testing catalog', async () => {

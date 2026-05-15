@@ -46,8 +46,6 @@ agents-attach:
   - supervibe:_design:ui-polish-reviewer
   - supervibe:_design:accessibility-reviewer
   - supervibe:_design:copywriter
-  - supervibe:_design:presentation-director
-  - supervibe:_design:presentation-deck-builder
   - supervibe:_design:prototype-builder
   # Stack-specific
   - supervibe:stacks/laravel:laravel-architect
@@ -87,8 +85,6 @@ agent-profiles:
       - supervibe:_design:design-system-architect
       - supervibe:_design:ux-ui-designer
       - supervibe:_design:prototype-builder
-      - supervibe:_design:presentation-director
-      - supervibe:_design:presentation-deck-builder
       - supervibe:_design:copywriter
       - supervibe:_design:ui-polish-reviewer
       - supervibe:_design:accessibility-reviewer

@@ -1,0 +1,1087 @@
+{
+  "schemaVersion": 1,
+  "kind": "supervibe-scenario-benchmark-fixture",
+  "description": "Golden scenario benchmark pack for Supervibe boost workflows without platform bloat.",
+  "scenarios": [
+    {
+      "id": "boost-p5-3-s01-genesis",
+      "title": "Genesis in an existing project",
+      "goal": "Prove genesis detects an existing workspace, stays dry-run by default, and preserves host-owned instruction sections.",
+      "setup": {
+        "preconditions": [
+          "workspace has existing host instruction files",
+          "no provider-home mutation approval is present",
+          "Code RAG and CodeGraph health may be fresh or degraded"
+        ],
+        "fixtures": [
+          "host instruction file with Supervibe managed block and user-owned content",
+          "provider capability matrix with codex available"
+        ]
+      },
+      "inputs": {
+        "request": "/supervibe-genesis --host codex",
+        "flags": [
+          "--dry-run"
+        ]
+      },
+      "expectedOutcome": {
+        "intent": "genesis_setup",
+        "nextAction": "preview host adapter changes before mutation",
+        "command": "/supervibe-genesis --host codex --dry-run",
+        "expectedArtifacts": [
+          "dry-run report",
+          "post-delivery menu"
+        ],
+        "degradedCases": [
+          "missing host adapter reports degraded mode and exact repair hint",
+          "stale index adds caveat without blocking dry-run preview"
+        ]
+      },
+      "confidenceGate": {
+        "minimum": 0.9,
+        "caps": [
+          "0.75 if host capability evidence is missing",
+          "0.7 if preservation evidence is absent"
+        ]
+      },
+      "regressionDeltaFields": [
+        "intent",
+        "nextAction",
+        "command",
+        "hostInstructionPreservation",
+        "dryRunDefault",
+        "confidence"
+      ],
+      "requiredEvidence": [
+        "host adapter selection evidence",
+        "redacted write preview",
+        "user-owned section preservation check",
+        "dry-run output"
+      ],
+      "assertions": [
+        "does not write provider-home config without approval",
+        "does not overwrite user-owned instruction sections",
+        "names exact files that would be changed"
+      ],
+      "privacyClass": "local-private",
+      "maxRuntime": {
+        "warmMs": 2000,
+        "coldMs": 5000
+      },
+      "comparatorTolerance": "stable fields must match exactly; explanatory prose may drift",
+      "regressionBaseline": "p5-3-genesis-v1",
+      "nonGoals": [
+        "installing dependencies",
+        "mutating provider config",
+        "creating dashboard or marketplace surfaces"
+      ],
+      "opportunityId": "O048",
+      "contractIds": [
+        "C-STATE",
+        "C-SAFETY",
+        "C-HOST"
+      ],
+      "input": {
+        "request": "/supervibe-genesis --host codex",
+        "flags": [
+          "--dry-run"
+        ]
+      },
+      "preconditions": {
+        "preconditions": [
+          "workspace has existing host instruction files",
+          "no provider-home mutation approval is present",
+          "Code RAG and CodeGraph health may be fresh or degraded"
+        ],
+        "fixtures": [
+          "host instruction file with Supervibe managed block and user-owned content",
+          "provider capability matrix with codex available"
+        ]
+      },
+      "expectedArtifacts": [
+        "dry-run report",
+        "post-delivery menu"
+      ],
+      "evidenceFields": [
+        "host adapter selection evidence",
+        "redacted write preview",
+        "user-owned section preservation check",
+        "dry-run output"
+      ]
+    },
+    {
+      "id": "boost-p5-3-s02-russian-routing",
+      "title": "Russian routing to plan review",
+      "goal": "Prove Russian workflow phrasing routes to the correct Supervibe command without mojibake-sensitive matching.",
+      "setup": {
+        "preconditions": [
+          "command router corpus includes Russian plan and audit examples",
+          "terminal encoding may render non-ASCII text unreliably"
+        ],
+        "fixtures": [
+          "Russian request text stored as escaped JSON input",
+          "negative examples for audit, design, status, and review"
+        ]
+      },
+      "inputs": {
+        "request": "Sformiruy plan i zapusti obyazatelnyy review pered vypolneniem",
+        "flags": []
+      },
+      "expectedOutcome": {
+        "intent": "plan_review",
+        "command": "/supervibe-plan --review",
+        "nextAction": "run mandatory plan review before execution",
+        "expectedArtifacts": [
+          "route explanation",
+          "ambiguous-route caveat when confidence is low"
+        ],
+        "degradedCases": [
+          "if confidence is below threshold, ask one clarification question",
+          "if slash command is missing, report missing command and stop"
+        ]
+      },
+      "confidenceGate": {
+        "minimum": 0.88,
+        "caps": [
+          "0.65 if route explanation lacks rejected alternatives",
+          "0.6 if encoding-dependent text is the only evidence"
+        ]
+      },
+      "regressionDeltaFields": [
+        "intent",
+        "command",
+        "routeConfidence",
+        "rejectedAlternatives",
+        "requiresClarification"
+      ],
+      "requiredEvidence": [
+        "command matcher output",
+        "routing corpus match",
+        "negative-route comparison",
+        "confidence score"
+      ],
+      "assertions": [
+        "routes to /supervibe-plan --review",
+        "does not route to design, audit, status, or execute-plan",
+        "does not inspect source after missing-slash hard stop"
+      ],
+      "privacyClass": "publishable-summary",
+      "maxRuntime": {
+        "warmMs": 1000,
+        "coldMs": 3000
+      },
+      "comparatorTolerance": "intent and command exact; confidence may vary by 0.03",
+      "regressionBaseline": "p5-3-russian-routing-v1",
+      "nonGoals": [
+        "requiring raw Cyrillic output in terminals",
+        "adding broad multilingual runtime dependencies"
+      ],
+      "opportunityId": "O049",
+      "contractIds": [
+        "C-ROUTING",
+        "C-COMMAND"
+      ],
+      "input": {
+        "request": "Sformiruy plan i zapusti obyazatelnyy review pered vypolneniem",
+        "flags": []
+      },
+      "preconditions": {
+        "preconditions": [
+          "command router corpus includes Russian plan and audit examples",
+          "terminal encoding may render non-ASCII text unreliably"
+        ],
+        "fixtures": [
+          "Russian request text stored as escaped JSON input",
+          "negative examples for audit, design, status, and review"
+        ]
+      },
+      "expectedArtifacts": [
+        "route explanation",
+        "ambiguous-route caveat when confidence is low"
+      ],
+      "evidenceFields": [
+        "command matcher output",
+        "routing corpus match",
+        "negative-route comparison",
+        "confidence score"
+      ]
+    },
+    {
+      "id": "boost-p5-3-s03-brainstorm-to-plan",
+      "title": "Brainstorm to plan handoff",
+      "goal": "Prove an approved brainstorm summary hands off to planning while preserving approval gates and scope boundaries.",
+      "setup": {
+        "preconditions": [
+          "brainstorm artifact exists",
+          "summary approval is present",
+          "no implementation approval is present"
+        ],
+        "fixtures": [
+          "approved brainstorm summary",
+          "handoff metadata",
+          "scope exclusions"
+        ]
+      },
+      "inputs": {
+        "request": "I finished brainstorm, write the implementation plan next",
+        "flags": [
+          "--from-brainstorm"
+        ]
+      },
+      "expectedOutcome": {
+        "intent": "brainstorm_to_plan",
+        "command": "/supervibe-plan --from-brainstorm",
+        "nextAction": "create reviewed implementation plan from approved brainstorm",
+        "expectedArtifacts": [
+          "plan draft",
+          "source brainstorm link",
+          "user gate list"
+        ],
+        "degradedCases": [
+          "missing brainstorm approval blocks durable plan creation",
+          "stale brainstorm artifact requests confirmation"
+        ]
+      },
+      "confidenceGate": {
+        "minimum": 0.9,
+        "caps": [
+          "0.7 if approval evidence is missing",
+          "0.75 if source artifact freshness is unknown"
+        ]
+      },
+      "regressionDeltaFields": [
+        "intent",
+        "command",
+        "approvalGate",
+        "sourceArtifact",
+        "blockedExecution"
+      ],
+      "requiredEvidence": [
+        "approved brainstorm artifact",
+        "handoff state",
+        "plan review requirement",
+        "implementation stop condition"
+      ],
+      "assertions": [
+        "does not execute implementation tasks",
+        "preserves non-goals from brainstorm",
+        "requires plan review before execution"
+      ],
+      "privacyClass": "local-private",
+      "maxRuntime": {
+        "warmMs": 1000,
+        "coldMs": 3000
+      },
+      "comparatorTolerance": "gate and command fields exact",
+      "regressionBaseline": "p5-3-brainstorm-plan-v1",
+      "nonGoals": [
+        "atomizing work items",
+        "spawning implementation agents"
+      ],
+      "opportunityId": "O050",
+      "contractIds": [
+        "C-PLAN",
+        "C-APPROVAL",
+        "C-SAFETY"
+      ],
+      "input": {
+        "request": "I finished brainstorm, write the implementation plan next",
+        "flags": [
+          "--from-brainstorm"
+        ]
+      },
+      "preconditions": {
+        "preconditions": [
+          "brainstorm artifact exists",
+          "summary approval is present",
+          "no implementation approval is present"
+        ],
+        "fixtures": [
+          "approved brainstorm summary",
+          "handoff metadata",
+          "scope exclusions"
+        ]
+      },
+      "expectedArtifacts": [
+        "plan draft",
+        "source brainstorm link",
+        "user gate list"
+      ],
+      "evidenceFields": [
+        "approved brainstorm artifact",
+        "handoff state",
+        "plan review requirement",
+        "implementation stop condition"
+      ]
+    },
+    {
+      "id": "boost-p5-3-s04-stale-index-repair",
+      "title": "Stale Code RAG index repair",
+      "goal": "Prove stale index output names exact stale sources and provides a safe repair command without hiding limitations.",
+      "setup": {
+        "preconditions": [
+          "Code RAG health report contains stale or missing rows",
+          "workspace files changed after last index build"
+        ],
+        "fixtures": [
+          "index health summary",
+          "changed file list",
+          "repair command expectation"
+        ]
+      },
+      "inputs": {
+        "request": "repair broken RAG index health and show the exact health gate",
+        "flags": [
+          "--index-health",
+          "--strict-index-health"
+        ]
+      },
+      "expectedOutcome": {
+        "intent": "index_repair",
+        "command": "node scripts/build-code-index.mjs --root . --force --health --no-embeddings",
+        "nextAction": "repair stale Code RAG index",
+        "expectedArtifacts": [
+          "stale file list",
+          "row count summary",
+          "repair hint"
+        ],
+        "degradedCases": [
+          "missing sqlite support reports runtime requirement",
+          "missing embeddings reports no-embeddings fallback when allowed"
+        ]
+      },
+      "confidenceGate": {
+        "minimum": 0.88,
+        "caps": [
+          "0.72 if stale files are not named",
+          "0.65 if repair command is vague"
+        ]
+      },
+      "regressionDeltaFields": [
+        "intent",
+        "command",
+        "staleFileCount",
+        "indexedRowCount",
+        "healthStatus",
+        "repairHint"
+      ],
+      "requiredEvidence": [
+        "index health output",
+        "changed file evidence",
+        "repair command",
+        "degraded-mode caveat"
+      ],
+      "assertions": [
+        "does not say only index stale",
+        "names stale rows or files",
+        "provides a copyable repair command"
+      ],
+      "privacyClass": "local-private",
+      "maxRuntime": {
+        "warmMs": 3000,
+        "coldMs": 5000
+      },
+      "comparatorTolerance": "counts may differ; status class and repair command exact",
+      "regressionBaseline": "p5-3-stale-index-v1",
+      "nonGoals": [
+        "running the repair during benchmark classification",
+        "requiring embeddings for health-only repair"
+      ],
+      "opportunityId": "O051",
+      "contractIds": [
+        "C-RAG",
+        "C-REPAIR",
+        "C-STATE"
+      ],
+      "input": {
+        "request": "repair broken RAG index health and show the exact health gate",
+        "flags": [
+          "--index-health",
+          "--strict-index-health"
+        ]
+      },
+      "preconditions": {
+        "preconditions": [
+          "Code RAG health report contains stale or missing rows",
+          "workspace files changed after last index build"
+        ],
+        "fixtures": [
+          "index health summary",
+          "changed file list",
+          "repair command expectation"
+        ]
+      },
+      "expectedArtifacts": [
+        "stale file list",
+        "row count summary",
+        "repair hint"
+      ],
+      "evidenceFields": [
+        "index health output",
+        "changed file evidence",
+        "repair command",
+        "degraded-mode caveat"
+      ]
+    },
+    {
+      "id": "boost-p5-3-s05-codegraph-impact",
+      "title": "CodeGraph impact query",
+      "goal": "Prove impact output is review-ready, includes callers and caveats, and exposes graph confidence limitations.",
+      "setup": {
+        "preconditions": [
+          "CodeGraph index exists",
+          "target symbol has caller and callee edges",
+          "some unresolved edges may exist"
+        ],
+        "fixtures": [
+          "target symbol name",
+          "graph health summary",
+          "expected affected files"
+        ]
+      },
+      "inputs": {
+        "request": "show impact and callers for the next-action resolver before editing it",
+        "flags": [
+          "--impact",
+          "--callers"
+        ]
+      },
+      "expectedOutcome": {
+        "intent": "codegraph_impact",
+        "command": "supervibe.queryGraph",
+        "nextAction": "review blast radius before changing shared workflow state",
+        "expectedArtifacts": [
+          "top affected files",
+          "caller list",
+          "unresolved edge caveats",
+          "resolved edge rate"
+        ],
+        "degradedCases": [
+          "missing graph index reports repair command",
+          "low resolved edge rate caps confidence and requires manual search"
+        ]
+      },
+      "confidenceGate": {
+        "minimum": 0.86,
+        "caps": [
+          "0.7 if resolved edge rate is omitted",
+          "0.68 if affected files are not named"
+        ]
+      },
+      "regressionDeltaFields": [
+        "intent",
+        "affectedFiles",
+        "callers",
+        "callees",
+        "resolvedEdgeRate",
+        "limitations"
+      ],
+      "requiredEvidence": [
+        "graph query output",
+        "graph readiness",
+        "caller/callee summary",
+        "manual-search caveat when incomplete"
+      ],
+      "assertions": [
+        "does not claim full certainty when unresolved edges exist",
+        "lists top affected files",
+        "preserves read-only behavior"
+      ],
+      "privacyClass": "local-private",
+      "maxRuntime": {
+        "warmMs": 3000,
+        "coldMs": 5000
+      },
+      "comparatorTolerance": "affected file order may drift; limitation fields exact",
+      "regressionBaseline": "p5-3-codegraph-impact-v1",
+      "nonGoals": [
+        "building a visual graph UI",
+        "mutating graph indexes"
+      ],
+      "opportunityId": "O052",
+      "contractIds": [
+        "C-CODEGRAPH",
+        "C-IMPACT",
+        "C-SAFETY"
+      ],
+      "input": {
+        "request": "show impact and callers for the next-action resolver before editing it",
+        "flags": [
+          "--impact",
+          "--callers"
+        ]
+      },
+      "preconditions": {
+        "preconditions": [
+          "CodeGraph index exists",
+          "target symbol has caller and callee edges",
+          "some unresolved edges may exist"
+        ],
+        "fixtures": [
+          "target symbol name",
+          "graph health summary",
+          "expected affected files"
+        ]
+      },
+      "expectedArtifacts": [
+        "top affected files",
+        "caller list",
+        "unresolved edge caveats",
+        "resolved edge rate"
+      ],
+      "evidenceFields": [
+        "graph query output",
+        "graph readiness",
+        "caller/callee summary",
+        "manual-search caveat when incomplete"
+      ]
+    },
+    {
+      "id": "boost-p5-3-s06-receipt-recovery",
+      "title": "Workflow receipt recovery",
+      "goal": "Prove receipt drift is detected and recovery uses runtime commands instead of hand-edited JSON.",
+      "setup": {
+        "preconditions": [
+          "workflow receipt ledger has stale, missing, or untrusted entries",
+          "active workflow references receipt-bound work"
+        ],
+        "fixtures": [
+          "receipt ledger summary",
+          "stale receipt id",
+          "trusted recovery command list"
+        ]
+      },
+      "inputs": {
+        "request": "recover stale workflow receipts and show what is safe to prune",
+        "flags": [
+          "--dry-run"
+        ]
+      },
+      "expectedOutcome": {
+        "intent": "receipt_recovery",
+        "command": "node scripts/workflow-receipt.mjs recovery-status",
+        "nextAction": "inspect receipt recovery status before pruning or reissue",
+        "expectedArtifacts": [
+          "trusted receipt status",
+          "stale receipt list",
+          "dry-run prune preview",
+          "reissue command"
+        ],
+        "degradedCases": [
+          "untrusted controller-authored evidence blocks durable pass",
+          "missing ledger requests rebuild-ledger dry-run first"
+        ]
+      },
+      "confidenceGate": {
+        "minimum": 0.9,
+        "caps": [
+          "0.6 if manual receipt edits are suggested",
+          "0.7 if host invocation source is omitted"
+        ]
+      },
+      "regressionDeltaFields": [
+        "intent",
+        "receiptTrustStatus",
+        "staleReceiptCount",
+        "recoveryCommand",
+        "mutationRequiresApproval"
+      ],
+      "requiredEvidence": [
+        "runtime-issued receipt ids",
+        "hostInvocation.source",
+        "dry-run recovery output",
+        "no manual edit path"
+      ],
+      "assertions": [
+        "does not edit receipt JSON by hand",
+        "uses workflow-receipt repair commands",
+        "separates diagnostic evidence from durable proof"
+      ],
+      "privacyClass": "local-private",
+      "maxRuntime": {
+        "warmMs": 2000,
+        "coldMs": 5000
+      },
+      "comparatorTolerance": "receipt ids may differ; trust status and command exact",
+      "regressionBaseline": "p5-3-receipt-recovery-v1",
+      "nonGoals": [
+        "claiming reviewer proof from controller prose",
+        "pruning receipts without current approval"
+      ],
+      "opportunityId": "O053",
+      "contractIds": [
+        "C-RECEIPTS",
+        "C-REPAIR",
+        "C-SAFETY"
+      ],
+      "input": {
+        "request": "recover stale workflow receipts and show what is safe to prune",
+        "flags": [
+          "--dry-run"
+        ]
+      },
+      "preconditions": {
+        "preconditions": [
+          "workflow receipt ledger has stale, missing, or untrusted entries",
+          "active workflow references receipt-bound work"
+        ],
+        "fixtures": [
+          "receipt ledger summary",
+          "stale receipt id",
+          "trusted recovery command list"
+        ]
+      },
+      "expectedArtifacts": [
+        "trusted receipt status",
+        "stale receipt list",
+        "dry-run prune preview",
+        "reissue command"
+      ],
+      "evidenceFields": [
+        "runtime-issued receipt ids",
+        "hostInvocation.source",
+        "dry-run recovery output",
+        "no manual edit path"
+      ]
+    },
+    {
+      "id": "boost-p5-3-s07-design-next-action",
+      "title": "Design workflow next action",
+      "goal": "Prove /supervibe-design exposes one canonical next action and repairs disagreement before asking the user.",
+      "setup": {
+        "preconditions": [
+          "design runtime state exists",
+          "design-agent-plan and wizard queue may disagree",
+          "target may be web, desktop, or mobile-native"
+        ],
+        "fixtures": [
+          "design runtime state",
+          "wizard answer catalog",
+          "design agent plan proposal"
+        ]
+      },
+      "inputs": {
+        "request": "/supervibe-design status",
+        "flags": [
+          "--next-only"
+        ]
+      },
+      "expectedOutcome": {
+        "intent": "design_next_action",
+        "command": "/supervibe-design --next-only",
+        "nextAction": "repair or present the single canonical design question",
+        "expectedArtifacts": [
+          "canonical next action",
+          "target resolution",
+          "wizard option ids accepted by design-wizard-answer"
+        ],
+        "degradedCases": [
+          "state disagreement blocks asking the user and reports repair",
+          "missing target asks target-resolution question first"
+        ]
+      },
+      "confidenceGate": {
+        "minimum": 0.9,
+        "caps": [
+          "0.65 if multiple next actions are shown as primary",
+          "0.6 if wizard option ids are not executable"
+        ]
+      },
+      "regressionDeltaFields": [
+        "intent",
+        "nextAction",
+        "target",
+        "wizardOptionIds",
+        "stateAgreement"
+      ],
+      "requiredEvidence": [
+        "design runtime state",
+        "design-agent-plan next action",
+        "wizard queue next action",
+        "design-wizard-answer accepted option ids"
+      ],
+      "assertions": [
+        "shows exactly one primary next action",
+        "does not ask an invalid wizard option",
+        "repairs state disagreement before progress"
+      ],
+      "privacyClass": "local-private",
+      "maxRuntime": {
+        "warmMs": 1000,
+        "coldMs": 3000
+      },
+      "comparatorTolerance": "single primary action exact; explanatory why may drift",
+      "regressionBaseline": "p5-3-design-next-action-v1",
+      "nonGoals": [
+        "creating design artifacts",
+        "launching a browser preview"
+      ],
+      "opportunityId": "O054",
+      "contractIds": [
+        "C-DESIGN",
+        "C-STATE",
+        "C-NEXT-ACTION"
+      ],
+      "input": {
+        "request": "/supervibe-design status",
+        "flags": [
+          "--next-only"
+        ]
+      },
+      "preconditions": {
+        "preconditions": [
+          "design runtime state exists",
+          "design-agent-plan and wizard queue may disagree",
+          "target may be web, desktop, or mobile-native"
+        ],
+        "fixtures": [
+          "design runtime state",
+          "wizard answer catalog",
+          "design agent plan proposal"
+        ]
+      },
+      "expectedArtifacts": [
+        "canonical next action",
+        "target resolution",
+        "wizard option ids accepted by design-wizard-answer"
+      ],
+      "evidenceFields": [
+        "design runtime state",
+        "design-agent-plan next action",
+        "wizard queue next action",
+        "design-wizard-answer accepted option ids"
+      ]
+    },
+    {
+      "id": "boost-p5-3-s08-worktree-conflict",
+      "title": "Worktree conflict prevention",
+      "goal": "Prove overlapping write sets are detected before parallel agents or task waves start.",
+      "setup": {
+        "preconditions": [
+          "two ready tasks declare overlapping write scopes",
+          "active workspace may contain user changes"
+        ],
+        "fixtures": [
+          "work-item graph with conflicting write sets",
+          "worktree registry",
+          "dirty worktree summary"
+        ]
+      },
+      "inputs": {
+        "request": "dispatch these ready graph tasks in parallel",
+        "flags": [
+          "--dispatch-wave"
+        ]
+      },
+      "expectedOutcome": {
+        "intent": "worktree_conflict_prevention",
+        "command": "/supervibe-loop --dispatch-wave",
+        "nextAction": "block or split overlapping write sets before dispatch",
+        "expectedArtifacts": [
+          "conflict report",
+          "task ids with overlapping paths",
+          "safe parallel group recommendation"
+        ],
+        "degradedCases": [
+          "missing write scope blocks dispatch until scope is repaired",
+          "dirty unrelated files are reported but not reverted"
+        ]
+      },
+      "confidenceGate": {
+        "minimum": 0.88,
+        "caps": [
+          "0.65 if conflicting paths are not named",
+          "0.6 if unrelated changes are reverted or proposed for revert"
+        ]
+      },
+      "regressionDeltaFields": [
+        "intent",
+        "conflictingPaths",
+        "blockedTasks",
+        "safeParallelGroups",
+        "userChangePreservation"
+      ],
+      "requiredEvidence": [
+        "work-item graph write scopes",
+        "worktree registry status",
+        "dirty worktree summary",
+        "dispatch block reason"
+      ],
+      "assertions": [
+        "does not start conflicting workers",
+        "does not revert unrelated user changes",
+        "names exact path conflicts"
+      ],
+      "privacyClass": "local-private",
+      "maxRuntime": {
+        "warmMs": 1000,
+        "coldMs": 3000
+      },
+      "comparatorTolerance": "conflict path set exact",
+      "regressionBaseline": "p5-3-worktree-conflict-v1",
+      "nonGoals": [
+        "auto-resolving merge conflicts",
+        "creating extra worktrees without approval"
+      ],
+      "opportunityId": "O055",
+      "contractIds": [
+        "C-WORKTREE",
+        "C-DISPATCH",
+        "C-SAFETY"
+      ],
+      "input": {
+        "request": "dispatch these ready graph tasks in parallel",
+        "flags": [
+          "--dispatch-wave"
+        ]
+      },
+      "preconditions": {
+        "preconditions": [
+          "two ready tasks declare overlapping write scopes",
+          "active workspace may contain user changes"
+        ],
+        "fixtures": [
+          "work-item graph with conflicting write sets",
+          "worktree registry",
+          "dirty worktree summary"
+        ]
+      },
+      "expectedArtifacts": [
+        "conflict report",
+        "task ids with overlapping paths",
+        "safe parallel group recommendation"
+      ],
+      "evidenceFields": [
+        "work-item graph write scopes",
+        "worktree registry status",
+        "dirty worktree summary",
+        "dispatch block reason"
+      ]
+    },
+    {
+      "id": "boost-p5-3-s09-security-review-gate",
+      "title": "Security and review gate",
+      "goal": "Prove high-risk workflow changes require trusted reviewer evidence and privacy controls before PASS.",
+      "setup": {
+        "preconditions": [
+          "task touches facade, witness, receipt, provider config, or security-sensitive output",
+          "reviewer receipts may be missing or stale"
+        ],
+        "fixtures": [
+          "risk-classified task",
+          "review coverage matrix",
+          "redaction negative fixtures"
+        ]
+      },
+      "inputs": {
+        "request": "mark this security-sensitive workflow change complete",
+        "flags": [
+          "--review-gate"
+        ]
+      },
+      "expectedOutcome": {
+        "intent": "security_review_gate",
+        "command": "/supervibe-plan --review",
+        "nextAction": "block PASS until trusted reviewer receipts and redaction evidence exist",
+        "expectedArtifacts": [
+          "security reviewer receipt",
+          "quality gate receipt",
+          "redaction fixture result",
+          "residual risk record"
+        ],
+        "degradedCases": [
+          "missing reviewer receipt is BLOCK",
+          "controller-authored summary is diagnostic only"
+        ]
+      },
+      "confidenceGate": {
+        "minimum": 0.92,
+        "caps": [
+          "0.5 if trusted reviewer receipt is absent",
+          "0.65 if redaction evidence is missing"
+        ]
+      },
+      "regressionDeltaFields": [
+        "intent",
+        "reviewerReceipts",
+        "redactionEvidence",
+        "residualRisk",
+        "passBlocked"
+      ],
+      "requiredEvidence": [
+        "runtime-issued reviewer receipts",
+        "host invocation ids",
+        "redaction allowlist result",
+        "residual risk schema fields"
+      ],
+      "assertions": [
+        "does not accept controller-authored proof as durable reviewer output",
+        "blocks when applicable security row is missing",
+        "does not leak raw receipt payloads or secrets"
+      ],
+      "privacyClass": "local-private",
+      "maxRuntime": {
+        "warmMs": 2000,
+        "coldMs": 5000
+      },
+      "comparatorTolerance": "gate status exact; reviewer ids may differ",
+      "regressionBaseline": "p5-3-security-review-v1",
+      "nonGoals": [
+        "publishing private evidence",
+        "waiving critical security findings automatically"
+      ],
+      "opportunityId": "O056",
+      "contractIds": [
+        "C-SECURITY",
+        "C-REVIEW",
+        "C-PRIVACY"
+      ],
+      "input": {
+        "request": "mark this security-sensitive workflow change complete",
+        "flags": [
+          "--review-gate"
+        ]
+      },
+      "preconditions": {
+        "preconditions": [
+          "task touches facade, witness, receipt, provider config, or security-sensitive output",
+          "reviewer receipts may be missing or stale"
+        ],
+        "fixtures": [
+          "risk-classified task",
+          "review coverage matrix",
+          "redaction negative fixtures"
+        ]
+      },
+      "expectedArtifacts": [
+        "security reviewer receipt",
+        "quality gate receipt",
+        "redaction fixture result",
+        "residual risk record"
+      ],
+      "evidenceFields": [
+        "runtime-issued reviewer receipts",
+        "host invocation ids",
+        "redaction allowlist result",
+        "residual risk schema fields"
+      ]
+    },
+    {
+      "id": "boost-p5-3-s10-release-witness",
+      "title": "Release witness",
+      "goal": "Prove release witness summarizes final evidence without duplicating receipt ledgers or exposing private data.",
+      "setup": {
+        "preconditions": [
+          "release intent approval exists",
+          "final validators are complete or explicitly waived",
+          "version and package state are final"
+        ],
+        "fixtures": [
+          "final release gate rows",
+          "validator summary",
+          "changed surface summary",
+          "residual risk entries"
+        ]
+      },
+      "inputs": {
+        "request": "generate the local release witness for this final release gate",
+        "flags": [
+          "--witness"
+        ]
+      },
+      "expectedOutcome": {
+        "intent": "release_witness",
+        "command": "node scripts/supervibe-release-witness.mjs",
+        "nextAction": "generate local-private witness and publishable summary after final evidence is current",
+        "expectedArtifacts": [
+          "local-private witness manifest",
+          "publishable summary",
+          "hash/check summary",
+          "release gate table"
+        ],
+        "degradedCases": [
+          "stale package or commit state blocks witness PASS",
+          "missing applicable final gate row is BLOCK",
+          "waived row requires owner, expiry, confidence impact, and rollback"
+        ]
+      },
+      "confidenceGate": {
+        "minimum": 0.93,
+        "caps": [
+          "0.55 if witness is generated before final version/package state",
+          "0.65 if residual risk schema is incomplete",
+          "0.6 if publishable output includes local-private evidence"
+        ]
+      },
+      "regressionDeltaFields": [
+        "intent",
+        "witnessStatus",
+        "validatorSummary",
+        "artifactHashes",
+        "residualRiskCount",
+        "publishablePrivacyStatus"
+      ],
+      "requiredEvidence": [
+        "final release gate rows",
+        "validator summaries",
+        "artifact hash list",
+        "receipt citations by id only",
+        "redaction scan"
+      ],
+      "assertions": [
+        "does not duplicate receipt ledgers",
+        "does not include raw host invocation payloads in publishable summary",
+        "blocks on stale final evidence"
+      ],
+      "privacyClass": "local-private",
+      "maxRuntime": {
+        "warmMs": 10000,
+        "coldMs": 10000
+      },
+      "comparatorTolerance": "hash values may differ; privacy and gate status exact",
+      "regressionBaseline": "p5-3-release-witness-v1",
+      "nonGoals": [
+        "publishing or pushing a release",
+        "replacing workflow receipt validation"
+      ],
+      "opportunityId": "O057",
+      "contractIds": [
+        "C-RELEASE",
+        "C-WITNESS",
+        "C-PRIVACY"
+      ],
+      "input": {
+        "request": "generate the local release witness for this final release gate",
+        "flags": [
+          "--witness"
+        ]
+      },
+      "preconditions": {
+        "preconditions": [
+          "release intent approval exists",
+          "final validators are complete or explicitly waived",
+          "version and package state are final"
+        ],
+        "fixtures": [
+          "final release gate rows",
+          "validator summary",
+          "changed surface summary",
+          "residual risk entries"
+        ]
+      },
+      "expectedArtifacts": [
+        "local-private witness manifest",
+        "publishable summary",
+        "hash/check summary",
+        "release gate table"
+      ],
+      "evidenceFields": [
+        "final release gate rows",
+        "validator summaries",
+        "artifact hash list",
+        "receipt citations by id only",
+        "redaction scan"
+      ]
+    }
+  ]
+}

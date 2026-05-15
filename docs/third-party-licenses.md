@@ -10,7 +10,6 @@ Scope: direct runtime and development dependencies plus lockfile license counts.
 | --- | --- | --- | --- | --- |
 | @huggingface/transformers | dependencies | 4.2.0 | Apache-2.0 | yes |
 | chokidar | dependencies | 5.0.0 | MIT | yes |
-| pptxgenjs | dependencies | 4.0.1 | MIT | yes |
 | web-tree-sitter | dependencies | 0.26.8 | MIT | yes |
 | ajv | devDependencies | 8.20.0 | MIT | yes |
 | gray-matter | devDependencies | 4.0.3 | MIT | yes |

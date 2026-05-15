@@ -22,9 +22,7 @@ Generated from agent frontmatter and body contracts.
 | electron-ui-designer | _design | 7 | 10 | 2 | 5 | 10 | excellent | fresh | yes |
 | extension-ui-designer | _design | 8 | 10 | 2 | 6 | 10 | excellent | fresh | yes |
 | mobile-ui-designer | _design | 7 | 10 | 2 | 5 | 10 | excellent | fresh | yes |
-| presentation-deck-builder | _design | 7 | 6 | 3 | 4 | 10 | excellent | fresh | yes |
-| presentation-director | _design | 7 | 10 | 3 | 4 | 10 | excellent | fresh | yes |
-| prototype-builder | _design | 13 | 6 | 4 | 9 | 10 | excellent | fresh | yes |
+| prototype-builder | _design | 14 | 6 | 4 | 10 | 10 | excellent | fresh | yes |
 | tauri-ui-designer | _design | 8 | 22 | 2 | 6 | 10 | excellent | fresh | yes |
 | ui-polish-reviewer | _design | 9 | 12 | 4 | 5 | 10 | excellent | fresh | no |
 | ux-ui-designer | _design | 10 | 9 | 2 | 8 | 10 | excellent | fresh | yes |

@@ -13,13 +13,11 @@ test("design expert knowledge validator rejects partial design coverage", async 
   const files = {
     "docs/references/design-expert-knowledge.md": "Accessibility only",
     "commands/supervibe-design.md": "Design Expert Knowledge Gate",
-    "commands/supervibe-presentation.md": "local design intelligence lookup",
     "agents/_design/ux-ui-designer.md": "Design Expert Knowledge",
     "skills/design-intelligence/SKILL.md": "Design Expert Knowledge Matrix",
     "skills/brandbook/SKILL.md": "Eight-Pass Expert Routine",
     "skills/prototype/SKILL.md": "Eight-Pass Expert Routine --daemon",
     "skills/landing-page/SKILL.md": "Eight-Pass Expert Routine --daemon",
-    "skills/presentation-deck/SKILL.md": "Eight-Pass Expert Routine --daemon",
     "skills/ui-review-and-polish/SKILL.md": "Design Expert Knowledge",
   };
 

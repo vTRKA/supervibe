@@ -25,7 +25,6 @@ test("workflow continuation validator rejects hard-stop multi-stage language", a
     "commands/supervibe-plan.md": "# /supervibe-plan",
     "skills/writing-plans/SKILL.md": "# Writing Plans",
     "commands/supervibe-loop.md": "# /supervibe-loop",
-    "commands/supervibe-presentation.md": "# /supervibe-presentation",
   };
 
   for (const [relPath, content] of Object.entries(files)) {

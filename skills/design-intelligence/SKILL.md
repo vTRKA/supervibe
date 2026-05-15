@@ -1,7 +1,7 @@
 ---
 name: design-intelligence
 namespace: internal
-description: 'Use WHEN design-facing agents need retrieval-backed style, UX, brand, deck, chart, collateral, or stack UI evidence TO ground decisions in project memory, code facts, approved design-system tokens, and the internal design intelligence data pack. Internal support only; no user-facing slash command.'
+description: 'Use WHEN design-facing agents need retrieval-backed style, UX, brand, chart, collateral, or stack UI evidence TO ground decisions in project memory, code facts, approved design-system tokens, and the internal design intelligence data pack. Internal support only; no user-facing slash command.'
 allowed-tools:
   - Read
   - Grep
@@ -22,14 +22,14 @@ last-verified: 2026-05-02T00:00:00.000Z
 
 ## Overview
 
-Design Intelligence provides a reusable Supervibe operating method for Use WHEN design-facing agents need retrieval-backed style, UX, brand, deck, chart, collateral, or stack UI evidence TO ground decisions in project memory, code facts, approved design-system tokens, and the internal design intelligence data pack. Internal support only; no user-facing slash command.
+Design Intelligence provides a reusable Supervibe operating method for Use WHEN design-facing agents need retrieval-backed style, UX, brand, chart, collateral, or stack UI evidence TO ground decisions in project memory, code facts, approved design-system tokens, and the internal design intelligence data pack. Internal support only; no user-facing slash command.
 It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
-Internal lookup and synthesis support for Supervibe design work. This skill does not own brand direction, UX specs, prototypes, presentation decks, accessibility review, or stack implementation. It supplies cited evidence so those agents make better decisions.
+Internal lookup and synthesis support for Supervibe design work. This skill does not own brand direction, UX specs, prototypes, accessibility review, or stack implementation. It supplies cited evidence so those agents make better decisions.
 
 ## When to Use
 
 Use this skill only as internal evidence support for design-facing agents and
-commands that need retrieval-backed product, style, UX, chart, deck, collateral,
+commands that need retrieval-backed product, style, UX, chart,  collateral,
 or stack UI guidance. It should enrich a design decision with citations, not
 replace the owning design, review, or handoff skill.
 
@@ -75,8 +75,8 @@ Lookup has no relevant local evidence
 ## Invocation Scope
 
 Use through existing routes only:
-- `/supervibe-design` for design-system, prototype, presentation, collateral, and stack handoff work.
-- `/supervibe-audit` for UI polish, accessibility, token drift, brand asset drift, and deck quality review.
+- `/supervibe-design` for design-system, prototype, collateral, and stack handoff work.
+- `/supervibe-audit` for UI polish, accessibility, token drift, brand asset drift, and design quality review.
 - `/supervibe-strengthen` for agent tuning and repeated design failure patterns.
 - `/supervibe` routing when the trigger router selects a design intent.
 
@@ -86,7 +86,7 @@ Never add a new slash command, package script, or standalone CLI wrapper for thi
 
 Required preflight order:
 
-1. Project memory: search accepted decisions, rejected alternatives, review findings, and learned patterns tagged `design`, `brand`, `ux`, `a11y`, `tokens`, `prototype`, `slides`, or `rejected`.
+1. Project memory: search accepted decisions, rejected alternatives, review findings, and learned patterns tagged `design`, `brand`, `ux`, `a11y`, `tokens`, `prototype` or `rejected`.
 2. Code search: inspect existing tokens, components, prototypes, routes, stack conventions, and brand assets.
 3. Internal lookup: call `designContextPreflight()` or `searchDesignIntelligence()` for the relevant domains.
 4. Creative pack lookup: when creative direction matters, choose fast path,
@@ -186,22 +186,21 @@ Generic retrieved guidance is advisory. It cannot override approved tokens, prio
 - `react-performance`: UI performance rules for React surfaces.
 - `ui-reasoning`: decision framing, critique, and recommendation quality evidence.
 - `stack:*`: implementation guidance for React, Next.js, Vue, Svelte, Angular, Flutter, SwiftUI, Shadcn, Tailwind, Three.js, and related stacks.
-- `slides:*`: presentation strategy, layout, copy, chart, typography, color, and background guidance.
 - `collateral:*`: logo, icon, CIP, brand asset, and mockup context guidance.
 - `creative packs`: local tier-2 pack cards in
   `skills/design-intelligence/references/creative/` selected through
   `docs/references/creative-reference-taxonomy.md`.
 
-Domain aliases `stack`, `slides`, and `collateral` expand to the corresponding
+Domain aliases `stack` and `collateral` expand to the corresponding
 prefixed local domain families during lookup.
 
 ### Required Dataset Breadth For Design Agents
 
-When a design-facing agent handles a product, prototype, landing, deck, or
+When a design-facing agent handles a product, prototype, landing, or
 collateral request, it must consider every relevant local dataset family before
 claiming that evidence is unavailable: product, style, color, typography, UX,
 landing, app-interface, charts, icons, google-fonts, react-performance,
-ui-reasoning, stack, slides, collateral, and creative packs. If a family is not
+ui-reasoning, stack, collateral, and creative packs. If a family is not
 relevant, mark it `N/A` with rationale; do not omit it silently.
 
 For advanced visual work, pair local evidence with a Prototype Capability Plan.
@@ -307,5 +306,4 @@ Returns:
 
 - `supervibe:brandbook` - owns approved design-system creation.
 - `supervibe:prototype` - consumes evidence for UI prototypes.
-- `supervibe:presentation-deck` - consumes deck and slide evidence.
 - `supervibe:ui-review-and-polish` - verifies design evidence in rendered artifacts.

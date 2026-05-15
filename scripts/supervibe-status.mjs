@@ -6,7 +6,7 @@ import { MemoryStore } from './lib/memory-store.mjs';
 import { SQLITE_NODE_MIN_VERSION, hasNodeSqliteSupport } from './lib/node-sqlite-runtime.mjs';
 import { getBrokenLanguages } from './lib/grammar-loader.mjs';
 import { existsSync, statSync, readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { detectFrameworkDevServers, listServers as listPreviewServers } from './lib/preview-server-manager.mjs';
 import { getRegistry as getMcpRegistry } from './lib/mcp-registry.mjs';
@@ -366,6 +366,20 @@ function printMissingCodeIndexStatus(codeDbPath) {
 }
 
 async function main() {
+  if (args.help || args.h) {
+    console.log([
+      'SUPERVIBE_STATUS_HELP',
+      'USAGE:',
+      '  node scripts/supervibe-status.mjs --next-only --file <graph.json> [--strict]',
+      '  node scripts/supervibe-status.mjs --blocked-only --file <graph.json>',
+      '  node scripts/supervibe-status.mjs --index-health',
+      '  node scripts/supervibe-status.mjs --watcher-diagnostics',
+      '  node scripts/supervibe-status.mjs --workflow-readiness --command <command>',
+      '',
+      'Default mode prints the full dashboard and may be slower on large dirty workspaces.'
+    ].join('\n'));
+    return;
+  }
   if (args.interactive) {
     const result = runInteractiveCli({
       mode: 'status',
@@ -374,6 +388,19 @@ async function main() {
     });
     console.log(result.output);
     if (!result.ok) process.exitCode = result.exitCode;
+    return;
+  }
+
+  if (args['next-only'] || args['blocked-only']) {
+    const conciseGraphPath = args.file || (args.epic ? join(PROJECT_ROOT, '.supervibe', 'memory', 'work-items', args.epic, 'graph.json') : null);
+    const concise = await buildConciseStatusModel({
+      rootDir: PROJECT_ROOT,
+      mode: args['blocked-only'] ? 'blocked-only' : 'next-only',
+      graphPath: conciseGraphPath,
+    });
+    if (args.json) console.log(renderTerminalOutput({ data: concise, json: true }, { json: true }));
+    else console.log(formatConciseStatusModel(concise));
+    if (args.strict && concise.pass !== true) process.exitCode = 2;
     return;
   }
 
@@ -1011,7 +1038,7 @@ main().catch(err => { console.error('supervibe-status error:', err); process.exi
 
 function parseArgs(argv) {
   const parsed = { _: [] };
-  const booleans = new Set(['dashboard', 'integrations', 'json', 'block-network', 'no-color', 'interactive', 'eval-report', 'policy', 'role', 'anchors', 'waves', 'gc-hints', 'memory-health', 'agent-retrieval-health', 'strict', 'no-gc-hints', 'index-health', 'strict-index-health', 'intent-diagnostics', 'capabilities', 'host-diagnostics', 'stack-pack-diagnostics', 'watcher-diagnostics', 'index-policy-diagnostics', 'evidence-ledger', 'checkpoint-diagnostics', 'user-outcomes', 'performance-slo', 'workspace-isolation', 'workflow-readiness', 'ready', 'blocked', 'remaining', 'stale', 'orphan']);
+  const booleans = new Set(['dashboard', 'integrations', 'json', 'block-network', 'no-color', 'interactive', 'eval-report', 'policy', 'role', 'anchors', 'waves', 'gc-hints', 'memory-health', 'agent-retrieval-health', 'strict', 'no-gc-hints', 'index-health', 'strict-index-health', 'intent-diagnostics', 'capabilities', 'host-diagnostics', 'stack-pack-diagnostics', 'watcher-diagnostics', 'index-policy-diagnostics', 'evidence-ledger', 'checkpoint-diagnostics', 'user-outcomes', 'performance-slo', 'workspace-isolation', 'workflow-readiness', 'help', 'h', 'next-only', 'blocked-only', 'ready', 'blocked', 'remaining', 'stale', 'orphan']);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (!arg.startsWith('--')) {
@@ -1026,6 +1053,162 @@ function parseArgs(argv) {
     }
   }
   return parsed;
+}
+
+async function buildConciseStatusModel({ rootDir = PROJECT_ROOT, mode = 'next-only', graphPath = null } = {}) {
+  const explicitGraphPath = graphPath ? resolvePath(rootDir, graphPath) : null;
+  const active = explicitGraphPath ? null : await resolveActiveWorkItemGraph({ rootDir });
+  const resolution = explicitGraphPath
+    ? { status: 'explicit', graphPath: explicitGraphPath, epicId: null, nextAction: `inspect ${explicitGraphPath}` }
+    : active.status === 'none' ? resolveSingleUnarchivedTerminalWorkGraph(rootDir) || active : active;
+  const base = conciseStatusBase(mode, resolution);
+  if (resolution.status === 'none') return withConciseBlocks(base, 'blocked', resolution.nextAction || 'atomize or select an active work graph', 'no active work graph', [conciseBlock('activeWorkGraph', 'broken-state', 'no active work graph')]);
+  if (resolution.status === 'ambiguous') return withConciseBlocks(base, 'blocked', resolution.nextAction || 'resolve active work graph ambiguity', 'multiple active work graphs found', [conciseBlock('activeWorkGraph', 'broken-state', 'ambiguous active work graphs')]);
+
+  let graph;
+  try {
+    graph = JSON.parse(readFileSync(resolution.graphPath, 'utf8'));
+  } catch (error) {
+    return withConciseBlocks({ ...base, activeGraph: { ...base.activeGraph, error: error.message } }, 'blocked', 'repair or regenerate the active work-item graph', 'active work graph is unreadable', [conciseBlock('activeWorkGraph', 'broken-state', 'unreadable active work graph')]);
+  }
+
+  const index = createWorkItemIndex({ graph, claims: graph.claims || [], gates: graph.gates || [], evidence: graph.evidence || [] });
+  const grouped = groupWorkItemsByStatus(index);
+  const stale = detectStaleWorkItems(index);
+  const orphans = detectOrphanWorkItems(index, graph);
+  const stalled = collectStalledItemsFromGraph(graph);
+  const blocked = grouped.blocked || [];
+  const blocks = [
+    ...stale.map((item) => conciseBlock(item.itemId || item.id || 'stale', 'missing-receipt', 'stale claim or work item state')),
+    ...orphans.map((item) => conciseBlock(item.itemId || item.id || 'orphan', 'broken-state', 'orphan work item missing parent')),
+    ...stalled.map((item) => conciseBlock(item.itemId || 'stalled', item.manualIntervention || !item.retryable ? 'missing-approval' : 'optional-cleanup', item.reason || 'stalled work item')),
+    ...blocked.map((item) => conciseBlock(item.itemId || item.id || 'blocked', 'missing-approval', item.blockReason || item.blockerReason || item.blockerNextAction || 'blocked work item')),
+  ];
+  const nextReady = grouped.ready[0]?.itemId || grouped.ready[0]?.id || null;
+  const archiveCandidate = isArchiveCandidate(graph);
+  const action = conciseNextAction({ resolution, stale, stalled, blocked, nextReady, archiveCandidate });
+  return withConciseBlocks({
+    ...base,
+    activeGraph: {
+      status: 'active',
+      epicId: graph.epicId || graph.graph_id || graph.graphId || resolution.epicId || 'unknown',
+      path: resolution.graphPath,
+      ready: grouped.ready.length,
+      blocked: blocked.length,
+      stale: stale.length,
+      stalled: stalled.length,
+      orphan: orphans.length,
+      archiveCandidate,
+    },
+  }, action.status, action.command, action.why, blocks, action);
+}
+
+function conciseStatusBase(mode, resolution = {}) {
+  return {
+    schemaVersion: 1,
+    kind: 'supervibe-status-concise',
+    mode,
+    pass: false,
+    status: 'blocked',
+    activeGraph: { status: resolution.status || 'unknown', epicId: resolution.epicId || null, path: resolution.graphPath || null },
+    primaryBlocker: null,
+    nextAction: { status: 'blocked', why: 'active work graph is not ready', command: resolution.nextAction || 'inspect active work graph', safe_to_run: false, requires_user_approval: false, blocks: [] },
+  };
+}
+
+function conciseNextAction({ resolution, stale = [], stalled = [], blocked = [], nextReady = null, archiveCandidate = false } = {}) {
+  const graphPathArg = shellArg(resolution.graphPath);
+  if (stale.length) return { status: 'blocked', why: 'stale work graph state must be recovered before continuing', command: `/supervibe-loop --recover-stale <item-id> --file ${graphPathArg}`, safe_to_run: true, requires_user_approval: false };
+  if (stalled.length) {
+    const manual = stalled.some((item) => item.manualIntervention || !item.retryable);
+    return { status: manual ? 'requires_approval' : 'blocked', why: 'stalled work item needs recovery', command: `/supervibe-loop --recover-stalled <item-id> --file ${graphPathArg}`, safe_to_run: !manual, requires_user_approval: manual };
+  }
+  if (nextReady) return { status: 'ready', why: 'active work graph has a ready item', command: `claim ${nextReady} or run /supervibe-loop --claim-ready`, safe_to_run: true, requires_user_approval: false };
+  if (blocked.length) return { status: 'blocked', why: 'active work graph has blocked work and no ready item', command: 'inspect blockers with node scripts/supervibe-status.mjs --blocked', safe_to_run: true, requires_user_approval: false };
+  if (archiveCandidate) return { status: 'complete', why: 'active work graph appears complete and awaiting archive', command: `/supervibe-loop --archive --file ${graphPathArg}`, safe_to_run: true, requires_user_approval: false };
+  return { status: 'blocked', why: 'no ready item was found', command: 'validate completion or unblock remaining work', safe_to_run: false, requires_user_approval: false };
+}
+
+function shellArg(value = '') {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  if (!/[\s"'`$]/.test(text)) return text;
+  return `'${text.replace(/'/g, "''")}'`;
+}
+
+function isArchiveCandidate(graph = {}) {
+  try {
+    const archivedAt = graph.archivedAt || graph.archived_at || graph.metadata?.archivedAt || null;
+    return !archivedAt && (validateEpicCompletion(graph).pass === true || isOperationallyClosedWorkGraph(graph));
+  } catch {
+    return isOperationallyClosedWorkGraph(graph);
+  }
+}
+
+function conciseBlock(id, blockerClass, summary) {
+  return { id, blocker_class: blockerClass, summary };
+}
+
+function withConciseBlocks(model = {}, status, command, why, blocks = [], action = {}) {
+  const blockedStatus = ['blocked', 'requires_approval'].includes(String(status || '').toLowerCase());
+  const pass = !blockedStatus && blocks.length === 0 && action.safe_to_run !== false;
+  return {
+    ...model,
+    pass,
+    status,
+    primaryBlocker: blocks[0]?.id || null,
+    nextAction: {
+      status,
+      why,
+      command,
+      safe_to_run: action.safe_to_run === true,
+      requires_user_approval: action.requires_user_approval === true,
+      blocks,
+    },
+  };
+}
+
+function formatConciseStatusModel(model = {}) {
+  if (model.mode === 'blocked-only') return formatBlockedOnlyStatus(model);
+  const action = model.nextAction || {};
+  return [
+    'SUPERVIBE_STATUS_NEXT',
+    `PASS: ${model.pass === true}`,
+    `STATUS: ${action.status || model.status || 'unknown'}`,
+    `ACTIVE_GRAPH: ${model.activeGraph?.epicId || model.activeGraph?.status || 'unknown'}`,
+    `PRIMARY_BLOCKER: ${model.primaryBlocker || 'none'}`,
+    `NEXT_ACTION: ${action.command || 'unknown'}`,
+    `WHY: ${action.why || 'unknown'}`,
+    `SAFE_TO_RUN: ${action.safe_to_run === true}`,
+    `REQUIRES_USER_APPROVAL: ${action.requires_user_approval === true}`,
+    `BLOCKS: ${formatConciseBlocks(action.blocks || [])}`,
+  ].join('\n');
+}
+
+function formatBlockedOnlyStatus(model = {}) {
+  const blocks = model.nextAction?.blocks || [];
+  const action = model.nextAction || {};
+  const blocked = blocks.length > 0 || ['blocked', 'requires_approval'].includes(String(model.status || action.status || '').toLowerCase());
+  const lines = [
+    'SUPERVIBE_STATUS_BLOCKERS',
+    `PASS: ${model.pass === true}`,
+    `STATUS: ${model.status || 'unknown'}`,
+    `ACTIVE_GRAPH: ${model.activeGraph?.epicId || model.activeGraph?.status || 'unknown'}`,
+    `PRIMARY_BLOCKER: ${model.primaryBlocker || 'none'}`,
+    `BLOCKED: ${blocked}`,
+    `BLOCK_COUNT: ${blocks.length}`,
+  ];
+  for (const block of blocks.slice(0, 10)) lines.push(`BLOCKER: ${block.id || 'unknown'} class=${block.blocker_class || 'unknown'} summary="${block.summary || 'none'}"`);
+  if (blocks.length > 10) lines.push(`HIDDEN_BLOCKERS: ${blocks.length - 10}`);
+  if (blocks.length === 0) lines.push(`NEXT_ACTION: ${blocked ? action.command || 'validate completion or unblock remaining work' : 'continue with the approved workflow'}`);
+  return lines.join('\n');
+}
+
+function formatConciseBlocks(blocks = []) {
+  if (!blocks.length) return 'none';
+  const visible = blocks.slice(0, 5).map((block) => `${block.id || 'unknown'}:${block.blocker_class || 'unknown'}`);
+  if (blocks.length > 5) visible.push(`+${blocks.length - 5} more`);
+  return visible.join(',');
 }
 
 function loadGraphForStatusArgs(statusArgs) {

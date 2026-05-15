@@ -5,7 +5,7 @@ Design intelligence is the Supervibe 2.0 design upgrade: internal retrieval, mem
 ## What It Does
 
 - Searches project memory, code, and the internal design data pack before design artifacts are produced.
-- Provides cited rows for style, palette, typography, UX, charts, icons, landing patterns, slides, collateral, and stack-specific UI handoff.
+- Provides cited rows for style, palette, typography, UX, charts, icons, landing patterns, collateral, and stack-specific UI handoff.
 - Writes durable memory only for accepted, rejected, or learned design decisions.
 - Keeps all user-facing behavior on existing commands: `/supervibe-design`, `/supervibe-audit`, `/supervibe-strengthen`, and `/supervibe`.
 - Uses the Figma source-of-truth flow when Figma files, variables, components,
@@ -35,4 +35,4 @@ without exact approval for the file, node/page, action, and timebox.
 
 ## Version
 
-This capability ships with Supervibe `2.1.38`; public docs may refer to it as Supervibe `2.0`.
+This capability ships with Supervibe `2.1.39`; public docs may refer to it as Supervibe `2.0`.

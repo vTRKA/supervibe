@@ -1,4 +1,4 @@
-import { cleanupRuntimeTargets } from "./runtime-cleanup-registry.mjs";
+import { cleanupRuntimeTargets, defaultRuntimeCleanupRegistryPath } from "./runtime-cleanup-registry.mjs";
 import { evaluateMemoryGcSchedule, scanMemoryGc } from "./supervibe-memory-gc.mjs";
 import { evaluateArtifactGcSchedule, scanSupervibeArtifactGc, validateSupervibeGcStrict } from "./supervibe-artifact-gc.mjs";
 import { scanWorkItemGc } from "./supervibe-work-item-gc.mjs";
@@ -17,9 +17,10 @@ export async function runCleanupOrchestrator({
 } = {}) {
   const policy = resolveCleanupPolicy({ mode, now });
   const dryRun = mode !== "manual-apply";
+  const runtimeRegistryPath = defaultRuntimeCleanupRegistryPath(rootDir);
   const terminalSignals = await collectTerminalSignals({ rootDir, now });
   const [runtime, workItems, memory, artifacts, reachability] = await Promise.all([
-    cleanupRuntimeTargets({ rootDir, dryRun: true, unusedOnly: true, now: new Date(now) }),
+    cleanupRuntimeTargets({ path: runtimeRegistryPath, rootDir, dryRun: true, unusedOnly: true, now: new Date(now) }),
     scanWorkItemGc({ rootDir, now, retentionDays, includeStaleOpen, staleOpenDays, completedGraceHours }),
     scanMemoryGc({ rootDir, now }),
     scanSupervibeArtifactGc({ rootDir, now, retentionDays }),
@@ -91,7 +92,13 @@ export function formatCleanupOrchestratorReport(report = {}) {
 
 async function collectTerminalSignals({ rootDir, now }) {
   const plan = createPlanLifecycleReport({ rootDir });
-  const runtimeDebt = await cleanupRuntimeTargets({ rootDir, dryRun: true, unusedOnly: true, now: new Date(now) });
+  const runtimeDebt = await cleanupRuntimeTargets({
+    path: defaultRuntimeCleanupRegistryPath(rootDir),
+    rootDir,
+    dryRun: true,
+    unusedOnly: true,
+    now: new Date(now),
+  });
   const blocked = [];
   if (runtimeDebt.hostManagedCompleted > 0 || runtimeDebt.wouldPruneHostManagedCompleted > 0) blocked.push("host-managed-subagent-close-state");
   if (plan.staleActiveSource) blocked.push("stale-active-plan-source");

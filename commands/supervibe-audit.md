@@ -7,7 +7,7 @@ last-verified: "2026-05-08"
 
 Run a full plugin + project health check. No writes — only reports.
 
-Design audit mode uses the same command surface: `/supervibe-audit --design`. It reads design artifacts and reports missing memory preflight, missing design intelligence citations, token drift, brand/collateral asset drift, slide/deck quality gaps, chart accessibility gaps, and UI polish regressions.
+Design audit mode uses the same command surface: `/supervibe-audit --design`. It reads design artifacts and reports missing memory preflight, missing design intelligence citations, token drift, brand/collateral asset drift, chart accessibility gaps, and UI polish regressions.
 
 Workflow-chain audit mode uses `/supervibe-audit --workflow-chain`. It is read-only and evaluates `/supervibe-brainstorm`, `/supervibe-plan`, `/supervibe-execute-plan`, and `/supervibe-loop` as one idea-to-completion system: user-case coverage, agent handoffs, scope-bloat protection, pitfall review, validation gates, receipts, and end-to-end goal completion.
 

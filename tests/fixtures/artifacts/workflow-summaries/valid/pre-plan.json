@@ -1,0 +1,145 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "workflow-summary-v2",
+  "artifactKind": "workflow-summary",
+  "summaryId": "summary-3d0357520d41",
+  "workflowId": "workflow-summary-fixture",
+  "stage": "pre-plan",
+  "stageOrder": 3,
+  "title": "Pre-plan summary",
+  "createdAt": "2026-05-15T00:00:00.000Z",
+  "expiresAt": "2026-05-22T00:00:00.000Z",
+  "storagePath": ".supervibe/artifacts/summaries/workflow-summary-fixture/pre-plan-summary.json",
+  "sourcePrompt": {
+    "hash": "sha256:a596de8f26f82f4d23e81a1369fef5f5976bb50c99656b26c32966e5dd6d1a3b",
+    "capturedAt": "2026-05-15T00:00:00.000Z",
+    "excerpt": "User asks for workflow summary logic hardening."
+  },
+  "sourceArtifact": {
+    "kind": "approved-scope-or-spec",
+    "path": "",
+    "hashAlgorithm": "sha256",
+    "hash": "",
+    "capturedAt": "2026-05-15T00:00:00.000Z"
+  },
+  "summary": {
+    "objective": "Harden summary workflow lifecycle.",
+    "scope": [
+      "summary routing",
+      "durable artifacts"
+    ],
+    "nonGoals": [
+      "implementation execution"
+    ]
+  },
+  "approvedScope": [
+    "pre/post summary lifecycle"
+  ],
+  "assumptions": [
+    "user approval is required"
+  ],
+  "planningAssumptions": [
+    "validators run at final gate"
+  ],
+  "constraints": [
+    "source hash binding required"
+  ],
+  "risks": [
+    "stale summary can mislead handoff"
+  ],
+  "missingFacts": [],
+  "visualSummary": {
+    "required": true,
+    "summaryTable": [
+      {
+        "label": "Stage",
+        "value": "pre-plan"
+      },
+      {
+        "label": "Artifact kind",
+        "value": "pre-artifact"
+      },
+      {
+        "label": "Source",
+        "value": "approved-scope-or-spec"
+      },
+      {
+        "label": "Next",
+        "value": "/supervibe-plan"
+      }
+    ],
+    "asciiMap": [
+      "request/source",
+      "  -> pre-plan summary (.supervibe/artifacts/summaries/workflow-summary-fixture/pre-plan-summary.json)",
+      "    -> /supervibe-plan"
+    ]
+  },
+  "decisionSummary": {
+    "addedAndWhy": [
+      "Fixture records required post-stage explanation fields."
+    ],
+    "deferredAndWhy": [
+      "Release execution remains outside fixture scope."
+    ],
+    "validationResult": "fixture source artifact is current",
+    "nextRecommendedCommand": "/supervibe-plan",
+    "nextUserActions": [
+      "approve-pre-plan-summary: Approve summary for plan",
+      "revise-pre-plan-summary: Revise summary",
+      "stop-before-plan: Stop before plan"
+    ]
+  },
+  "staleState": {
+    "status": "current",
+    "reason": "source-artifact-current",
+    "checkedAt": "2026-05-15T00:00:00.000Z",
+    "sourceArtifactHash": "",
+    "repair": "regenerate summary from current source artifact when stale"
+  },
+  "choices": [
+    {
+      "id": "approve-pre-plan-summary",
+      "label": "Approve summary for plan",
+      "description": "Allows the workflow to create the plan from this approved scope and summary.",
+      "recommended": true,
+      "ordinal": 1
+    },
+    {
+      "id": "revise-pre-plan-summary",
+      "label": "Revise summary",
+      "description": "Keeps the workflow in summary review before any plan artifact is created.",
+      "recommended": false,
+      "ordinal": 2
+    },
+    {
+      "id": "stop-before-plan",
+      "label": "Stop before plan",
+      "description": "Stops without creating a plan or advancing the workflow.",
+      "recommended": false,
+      "ordinal": 3
+    }
+  ],
+  "approvalState": {
+    "status": "pending",
+    "selectedChoiceId": "",
+    "approvedAt": "",
+    "approvedBy": "",
+    "approvalSource": "latest-user-gate",
+    "allowedChoiceIds": [
+      "approve-pre-plan-summary"
+    ],
+    "sourcePromptHash": "sha256:a596de8f26f82f4d23e81a1369fef5f5976bb50c99656b26c32966e5dd6d1a3b",
+    "artifactHash": "sha256:48ab2512f34aeb85d1e8e05cb21fa5517990176c5f8cd4bd68071d9687b97b25",
+    "expiresAt": "2026-05-22T00:00:00.000Z"
+  },
+  "evidenceAppendix": {
+    "schemaPath": "docs/templates/workflow-summary-artifact.schema.json",
+    "contractVersion": "workflow-summary-v2",
+    "storagePath": ".supervibe/artifacts/summaries/workflow-summary-fixture/pre-plan-summary.json",
+    "sourcePromptHash": "sha256:a596de8f26f82f4d23e81a1369fef5f5976bb50c99656b26c32966e5dd6d1a3b",
+    "sourceArtifactHash": "",
+    "artifactHash": "sha256:48ab2512f34aeb85d1e8e05cb21fa5517990176c5f8cd4bd68071d9687b97b25",
+    "items": []
+  },
+  "artifactHash": "sha256:48ab2512f34aeb85d1e8e05cb21fa5517990176c5f8cd4bd68071d9687b97b25"
+}

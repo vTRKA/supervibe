@@ -114,11 +114,6 @@ const CONTINUATION_COMMAND_RULES = Object.freeze([
     label: "plan command",
     required: [/Do not stop after individual plan phases/i],
   },
-  {
-    file: "supervibe-presentation.md",
-    label: "presentation command",
-    required: [/Do not stop after storyboard or first slide/i],
-  },
 ]);
 
 const COMMAND_LOOKUP_RULES = Object.freeze([

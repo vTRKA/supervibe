@@ -196,11 +196,11 @@ library escalation criteria, and anti-patterns.
 
 ## Design Preview Daemon
 
-When motion decisions are verified in `.supervibe/artifacts/prototypes`, `.supervibe/artifacts/mockups`, or `.supervibe/artifacts/presentations`, start `supervibe:preview-server` with `--daemon` so the feedback overlay, hot reload, and long-running review session stay alive while the user reviews the design.
+When motion decisions are verified in `.supervibe/artifacts/prototypes` or `.supervibe/artifacts/mockups`, start `supervibe:preview-server` with `--daemon` so the feedback overlay, hot reload, and long-running review session stay alive while the user reviews the design.
 
 ## Feedback Boundary
 
-The browser feedback overlay is supplemental and cannot approve the artifact; motion feedback is revision input for the owning prototype, landing, or deck delivery gate.
+The browser feedback overlay is supplemental and cannot approve the artifact; motion feedback is revision input for the owning prototype or landing delivery gate.
 
 ## Output contract
 

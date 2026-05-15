@@ -1,7 +1,7 @@
 {
   "name": "supervibe",
-  "description": "Supervibe plugin: 98 specialist agents, trigger-safe workflow routing, worktree-ready autonomous loops, design intelligence, code graph, project memory, confidence gates, and scaffolding for 25 stacks.",
-  "version": "2.1.38",
+  "description": "Supervibe plugin: 96 specialist agents, trigger-safe workflow routing, worktree-ready autonomous loops, design intelligence, code graph, project memory, confidence gates, and scaffolding for 25 stacks.",
+  "version": "2.1.39",
   "author": {
     "name": "vTRKA"
   },
@@ -41,8 +41,6 @@
     "./agents/_design/electron-ui-designer.md",
     "./agents/_design/extension-ui-designer.md",
     "./agents/_design/mobile-ui-designer.md",
-    "./agents/_design/presentation-deck-builder.md",
-    "./agents/_design/presentation-director.md",
     "./agents/_design/prototype-builder.md",
     "./agents/_design/tauri-ui-designer.md",
     "./agents/_design/ui-polish-reviewer.md",

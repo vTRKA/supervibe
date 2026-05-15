@@ -5,6 +5,42 @@ import { CODEGRAPH_INDEX_COMMAND, LIST_MISSING_INDEX_COMMAND, SOURCE_RAG_INDEX_C
 import { resolveHostAdapter } from "./supervibe-host-adapters.mjs";
 import { selectHostAdapter } from "./supervibe-host-detector.mjs";
 
+export const HOST_NEUTRAL_CAPABILITY_NAMES = Object.freeze([
+  "browser",
+  "context7",
+  "figma",
+  "firecrawl",
+  "openai-docs",
+  "tauri",
+]);
+
+const HOST_NEUTRAL_CAPABILITY_DEFINITIONS = Object.freeze([
+  hostCapability("browser", "Browser runtime automation", {
+    categories: ["runtime", "visual", "qa"],
+    aliases: ["playwright", "mcp-playwright", "browser-automation"],
+  }),
+  hostCapability("context7", "Current library documentation", {
+    categories: ["docs", "source-research"],
+    aliases: ["mcp-server-context7", "context7-mcp"],
+  }),
+  hostCapability("figma", "Figma design source access", {
+    categories: ["design", "visual", "source-of-truth"],
+    aliases: ["mcp-server-figma", "figma-mcp"],
+  }),
+  hostCapability("firecrawl", "Web research and scraping", {
+    categories: ["research", "web-crawl", "source-evidence"],
+    aliases: ["mcp-server-firecrawl", "firecrawl-mcp"],
+  }),
+  hostCapability("openai-docs", "OpenAI developer documentation", {
+    categories: ["docs", "openai", "source-research"],
+    aliases: ["openaiDeveloperDocs", "openai-developer-docs"],
+  }),
+  hostCapability("tauri", "Tauri desktop and webview automation", {
+    categories: ["desktop", "runtime", "visual", "ipc"],
+    aliases: ["tauri-mcp", "src-tauri"],
+  }),
+]);
+
 const CAPABILITY_DEFINITIONS = Object.freeze([
   {
     id: "setup.genesis",
@@ -14,6 +50,7 @@ const CAPABILITY_DEFINITIONS = Object.freeze([
     skills: ["supervibe:genesis"],
     agents: [],
     rules: ["operational-safety", "single-question-discipline", "agent-install-profiles"],
+    hostCapabilities: ["context7", "openai-docs"],
     verificationHooks: [
       "node --test tests/capability-registry.test.mjs",
       "node scripts/supervibe-status.mjs --capabilities",
@@ -27,6 +64,7 @@ const CAPABILITY_DEFINITIONS = Object.freeze([
     skills: ["supervibe:adapt"],
     agents: ["rules-curator", "memory-curator", "repo-researcher"],
     rules: ["operational-safety", "single-question-discipline", "rule-maintenance", "agent-excellence-baseline", "agent-install-profiles"],
+    hostCapabilities: ["context7", "firecrawl"],
     verificationHooks: [
       "node scripts/validate-question-discipline.mjs",
       "node scripts/supervibe-status.mjs --capabilities",
@@ -40,6 +78,7 @@ const CAPABILITY_DEFINITIONS = Object.freeze([
     skills: ["supervibe:strengthen"],
     agents: ["prompt-ai-engineer"],
     rules: ["operational-safety", "confidence-discipline"],
+    hostCapabilities: ["context7", "firecrawl", "openai-docs"],
     verificationHooks: [
       "node scripts/validate-question-discipline.mjs",
       "node scripts/supervibe-status.mjs --capabilities",
@@ -53,6 +92,7 @@ const CAPABILITY_DEFINITIONS = Object.freeze([
     skills: ["supervibe:test-strategy", "supervibe:systematic-debugging"],
     agents: ["prompt-ai-engineer"],
     rules: ["anti-hallucination", "operational-safety"],
+    hostCapabilities: ["context7", "openai-docs"],
     verificationHooks: [
       "node --test tests/intent-router-golden.test.mjs tests/supervibe-trigger-router.test.mjs",
       "node scripts/supervibe-status.mjs --intent-diagnostics",
@@ -108,6 +148,7 @@ const CAPABILITY_DEFINITIONS = Object.freeze([
     skills: ["supervibe:preview-server"],
     agents: [],
     rules: ["operational-safety"],
+    hostCapabilities: ["browser"],
     verificationHooks: [
       "node --test tests/silent-process-manager.test.mjs",
       "node scripts/preview-server.mjs --help",
@@ -146,6 +187,7 @@ const CAPABILITY_DEFINITIONS = Object.freeze([
     skills: ["supervibe:project-memory", "supervibe:code-search", "supervibe:test-strategy", "supervibe:verification"],
     agents: ["llm-rag-architect", "llm-evals-engineer", "ai-agent-orchestrator", "model-ops-engineer", "prompt-ai-engineer", "ai-integration-architect"],
     rules: ["anti-hallucination", "operational-safety", "confidence-discipline"],
+    hostCapabilities: ["context7", "firecrawl", "openai-docs"],
     verificationHooks: [
       "node --test tests/ai-llm-agent-coverage.test.mjs",
       "node scripts/supervibe-status.mjs --capabilities",
@@ -180,11 +222,13 @@ export function buildCapabilityRegistry({
     skills: [...definition.skills],
     agents: [...definition.agents],
     rules: [...definition.rules],
+    hostCapabilities: [...(definition.hostCapabilities || [])],
     verificationHooks: [...definition.verificationHooks],
   }));
+  const hostCapabilities = getHostNeutralCapabilityDefinitions();
   const packageJson = readPackageJson(pluginRoot);
   const toolMetadata = buildLocalToolMetadataContract({
-    registry: { commands, skills, agents, rules, capabilities },
+    registry: { commands, skills, agents, rules, capabilities, hostCapabilities },
     packageJson,
   });
 
@@ -200,6 +244,7 @@ export function buildCapabilityRegistry({
     agents,
     rules,
     capabilities,
+    hostCapabilities,
     links: buildLinks(capabilities),
     toolMetadata,
   };
@@ -213,7 +258,25 @@ export function validateCapabilityRegistry(registry = buildCapabilityRegistry())
   const ruleIds = new Set((registry.rules || []).map((item) => item.id));
   const agentById = new Map((registry.agents || []).map((item) => [item.id, item]));
   const toolMetadataValidation = validateLocalToolMetadataContract(registry.toolMetadata || {});
+  const hostCapabilityIds = new Set((registry.hostCapabilities || []).map((item) => item.id));
   issues.push(...toolMetadataValidation.issues.map((item) => issue(item.id, item.code, item.message)));
+
+  for (const hostCapability of registry.hostCapabilities || []) {
+    if (!hostCapability.id || !hostCapability.title) {
+      issues.push(issue(hostCapability.id || "host-capability", "invalid-host-capability", "host-neutral capability missing id or title"));
+    }
+    if (!Array.isArray(hostCapability.categories) || hostCapability.categories.length === 0) {
+      issues.push(issue(hostCapability.id || "host-capability", "invalid-host-capability", "host-neutral capability missing categories"));
+    }
+  }
+
+  for (const agent of registry.agents || []) {
+    for (const hostCapability of agent.hostCapabilities || []) {
+      if (!hostCapabilityIds.has(hostCapability)) {
+        issues.push(issue(agent.id, "agent-missing-host-capability", `agent references unknown host-neutral capability: ${hostCapability}`));
+      }
+    }
+  }
 
   for (const capability of registry.capabilities || []) {
     if (!capability.verificationHooks?.length) {
@@ -239,6 +302,9 @@ export function validateCapabilityRegistry(registry = buildCapabilityRegistry())
     for (const rule of capability.rules || []) {
       if (!ruleIds.has(rule)) issues.push(issue(capability.id, "missing-rule", `rule file missing: ${rule}`));
     }
+    for (const hostCapability of capability.hostCapabilities || []) {
+      if (!hostCapabilityIds.has(hostCapability)) issues.push(issue(capability.id, "missing-host-capability", `host-neutral capability missing: ${hostCapability}`));
+    }
   }
 
   return {
@@ -258,6 +324,7 @@ export function formatCapabilityRegistryReport(registry = buildCapabilityRegistr
     `AGENTS: ${registry.agents?.length || 0}`,
     `SKILLS: ${registry.skills?.length || 0}`,
     `RULES: ${registry.rules?.length || 0}`,
+    `HOST_CAPABILITIES: ${registry.hostCapabilities?.length || 0}`,
     `LINKS: ${registry.links?.length || 0}`,
     `TOOL_METADATA: ${registry.toolMetadata?.items?.length || 0}`,
     `ISSUES: ${validation.issues?.length || 0}`,
@@ -266,6 +333,25 @@ export function formatCapabilityRegistryReport(registry = buildCapabilityRegistr
     lines.push(`- ${item.id} ${item.code}: ${item.message}`);
   }
   return lines.join("\n");
+}
+
+export function getHostNeutralCapabilityDefinitions() {
+  return HOST_NEUTRAL_CAPABILITY_DEFINITIONS.map((entry) => ({
+    ...entry,
+    categories: [...entry.categories],
+    aliases: [...entry.aliases],
+  }));
+}
+
+function hostCapability(id, title, { categories = [], aliases = [] } = {}) {
+  return {
+    id,
+    type: "host-capability",
+    title,
+    categories: [...categories],
+    aliases: unique([id, ...aliases]),
+    providerNeutral: true,
+  };
 }
 
 function readPackageJson(rootDir) {
@@ -300,6 +386,7 @@ function getCapabilityDefinitions() {
     skills: [...entry.skills],
     agents: [...entry.agents],
     rules: [...entry.rules],
+    hostCapabilities: [...(entry.hostCapabilities || [])],
     verificationHooks: [...entry.verificationHooks],
   }));
 }
@@ -345,6 +432,8 @@ function readAgentArtifacts(rootDir) {
     .map(({ path, raw }) => {
       const metadata = parseFrontmatter(raw);
       const id = metadata.name || basename(path, ".md");
+      const recommendedMcps = asArray(metadata["recommended-mcps"]);
+      const tools = asArray(metadata.tools);
       return {
         id,
         type: "agent",
@@ -352,6 +441,8 @@ function readAgentArtifacts(rootDir) {
         source: "plugin",
         namespace: metadata.namespace || "",
         capabilities: asArray(metadata.capabilities),
+        hostCapabilities: inferHostCapabilities({ metadata, tools, recommendedMcps }),
+        recommendedMcps,
         skills: asArray(metadata.skills),
         verificationHooks: asArray(metadata.verification),
       };
@@ -380,6 +471,8 @@ function readProjectAgentArtifacts(projectRoot, adapter) {
     .map(({ path, raw }) => {
       const metadata = parseFrontmatter(raw);
       const id = metadata.name || basename(path, ".md");
+      const recommendedMcps = asArray(metadata["recommended-mcps"]);
+      const tools = asArray(metadata.tools);
       return {
         id,
         type: "agent",
@@ -387,6 +480,8 @@ function readProjectAgentArtifacts(projectRoot, adapter) {
         source: "project",
         namespace: metadata.namespace || "",
         capabilities: asArray(metadata.capabilities),
+        hostCapabilities: inferHostCapabilities({ metadata, tools, recommendedMcps }),
+        recommendedMcps,
         skills: asArray(metadata.skills),
         verificationHooks: asArray(metadata.verification),
       };
@@ -472,6 +567,7 @@ function buildLinks(capabilities) {
     for (const skill of capability.skills || []) links.push(link(capability.id, "skill", skill));
     for (const agent of capability.agents || []) links.push(link(capability.id, "agent", agent));
     for (const rule of capability.rules || []) links.push(link(capability.id, "rule", rule));
+    for (const hostCapability of capability.hostCapabilities || []) links.push(link(capability.id, "host-capability", hostCapability));
   }
   return links;
 }
@@ -555,6 +651,40 @@ function asArray(value) {
   if (Array.isArray(value)) return value.filter(Boolean);
   if (value === undefined || value === null || value === "") return [];
   return [value];
+}
+
+function inferHostCapabilities({ metadata = {}, tools = [], recommendedMcps = [] } = {}) {
+  return normalizeHostCapabilities([
+    ...recommendedMcps,
+    ...tools,
+    ...asArray(metadata.capabilities),
+    ...asArray(metadata.stacks),
+    ...asArray(metadata["requires-stacks"]),
+    ...asArray(metadata["optional-stacks"]),
+  ]);
+}
+
+export function normalizeHostCapabilities(values = []) {
+  return unique(asArray(values).flatMap((value) => {
+    const normalized = normalizeHostCapabilityName(value);
+    return normalized ? [normalized] : [];
+  })).sort();
+}
+
+export function normalizeHostCapabilityName(value) {
+  const original = String(value || "").trim();
+  if (!original) return null;
+  const lower = original
+    .replace(/_/g, "-")
+    .replace(/\s+/g, "-")
+    .toLowerCase();
+  if (lower === "browser" || lower.includes("playwright") || lower.startsWith("mcp--playwright--")) return "browser";
+  if (lower === "context7" || lower.includes("context7")) return "context7";
+  if (lower === "figma" || lower.includes("figma")) return "figma";
+  if (lower === "firecrawl" || lower.includes("firecrawl")) return "firecrawl";
+  if (lower === "openai-docs" || lower.includes("openaideveloperdocs") || lower.includes("openai-developer-doc")) return "openai-docs";
+  if (lower === "tauri" || lower.includes("src-tauri") || lower.includes("tauri-mcp") || lower.startsWith("mcp--tauri--")) return "tauri";
+  return null;
 }
 
 function unique(values) {

@@ -45,7 +45,7 @@ Brief: User-facing command to manage preview servers for HTML/CSS/JS mockups gen
 - Foreground mode is for debugging: `--foreground` keeps server output attached to the terminal.
 - Hot-reload by default: file changes inside the served directory trigger a browser refresh; pass `--no-reload` to disable.
 - Framework dev servers are not modified in place. Use `--target` and open the managed Supervibe proxy URL when the Feedback button is required.
-- The Feedback overlay is supplemental review input only. It cannot approve an artifact, replace an explicit user approval gate, or mark a prototype/deck/design handoff complete.
+- The Feedback overlay is supplemental review input only. It cannot approve an artifact, replace an explicit user approval gate, or mark a prototype/design handoff complete.
 - `127.0.0.1` only: the server binds to loopback (never `0.0.0.0`), so previews are not reachable from other machines on the network.
 
 ## Output Contract

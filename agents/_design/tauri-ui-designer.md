@@ -61,6 +61,7 @@ skills:
   - supervibe:design-intelligence
   - supervibe:mcp-discovery
   - supervibe:confidence-scoring
+  - supervibe:browser-runtime-verification
 verification:
   - target-surfaces-declared
   - viewport-preset-loaded
@@ -149,11 +150,11 @@ Use `supervibe:design-intelligence` after memory and code search for app-interfa
 
 ## Local Design Expert Reference
 
-Before producing design-facing output, read `docs/references/design-expert-knowledge.md` and run Design Pass Triage from the `Eight-Pass Expert Routine`. Do not force all eight passes for every prototype. Classify each pass as `required | reuse | delegated | skipped | N/A` with rationale. If an approved design system already exists and the request is a prototype, screen, deck, or refinement inside that system, reuse preference and visual-system decisions and run only the relevant evidence, reference, IA/user-flow, responsive/platform, quality, and prototype/review passes. If a candidate or needs_revision design system exists, resume the design-system approval gate instead of treating it as prototype-ready. Full eight-pass coverage is required only for new products, rebrands, missing design systems, or material direction changes.
+Before producing design-facing output, read `docs/references/design-expert-knowledge.md` and run Design Pass Triage from the `Eight-Pass Expert Routine`. Do not force all eight passes for every prototype. Classify each pass as `required | reuse | delegated | skipped | N/A` with rationale. If an approved design system already exists and the request is a prototype, screen, refinement inside that system, reuse preference and visual-system decisions and run only the relevant evidence, reference, IA/user-flow, responsive/platform, quality, and prototype/review passes. If a candidate or needs_revision design system exists, resume the design-system approval gate instead of treating it as prototype-ready. Full eight-pass coverage is required only for new products, rebrands, missing design systems, or material direction changes.
 
-Query local design intelligence through `designContextPreflight()` or `searchDesignIntelligence()` for the relevant local domains: `product`, `style`, `color`, `typography`, `ux`, `landing`, `app-interface`, `charts`, `icons`, `google-fonts`, `react-performance`, `ui-reasoning`, `stack`, `slides`, and `collateral`. External references are supplemental: use the internet only for current references, market examples, official platform docs, live competitor pages, or fresh visual evidence that local data cannot contain.
+Query local design intelligence through `designContextPreflight()` or `searchDesignIntelligence()` for the relevant local domains: `product`, `style`, `color`, `typography`, `ux`, `landing`, `app-interface`, `charts`, `icons`, `google-fonts`, `react-performance`, `ui-reasoning`, `stack` and `collateral`. External references are supplemental: use the internet only for current references, market examples, official platform docs, live competitor pages, or fresh visual evidence that local data cannot contain.
 
-Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/design-intelligence/data/*.csv`, `skills/design-intelligence/data/stacks/`, `skills/design-intelligence/data/slides/`, `skills/design-intelligence/data/collateral/`, `skills/design-intelligence/references/`, and `references/design-intelligence-source-coverage.md`.
+Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/design-intelligence/data/*.csv`, `skills/design-intelligence/data/stacks/`, `skills/design-intelligence/data/collateral/`, `skills/design-intelligence/references/`, and `references/design-intelligence-source-coverage.md`.
 
 ## Procedure
 
@@ -313,6 +314,7 @@ Do NOT exceed bundle budget without explicit user override and recorded rational
 - `supervibe:project-memory` — search prior cross-webview compat findings and bundle decisions
 - `supervibe:mcp-discovery` — select Tauri MCP when a live desktop webview is available, otherwise fall back to prototype screenshots.
 - `supervibe:confidence-scoring` — apply `agent-delivery` rubric ≥9 before handoff
+- `supervibe:browser-runtime-verification` - verify Tauri webview or browser-hosted prototypes with screenshots, DOM/style evidence, viewport checks, and explicit unavailable-MCP waivers.
 - `supervibe:design-intelligence` - ground design decisions in project memory, code facts, and current visual evidence.
 
 ## Project Context

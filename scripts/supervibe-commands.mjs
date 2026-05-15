@@ -28,15 +28,17 @@ try {
   if (args.help) {
     console.log(formatHelp());
   } else if (args.match) {
-    const catalogMatch = resolveCommandRequest(args.match, { pluginRoot, projectRoot });
-    const semanticMatch = catalogMatch ? null : semanticTriggerFallback(args.match, { pluginRoot, projectRoot });
+    const semanticPrecedenceMatch = semanticTriggerFallback(args.match, { pluginRoot, projectRoot });
+    const useSemanticPrecedence = shouldUseSemanticPrecedence(semanticPrecedenceMatch);
+    const catalogMatch = useSemanticPrecedence ? null : resolveCommandRequest(args.match, { pluginRoot, projectRoot });
+    const semanticMatch = catalogMatch ? null : semanticPrecedenceMatch;
     const continuationMatch = activeWorkflowContinuationMatch(args.match, {
       projectRoot,
       closeCandidateMatches: [catalogMatch, semanticMatch].filter(Boolean),
     });
     const match = continuationMatch
-      || catalogMatch
-      || semanticMatch;
+      || semanticMatch
+      || catalogMatch;
     if (args.json) console.log(JSON.stringify({ match }, null, 2));
     else console.log(formatCommandMatch(match));
     if (!match) process.exitCode = 2;
@@ -48,6 +50,17 @@ try {
 } catch (error) {
   console.error(`supervibe-commands error: ${error.message}`);
   process.exit(1);
+}
+
+function shouldUseSemanticPrecedence(match) {
+  if (!match) return false;
+  return [
+    "pre_spec_summary_gate",
+    "post_spec_summary_gate",
+    "pre_plan_summary_gate",
+    "post_plan_summary_gate",
+    "plan_review",
+  ].includes(match.intent);
 }
 
 function semanticTriggerFallback(request, { pluginRoot, projectRoot } = {}) {

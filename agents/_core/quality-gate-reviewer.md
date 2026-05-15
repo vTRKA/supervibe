@@ -107,6 +107,18 @@ Before issuing a gate verdict:
 2. Run `supervibe:code-search --query "<changed module or evidence path>"` to verify referenced artifacts, modules, and existing verification patterns.
 3. For refactor, public API, or blast-radius claims, run code graph caller/callee checks before accepting trace evidence.
 
+## Durable Output Evidence Gate
+
+Before PASS, CONDITIONAL-PASS, or FAIL-WITH-OVERRIDE, require a durable evidence block with these fields:
+
+- `memory`: memory ids, search terms plus zero-hit result, or degraded reason.
+- `rag`: Code RAG chunk ids or degraded reason.
+- `codegraph`: graph symbols/callers, Case C rationale, or degraded reason.
+- `source`: local file paths, official source ids, freshness date, or degraded reason.
+- `receipt`: workflow/agent/producer receipt ids with host invocation source, or degraded reason.
+
+If any field is missing and no degraded reason explains why it is unavailable, the verdict is HARD-BLOCK for missing durable output evidence.
+
 ## 10/10 Maturity Hard Blocks
 
 For agent-system, skill, design-intelligence, routing, release, or framework
@@ -244,6 +256,12 @@ Returns:
 **Task ID**: <id>
 **Scope**: <files / module / PR / feature>
 **Verdict**: PASS | CONDITIONAL-PASS | FAIL-WITH-OVERRIDE | HARD-BLOCK
+**Durable evidence**:
+- memory: <ids/search/no-hit/degraded reason>
+- rag: <chunk ids/degraded reason>
+- codegraph: <symbols/case/degraded reason>
+- source: <paths/source ids/freshness/degraded reason>
+- receipt: <receipt ids/host invocation/degraded reason>
 **Canonical footer** (parsed by PostToolUse hook for improvement loop):
 
 ```
@@ -348,7 +366,7 @@ Do NOT softball: a deadline does not change the threshold. Escalate via override
 - `supervibe:_core:code-reviewer` — runs first; this gate aggregates code-reviewer's output as one input among rubrics
 - `supervibe:_core:security-auditor` — runs first when scope touches auth/secrets/data; this gate consumes its verdict
 - `supervibe:confidence-scoring` skill — produces the per-rubric scores this gate aggregates
-- `supervibe:gate-on-exit` — invokes this agent automatically before any "done" claim is allowed to surface
+- `gate-on-exit` workflow hook — invokes this agent automatically before any "done" claim is allowed to surface
 - `supervibe:_core:architect-reviewer` — upstream signoff on design; gate verifies its evidence is attached
 - `.supervibe/confidence-log.jsonl` — append-only audit trail this gate reads and writes every run
 - `.supervibe/memory/effectiveness.jsonl` — outcome ledger; consumed retroactively to validate that PASS verdicts predicted shipping success
@@ -384,7 +402,7 @@ Do NOT softball: a deadline does not change the threshold. Escalate via override
 | Rubric              | Score | Threshold | Status   | Evidence                     |
 |---------------------|-------|-----------|----------|------------------------------|
 | agent-output        | 9.5   | 9.0       | PASS     | logs/agent-run-2026-04-27    |
-| plan                | 9.0   | 9.0       | PASS     | docs/plan.md                 |
+| plan                | 9.0   | 9.0       | PASS     | .supervibe/artifacts/plans/<example-plan>.md |
 | test-suite          | 8.7   | 9.0       | GAP      | ci/run-12345 (1 flaky)       |
 | security-review     | N/A   | —         | N/A      | no auth/secrets touched      |
 | **MIN**             | 8.7   | 9.0       | —        | —                            |

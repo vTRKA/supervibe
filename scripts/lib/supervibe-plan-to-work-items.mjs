@@ -43,6 +43,9 @@ export const WORK_ITEM_REQUIRED_FIELDS = Object.freeze([
 
 export const PLAN_GRAPH_TASK_FINAL_ONLY_VERIFICATION_MODE = "final-only-release-verification";
 export const PLAN_GRAPH_TASK_TESTS_DEFERRED_UNTIL = "release-handoff";
+const TASK_REF_TOKEN_SOURCE = "(?:T?\\d+[A-Za-z]?|[A-Za-z]\\d+[A-Za-z]?)(?:\\.\\d+[A-Za-z]?)*";
+const TASK_HEADING_PATTERN = new RegExp(`^#{2,4}\\s+(?:Task\\s+)?(${TASK_REF_TOKEN_SOURCE})\\s*[:.-]\\s*(.+)$`, "i");
+const TASK_REF_SCAN_PATTERN = new RegExp(`(?:Task\\s*)?(${TASK_REF_TOKEN_SOURCE})`, "i");
 
 export async function atomizePlanFile(planPath, options = {}) {
   const markdown = await readFile(planPath, "utf8");
@@ -170,7 +173,7 @@ export function parsePlanForWorkItems(markdown, planPath = ".supervibe/artifacts
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
-    const taskHeading = /^#{2,4}\s+(?:Task\s+)?(T?\d+[A-Za-z]?|[A-Za-z]?\d+[A-Za-z]?)\s*[:.-]\s*(.+)$/i.exec(line);
+    const taskHeading = TASK_HEADING_PATTERN.exec(line);
     const reviewGate = /^#{2,4}\s+REVIEW GATE\s*(\d+)?/i.exec(line);
     const codeFence = /^```(\w+)?/.exec(line.trim());
 
@@ -1127,14 +1130,43 @@ function isTerminalWorkStatus(status) {
 }
 
 function applyCriticalPathBlocks(items, criticalPath) {
-  for (let index = 0; index < criticalPath.length - 1; index += 1) {
-    const current = findByTaskRef(items, criticalPath[index]);
-    const next = findByTaskRef(items, criticalPath[index + 1]);
-    if (current && next && !current.blocks.includes(next.itemId)) {
-      current.blocks.push(next.itemId);
-      next.blockedBy = uniqueStrings([...(next.blockedBy ?? []), current.itemId]);
-    }
+  const groups = criticalPath
+    .map((token) => resolveCriticalPathGroup(items, token))
+    .filter((group) => group.length > 0);
+
+  for (const group of groups) {
+    linkSequentialWorkItems(group);
   }
+
+  for (let index = 0; index < groups.length - 1; index += 1) {
+    const current = groups[index].at(-1);
+    const next = groups[index + 1][0];
+    linkWorkItems(current, next);
+  }
+}
+
+function resolveCriticalPathGroup(items, token) {
+  const direct = findByTaskRef(items, token);
+  if (direct) return [direct];
+
+  const normalized = normalizeTaskRef(token, 0);
+  if (!/^[A-Z]\d+[A-Z]?$/.test(normalized)) return [];
+  const prefix = normalized + ".";
+  return items
+    .filter((item) => String(item.executionHints?.sourceTaskRef || "").startsWith(prefix))
+    .sort((left, right) => (left.discoveredFrom?.line || 0) - (right.discoveredFrom?.line || 0));
+}
+
+function linkSequentialWorkItems(items = []) {
+  for (let index = 0; index < items.length - 1; index += 1) {
+    linkWorkItems(items[index], items[index + 1]);
+  }
+}
+
+function linkWorkItems(current, next) {
+  if (!current || !next || current.itemId === next.itemId) return;
+  if (!current.blocks.includes(next.itemId)) current.blocks.push(next.itemId);
+  next.blockedBy = uniqueStrings([...(next.blockedBy ?? []), current.itemId]);
 }
 
 function applyFinalGateBlocks(items = []) {
@@ -1158,12 +1190,21 @@ function isFinalGateWorkItem(item = {}) {
 }
 
 function parseCriticalPath(markdown) {
-  const match = /Critical path:\s*([^\n]+)/i.exec(String(markdown ?? ""));
-  if (!match) return [];
-  return match[1]
-    .split(/(?:->|→|,|\|)/)
+  const text = String(markdown ?? "");
+  const inline = /Critical path:\s*([^\n]+)/i.exec(text)?.[1];
+  const section = inline || firstArrowLine(sectionBody(text, "Critical Path"));
+  if (!section) return [];
+  return section
+    .split(/(?:->|\u2192|,|\|)/)
     .map((item) => normalizeTaskRef(item.replace(/\[.*?\]/g, "").trim(), 0))
     .filter(Boolean);
+}
+
+function firstArrowLine(body = "") {
+  return String(body ?? "")
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^```.*$/g, "").trim())
+    .find((line) => /(?:->|\u2192)/.test(line)) || "";
 }
 
 function parseFileScopeEntries(value = "") {
@@ -1332,7 +1373,7 @@ function createParsedTask({ ref, title, line, planPath }) {
 }
 
 function taskItemId(epicId, taskRef, title) {
-  const normalizedRef = normalizeTaskRef(taskRef, 0).toLowerCase();
+  const normalizedRef = taskRefIdSegment(taskRef);
   return `${epicId}-${normalizedRef || stableHash(title)}`;
 }
 
@@ -1471,14 +1512,26 @@ function edgeKey(edge = {}) {
 
 function findByTaskRef(items, taskRef) {
   const normalized = normalizeTaskRef(taskRef, 0);
-  return items.find((item) => item.executionHints.sourceTaskRef === normalized || item.itemId.endsWith(`-${normalized.toLowerCase()}`));
+  const idSegment = taskRefIdSegment(normalized);
+  return items.find((item) => item.executionHints.sourceTaskRef === normalized || item.itemId.endsWith(`-${idSegment}`));
 }
 
 function normalizeTaskRef(value, fallbackIndex) {
   const raw = String(value ?? "").trim();
-  const number = /(?:Task\s*)?T?([A-Za-z]?\d+[A-Za-z]?)/i.exec(raw)?.[1];
-  if (number) return `T${number.replace(/^T/i, "").toUpperCase()}`;
+  const ref = TASK_REF_SCAN_PATTERN.exec(raw)?.[1];
+  if (ref) {
+    const normalized = ref.toUpperCase();
+    if (/^[A-Z]\d/.test(normalized)) return normalized;
+    return `T${normalized.replace(/^T/i, "")}`;
+  }
   return fallbackIndex > 0 ? `T${fallbackIndex}` : "";
+}
+
+function taskRefIdSegment(taskRef) {
+  return normalizeTaskRef(taskRef, 0)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 function priorityForTask(task, criticalPath, index) {

@@ -110,6 +110,11 @@ Is the diff touching public symbols (rename / move / extract / delete)?
 - "A green happy-path test means review is complete" fails when edge cases,
   rollback, accessibility, auth, or persistence behavior were not covered by
   the changed surface.
+- "The public API diff is additive, so no consumer can break" fails when
+  clients reject unknown fields/enums or depend on undocumented defaults,
+  ordering, status-code classes, headers, error codes, cursor formats, or
+  generated SDK shapes; require api-contract-reviewer consumer-impact evidence
+  before approving.
 
 ## Red flags
 

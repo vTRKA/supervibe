@@ -20,9 +20,22 @@ and confidence gates as first-class evidence systems.
   durable artifact.
 - Verification commands are mandatory before saying work is fixed, complete,
   passing, ready, shipped, or merged.
-- Browser, Figma, Context7, Firecrawl, and other MCP tools are optional until
-  installed, then required when the task explicitly depends on their live data
-  or interaction surface.
+- MCP tools are optional until installed, then required when the task explicitly
+  depends on their live data or interaction surface. Recommended MCPs must align
+  with the declared capability map in `scripts/lib/mcp-registry.mjs`; do not
+  introduce ad hoc recommendations in agent guidance without adding the
+  capability to the registry.
+
+## Declared MCP Capability Map
+
+| Capability id | Preferred MCP | Primary use | Fallback |
+| --- | --- | --- | --- |
+| `context7` | Context7 | Current third-party library documentation and examples | Official docs via web |
+| `browser` | Playwright | Browser interaction, DOM snapshots, screenshots, preview QA | Static scrape or manual verification |
+| `figma` | Figma MCP | Figma file, node, asset, and design-source extraction | User-provided screenshot or exported assets |
+| `firecrawl` | Firecrawl | Web research, crawl, scrape, search, news, and structured extraction | Targeted web search or browser scrape |
+| `openai-docs` | OpenAI developer docs MCP | Current OpenAI API, SDK, model, and product documentation | Official OpenAI docs via web |
+| `tauri` | Tauri MCP | Native desktop webview, IPC, window, logs, device, and setup verification | Playwright frontend preview only |
 
 ## Class Matrix
 
@@ -31,12 +44,12 @@ and confidence gates as first-class evidence systems.
 | Core reviewers | Project memory, Code RAG, Code Graph for impact, verification output | Code Graph callers/callees/neighbors, workflow receipt validators | No file/line evidence for a finding |
 | Repo researchers | Project memory, Code RAG context pack, graph neighborhood | `search-memory.mjs`, `search-code.mjs --context`, `--callers`, `--neighbors` | Index not ready and no repair command shown |
 | Refactoring specialists | Project memory, Code RAG, Code Graph impact radius, tests | `search-code.mjs --impact`, `--callers`, targeted test command | Structural edit without graph evidence |
-| Stack developers | Project memory, Code RAG, local patterns, official docs when API is current-sensitive | Context7 for library docs, package manager checks, targeted tests | New dependency or API usage without authoritative docs |
-| Design agents | Project memory, approved design-system state, design-intelligence rows, product-fit evidence | Figma when a file is supplied, browser/Playwright for preview evidence, image tools for real visual assets | Prototype work before approved or explicitly scoped design-system state |
-| UI reviewers | Design-system state, screenshots or DOM snapshot, accessibility evidence | Playwright snapshot/screenshot, browser preview server, contrast/focus checks | UI approval without visual or accessibility evidence |
+| Stack developers | Project memory, Code RAG, local patterns, official docs when API is current-sensitive | Context7 for library docs, OpenAI docs MCP for OpenAI API/SDK docs, package manager checks, targeted tests | New dependency or API usage without authoritative docs |
+| Design agents | Project memory, approved design-system state, design-intelligence rows, product-fit evidence | Figma when a file is supplied, Playwright for browser preview evidence, Tauri MCP for native desktop evidence, image tools for real visual assets | Prototype work before approved or explicitly scoped design-system state |
+| UI reviewers | Design-system state, screenshots or DOM snapshot, accessibility evidence | Playwright snapshot/screenshot, Tauri MCP for native webview/IPC/window/log evidence, browser preview server, contrast/focus checks | UI approval without visual or accessibility evidence |
 | Product agents | Project memory, user outcome, acceptance criteria, scope boundaries | Work-item graph, scenario eval fixtures, analytics/event taxonomy docs | Vague requirement converted directly to execution |
-| Ops/SRE agents | Project memory, code/config evidence, release/security audit evidence | Shell verification, dependency-health, release-security audit, MCP/vendor docs when current | Production mutation without explicit gate |
-| Research agents | Project memory, authoritative current sources, applicability notes | Firecrawl/web search for current docs/news/CVEs, Context7 for libraries | Source is stale, unofficial, or uncited |
+| Ops/SRE agents | Project memory, code/config evidence, release/security audit evidence | Shell verification, dependency-health, release-security audit, Firecrawl/vendor docs when current, OpenAI docs MCP for OpenAI platform dependencies | Production mutation without explicit gate |
+| Research agents | Project memory, authoritative current sources, applicability notes | Firecrawl for current web/news/CVEs, Context7 for libraries, OpenAI docs MCP for OpenAI APIs and models | Source is stale, unofficial, or uncited |
 | Meta/orchestrator agents | Project memory, command-agent plan, receipts, confidence logs, work-item state | Command matcher, workflow receipt runtime, status/maturity validators | Emulating a specialist producer without trusted runtime proof |
 
 ## Design-Specific Evidence

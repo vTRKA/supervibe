@@ -23,7 +23,10 @@ export async function curateProjectMemory({
   const lifecycle = buildMemoryLifecycle(entries, { now, contradictions });
   const referenceIssues = detectMemoryReferenceIssues(entries, { rootDir });
   const duplicateCandidates = detectDuplicateMemoryCandidates(entries, { lifecycle });
-  const invalidationCandidates = detectMemoryInvalidationCandidates(entries, { lifecycle, changedFiles });
+  const invalidationReviewDecisions = await readMemoryInvalidationReviewDecisions({ rootDir });
+  const rawInvalidationCandidates = detectMemoryInvalidationCandidates(entries, { lifecycle, changedFiles });
+  const invalidationReview = resolveMemoryInvalidationCandidates(rawInvalidationCandidates, invalidationReviewDecisions);
+  const invalidationCandidates = invalidationReview.unresolved;
   const hierarchy = buildHierarchicalMemorySummary(entries, { lifecycle });
   lifecycle.candidateQueues.referenceReview = referenceIssues.map((item) => ({
     id: `${item.entryId}:${item.reference}`,
@@ -69,6 +72,10 @@ export async function curateProjectMemory({
       referenceIssues,
       duplicateCandidates,
       invalidationCandidates,
+      invalidationReview: {
+        reviewed: invalidationReview.reviewed,
+        unresolved: invalidationReview.unresolved.length,
+      },
       hierarchy,
     },
   };
@@ -87,6 +94,7 @@ export async function curateProjectMemory({
     referenceIssues,
     duplicateCandidates,
     invalidationCandidates,
+    invalidationReview,
     hierarchy,
     lifecycle,
     tags,
@@ -265,6 +273,48 @@ function detectMemoryInvalidationCandidates(entries = [], { lifecycle = null, ch
     });
   }
   return candidates.sort((a, b) => a.entryId.localeCompare(b.entryId));
+}
+
+
+async function readMemoryInvalidationReviewDecisions({ rootDir = process.cwd() } = {}) {
+  const reviewPath = join(rootDir, ".supervibe", "memory", "invalidation-reviews.json");
+  try {
+    const parsed = JSON.parse(await readFile(reviewPath, "utf8"));
+    return Array.isArray(parsed.reviews) ? parsed.reviews : [];
+  } catch (error) {
+    if (error?.code !== "ENOENT") return [];
+    return [];
+  }
+}
+
+function resolveMemoryInvalidationCandidates(candidates = [], reviews = []) {
+  const reviewed = [];
+  const unresolved = [];
+  for (const candidate of candidates) {
+    const review = reviews.find((item) => coversInvalidationCandidate(candidate, item));
+    if (!review) {
+      unresolved.push(candidate);
+      continue;
+    }
+    reviewed.push({
+      ...candidate,
+      decision: review.decision || "reviewed-current",
+      reviewedAt: review.reviewedAt || null,
+      reviewedBy: review.reviewedBy || null,
+      evidence: review.evidence || null,
+    });
+  }
+  return { reviewed, unresolved };
+}
+
+function coversInvalidationCandidate(candidate = {}, review = {}) {
+  if (!review || review.entryId !== candidate.entryId) return false;
+  const decision = String(review.decision || "").toLowerCase();
+  const acceptedDecisions = new Set(["reviewed-current", "current", "superseded", "not-current", "resolved", "accepted"]);
+  if (!acceptedDecisions.has(decision)) return false;
+  const reviewedFiles = new Set((review.changedFiles || []).map(normalizeReferencePath).filter(Boolean));
+  if (!reviewedFiles.size) return false;
+  return (candidate.changedFiles || []).every((file) => reviewedFiles.has(normalizeReferencePath(file)));
 }
 
 function buildHierarchicalMemorySummary(entries = [], { lifecycle = null, maxCurrent = 12 } = {}) {

@@ -42,7 +42,6 @@ const PUBLIC_COMMANDS = new Set([
   "supervibe-genesis.md",
   "supervibe-loop.md",
   "supervibe-plan.md",
-  "supervibe-presentation.md",
   "supervibe-preview.md",
   "supervibe-review.md",
   "supervibe-score.md",
@@ -209,7 +208,7 @@ test("legacy short aliases stay unpublished and unroutable", async () => {
       (error) => ({ code: error.code ?? 1, output: `${error.stdout || ""}${error.stderr || ""}` }),
     );
     assert.doesNotMatch(terminalResult.output, /SLASH_COMMAND:\s*\/supervibe-/);
-    assert.doesNotMatch(terminalResult.output, /COMMAND:\s*supervibe-(?:audit|brainstorm|execute-plan|loop|plan|presentation|score|security-audit|strengthen)/);
+    assert.doesNotMatch(terminalResult.output, /COMMAND:\s*supervibe-(?:audit|brainstorm|execute-plan|loop|plan|score|security-audit|strengthen)/);
   }
 });
 

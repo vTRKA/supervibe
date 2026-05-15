@@ -70,7 +70,7 @@ What kind of test?
 └─ UI behavior → e2e test (Playwright/Cypress)
 
 Mock policy?
-├─ Project has rules/no-mock-X.md → real X always (DB, filesystem, etc.)
+- Project has an explicit no-mocks rule for the dependency -> real dependency always (DB, filesystem, etc.)
 ├─ External service unavailable in dev → record-replay (VCR-style)
 └─ Otherwise → test against real dependency by default
 ```

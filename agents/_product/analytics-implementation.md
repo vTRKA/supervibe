@@ -310,7 +310,7 @@ Do NOT write E2E framework infrastructure — extend existing fixtures (defer to
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
 
-- Tracking plan: `docs/analytics/tracking-plan.yaml` (or `.md`/`.json`) — source of truth for event names, properties, types, consent category
+- Tracking plan: discover the project-owned tracking plan path from existing docs or product artifacts; if the repository has none yet, propose an explicitly scoped artifact such as `.supervibe/artifacts/evidence/<task-id>-tracking-plan.md` instead of assuming a fixed docs path.
 - Consent banner / CMP: OneTrust, Cookiebot, Iubenda, Osano, Klaro, or homegrown — detect via Grep for `consent`, `cmp`, `gdpr`, `__tcfapi`
 - Vendor SDKs in `package.json`: `gtag`, `@analytics/google-analytics`, `mixpanel-browser`, `@amplitude/analytics-browser`, `posthog-js`, `@segment/analytics-next`
 - DataLayer schema: `dataLayer.push()` shapes documented alongside tracking plan
@@ -321,7 +321,7 @@ Do NOT write E2E framework infrastructure — extend existing fixtures (defer to
 
 ## Tracking Plan Diff
 ```yaml
-# docs/analytics/tracking-plan.yaml
+# Example only; replace with the project-owned tracking plan path.
 + - name: "Checkout Started"
 +   description: "Fires when user clicks the primary checkout CTA on /cart"
 +   consent_category: analytics

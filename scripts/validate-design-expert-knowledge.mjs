@@ -30,7 +30,6 @@ const LOCAL_KNOWLEDGE_DOMAINS = Object.freeze([
   /`react-performance`/i,
   /`ui-reasoning`/i,
   /`stack`/i,
-  /`slides`/i,
   /`collateral`/i,
 ]);
 
@@ -128,7 +127,6 @@ const RULES = Object.freeze([
       /Use the internet only for current\s+references/i,
       /skills\/design-intelligence\/data\/manifest\.json/i,
       /skills\/design-intelligence\/data\/stacks\//i,
-      /skills\/design-intelligence\/data\/slides\//i,
       /skills\/design-intelligence\/data\/collateral\//i,
       /skills\/design-intelligence\/references\//i,
       ...DESIGN_DOMAINS,
@@ -153,16 +151,6 @@ const RULES = Object.freeze([
       /product-fit style matrix/i,
       /--daemon/i,
       /regulated-trust|Finance, legal, healthcare, government, security, insurance/i,
-    ],
-  },
-  {
-    file: "commands/supervibe-presentation.md",
-    label: "presentation command expert gate",
-    required: [
-      /docs\/references\/design-expert-knowledge\.md/i,
-      /local\s+design\s+intelligence\s+lookup/i,
-      /External references are supplemental/i,
-      /--daemon/i,
     ],
   },
   {
@@ -192,11 +180,6 @@ const RULES = Object.freeze([
     file: "skills/landing-page/SKILL.md",
     label: "landing expert reference",
     required: [...SHARED_REQUIRED, ...ADAPTIVE_DESIGN_REQUIRED, /--daemon/i],
-  },
-  {
-    file: "skills/presentation-deck/SKILL.md",
-    label: "deck expert reference",
-    required: [...SHARED_REQUIRED, /approved design system/i, /candidate or needs_revision/i, /required\s*\|\s*reuse\s*\|\s*delegated\s*\|\s*skipped\s*\|\s*N\/A/i, /--daemon/i],
   },
   {
     file: "skills/ui-review-and-polish/SKILL.md",
@@ -277,7 +260,6 @@ export function validateDesignExpertKnowledge(rootDir = process.cwd()) {
       /Local folder map:/i,
       /skills\/design-intelligence\/data\/manifest\.json/i,
       /skills\/design-intelligence\/data\/stacks\//i,
-      /skills\/design-intelligence\/data\/slides\//i,
       /skills\/design-intelligence\/data\/collateral\//i,
       /skills\/design-intelligence\/references\//i,
       /Design Pass Triage/i,

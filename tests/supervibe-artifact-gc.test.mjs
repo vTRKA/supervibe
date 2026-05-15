@@ -184,6 +184,78 @@ test("artifact GC reports archive cleanup by TTL and size cap without touching l
   }
 });
 
+test("artifact GC archive cleanup removes snapshot-backed archive outputs and unprotected archive folders", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-artifact-gc-archive-protected-"));
+  try {
+    const protectedRel = ".supervibe/.archive/gc/protected/proof.json";
+    const unprotectedRel = ".supervibe/.archive/gc/old/nested/old.json";
+    const protectedArchive = await writeUtf8(root, protectedRel, "protected archive proof\n");
+    const oldArchive = await writeUtf8(root, unprotectedRel, "unprotected archive payload\n");
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/codex-task",
+      subjectType: "skill",
+      subjectId: "supervibe:verification",
+      stage: "verification",
+      invocationReason: "archive proof must remain restorable",
+      outputArtifacts: [protectedRel],
+      startedAt: "2026-05-01T00:00:00.000Z",
+      completedAt: "2026-05-01T00:01:00.000Z",
+      handoffId: "protected-archive-output",
+    });
+    const old = new Date("2026-01-01T00:00:00.000Z");
+    await utimes(protectedArchive, old, old);
+    await utimes(oldArchive, old, old);
+
+    const scan = await scanSupervibeArtifactGc({
+      rootDir: root,
+      now: "2026-05-06T00:00:00.000Z",
+      archiveRetentionDays: 1,
+      maxArchiveBytes: 1,
+    });
+    assert.ok(scan.archiveCleanup.some((item) => item.relPath === unprotectedRel));
+    assert.ok(scan.archiveCleanup.some((item) => item.relPath === protectedRel));
+
+    const result = await archiveSupervibeArtifactGcCandidates(scan, {
+      rootDir: root,
+      dryRun: false,
+      runTimestamp: "2026-05-06T00:00:00.000Z",
+    });
+    assert.deepEqual(result.errors, []);
+    assert.equal(existsSync(join(root, ...protectedRel.split("/"))), false);
+    assert.equal(existsSync(join(root, ...unprotectedRel.split("/"))), false);
+    assert.equal(existsSync(join(root, ".supervibe", ".archive", "gc", "old")), false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("artifact GC purge deletes candidates instead of archiving them", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-artifact-gc-purge-"));
+  try {
+    await writeUtf8(root, ".supervibe/memory/workflow-receipts-stale/old/receipt.json", "{}\n");
+    const scan = await scanSupervibeArtifactGc({
+      rootDir: root,
+      now: "2026-05-06T00:00:00.000Z",
+    });
+    const result = await archiveSupervibeArtifactGcCandidates(scan, {
+      rootDir: root,
+      dryRun: false,
+      purge: true,
+      runTimestamp: "2026-05-06T00:00:00.000Z",
+    });
+
+    assert.equal(result.deleted.length, 1);
+    assert.equal(result.archived.length, 0);
+    assert.deepEqual(result.errors, []);
+    assert.equal(existsSync(join(root, ".supervibe", "memory", "workflow-receipts-stale", "old")), false);
+    assert.equal(existsSync(join(root, ".supervibe", ".archive", "gc")), false);
+    assert.ok(result.auditLogPath.startsWith(".supervibe/artifacts/_gc-runs/"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("artifact GC apply archives candidates outside active memory", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-artifact-gc-apply-"));
   try {
@@ -201,6 +273,48 @@ test("artifact GC apply archives candidates outside active memory", async () => 
     assert.equal(result.archived.length, 1);
     assert.equal(existsSync(join(root, ".supervibe", "memory", "workflow-receipts-stale", "old")), false);
     assert.ok(result.archived[0].archivePath.startsWith(".supervibe/.archive/gc/"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("artifact GC purgeArchives removes unprotected and snapshot-backed archive files", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-artifact-gc-purge-archives-"));
+  try {
+    const protectedRel = ".supervibe/.archive/gc/protected/proof.json";
+    const unprotectedRel = ".supervibe/.archive/gc/old/old.json";
+    await writeUtf8(root, protectedRel, "protected archive proof\n");
+    await writeUtf8(root, unprotectedRel, "old archive payload\n");
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/codex-task",
+      subjectType: "skill",
+      subjectId: "supervibe:verification",
+      stage: "verification",
+      invocationReason: "archive proof must remain restorable",
+      outputArtifacts: [protectedRel],
+      startedAt: "2026-05-01T00:00:00.000Z",
+      completedAt: "2026-05-01T00:01:00.000Z",
+      handoffId: "protected-archive-purge-output",
+    });
+
+    const scan = await scanSupervibeArtifactGc({
+      rootDir: root,
+      now: "2026-05-06T00:00:00.000Z",
+      purgeArchives: true,
+    });
+    assert.ok(scan.archiveCleanup.some((item) => item.relPath === unprotectedRel && item.reason === "archive-purge"));
+    assert.ok(scan.archiveCleanup.some((item) => item.relPath === protectedRel && item.reason === "archive-purge"));
+
+    const result = await archiveSupervibeArtifactGcCandidates(scan, {
+      rootDir: root,
+      dryRun: false,
+      runTimestamp: "2026-05-06T00:00:00.000Z",
+    });
+    assert.deepEqual(result.errors, []);
+    assert.equal(existsSync(join(root, ...protectedRel.split("/"))), false);
+    assert.equal(existsSync(join(root, ...unprotectedRel.split("/"))), false);
+    assert.equal(existsSync(join(root, ".supervibe", ".archive")), false);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

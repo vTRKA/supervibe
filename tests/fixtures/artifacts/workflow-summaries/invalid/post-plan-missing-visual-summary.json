@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "workflow-summary-v2",
+  "artifactKind": "workflow-summary",
+  "summaryId": "summary-b8d650e70b63",
+  "workflowId": "workflow-summary-fixture",
+  "stage": "post-plan",
+  "stageOrder": 4,
+  "title": "Post-plan summary",
+  "createdAt": "2026-05-15T00:00:00.000Z",
+  "expiresAt": "2026-05-22T00:00:00.000Z",
+  "storagePath": ".supervibe/artifacts/summaries/workflow-summary-fixture/post-plan-summary.json",
+  "sourcePrompt": {
+    "hash": "sha256:a596de8f26f82f4d23e81a1369fef5f5976bb50c99656b26c32966e5dd6d1a3b",
+    "capturedAt": "2026-05-15T00:00:00.000Z",
+    "excerpt": "User asks for workflow summary logic hardening."
+  },
+  "sourceArtifact": {
+    "kind": "plan",
+    "path": ".supervibe/artifacts/plans/example-plan.md",
+    "hashAlgorithm": "sha256",
+    "hash": "sha256:59307407feccd820fb70cba76980538c48d988407b82b0f3f9f4da943af3300e",
+    "capturedAt": "2026-05-15T00:00:00.000Z"
+  },
+  "summary": {
+    "objective": "Harden summary workflow lifecycle.",
+    "scope": [
+      "summary routing",
+      "durable artifacts"
+    ],
+    "nonGoals": [
+      "implementation execution"
+    ]
+  },
+  "approvedScope": [
+    "pre/post summary lifecycle"
+  ],
+  "assumptions": [
+    "user approval is required"
+  ],
+  "planningAssumptions": [
+    "validators run at final gate"
+  ],
+  "constraints": [
+    "source hash binding required"
+  ],
+  "risks": [
+    "stale summary can mislead handoff"
+  ],
+  "missingFacts": [],
+  "decisionSummary": {
+    "addedAndWhy": [
+      "Fixture records required post-stage explanation fields."
+    ],
+    "deferredAndWhy": [
+      "Release execution remains outside fixture scope."
+    ],
+    "validationResult": "fixture source artifact is current",
+    "nextRecommendedCommand": "/supervibe-plan --review <plan-path>",
+    "nextUserActions": [
+      "approve-post-plan-summary: Approve plan summary and review",
+      "revise-plan-before-review: Revise plan first",
+      "stop-after-plan: Stop after plan"
+    ]
+  },
+  "staleState": {
+    "status": "current",
+    "reason": "source-artifact-current",
+    "checkedAt": "2026-05-15T00:00:00.000Z",
+    "sourceArtifactHash": "sha256:59307407feccd820fb70cba76980538c48d988407b82b0f3f9f4da943af3300e",
+    "repair": "regenerate summary from current source artifact when stale"
+  },
+  "choices": [
+    {
+      "id": "approve-post-plan-summary",
+      "label": "Approve plan summary and review",
+      "description": "Allows the workflow to move into plan review with the current plan summary.",
+      "recommended": true,
+      "ordinal": 1
+    },
+    {
+      "id": "revise-plan-before-review",
+      "label": "Revise plan first",
+      "description": "Keeps the workflow on the implementation plan before review starts.",
+      "recommended": false,
+      "ordinal": 2
+    },
+    {
+      "id": "stop-after-plan",
+      "label": "Stop after plan",
+      "description": "Stops after preserving the plan summary and next-step context.",
+      "recommended": false,
+      "ordinal": 3
+    }
+  ],
+  "approvalState": {
+    "status": "pending",
+    "selectedChoiceId": "",
+    "approvedAt": "",
+    "approvedBy": "",
+    "approvalSource": "latest-user-gate",
+    "allowedChoiceIds": [
+      "approve-post-plan-summary"
+    ],
+    "sourcePromptHash": "sha256:a596de8f26f82f4d23e81a1369fef5f5976bb50c99656b26c32966e5dd6d1a3b",
+    "artifactHash": "sha256:cda5976a3b538ecae7f746d2c1ed0f295ec03241ef4b9f9df3ab2c144ae655d6",
+    "expiresAt": "2026-05-22T00:00:00.000Z"
+  },
+  "evidenceAppendix": {
+    "schemaPath": "docs/templates/workflow-summary-artifact.schema.json",
+    "contractVersion": "workflow-summary-v2",
+    "storagePath": ".supervibe/artifacts/summaries/workflow-summary-fixture/post-plan-summary.json",
+    "sourcePromptHash": "sha256:a596de8f26f82f4d23e81a1369fef5f5976bb50c99656b26c32966e5dd6d1a3b",
+    "sourceArtifactHash": "sha256:59307407feccd820fb70cba76980538c48d988407b82b0f3f9f4da943af3300e",
+    "artifactHash": "sha256:cda5976a3b538ecae7f746d2c1ed0f295ec03241ef4b9f9df3ab2c144ae655d6",
+    "items": []
+  },
+  "artifactHash": "sha256:cda5976a3b538ecae7f746d2c1ed0f295ec03241ef4b9f9df3ab2c144ae655d6"
+}

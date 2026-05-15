@@ -1,0 +1,22 @@
+{
+  "fixture": "stale-rag-readiness",
+  "intent": "negative maturity claim fixture: stale RAG evidence must not satisfy readiness",
+  "claim": {
+    "subject": "supervibe-runtime-maturity",
+    "assertion": "10/10 ready",
+    "claimedAt": "2026-05-15T12:00:00Z"
+  },
+  "readinessEvidence": {
+    "projectMemoryChecked": true,
+    "codeGraphChecked": true,
+    "codeRagChecked": true,
+    "codeRagIndex": {
+      "status": "ready",
+      "builtAt": "2025-01-01T00:00:00Z",
+      "sourceRevision": "obsolete-synthetic-revision",
+      "health": "stale"
+    }
+  },
+  "expectedGateResult": "fail",
+  "expectedReason": "RAG readiness is stale even though the claim says 10/10 ready"
+}

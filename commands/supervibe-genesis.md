@@ -85,7 +85,7 @@ Scenario evals assert this post-delivery menu and persisted command state via
 
 4. **Choose agent install profile.** Before writing host adapter agents (`<adapter>/agents` as resolved by host detection), present profile choices and wait for explicit selection:
    - `minimal` — core router, repo research, code review, quality gate, stack developer(s). Fastest install; recommended default.
-   - `product-design` — minimal + product manager, systems analyst, UX/UI designer, prototype builder, presentation agents, copywriter, accessibility/polish reviewers.
+   - `product-design` — minimal + product manager, systems analyst, UX/UI designer, prototype builder, copywriter, accessibility/polish reviewers.
    - `full-stack` — product-design + ops/security/data/performance specialists for larger teams.
    - `research-heavy` — minimal + researcher agents for uncertain stacks, stale dependencies, security or best-practice discovery.
    - `custom` — show grouped agent list and let the user add/remove groups.

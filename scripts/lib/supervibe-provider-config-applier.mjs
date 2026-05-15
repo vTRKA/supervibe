@@ -831,18 +831,98 @@ function stripTomlComment(line = "") {
 
 function parseTomlTableHeader(line = "") {
   const stripped = stripTomlComment(line).trim();
-  const arrayMatch = stripped.match(/^\[\[([A-Za-z0-9_.-]+)\]\]$/);
-  if (arrayMatch) return { table: arrayMatch[1], array: true };
-  const tableMatch = stripped.match(/^\[([A-Za-z0-9_.-]+)\]$/);
-  if (tableMatch) return { table: tableMatch[1], array: false };
+  const array = stripped.startsWith("[[") && stripped.endsWith("]]");
+  const table = !array && stripped.startsWith("[") && stripped.endsWith("]");
+  if (!array && !table) return null;
+  const inner = array ? stripped.slice(2, -2) : stripped.slice(1, -1);
+  const segments = parseTomlDottedKey(inner);
+  if (!segments) return null;
+  return { table: segments.join("."), array };
+}
+
+function parseTomlDottedKey(value = "") {
+  const segments = [];
+  let index = 0;
+  const source = String(value || "");
+  const skipWhitespace = () => {
+    while (index < source.length && /[ \t]/.test(source[index])) index += 1;
+  };
+
+  skipWhitespace();
+  while (index < source.length) {
+    let segment = "";
+    const quote = source[index] === "\"" || source[index] === "'" ? source[index] : null;
+    if (quote) {
+      index += 1;
+      let escaped = false;
+      while (index < source.length) {
+        const char = source[index];
+        if (quote === "\"" && escaped) {
+          segment += char;
+          escaped = false;
+          index += 1;
+          continue;
+        }
+        if (quote === "\"" && char === "\\") {
+          escaped = true;
+          index += 1;
+          continue;
+        }
+        if (char === quote) break;
+        segment += char;
+        index += 1;
+      }
+      if (source[index] !== quote) return null;
+      index += 1;
+    } else {
+      const start = index;
+      while (index < source.length && /[A-Za-z0-9_-]/.test(source[index])) index += 1;
+      if (index === start) return null;
+      segment = source.slice(start, index);
+    }
+    segments.push(segment);
+    skipWhitespace();
+    if (index >= source.length) break;
+    if (source[index] !== ".") return null;
+    index += 1;
+    skipWhitespace();
+    if (index >= source.length) return null;
+  }
+
+  return segments.length > 0 ? segments : null;
+}
+
+function findTomlAssignmentIndex(line = "") {
+  let quote = null;
+  let escaped = false;
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    if (quote) {
+      if (quote === "\"" && escaped) {
+        escaped = false;
+      } else if (quote === "\"" && char === "\\") {
+        escaped = true;
+      } else if (char === quote) {
+        quote = null;
+      }
+      continue;
+    }
+    if (char === "\"" || char === "'") {
+      quote = char;
+      continue;
+    }
+    if (char === "=") return index;
+  }
   return null;
 }
 
 function parseTomlKeyValue(line = "") {
   const stripped = stripTomlComment(line).trim();
-  const match = stripped.match(/^([A-Za-z0-9_.-]+)\s*=\s*(.+)$/);
-  if (!match) return null;
-  return { key: match[1], value: parseScalarValue(match[2].trim()) };
+  const assignmentIndex = findTomlAssignmentIndex(stripped);
+  if (assignmentIndex === null) return null;
+  const keySegments = parseTomlDottedKey(stripped.slice(0, assignmentIndex).trim());
+  if (!keySegments) return null;
+  return { key: keySegments.join("."), value: parseScalarValue(stripped.slice(assignmentIndex + 1).trim()) };
 }
 
 function parseScalarValue(value = "") {

@@ -38,17 +38,6 @@ const STACKS = Object.freeze([
   "vue",
 ]);
 
-const SLIDES = Object.freeze([
-  "backgrounds",
-  "charts",
-  "color-logic",
-  "copy",
-  "layout-logic",
-  "layouts",
-  "strategies",
-  "typography",
-]);
-
 const COLLATERAL = Object.freeze([
   "cip-deliverables",
   "cip-industries",
@@ -65,7 +54,6 @@ const REFERENCE_CARDS = Object.freeze([
   "brand-reference.md",
   "design-system-reference.md",
   "professional-ui-priority-reference.md",
-  "slide-deck-reference.md",
   "ui-styling-reference.md",
 ]);
 
@@ -139,11 +127,6 @@ export function validateDesignSourceCoverage(rootDir = process.cwd()) {
   for (const stack of STACKS) {
     if (!findDomain(manifest, `stack:${stack}`)) {
       issues.push(issue("skills/design-intelligence/data/manifest.json", "missing-stack-domain", `missing stack domain ${stack}`));
-    }
-  }
-  for (const slide of SLIDES) {
-    if (!findDomain(manifest, `slides:${slide}`)) {
-      issues.push(issue("skills/design-intelligence/data/manifest.json", "missing-slide-domain", `missing slide domain ${slide}`));
     }
   }
   for (const item of COLLATERAL) {
@@ -255,10 +238,8 @@ export function validateDesignSourceCoverage(rootDir = process.cwd()) {
       /Design Intelligence Source Coverage/i,
       /Main design CSV data/i,
       /Stack CSV data/i,
-      /Slide decision CSV data/i,
       /Logo, icon, CIP collateral CSV data/i,
       /skills\/design-intelligence\/data\/stacks/i,
-      /skills\/design-intelligence\/data\/slides/i,
       /skills\/design-intelligence\/data\/collateral/i,
       /skills\/design-intelligence\/references/i,
       /Low-signal design\/draft backup files/i,

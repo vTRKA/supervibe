@@ -43,7 +43,6 @@ const COMMAND_ONLY_SKILLS = Object.freeze(new Set([
   "supervibe:audit",
   "supervibe:genesis",
   "supervibe:preview-server",
-  "supervibe:presentation-deck",
   "supervibe:strengthen",
 ]));
 

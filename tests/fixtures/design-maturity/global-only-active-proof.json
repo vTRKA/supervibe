@@ -1,0 +1,17 @@
+{
+  "fixture": "global-only-active-proof",
+  "intent": "negative design-maturity fixture: global proof alone must not satisfy active target proof",
+  "designMaturity": {
+    "target": "web",
+    "claimedStatus": "complete",
+    "globalProof": {
+      "tokensExist": true,
+      "styleboardExists": true,
+      "approvedAt": "2026-05-15T10:00:00Z"
+    },
+    "activeTargetProof": null,
+    "activePrototypeReceipt": null
+  },
+  "expectedGateResult": "fail",
+  "expectedReason": "only global design evidence is present; active target proof is missing"
+}

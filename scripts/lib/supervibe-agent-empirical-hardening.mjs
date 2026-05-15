@@ -124,6 +124,9 @@ export function buildAgentCapabilityHeatmap({ rootDir = process.cwd(), now = new
       mcpEnabled: agent.tools.some((tool) => tool.startsWith("mcp__") || tool === "WebFetch" || tool === "WebSearch"),
       currentDocsReady: freshness.currentDocsReady,
       freshnessStatus: freshness.status,
+      assessmentScope: "prompt-static-capability",
+      evidenceBasis: "agent-frontmatter-body-contracts",
+      runtimeProofStatus: "not-assessed",
       score,
       grade: score >= 9.7 ? "excellent" : score >= 9 ? "ready" : "needs-work",
       critical: agent.isCritical,
@@ -246,6 +249,9 @@ export function validateAgentEmpiricalHardening({ rootDir = process.cwd(), now =
 export function formatAgentEmpiricalHardeningReport(report = {}) {
   const lines = [
     "SUPERVIBE_AGENT_EMPIRICAL_HARDENING",
+    "HEATMAP_SCOPE: prompt-static-capability",
+    "HEATMAP_RUNTIME_PROOF: not-assessed",
+    "RUNTIME_MATURITY: separate-runtime-receipt-and-workflow-gates",
     `PASS: ${report.pass === true}`,
     `CHECKED_AGENTS: ${report.checkedAgents || 0}`,
     `CHECKED_SKILLS: ${report.checkedSkills || 0}`,
@@ -264,15 +270,17 @@ export function formatAgentEmpiricalHardeningReport(report = {}) {
 
 export function formatCapabilityHeatmapMarkdown(rows = []) {
   const lines = [
-    "# Agent Capability Heatmap",
+    "# Agent Prompt Capability Heatmap",
     "",
-    "Generated from agent frontmatter and body contracts.",
+    "Generated from agent frontmatter, declared skills/tools, body contracts, and prompt freshness.",
     "",
-    "| Agent | Namespace | Skills | Tools | Foundational | Specialist | Score | Grade | Freshness | Write |",
-    "|---|---:|---:|---:|---:|---:|---:|---|---|---|",
+    "Scope: prompt/static capability only. This heatmap does not prove active runtime execution, workflow receipt coverage, Code RAG/CodeGraph readiness, or release maturity. High prompt scores can coexist with separate runtime maturity blockers.",
+    "",
+    "| Agent | Namespace | Skills | Tools | Foundational | Specialist | Prompt Score | Grade | Prompt Freshness | Runtime Proof | Write |",
+    "|---|---:|---:|---:|---:|---:|---:|---|---|---|---|",
   ];
   for (const row of rows) {
-    lines.push(`| ${row.agentId} | ${row.namespace} | ${row.skills} | ${row.tools} | ${row.foundationalSkills} | ${row.specialistSkills} | ${row.score} | ${row.grade} | ${row.freshnessStatus} | ${row.writeEnabled ? "yes" : "no"} |`);
+    lines.push(`| ${row.agentId} | ${row.namespace} | ${row.skills} | ${row.tools} | ${row.foundationalSkills} | ${row.specialistSkills} | ${row.score} | ${row.grade} | ${row.freshnessStatus} | ${row.runtimeProofStatus || "not-assessed"} | ${row.writeEnabled ? "yes" : "no"} |`);
   }
   return `${lines.join("\n")}\n`;
 }

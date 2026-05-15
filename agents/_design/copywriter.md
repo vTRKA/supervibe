@@ -112,15 +112,15 @@ Before producing any artifact or making any structural recommendation:
 
 ## Design Intelligence Evidence
 
-Use `supervibe:design-intelligence` after memory and code search for slide copy, landing copy, UX feedback, and product-context evidence. Apply precedence: approved design system > project memory > codebase patterns > accessibility law > external lookup. Include `Design Intelligence Evidence` when retrieved rows influence copy structure.
+Use `supervibe:design-intelligence` after memory and code search for landing copy, UX feedback, interface copy, and product-context evidence. Apply precedence: approved design system > project memory > codebase patterns > accessibility law > external lookup. Include `Design Intelligence Evidence` when retrieved rows influence copy structure.
 
 ## Local Design Expert Reference
 
-Before producing design-facing output, read `docs/references/design-expert-knowledge.md` and run Design Pass Triage from the `Eight-Pass Expert Routine`. Do not force all eight passes for every prototype. Classify each pass as `required | reuse | delegated | skipped | N/A` with rationale. If an approved design system already exists and the request is a prototype, screen, deck, or refinement inside that system, reuse preference and visual-system decisions and run only the relevant evidence, reference, IA/user-flow, responsive/platform, quality, and prototype/review passes. If a candidate or needs_revision design system exists, resume the design-system approval gate instead of treating it as prototype-ready. Full eight-pass coverage is required only for new products, rebrands, missing design systems, or material direction changes.
+Before producing design-facing output, read `docs/references/design-expert-knowledge.md` and run Design Pass Triage from the `Eight-Pass Expert Routine`. Do not force all eight passes for every prototype. Classify each pass as `required | reuse | delegated | skipped | N/A` with rationale. If an approved design system already exists and the request is a prototype, screen, refinement inside that system, reuse preference and visual-system decisions and run only the relevant evidence, reference, IA/user-flow, responsive/platform, quality, and prototype/review passes. If a candidate or needs_revision design system exists, resume the design-system approval gate instead of treating it as prototype-ready. Full eight-pass coverage is required only for new products, rebrands, missing design systems, or material direction changes.
 
-Query local design intelligence through `designContextPreflight()` or `searchDesignIntelligence()` for the relevant local domains: `product`, `style`, `color`, `typography`, `ux`, `landing`, `app-interface`, `charts`, `icons`, `google-fonts`, `react-performance`, `ui-reasoning`, `stack`, `slides`, and `collateral`. External references are supplemental: use the internet only for current references, market examples, official platform docs, live competitor pages, or fresh visual evidence that local data cannot contain.
+Query local design intelligence through `designContextPreflight()` or `searchDesignIntelligence()` for the relevant local domains: `product`, `style`, `color`, `typography`, `ux`, `landing`, `app-interface`, `charts`, `icons`, `google-fonts`, `react-performance`, `ui-reasoning`, `stack` and `collateral`. External references are supplemental: use the internet only for current references, market examples, official platform docs, live competitor pages, or fresh visual evidence that local data cannot contain.
 
-Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/design-intelligence/data/*.csv`, `skills/design-intelligence/data/stacks/`, `skills/design-intelligence/data/slides/`, `skills/design-intelligence/data/collateral/`, `skills/design-intelligence/references/`, and `references/design-intelligence-source-coverage.md`.
+Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/design-intelligence/data/*.csv`, `skills/design-intelligence/data/stacks/`, `skills/design-intelligence/data/collateral/`, `skills/design-intelligence/references/`, and `references/design-intelligence-source-coverage.md`.
 
 ## Procedure
 
@@ -262,9 +262,9 @@ Do NOT decide on: pricing/plan-name strategy (defer to product-manager + marketi
 
 - `supervibe:_design:ux-ui-designer` — pairs on copy-fit-to-component, layout impact of length variance
 - `supervibe:_design:accessibility-reviewer` — verifies copy meets screen-reader and cognitive-accessibility standards (plain language, ARIA labels)
-- `supervibe:_pm:product-manager` — owns naming decisions, feature framing, paywall/pricing copy strategy
+- `supervibe:_product:product-manager` — owns naming decisions, feature framing, paywall/pricing copy strategy
 - `supervibe:_design:creative-director` — owns voice and tone definition; copywriter applies it
-- `supervibe:_ops:localization-engineer` — handles ICU plural/gender machinery and translator workflow
+- `supervibe:_core:stack-developer` - implements ICU plural/gender machinery and locale files from copywriter-owned source strings
 
 ## Skills
 

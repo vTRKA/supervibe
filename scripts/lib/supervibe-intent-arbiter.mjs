@@ -26,6 +26,14 @@ const DIAGNOSTIC_TERMS = Object.freeze([
   "\u0443\u043c\u043d\u0430\u044f \u0438\u043d\u0442\u0435\u043d\u0442 \u0441\u0438\u0441\u0442\u0435\u043c\u0430", "\u0443\u043c\u043d\u0443\u044e \u0438\u043d\u0442\u0435\u043d\u0442 \u0441\u0438\u0441\u0442\u0435\u043c\u0443",
 ]);
 
+const ROUTING_FAILURE_TERMS = Object.freeze([
+  "wrong", "wrongly", "incorrect", "incorrectly", "misclassified", "misclassification", "misroute", "misrouted",
+  "bad route", "wrong intent", "wrong command", "false positive", "false positives", "instead of", "should not route",
+  "\u043e\u0448\u0438\u0431\u043e\u0447\u043d\u043e", "\u043d\u0435 \u0442\u0443\u0434\u0430", "\u043d\u0435 \u0442\u043e\u0442", "\u043d\u0435 \u0442\u0430 \u043a\u043e\u043c\u0430\u043d\u0434\u0430",
+  "\u043d\u0435 \u0442\u043e\u0442 \u0438\u043d\u0442\u0435\u043d\u0442", "\u043a\u0438\u0434\u0430\u0435\u0442", "\u0437\u0430\u043a\u0438\u0434\u044b\u0432\u0430\u0435\u0442", "\u0432\u043c\u0435\u0441\u0442\u043e",
+  "\u043d\u0435 \u0434\u043e\u043b\u0436\u043d\u043e", "\u043b\u043e\u0436\u043d\u043e\u0435 \u0441\u0440\u0430\u0431\u0430\u0442\u044b\u0432\u0430\u043d\u0438\u0435",
+]);
+
 const IMPLEMENTATION_TERMS = Object.freeze([
   "implement", "build", "create", "make", "fix", "repair", "change code", "feature", "code change",
   "\u0441\u0434\u0435\u043b\u0430\u0439", "\u0441\u0434\u0435\u043b\u0430\u0442\u044c", "\u0440\u0435\u0430\u043b\u0438\u0437\u0443\u0439", "\u0440\u0435\u0430\u043b\u0438\u0437\u043e\u0432\u0430\u0442\u044c", "\u0438\u0441\u043f\u0440\u0430\u0432\u044c", "\u0444\u0438\u0447\u0443", "\u043a\u043e\u0434",
@@ -61,11 +69,32 @@ const NETWORK_OPS_TERMS = Object.freeze([
   "\u0432\u0430\u0439\u0444\u0430\u0439", "\u0441\u0435\u0442\u044c", "\u0441\u0435\u0442\u0438", "\u0444\u0430\u0435\u0440\u0432\u043e\u043b", "\u0438\u043d\u0442\u0435\u0440\u043d\u0435\u0442",
 ]);
 
+const ROUTER_IMPLEMENTATION_SUPPRESSED_INTENTS = new Set([
+  "agent_strengthen",
+  "agent_provisioning",
+  "cleanup_stale_work",
+  "docs_audit",
+  "memory_audit",
+  "security_audit",
+  "supervibe_audit",
+  "workflow_chain_audit",
+]);
+
+const ROUTING_MENTION_SUPPRESSED_INTENTS = new Set([
+  "cleanup_stale_work",
+  "docs_audit",
+  "memory_audit",
+  "security_audit",
+  "supervibe_audit",
+  "workflow_chain_audit",
+]);
+
 export function arbitrateIntentCandidates(candidates = [], options = {}) {
   const text = normalizeArbiterText(options.text ?? options.input ?? "");
   const routeIntents = new Set(options.routeIntents || options.availableIntents || []);
   const signals = classifyIntentRequest(text);
   let scored = candidates.map((candidate) => scoreCandidate(candidate, signals, text));
+  scored = injectMissingPromptEngineeringCandidate(scored, signals, routeIntents);
   scored = injectMissingDiagnosticCandidate(scored, signals, routeIntents);
   scored.sort(compareCandidates);
 
@@ -105,7 +134,8 @@ export function arbitrateIntentCandidates(candidates = [], options = {}) {
 export function classifyIntentRequest(input = "") {
   const text = normalizeArbiterText(input);
   const routeSubject = hasAny(text, ROUTING_SUBJECT_TERMS);
-  const diagnosticLanguage = hasAny(text, DIAGNOSTIC_TERMS) || (routeSubject && /[??]/u.test(input));
+  const routingFailureLanguage = hasAny(text, ROUTING_FAILURE_TERMS);
+  const diagnosticLanguage = hasAny(text, DIAGNOSTIC_TERMS) || routingFailureLanguage || (routeSubject && /[??]/u.test(input));
   const implementationLanguage = hasAny(text, IMPLEMENTATION_TERMS);
   const securityLanguage = hasAny(text, SECURITY_TERMS);
   const reviewLanguage = hasAny(text, REVIEW_TERMS);
@@ -115,6 +145,7 @@ export function classifyIntentRequest(input = "") {
   const networkOpsLanguage = hasAny(text, NETWORK_OPS_TERMS) || /\bnetwork\s+(router|wifi|vpn|stability|config)\b/u.test(text);
   const routeQualityQuestion = routeSubject && diagnosticLanguage;
   const promptEngineeringRequest = promptLanguage && promptActionLanguage && !routeQualityQuestion;
+  const routerImplementationRequest = routeSubject && implementationLanguage && !securityLanguage && !reviewLanguage && !networkOpsLanguage;
   const implementationRequest = implementationLanguage && !routeQualityQuestion && !securityLanguage && !reviewLanguage;
 
   let requestType = "task_request";
@@ -122,6 +153,8 @@ export function classifyIntentRequest(input = "") {
     requestType = "security_request";
   } else if (reviewLanguage && !routeQualityQuestion) {
     requestType = "review_request";
+  } else if (routerImplementationRequest) {
+    requestType = "router_implementation_request";
   } else if (routeQualityQuestion) {
     requestType = "route_diagnostic_question";
   } else if (promptEngineeringRequest) {
@@ -135,15 +168,19 @@ export function classifyIntentRequest(input = "") {
     routeSubject,
     routeQualityQuestion,
     implementationRequest,
+    routerImplementationRequest,
     securityRequest: requestType === "security_request",
     reviewRequest: requestType === "review_request",
     promptEngineeringRequest,
     auditLanguage,
     networkOpsLanguage,
+    routingFailureLanguage,
     evidence: {
       routeSubject,
       diagnosticLanguage,
       implementationLanguage,
+      routerImplementationRequest,
+      routingFailureLanguage,
       securityLanguage,
       reviewLanguage,
       promptLanguage,
@@ -160,10 +197,27 @@ function scoreCandidate(candidate, signals, text) {
   const negativeEvidence = [...(candidate.negativeEvidence || [])];
   const arbiterEvidence = [...(candidate.arbiterEvidence || [])];
 
+  if (signals.routerImplementationRequest) {
+    if (candidate.intent === "prompt_ai_engineering") {
+      score += 0.16;
+      arbiterEvidence.push("implementation request targets the intent/router contract");
+    }
+    if (ROUTER_IMPLEMENTATION_SUPPRESSED_INTENTS.has(candidate.intent)) {
+      score -= 0.42;
+      negativeEvidence.push("route/intent implementation request, not a domain workflow dispatch");
+    }
+    if (candidate.intent === "trigger_diagnostics") {
+      score -= 0.04;
+      negativeEvidence.push("implementation wording asks for a router fix, not diagnostics only");
+    }
+  }
+
   if (signals.routeQualityQuestion) {
     if (candidate.intent === "trigger_diagnostics") {
-      score += 0.24;
-      arbiterEvidence.push("routing/agent selection question matches trigger diagnostics");
+      if (!signals.routerImplementationRequest) {
+        score += 0.24;
+        arbiterEvidence.push("routing/agent selection question matches trigger diagnostics");
+      }
     }
     if (candidate.intent === "supervibe_audit") {
       score += signals.auditLanguage ? 0.08 : 0.02;
@@ -179,6 +233,10 @@ function scoreCandidate(candidate, signals, text) {
     if (candidate.intent === "agent_strengthen") {
       score -= 0.14;
       negativeEvidence.push("question is about route choice, not strengthening agent artifacts");
+    }
+    if (signals.routingFailureLanguage && ROUTING_MENTION_SUPPRESSED_INTENTS.has(candidate.intent)) {
+      score -= 0.28;
+      negativeEvidence.push("candidate is mentioned as the suspected wrong route, not requested as the target workflow");
     }
   }
 
@@ -237,9 +295,32 @@ function injectMissingDiagnosticCandidate(candidates, signals, routeIntents) {
   ];
 }
 
+function injectMissingPromptEngineeringCandidate(candidates, signals, routeIntents) {
+  if (!signals.routerImplementationRequest) return candidates;
+  if (!routeIntents.has("prompt_ai_engineering")) return candidates;
+  if (candidates.some((candidate) => candidate.intent === "prompt_ai_engineering")) return candidates;
+  return [
+    ...candidates,
+    {
+      intent: "prompt_ai_engineering",
+      confidence: 0.95,
+      originalConfidence: 0,
+      source: "intent-arbiter",
+      reason: "Intent arbiter recognized an implementation request for the intent/router contract.",
+      semanticEvidence: {
+        matchedGroups: ["routing subject", "implementation wording"],
+        painMatches: [],
+      },
+      negativeEvidence: [],
+      arbiterEvidence: ["route subject plus implementation language"],
+      intentArbiterRequestType: "router_implementation_request",
+    },
+  ];
+}
+
 function detectAmbiguity(candidates, signals, routeIntents) {
   if (!routeIntents.has("trigger_diagnostics")) return { guardApplied: false };
-  if (signals.implementationRequest || signals.securityRequest || signals.promptEngineeringRequest) return { guardApplied: false };
+  if (signals.implementationRequest || signals.routerImplementationRequest || signals.securityRequest || signals.promptEngineeringRequest) return { guardApplied: false };
   const [first, second] = candidates;
   if (!first || !second) return { guardApplied: false };
   if (first.intent === "trigger_diagnostics") return { guardApplied: false };

@@ -62,8 +62,8 @@ anti-patterns:
   - pagination-by-offset-only
   - contract-implicit-from-code
   - no-deprecation-period
-version: 1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.1
+last-verified: 2026-05-15T00:00:00.000Z
 verified-against: HEAD
 effectiveness:
   last-task: null
@@ -85,7 +85,7 @@ Priorities (in order, never reordered):
 3. **Discoverability** — OpenAPI/SDL describes the contract; clients regenerate without reading prose docs
 4. **Evolution path** — every endpoint has a deprecation policy, a sunset date, and a migration guide
 
-Mental model: an API is a published contract. Once a v1 client exists in the wild, the server's freedom drops to zero on that surface. Every field is forever (until a documented sunset). Every error code is a public commitment. Every header is part of the integration. Versioning is not a "we might need it" — it is the default.
+Mental model: an API is a published contract. Once a v1 client exists in the wild, the server's freedom drops to zero on that surface. Hyrum-style contract risk applies: if consumers can observe a field, code, header, ordering, default, or timing behavior, some client may depend on it. Every field is forever (until a documented sunset). Every error code is a public commitment. Every header is part of the integration. Versioning is not a "we might need it" - it is the default.
 
 Contract-first over code-first: the spec is the source of truth, server and clients regenerate from it. Code-first specs lie eventually because nobody reviews the generated YAML.
 
@@ -162,6 +162,7 @@ Rubric: agent-delivery
 
 - `asking-multiple-questions-at-once` — bundling >1 question into one user message. ALWAYS one question with `Step N/M:` progress label.
 - **silent-breaking-change**: removing a field, narrowing a type, renaming, or changing required-ness without a version bump. Even "no client uses it" is wrong — you don't know that.
+- **assuming-unobserved-contract**: treating undocumented response shape, ordering, defaults, or headers as safe to change because they were not in prose docs. If clients can observe it, review it as contract surface.
 - **no-versioning-strategy**: shipping v1 without declared rules for v2. Pick URL/header/content-type up front, document in PRD decision section, apply consistently.
 - **inconsistent-error-envelope**: 400 returns `{message}`, 500 returns `{error}`, validation returns `{errors:[]}`. Pick problem+json, use everywhere, test in CI.
 - **missing-idempotency-key**: every POST/PATCH/DELETE that mutates state needs Idempotency-Key support. Network retries are a fact, not a hypothesis.

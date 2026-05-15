@@ -17,7 +17,6 @@ const COMMAND_GATE_MAP = {
   'supervibe-genesis.md': { rubric: 'scaffold' },
   'supervibe-loop.md': { rubric: 'autonomous-loop' },
   'supervibe-plan.md': { rubric: 'plan' },
-  'supervibe-presentation.md': { rubric: 'prototype' },
   'supervibe-preview.md': { rubric: null },
   'supervibe-verify.md': { rubric: 'delivery-readiness' },
   'supervibe-review.md': { rubric: 'delivery-readiness' },

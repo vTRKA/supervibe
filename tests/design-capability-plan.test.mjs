@@ -64,7 +64,7 @@ test("validator rejects old absolute native-only prototype policy", async () => 
     "Capability And Library Bridge QA library default theme is not a design system",
     "unreviewed-wow-dependency advanced-visual-without-fallback",
     "Required Dataset Breadth For Design Agents",
-    "product style color typography ux landing app-interface charts icons google-fonts react-performance ui-reasoning stack slides collateral creative packs",
+    "product style color typography ux landing app-interface charts icons google-fonts react-performance ui-reasoning stack collateral creative packs",
     "Motion GSAP Lottie Rive Three.js PixiJS D3 Observable Plot ECharts MapLibre Theatre.js Rough.js Matter.js Monaco CodeMirror",
     "Do not paste a CDN player",
     "domLayoutSignature cssTokenSignature screenshotViewportPlan interactionMotionSignature",

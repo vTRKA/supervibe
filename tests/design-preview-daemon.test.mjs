@@ -15,15 +15,12 @@ test("design preview daemon validator rejects foreground-prone design commands",
   const root = await mkdtemp(join(tmpdir(), "supervibe-design-preview-"));
   const files = {
     "commands/supervibe-design.md": "supervibe:preview-server --root .supervibe/artifacts/prototypes/<slug>/",
-    "commands/supervibe-presentation.md": "node scripts/preview-server.mjs --root .supervibe/artifacts/presentations/<slug>/preview --daemon",
     "skills/prototype/SKILL.md": "preview-server --root .supervibe/artifacts/prototypes/<slug>/ --daemon",
     "skills/landing-page/SKILL.md": "preview-server --root .supervibe/artifacts/prototypes/landing --daemon",
-    "skills/presentation-deck/SKILL.md": "preview-server.mjs --root .supervibe/artifacts/presentations/<slug>/preview --daemon",
     "skills/preview-server/SKILL.md": "preview-server.mjs --root <mockup-root> --daemon",
     "skills/browser-feedback/SKILL.md": "preview-server --root .supervibe/artifacts/prototypes/<slug>/ --daemon",
     "skills/interaction-design-patterns/SKILL.md": "preview-server --root <output-dir> --daemon",
     "agents/_design/prototype-builder.md": "preview-server --root .supervibe/artifacts/prototypes/<feature>/ --daemon",
-    "agents/_design/presentation-deck-builder.md": "preview-server.mjs --root .supervibe/artifacts/presentations/<slug>/preview --daemon",
     "scripts/preview-server.mjs": "const designRoot = false;",
   };
 

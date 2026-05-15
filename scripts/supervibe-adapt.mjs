@@ -46,6 +46,9 @@ import {
   validateWorkflowReceiptTrust,
 } from "./lib/supervibe-workflow-receipt-runtime.mjs";
 import {
+  validateAgentProducerReceipts,
+} from "./lib/agent-producer-contract.mjs";
+import {
   buildGenesisAgentRecommendation,
   discoverGenesisStackFingerprint,
 } from "./lib/supervibe-agent-recommendation.mjs";
@@ -427,11 +430,17 @@ function withEmbeddedAdaptAgentPlan(value, { args: values = {}, counts = null, d
         projectOnly: Number(sourceCounts.projectOnly || 0),
         conflicts: Number(sourceCounts.conflicts || 0),
       };
+  const commandPlanReceiptTrust = shouldInspectAdaptReceiptTrust(values)
+    ? inspectAgentReceiptTrustFast(projectRoot)
+    : dryRunReceiptTrustOmitted();
   const report = buildRuntimeCommandAgentPlan({
     command: "/supervibe-adapt",
     projectRoot,
     pluginRoot,
     host: values.host || process.env.SUPERVIBE_HOST || value.host?.adapterId || "codex",
+    receiptTrust: commandPlanReceiptTrust,
+    skipScopedReceiptTrustInspection: true,
+    evidencePacket: null,
     workflowContext: {
       dryRun: values.apply !== true,
       apply: values.apply === true,
@@ -459,6 +468,7 @@ function withEmbeddedAdaptAgentPlan(value, { args: values = {}, counts = null, d
       projectRoot,
       pluginRoot,
       env: process.env,
+      receiptTrust: commandPlanReceiptTrust,
     }),
   };
 }
@@ -468,13 +478,18 @@ function buildCommandAgentReadiness({
   projectRoot: targetProjectRoot,
   pluginRoot: targetPluginRoot,
   env = process.env,
+  receiptTrust = null,
 } = {}) {
+  const baseReceiptTrust = receiptTrust || dryRunReceiptTrustOmitted();
   const commandReports = listCommandAgentProfiles().map((profile) => {
     const report = buildRuntimeCommandAgentPlan({
       command: profile.commandId,
       projectRoot: targetProjectRoot,
       pluginRoot: targetPluginRoot,
       host: hostAdapterId,
+      receiptTrust: baseReceiptTrust,
+      skipScopedReceiptTrustInspection: true,
+      evidencePacket: null,
       workflowContext: {
         dryRun: true,
         active: false,
@@ -507,6 +522,49 @@ function buildCommandAgentReadiness({
       ? `node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --add-agents ${missingCallableAgents.join(",")} --host ${hostAdapterId} --apply`
       : null,
   };
+}
+
+function shouldInspectAdaptReceiptTrust(values = {}) {
+  return values.apply === true || values["verify-agents"] === true || values["record-smoke"] === true;
+}
+
+function dryRunReceiptTrustOmitted() {
+  return {
+    pass: false,
+    trusted: false,
+    trustedHostAgentReceipts: 0,
+    agentInvocations: 0,
+    loggedAgentInvocations: 0,
+    minHostAgentReceipts: 0,
+    minAgentInvocations: 0,
+    requiredSubjects: [],
+    missingSubjects: [],
+    scope: null,
+    issues: [{
+      code: "dry-run-receipt-trust-scan-skipped",
+      message: "Read-only Adapt planning skips expensive receipt corpus scan; apply and verify-agents run the full receipt gate.",
+    }],
+  };
+}
+
+function inspectAgentReceiptTrustFast(targetProjectRoot) {
+  try {
+    return validateAgentProducerReceipts(targetProjectRoot, {
+      requireHostAgentReceipts: true,
+      minHostAgentReceipts: 1,
+      minAgentInvocations: 1,
+    });
+  } catch (error) {
+    return {
+      pass: false,
+      trustedHostAgentReceipts: 0,
+      agentInvocations: 0,
+      loggedAgentInvocations: 0,
+      minHostAgentReceipts: 1,
+      minAgentInvocations: 1,
+      issues: [{ code: "receipt-trust-inspection-failed", message: error.message }],
+    };
+  }
 }
 
 function printAgentProvisioningValue({ selection, plan, result = null }) {
@@ -621,7 +679,7 @@ Options:
   --agents <ids>            Alias for --add-agents
   --skills <ids>            Provision comma-separated supporting skills
   --profile <id>            Provision agents from a Genesis install profile
-  --addons <ids>            Provision split agent add-ons such as creative-brand, web-design, prototype, presentation, mobile, desktop
+  --addons <ids>            Provision split agent add-ons such as creative-brand, web-design, prototype, mobile, desktop
   --agent-profile <id>      Alias for --profile in agent provisioning mode
   --agent-addons <ids>      Alias for --addons in agent provisioning mode
   --project <path>          Project root to adapt

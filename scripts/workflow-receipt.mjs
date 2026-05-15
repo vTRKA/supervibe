@@ -27,8 +27,11 @@ import {
 process.on("uncaughtException", reportWorkflowReceiptError);
 process.on("unhandledRejection", reportWorkflowReceiptError);
 
+const TASK_COMPLETION_PROOF_SUBJECT_TYPES = new Set(["agent", "worker", "reviewer"]);
+
 function parseArgs(argv) {
-  const operation = argv[2] || "help";
+  const rawOperation = argv[2] || "help";
+  const operation = rawOperation === "--help" || rawOperation === "-h" ? "help" : rawOperation;
   const options = { operation, input: [], output: [] };
   for (let index = 3; index < argv.length; index += 1) {
     const item = argv[index];
@@ -65,7 +68,8 @@ USAGE:
   node scripts/workflow-receipt.mjs validate
 
 NOTES:
-  issue writes a runtime-signed receipt, upserts the hash-chain ledger idempotently, and updates artifact-links.json.`;
+  issue writes a runtime-signed receipt, upserts the hash-chain ledger idempotently, and updates artifact-links.json.
+  command-subject receipts are controller/diagnostic evidence only; they cannot satisfy required producer, reviewer, worker, validator, or task-completion proof.`;
 }
 
 function inferSubjectType(options) {
@@ -150,6 +154,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       console.log(`GRAPH_ID: ${result.receipt.workItemBinding.graphId || "none"}`);
       console.log(`TASK_ID: ${result.receipt.workItemBinding.taskId || "none"}`);
     }
+    const proofScope = classifyIssuedReceiptProofScope(result.receipt);
+    console.log(`PROOF_SCOPE: ${proofScope.scope}`);
+    console.log(`ADOPTABLE_AS_TASK_COMPLETION: ${proofScope.adoptableAsTaskCompletion}`);
+    if (proofScope.message) console.log(`PROOF_NOTE: ${proofScope.message}`);
+    if (proofScope.repairHint) console.log(`REPAIR_HINT: ${proofScope.repairHint}`);
     process.exit(0);
   }
 
@@ -687,6 +696,53 @@ function sanitizeSegment(value) {
 
 function uniqueStrings(values = []) {
   return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))];
+}
+
+function classifyIssuedReceiptProofScope(receipt = {}) {
+  const subjectType = String(receipt.subjectType || "").toLowerCase() || "unknown";
+  const hasHostInvocation = Boolean(receipt.hostInvocation?.source && receipt.hostInvocation?.invocationId);
+  if (TASK_COMPLETION_PROOF_SUBJECT_TYPES.has(subjectType) && hasHostInvocation) {
+    return {
+      scope: "host-invoked-task-proof",
+      adoptableAsTaskCompletion: true,
+      message: null,
+      repairHint: null,
+    };
+  }
+  if (TASK_COMPLETION_PROOF_SUBJECT_TYPES.has(subjectType)) {
+    return {
+      scope: "host-invocation-missing",
+      adoptableAsTaskCompletion: false,
+      message: `${subjectType} receipts require hostInvocation proof before durable adoption.`,
+      repairHint: durableTaskProofRepairHint(),
+    };
+  }
+  if (subjectType === "command") {
+    return {
+      scope: "controller-diagnostic",
+      adoptableAsTaskCompletion: false,
+      message: "controller-authored command receipts are diagnostic only and cannot substitute for producer, reviewer, worker, validator, or task-completion proof.",
+      repairHint: durableTaskProofRepairHint(),
+    };
+  }
+  if (subjectType === "validator") {
+    return {
+      scope: "validator-evidence",
+      adoptableAsTaskCompletion: false,
+      message: "validator receipts record validation evidence; they do not close implementation tasks or substitute for producer/reviewer/worker proof.",
+      repairHint: "cite validator receipts at the validator or release gate, and use host agent/worker/reviewer receipts for task adoption.",
+    };
+  }
+  return {
+    scope: `${subjectType}-scoped-receipt`,
+    adoptableAsTaskCompletion: false,
+    message: "this receipt may be valid for its own scoped gate, but task adoption accepts only host-invoked agent, worker, or reviewer receipts.",
+    repairHint: null,
+  };
+}
+
+function durableTaskProofRepairHint() {
+  return "run the real host agent/worker/reviewer, log its host invocation, then issue a receipt with --agent/--worker/--reviewer, --host-invocation-id, --graph-id, and --task-id.";
 }
 
 function buildHostInvocation(options) {
