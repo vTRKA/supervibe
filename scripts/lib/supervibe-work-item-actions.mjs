@@ -86,6 +86,52 @@ export function isTerminalWorkItemStatus(status) {
   return DONE_STATUSES.has(String(status || "").toLowerCase());
 }
 
+export function explainWorkItemClaimBlocker(graph = {}, action = {}) {
+  const now = action.now || new Date().toISOString();
+  const targetIds = normalizeClaimDiagnosticTaskIds(action);
+  const claims = expireWorkItemClaims(graph.claims || [], now);
+  const activeClaims = claims
+    .filter((claim) => targetIds.includes(claim.taskId) && isActiveWorkItemClaim(claim, now))
+    .sort((left, right) => String(left.taskId || "").localeCompare(String(right.taskId || "")));
+  const affectedTaskIds = uniqueStrings(activeClaims.map((claim) => claim.taskId)).sort();
+  return {
+    code: affectedTaskIds.length > 0 ? "claim_blocked_by_active_claim" : "claim_not_blocked",
+    affectedTaskIds,
+    nextAction: affectedTaskIds.length > 0
+      ? "wait for claim expiry, refresh heartbeat, or retry with force after manual review"
+      : "claim can proceed",
+    repairCommand: affectedTaskIds.length > 0
+      ? affectedTaskIds.map((itemId) => `/supervibe-loop --recover-stale ${itemId} --file <graph.json>`).join(" && ")
+      : null,
+    releaseImpact: affectedTaskIds.length > 0
+      ? "blocks release until the active claim is completed, expires, or is manually reviewed"
+      : "no release impact",
+  };
+}
+
+export function explainStaleWorkItemClaimRecovery(graph = {}, action = {}) {
+  const now = action.now || new Date().toISOString();
+  const targetIds = normalizeClaimDiagnosticTaskIds(action);
+  const claims = expireWorkItemClaims(graph.claims || [], now);
+  const staleClaims = claims
+    .filter((claim) => targetIds.includes(claim.taskId) && claim.status === "expired")
+    .sort((left, right) => String(left.taskId || "").localeCompare(String(right.taskId || "")));
+  const affectedTaskIds = uniqueStrings(staleClaims.map((claim) => claim.taskId)).sort();
+  return {
+    code: affectedTaskIds.length > 0 ? "stale_claim_recovery_available" : "no_stale_claim_found",
+    affectedTaskIds,
+    nextAction: affectedTaskIds.length > 0
+      ? "recover stale claim, clear task owner, and return non-terminal task to ready"
+      : "inspect active claim heartbeat or use force only after manual review",
+    repairCommand: affectedTaskIds.length > 0
+      ? affectedTaskIds.map((itemId) => `/supervibe-loop --recover-stale ${itemId} --file <graph.json>`).join(" && ")
+      : null,
+    releaseImpact: affectedTaskIds.length > 0
+      ? "blocks release while stale claim keeps work unavailable for reassignment"
+      : "no release impact from stale claims for the requested task set",
+  };
+}
+
 function updateStatus(graph, action, status, options = {}) {
   if (!action.itemId) throw new Error("work-item action requires itemId");
   if (["skipped", "cancelled"].includes(status) && !action.reason && !action.force) {
@@ -384,6 +430,7 @@ function recoverStaleWorkItemClaim(graph, action) {
     action: "recover-stale",
     changed,
     recoveredClaims,
+    blocker: explainStaleWorkItemClaimRecovery(graph, { ...action, itemId: action.itemId, now }),
   };
 }
 
@@ -408,6 +455,7 @@ function claimWorkItem(graph, action) {
         heartbeatAt: activeClaim.heartbeatAt || null,
       },
       nextAction: "wait for claim expiry, refresh heartbeat, or retry with force after manual review",
+      blocker: explainWorkItemClaimBlocker(graph, { ...action, itemId: action.itemId, now }),
     };
   }
   const claim = {
@@ -472,6 +520,7 @@ function claimWorkItemWave(graph, action) {
       changed: false,
       conflicts,
       nextAction: "wait for claim expiry, refresh heartbeat, or retry with force after manual review",
+      blocker: explainWorkItemClaimBlocker(graph, { ...action, itemIds: conflicts.map((conflict) => conflict.itemId), now }),
     };
   }
 
@@ -794,6 +843,13 @@ function splitWorkItem(graph, action) {
     changed: true,
     createdItems: createdItems.map((entry) => entry.itemId),
   };
+}
+
+function normalizeClaimDiagnosticTaskIds(action = {}) {
+  const entries = Array.isArray(action.claims)
+    ? action.claims.map((entry) => entry.itemId || entry.id || entry.taskId)
+    : normalizeStringList(action.itemIds || action.items || action.itemId);
+  return uniqueStrings(entries.map((entry) => String(entry || "").trim()).filter(Boolean)).sort();
 }
 
 function expireWorkItemClaims(claims = [], now = new Date().toISOString()) {

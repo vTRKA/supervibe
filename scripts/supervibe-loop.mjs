@@ -110,6 +110,8 @@ const SEMANTIC_EPIC_GROUPING_VERSION = 1;
 const DEFAULT_SEMANTIC_EPIC_MAX_TASKS = 25;
 const DEFAULT_AGENT_STALL_TIMEOUT_MINUTES = 7;
 const DEFAULT_AGENT_STALL_MAX_RETRIES = 2;
+const DEFAULT_SUBSYSTEM_KEY = "general";
+const ROOT_SUBSYSTEM_KEY = "root";
 const ADOPTABLE_TASK_RECEIPT_SUBJECT_TYPES = new Set(["agent", "worker", "reviewer"]);
 const SEMANTIC_EPIC_BUCKETS = Object.freeze([
   {
@@ -169,6 +171,7 @@ function parseArgs(argv) {
     "status",
     "epic-status",
     "readiness",
+    "ready-list",
     "json",
     "commit-per-task",
     "graph",
@@ -505,22 +508,24 @@ function buildReadyAssignmentDispatches(tasks = [], {
   const planned = tasks.map((task) => {
     const taskId = task.id || task.taskId || task.itemId;
     const writeSet = taskDeclaredWriteSet(task);
+    const subsystemGroup = classifyTaskSubsystem(task, writeSet);
     if (cleanupBlocked) {
       return {
         task,
         taskId,
         writeSet,
+        subsystemGroup,
         status: "blocked",
         blockedReason: "completed Codex subagent cleanup is required before opening new provider threads",
       };
     }
-    if (selectedIds.has(taskId)) return { task, taskId, writeSet, status: "assigned", blockedReason: null };
-    if (blockedReasons.has(taskId)) return { task, taskId, writeSet, status: "blocked", blockedReason: blockedReasons.get(taskId) };
-    if (serializedReasons.has(taskId)) return { task, taskId, writeSet, status: "serialized", blockedReason: serializedReasons.get(taskId) };
-    return { task, taskId, writeSet, status: "serialized", blockedReason: "outside current safe execution wave" };
+    if (selectedIds.has(taskId)) return { task, taskId, writeSet, subsystemGroup, status: "assigned", blockedReason: null };
+    if (blockedReasons.has(taskId)) return { task, taskId, writeSet, subsystemGroup, status: "blocked", blockedReason: blockedReasons.get(taskId) };
+    if (serializedReasons.has(taskId)) return { task, taskId, writeSet, subsystemGroup, status: "serialized", blockedReason: serializedReasons.get(taskId) };
+    return { task, taskId, writeSet, subsystemGroup, status: "serialized", blockedReason: "outside current safe execution wave" };
   });
 
-  return planned.map(({ task, taskId, writeSet, status, blockedReason }) => {
+  return planned.map(({ task, taskId, writeSet, subsystemGroup, status, blockedReason }) => {
     const evidencePacket = buildEvidencePacket({ rootDir, task, commandId });
     const verificationPolicy = createTaskLocalVerificationPolicy(task);
     const writeSetLock = status === "assigned" ? createAssignmentWriteSetLock(task, writeSet) : null;
@@ -531,6 +536,7 @@ function buildReadyAssignmentDispatches(tasks = [], {
         assignmentBlocked: true,
         blockedReason,
         writeSet,
+        subsystemGroup,
         writeSetLock,
         evidencePacket,
         verificationPolicy,
@@ -561,6 +567,7 @@ function buildReadyAssignmentDispatches(tasks = [], {
         assignmentBlocked: true,
         blockedReason: knowledgeBlockedReason,
         writeSet,
+        subsystemGroup,
         writeSetLock: null,
         evidencePacket,
         verificationPolicy,
@@ -591,6 +598,7 @@ function buildReadyAssignmentDispatches(tasks = [], {
       agentId: dispatch.primaryAgentId,
       taskId: dispatch.taskId,
       writeSet,
+      subsystemGroup,
       writeSetLock,
       evidencePacket,
       verificationPolicy,
@@ -601,6 +609,7 @@ function buildReadyAssignmentDispatches(tasks = [], {
       ...dispatch,
       status: "assigned",
       writeSet,
+      subsystemGroup,
       writeSetLock,
       evidencePacket,
       verificationPolicy,
@@ -611,6 +620,7 @@ function buildReadyAssignmentDispatches(tasks = [], {
         agentId: dispatch.reviewerAgentId,
         taskId: dispatch.taskId,
         writeSet,
+        subsystemGroup,
         writeSetLock,
         evidencePacket,
         verificationPolicy,
@@ -745,6 +755,139 @@ function normalizeTaskPath(path = "") {
   return String(path || "").replace(/\\/g, "/").replace(/^\.\//, "").trim();
 }
 
+function classifyTaskSubsystem(task = {}, writeSet = taskDeclaredWriteSet(task)) {
+  const explicit = firstNonGenericSubsystem([
+    task.subsystem,
+    task.component,
+    task.executionHints?.subsystem,
+    task.executionHints?.component,
+    task.category,
+  ]);
+  const paths = [...new Set([
+    ...(writeSet || []),
+    ...(Array.isArray(task.targetFiles) ? task.targetFiles : []),
+    ...(Array.isArray(task.filesTouched) ? task.filesTouched : []),
+    ...(Array.isArray(task.fileImpact) ? task.fileImpact : []),
+  ].map(normalizeTaskPath).filter(Boolean))];
+  const pathKey = paths.length ? subsystemKeyFromPath(paths[0]) : null;
+  const key = sanitizeSubsystemKey(explicit || pathKey || DEFAULT_SUBSYSTEM_KEY);
+  const title = titleForSubsystemKey(key);
+  return {
+    key,
+    title,
+    reason: explicit ? "component" : pathKey ? "write-scope" : "fallback",
+    writeScope: paths,
+  };
+}
+
+function firstNonGenericSubsystem(values = []) {
+  const generic = new Set(["task", "tasks", "implementation", "general", "misc", "other", "unknown"]);
+  for (const value of values) {
+    const text = String(value || "").trim();
+    if (!text) continue;
+    const key = sanitizeSubsystemKey(text);
+    if (!generic.has(key)) return text;
+  }
+  return null;
+}
+
+function sanitizeSubsystemKey(value = "") {
+  const key = normalizeTaskPath(value)
+    .toLowerCase()
+    .replace(/^\/+/, "")
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9./_-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^[-/]+|[-/]+$/g, "");
+  return key || DEFAULT_SUBSYSTEM_KEY;
+}
+
+function subsystemKeyFromPath(path = "") {
+  const normalized = normalizeTaskPath(path);
+  if (!normalized) return null;
+  if (!normalized.includes("/")) return ROOT_SUBSYSTEM_KEY;
+  const parts = normalized.split("/").filter(Boolean);
+  if (parts[0] === ".supervibe") return parts.slice(0, Math.min(parts.length, 3)).join("/");
+  if (parts[0] === "scripts" && parts[1] === "lib") return "scripts/lib";
+  if (parts[0] === "tests") return "tests";
+  if (["agents", "skills", "rules", "commands", "docs"].includes(parts[0])) return parts[0];
+  return parts[0] || ROOT_SUBSYSTEM_KEY;
+}
+
+function titleForSubsystemKey(key = DEFAULT_SUBSYSTEM_KEY) {
+  if (key === ROOT_SUBSYSTEM_KEY) return "Root Files";
+  return String(key || DEFAULT_SUBSYSTEM_KEY)
+    .split(/[\/_-]+/g)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ") || "General";
+}
+
+function buildSubsystemGroupsForWorkItems(items = []) {
+  return summarizeSubsystemGroups(items.map((item) => {
+    const task = { ...(item.task || {}), ...item };
+    return {
+      id: item.itemId || item.id || item.taskId || task.id || "unknown",
+      title: item.title || task.title || task.goal || "",
+      status: item.effectiveStatus || item.status || task.status || "open",
+      subsystemGroup: classifyTaskSubsystem(task),
+    };
+  }));
+}
+
+function buildSubsystemGroupsForDispatches(dispatches = []) {
+  return summarizeSubsystemGroups(dispatches.map((dispatch) => ({
+    id: dispatch.taskId || dispatch.id || "unknown",
+    title: dispatch.task?.title || dispatch.task?.goal || "",
+    status: dispatch.status || "planned",
+    subsystemGroup: dispatch.subsystemGroup || classifyTaskSubsystem(dispatch.task || {}, dispatch.writeSet || []),
+  })));
+}
+
+function summarizeSubsystemGroups(entries = []) {
+  const groups = new Map();
+  for (const entry of entries) {
+    const subsystem = entry.subsystemGroup || { key: DEFAULT_SUBSYSTEM_KEY, title: "General", reason: "fallback", writeScope: [] };
+    if (!groups.has(subsystem.key)) {
+      groups.set(subsystem.key, {
+        key: subsystem.key,
+        title: subsystem.title || titleForSubsystemKey(subsystem.key),
+        reason: subsystem.reason || "fallback",
+        taskCount: 0,
+        statusCounts: {},
+        readyTaskIds: [],
+        assignedTaskIds: [],
+        blockedTaskIds: [],
+        writeScope: [],
+      });
+    }
+    const group = groups.get(subsystem.key);
+    const status = String(entry.status || "open").toLowerCase();
+    group.taskCount += 1;
+    group.statusCounts[status] = (group.statusCounts[status] || 0) + 1;
+    if (["ready", "open", "pending"].includes(status)) group.readyTaskIds.push(entry.id);
+    if (["assigned", "claimed", "in_progress", "running"].includes(status)) group.assignedTaskIds.push(entry.id);
+    if (["blocked", "serialized", "stale", "deferred"].includes(status)) group.blockedTaskIds.push(entry.id);
+    for (const scope of subsystem.writeScope || []) {
+      if (!group.writeScope.includes(scope)) group.writeScope.push(scope);
+    }
+  }
+  return [...groups.values()].sort((a, b) => {
+    const readyDelta = (b.statusCounts.ready || 0) - (a.statusCounts.ready || 0);
+    return readyDelta || b.taskCount - a.taskCount || a.key.localeCompare(b.key);
+  });
+}
+
+function formatSubsystemGroupingSummary(groups = [], { limit = 8 } = {}) {
+  const lines = [`SUBSYSTEM_GROUPS: ${groups.length}`];
+  for (const group of groups.slice(0, limit)) {
+    const counts = group.statusCounts || {};
+    const scope = group.writeScope.length ? group.writeScope.slice(0, 4).join(",") : "none";
+    const ready = group.readyTaskIds.slice(0, 5).join(",") || "none";
+    lines.push(`SUBSYSTEM: ${group.key} TASKS: ${group.taskCount} READY: ${counts.ready || 0} ASSIGNED: ${(counts.assigned || 0) + (counts.claimed || 0) + (counts.in_progress || 0)} BLOCKED: ${(counts.blocked || 0) + (counts.serialized || 0) + (counts.deferred || 0) + (counts.stale || 0)} DONE: ${counts.done || 0} READY_IDS: ${ready} WRITE_SCOPE: ${scope}`);
+  }
+  return lines.join("\n");
+}
 function planReviewLookupPath(rootDir, planPath) {
   const resolved = resolve(rootDir, planPath);
   const rel = relative(rootDir, resolved).replace(/\\/g, "/");
@@ -972,6 +1115,7 @@ async function main() {
     else {
       console.log("SUPERVIBE_ASSIGN_READY");
       console.log(formatSchedulerPolicy(schedulerPolicy));
+      console.log(formatSubsystemGroupingSummary(buildSubsystemGroupsForDispatches(dispatches)));
       for (const dispatch of dispatches) {
         if (dispatch.assignmentBlocked) {
           console.log(`${dispatch.taskId}: blocked -> ${dispatch.blockedReason}`);
@@ -1051,6 +1195,7 @@ async function main() {
       parallelDispatchRequired: true,
       parallelDispatchBlocked: dispatches.some((dispatch) => dispatch.status === "assigned") && assigned.length === 0,
       assignedTaskIds: assigned.map((dispatch) => dispatch.taskId),
+      subsystemGroups: buildSubsystemGroupsForDispatches(fanoutCheckedDispatches),
       dispatches: fanoutCheckedDispatches,
       claimResults,
     };
@@ -1061,6 +1206,7 @@ async function main() {
       console.log(`APPLIED: ${report.applied}`);
       console.log(formatSchedulerPolicy(schedulerPolicy));
       console.log(`ASSIGNED: ${report.assignedTaskIds.join(", ") || "none"}`);
+      console.log(formatSubsystemGroupingSummary(report.subsystemGroups));
       for (const dispatch of fanoutCheckedDispatches) {
         if (dispatch.assignmentBlocked) console.log(`${dispatch.taskId}: ${dispatch.status} -> ${dispatch.blockedReason}`);
         else console.log(`${dispatch.taskId}: ${dispatch.primaryAgentId} writeSet=${dispatch.writeSet.join(",")}`);
@@ -1219,6 +1365,11 @@ async function main() {
     const ordered = orderReadyWorkItems(ready, { graph });
     console.log("SUPERVIBE_WORK_ITEM_PRIORITY");
     for (const item of ordered) console.log(formatPriorityExplanation(item));
+    return;
+  }
+
+  if (args["ready-list"] || args.deps || args.why || args.proof) {
+    await runWorkFacadeView({ rootDir, args });
     return;
   }
 
@@ -2504,6 +2655,7 @@ function printEpicStatus({ graph, graphPath, epicId = null, source = "explicit" 
   const stale = taskItems.filter((item) => item.effectiveStatus === "stale");
   const stalled = collectStalledItemsFromGraph(graph);
   const stalledSummary = summarizeStalledItems(stalled);
+  const subsystemGroups = buildSubsystemGroupsForWorkItems(taskItems);
   let completionPass = false;
   try {
     completionPass = validateEpicCompletion(graph).pass === true;
@@ -2527,6 +2679,7 @@ function printEpicStatus({ graph, graphPath, epicId = null, source = "explicit" 
   console.log(`STALLED: ${stalled.length}`);
   console.log(`RETRYABLE_STALLED: ${stalledSummary.retryable}`);
   console.log(`MANUAL_INTERVENTION: ${stalledSummary.manualIntervention}`);
+  console.log(formatSubsystemGroupingSummary(subsystemGroups));
   console.log(formatReleaseFullCheckGate(createReleaseFullCheckGate(graph)));
   console.log(formatFinalReviewerSweepReport(createFinalReviewerSweep(graph), { includeTasks: false }));
   console.log(`NEXT_READY: ${grouped.ready[0]?.itemId || grouped.ready[0]?.id || "none"}`);
@@ -3411,6 +3564,145 @@ function resolveWorkItemAction(args) {
   return null;
 }
 
+async function runWorkFacadeView({ rootDir, args }) {
+  const graphPath = args.file
+    ? resolve(rootDir, args.file)
+    : await resolveActiveWorkItemGraphPath({ rootDir });
+  if (!graphPath) throw new Error("work view requires --file <graph.json> or an active work graph");
+  const graph = JSON.parse(await readFile(graphPath, "utf8"));
+  const index = createWorkItemIndex({ graph, claims: graph.claims || [], gates: graph.gates || [], evidence: graph.evidence || [] });
+
+  if (args["ready-list"]) {
+    const ready = orderReadyWorkItems(index.filter((item) => item.type !== "epic" && item.effectiveStatus === "ready"), { graph });
+    const rows = ready.map((item, position) => workFacadeItemRow(item, { position: position + 1 }));
+    if (args.json) console.log(JSON.stringify({ schemaVersion: 1, command: "work-ready-list", graphPath, readyCount: rows.length, items: rows }, null, 2));
+    else {
+      console.log("SUPERVIBE_WORK_READY_LIST");
+      console.log(`READY_COUNT: ${rows.length}`);
+      for (const row of rows) console.log(`ITEM: ${row.id} STATUS: ${row.status} PRIORITY: ${row.priority} TITLE: ${row.title}`);
+      console.log(`GRAPH: ${graphPath}`);
+    }
+    return;
+  }
+
+  const itemId = args.deps || args.why || args.proof;
+  if (!itemId || itemId === true) throw new Error("work item view requires a task id");
+  const item = findWorkFacadeItem(index, itemId);
+  if (!item) throw new Error(`work item not found: ${itemId}`);
+
+  if (args.deps) {
+    const report = buildWorkFacadeDepsReport({ graph, item, graphPath });
+    if (args.json) console.log(JSON.stringify(report, null, 2));
+    else {
+      console.log("SUPERVIBE_WORK_ITEM_DEPS");
+      console.log(`ITEM: ${report.item.id}`);
+      console.log(`STATUS: ${report.item.status}`);
+      console.log(`BLOCKED_BY: ${report.blockedBy.join(", ") || "none"}`);
+      console.log(`BLOCKS: ${report.blocks.join(", ") || "none"}`);
+      console.log(`DEPENDENTS: ${report.dependents.join(", ") || "none"}`);
+      console.log(`GRAPH: ${graphPath}`);
+    }
+    return;
+  }
+
+  if (args.why) {
+    const report = buildWorkFacadeWhyReport({ graph, item, graphPath });
+    if (args.json) console.log(JSON.stringify(report, null, 2));
+    else {
+      console.log("SUPERVIBE_WORK_ITEM_WHY");
+      console.log(`ITEM: ${report.item.id}`);
+      console.log(`STATUS: ${report.item.status}`);
+      console.log(`READY: ${report.ready}`);
+      console.log(`REASON: ${report.reason}`);
+      console.log(`BLOCKED_BY: ${report.blockedBy.join(", ") || "none"}`);
+      console.log(report.priorityExplanation);
+      console.log(`GRAPH: ${graphPath}`);
+    }
+    return;
+  }
+
+  const task = item.task || item;
+  const packet = buildEvidencePacket({ rootDir, task, commandId: "supervibe-work-proof" });
+  const report = {
+    schemaVersion: 1,
+    command: "work-proof",
+    graphPath,
+    item: workFacadeItemRow(item),
+    hasPacket: hasEvidencePacket(packet),
+    packet,
+  };
+  if (args.json) console.log(JSON.stringify(report, null, 2));
+  else {
+    console.log("SUPERVIBE_WORK_ITEM_PROOF");
+    console.log(`ITEM: ${report.item.id}`);
+    console.log(`STATUS: ${report.item.status}`);
+    console.log(`HAS_PACKET: ${report.hasPacket}`);
+    console.log(formatEvidencePacketSummary(packet));
+    console.log(`GRAPH: ${graphPath}`);
+  }
+}
+
+function findWorkFacadeItem(index, itemId) {
+  const wanted = String(itemId || "");
+  return index.find((item) => [item.itemId, item.id, item.taskId].filter(Boolean).some((value) => String(value) === wanted)) || null;
+}
+
+function workFacadeItemRow(item, extra = {}) {
+  return {
+    id: item.itemId || item.id || item.taskId || "unknown",
+    title: item.title || item.goal || "untitled",
+    status: item.effectiveStatus || item.status || "unknown",
+    priority: item.priority || "normal",
+    type: item.type || item.category || "task",
+    ...extra,
+  };
+}
+
+function buildWorkFacadeDepsReport({ graph, item, graphPath }) {
+  const itemId = item.itemId || item.id || item.taskId;
+  const allItems = createWorkItemIndex({ graph });
+  const blockedBy = uniqueStrings([...(item.blockedBy || []), ...(item.dependencies || [])]);
+  const blocks = uniqueStrings([...(item.blocks || []), ...allItems
+    .filter((candidate) => (candidate.blockedBy || candidate.dependencies || []).includes(itemId))
+    .map((candidate) => candidate.itemId || candidate.id || candidate.taskId)]);
+  const dependents = uniqueStrings(allItems
+    .filter((candidate) => (candidate.dependencies || candidate.blockedBy || []).includes(itemId))
+    .map((candidate) => candidate.itemId || candidate.id || candidate.taskId));
+  return {
+    schemaVersion: 1,
+    command: "work-deps",
+    graphPath,
+    item: workFacadeItemRow(item),
+    blockedBy,
+    blocks,
+    dependents,
+  };
+}
+
+function buildWorkFacadeWhyReport({ graph, item, graphPath }) {
+  const blockedBy = uniqueStrings([...(item.blockedBy || []), ...(item.dependencies || [])]);
+  const status = item.effectiveStatus || item.status || "unknown";
+  const ready = status === "ready";
+  let reason = "status is not ready";
+  if (ready) reason = "no active blockers and item is eligible for claim";
+  else if (blockedBy.length > 0) reason = `blocked by ${blockedBy.join(", ")}`;
+  else if (["claimed", "active", "in_progress", "running"].includes(status)) reason = "item is already claimed or active";
+  else if (["closed", "complete", "completed", "done"].includes(status)) reason = "item is already complete";
+  return {
+    schemaVersion: 1,
+    command: "work-why",
+    graphPath,
+    item: workFacadeItemRow(item),
+    ready,
+    reason,
+    blockedBy,
+    priorityExplanation: formatPriorityExplanation(item),
+  };
+}
+
+function uniqueStrings(values = []) {
+  return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))];
+}
 function verificationEvidenceFromArgs(args, itemId) {
   const command = args.verification || args["verification-command"] || args["verification-commands"];
   const outputSummary = args.evidence || args["output-summary"] || args.summary;

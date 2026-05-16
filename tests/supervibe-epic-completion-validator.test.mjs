@@ -99,6 +99,24 @@ test("validateEpicCompletion rejects dry-run evidence for production completion"
   assert.equal(diagnostic.pass, true);
 });
 
+test("validateEpicCompletion allows production evidence that describes a dry-run fix", () => {
+  const graph = completedGraph();
+  const task = graph.items.find((item) => item.itemId === "epic-completion-t1");
+  task.title = "Dry-run status fix";
+  task.verificationEvidence = [{
+    taskId: task.itemId,
+    command: "node scripts/run-release-check.mjs --cache",
+    status: "pass",
+    outputSummary: "Verified dry-run status fix with production command output",
+    receiptId: "workflow-production-dry-run-fix",
+  }];
+
+  const report = validateEpicCompletion(graph);
+
+  assert.equal(report.pass, true);
+  assert.equal(report.issues.some((issue) => issue.code === "dry-run-evidence"), false);
+});
+
 test("validateEpicCompletion requires skipped work to include reason and impact", () => {
   const graph = completedGraph();
   const task = graph.items.find((item) => item.itemId === "epic-completion-t1");

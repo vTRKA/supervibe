@@ -5,7 +5,9 @@
 This is the **Supervibe Framework** — a multi-host AI development plugin with specialist agents, code graph, project memory, confidence gates, and stack-aware scaffolding. **Node 22.5+ with node:sqlite is required. Pure JS. No Docker. No native compilation.**
 
 For deep dives, agents read on demand from tracked plugin sources, not local
-`.supervibe/` state:
+`.supervibe/` state. Shipped Supervibe plugin agents live under tracked
+`agents/`; provider-local adapter prompts or config may exist in host-specific
+locations, but those locations are not production plugin-agent storage:
 
 | Topic | File |
 |---|---|
@@ -67,7 +69,11 @@ supervibe/
 
 Before broad source search for any command-like request, run `node scripts/supervibe-commands.mjs --match "<user request>"`. If it returns `INTENT: missing_slash_command` or `HARD_STOP: true`, report the missing command and stop; do not inspect source files, marketplace command files, or repository paths to emulate it.
 
+For plan, graph, and task workflows, do not run tests or global validators during development. Defer `node --test`, `npm test`, `npm run check`, `validate:*`, and `node scripts/validate-*` to the final release or merge gate; use text search and scoped diff checks while drafting.
+
 For every claimed Supervibe command, skill, agent, reviewer, worker, validator, or external-tool invocation, issue a shared workflow receipt with `node scripts/workflow-receipt.mjs issue ...`. Hand-written receipts are untrusted; run `npm run validate:workflow-receipts` before claiming delegated work is complete.
+
+Runtime receipts prove only the invocation they name. Command, skill, and question-proposal receipts cannot substitute for agent, worker, reviewer, validator, or durable artifact proof.
 
 Ambiguous requests about agent strength, skill coverage, design-intelligence datasets, memory/RAG/CodeGraph readiness, or 10/10 maturity route to `/supervibe-audit` before plan review unless the user explicitly points at an existing plan artifact.
 
@@ -111,6 +117,8 @@ Default rule: if user intent isn't clear, invoke `supervibe:brainstorming` skill
 - **Terminal/file I/O**: `.editorconfig`, `.gitattributes`, and `rules/terminal-file-io.md` are authoritative. Write text as UTF-8 with LF, prefer Node `fs.writeFile(..., "utf8")`, and avoid legacy PowerShell redirection for non-ASCII or machine-readable files.
 - **Workflow receipts**: `rules/workflow-invocation-receipts.md` is authoritative. Runtime-issued receipts under `.supervibe/artifacts/_workflow-invocations/` and `.supervibe/memory/workflow-invocation-ledger.jsonl` are required for claimed delegated invocations.
 - **Receipt repair/recovery**: use `node scripts/workflow-receipt.mjs reissue`, `prune-stale --apply`, `rebuild-ledger`, or `recovery-status`; never repair receipt trust by manually editing JSON or the ledger.
+- **Production guidance**: keep public/provider guidance free of internal initiative names, task ids, temporary evidence paths, and source-only rationale unless those labels are part of the public user contract.
+- **Provider runtime config**: Genesis and Adapt may update only the selected user provider home, such as `~/.claude/` or `CODEX_HOME`; never create or mutate project runtime configs such as `.codex/config.toml`, `.claude/settings*.json`, or root `config.toml`.
 - **File naming**: kebab-case for files; PascalCase for classes
 - **Frontmatter**: every agent / skill / rule / rubric file requires it (validated by `npm run validate:frontmatter`)
 - **Agents**: content-quality, skill-coverage, empirical hardening, tool-use matrix, and cache-friendly section order (validated by `npm run validate:agent-content-quality`, `npm run validate:agent-skill-coverage`, `npm run validate:agent-empirical-hardening`, `npm run validate:agent-tool-use-matrix`, and `npm run validate:agent-section-order`); every agent must explain each declared skill in `## Skills`, must stay current through freshness gates, and can be scored with `npm run supervibe:agent-heatmap` instead of only pass/fail validation.

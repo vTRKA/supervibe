@@ -370,6 +370,7 @@ async function main() {
     console.log([
       'SUPERVIBE_STATUS_HELP',
       'USAGE:',
+      '  node scripts/supervibe-status.mjs --one-screen [--file <graph.json>] [--strict]',
       '  node scripts/supervibe-status.mjs --next-only --file <graph.json> [--strict]',
       '  node scripts/supervibe-status.mjs --blocked-only --file <graph.json>',
       '  node scripts/supervibe-status.mjs --index-health',
@@ -391,11 +392,11 @@ async function main() {
     return;
   }
 
-  if (args['next-only'] || args['blocked-only']) {
+  if (args['one-screen'] || args['next-only'] || args['blocked-only']) {
     const conciseGraphPath = args.file || (args.epic ? join(PROJECT_ROOT, '.supervibe', 'memory', 'work-items', args.epic, 'graph.json') : null);
     const concise = await buildConciseStatusModel({
       rootDir: PROJECT_ROOT,
-      mode: args['blocked-only'] ? 'blocked-only' : 'next-only',
+      mode: args['blocked-only'] ? 'blocked-only' : args['one-screen'] ? 'one-screen' : 'next-only',
       graphPath: conciseGraphPath,
     });
     if (args.json) console.log(renderTerminalOutput({ data: concise, json: true }, { json: true }));
@@ -1038,7 +1039,7 @@ main().catch(err => { console.error('supervibe-status error:', err); process.exi
 
 function parseArgs(argv) {
   const parsed = { _: [] };
-  const booleans = new Set(['dashboard', 'integrations', 'json', 'block-network', 'no-color', 'interactive', 'eval-report', 'policy', 'role', 'anchors', 'waves', 'gc-hints', 'memory-health', 'agent-retrieval-health', 'strict', 'no-gc-hints', 'index-health', 'strict-index-health', 'intent-diagnostics', 'capabilities', 'host-diagnostics', 'stack-pack-diagnostics', 'watcher-diagnostics', 'index-policy-diagnostics', 'evidence-ledger', 'checkpoint-diagnostics', 'user-outcomes', 'performance-slo', 'workspace-isolation', 'workflow-readiness', 'help', 'h', 'next-only', 'blocked-only', 'ready', 'blocked', 'remaining', 'stale', 'orphan']);
+  const booleans = new Set(['dashboard', 'integrations', 'json', 'block-network', 'no-color', 'interactive', 'eval-report', 'policy', 'role', 'anchors', 'waves', 'gc-hints', 'memory-health', 'agent-retrieval-health', 'strict', 'no-gc-hints', 'index-health', 'strict-index-health', 'intent-diagnostics', 'capabilities', 'host-diagnostics', 'stack-pack-diagnostics', 'watcher-diagnostics', 'index-policy-diagnostics', 'evidence-ledger', 'checkpoint-diagnostics', 'user-outcomes', 'performance-slo', 'workspace-isolation', 'workflow-readiness', 'help', 'h', 'one-screen', 'next-only', 'blocked-only', 'ready', 'blocked', 'remaining', 'stale', 'orphan']);
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (!arg.startsWith('--')) {
@@ -1061,7 +1062,8 @@ async function buildConciseStatusModel({ rootDir = PROJECT_ROOT, mode = 'next-on
   const resolution = explicitGraphPath
     ? { status: 'explicit', graphPath: explicitGraphPath, epicId: null, nextAction: `inspect ${explicitGraphPath}` }
     : active.status === 'none' ? resolveSingleUnarchivedTerminalWorkGraph(rootDir) || active : active;
-  const base = conciseStatusBase(mode, resolution);
+  const receiptHealth = mode === 'one-screen' ? buildWorkflowReceiptHealth(rootDir) : null;
+  const base = conciseStatusBase(mode, resolution, receiptHealth);
   if (resolution.status === 'none') return withConciseBlocks(base, 'blocked', resolution.nextAction || 'atomize or select an active work graph', 'no active work graph', [conciseBlock('activeWorkGraph', 'broken-state', 'no active work graph')]);
   if (resolution.status === 'ambiguous') return withConciseBlocks(base, 'blocked', resolution.nextAction || 'resolve active work graph ambiguity', 'multiple active work graphs found', [conciseBlock('activeWorkGraph', 'broken-state', 'ambiguous active work graphs')]);
 
@@ -1078,6 +1080,7 @@ async function buildConciseStatusModel({ rootDir = PROJECT_ROOT, mode = 'next-on
   const orphans = detectOrphanWorkItems(index, graph);
   const stalled = collectStalledItemsFromGraph(graph);
   const blocked = grouped.blocked || [];
+  const progress = buildOneScreenGraphProgress(index, grouped);
   const blocks = [
     ...stale.map((item) => conciseBlock(item.itemId || item.id || 'stale', 'missing-receipt', 'stale claim or work item state')),
     ...orphans.map((item) => conciseBlock(item.itemId || item.id || 'orphan', 'broken-state', 'orphan work item missing parent')),
@@ -1093,8 +1096,7 @@ async function buildConciseStatusModel({ rootDir = PROJECT_ROOT, mode = 'next-on
       status: 'active',
       epicId: graph.epicId || graph.graph_id || graph.graphId || resolution.epicId || 'unknown',
       path: resolution.graphPath,
-      ready: grouped.ready.length,
-      blocked: blocked.length,
+      ...progress,
       stale: stale.length,
       stalled: stalled.length,
       orphan: orphans.length,
@@ -1103,7 +1105,72 @@ async function buildConciseStatusModel({ rootDir = PROJECT_ROOT, mode = 'next-on
   }, action.status, action.command, action.why, blocks, action);
 }
 
-function conciseStatusBase(mode, resolution = {}) {
+function buildOneScreenGraphProgress(index = [], grouped = {}) {
+  const workItems = index.filter((item) => !isEpicWorkItem(item));
+  const done = workItems.filter((item) => isTerminalWorkStatus(item.effectiveStatus || item.status)).length;
+  return {
+    total: workItems.length,
+    done,
+    percent: workItems.length ? Math.round((done / workItems.length) * 100) : 0,
+    ready: countNonEpicItems(grouped.ready),
+    claimed: countUniqueNonEpicItems([...(grouped.in_progress || []), ...(grouped.claimed || [])]),
+    blocked: countNonEpicItems(grouped.blocked),
+  };
+}
+
+function countNonEpicItems(items = []) {
+  return (items || []).filter((item) => !isEpicWorkItem(item)).length;
+}
+
+function countUniqueNonEpicItems(items = []) {
+  const seen = new Set();
+  for (const item of items || []) {
+    if (isEpicWorkItem(item)) continue;
+    const id = item.itemId || item.id || item.taskId || JSON.stringify(item);
+    seen.add(id);
+  }
+  return seen.size;
+}
+
+function isEpicWorkItem(item = {}) {
+  return String(item.type || '').toLowerCase() === 'epic';
+}
+
+function buildWorkflowReceiptHealth(rootDir = PROJECT_ROOT) {
+  try {
+    const receipts = readWorkflowReceipts(rootDir);
+    const invalid = receipts.filter((receipt) => receipt.__invalidJson).length;
+    let stale = 0;
+    let untrusted = 0;
+    for (const receipt of receipts) {
+      if (receipt.__invalidJson) continue;
+      const trust = validateWorkflowReceiptTrust(rootDir, receipt);
+      if (trust.trusted === false || trust.pass === false) untrusted += 1;
+      if ((trust.issues || []).some(isReceiptDriftIssue)) stale += 1;
+    }
+    const healthy = invalid === 0 && stale === 0 && untrusted === 0;
+    return {
+      status: healthy ? 'ok' : 'attention',
+      checked: receipts.length,
+      invalid,
+      stale,
+      untrusted,
+      nextAction: healthy ? 'receipt trust clean' : 'run node scripts/workflow-receipt.mjs recovery-status',
+    };
+  } catch (error) {
+    return {
+      status: 'unreadable',
+      checked: 0,
+      invalid: 0,
+      stale: 0,
+      untrusted: 0,
+      error: error.message,
+      nextAction: 'run node scripts/workflow-receipt.mjs recovery-status',
+    };
+  }
+}
+
+function conciseStatusBase(mode, resolution = {}, receiptHealth = null) {
   return {
     schemaVersion: 1,
     kind: 'supervibe-status-concise',
@@ -1111,6 +1178,7 @@ function conciseStatusBase(mode, resolution = {}) {
     pass: false,
     status: 'blocked',
     activeGraph: { status: resolution.status || 'unknown', epicId: resolution.epicId || null, path: resolution.graphPath || null },
+    receiptHealth,
     primaryBlocker: null,
     nextAction: { status: 'blocked', why: 'active work graph is not ready', command: resolution.nextAction || 'inspect active work graph', safe_to_run: false, requires_user_approval: false, blocks: [] },
   };
@@ -1170,6 +1238,7 @@ function withConciseBlocks(model = {}, status, command, why, blocks = [], action
 
 function formatConciseStatusModel(model = {}) {
   if (model.mode === 'blocked-only') return formatBlockedOnlyStatus(model);
+  if (model.mode === 'one-screen') return formatOneScreenStatus(model);
   const action = model.nextAction || {};
   return [
     'SUPERVIBE_STATUS_NEXT',
@@ -1185,6 +1254,24 @@ function formatConciseStatusModel(model = {}) {
   ].join('\n');
 }
 
+function formatOneScreenStatus(model = {}) {
+  const graph = model.activeGraph || {};
+  const receipts = model.receiptHealth || {};
+  const action = model.nextAction || {};
+  const receiptProblems = (receipts.invalid || 0) + (receipts.stale || 0) + (receipts.untrusted || 0);
+  const lines = [
+    'SUPERVIBE_STATUS_ONE_SCREEN',
+    `STATUS: ${action.status || model.status || 'unknown'} | PASS: ${model.pass === true}`,
+    `GRAPH: ${graph.epicId || graph.status || 'unknown'} | ${graph.done ?? 0}/${graph.total ?? 0} done (${graph.percent ?? 0}%)`,
+    `WORK: ready=${graph.ready ?? 0} claimed=${graph.claimed ?? 0} blocked=${graph.blocked ?? 0} stale=${graph.stale ?? 0} stalled=${graph.stalled ?? 0} orphan=${graph.orphan ?? 0}`,
+    `RECEIPTS: ${receipts.status || 'unknown'} checked=${receipts.checked ?? 0} problems=${receiptProblems}`,
+    `NEXT: ${action.command || 'unknown'}`,
+    `WHY: ${action.why || 'unknown'}`,
+  ];
+  if (receipts.nextAction && receipts.status && receipts.status !== 'ok') lines.push(`RECEIPT_ACTION: ${receipts.nextAction}`);
+  if (model.primaryBlocker) lines.push(`PRIMARY_BLOCKER: ${model.primaryBlocker}`);
+  return lines.join('\n');
+}
 function formatBlockedOnlyStatus(model = {}) {
   const blocks = model.nextAction?.blocks || [];
   const action = model.nextAction || {};

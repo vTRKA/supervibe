@@ -41,6 +41,32 @@ export const WORK_ITEM_REQUIRED_FIELDS = Object.freeze([
   "executionHints",
 ]);
 
+export const COMPACT_TASK_CARD_SCHEMA_VERSION = 1;
+export const COMPACT_TASK_CARD_SCHEMA = Object.freeze({
+  schemaVersion: COMPACT_TASK_CARD_SCHEMA_VERSION,
+  kind: "supervibe-compact-task-card",
+  requiredFields: Object.freeze([
+    "schemaVersion",
+    "kind",
+    "id",
+    "title",
+    "type",
+    "status",
+    "priority",
+    "parentId",
+    "blockedBy",
+    "blocks",
+    "parallelGroup",
+    "estimatedSize",
+    "agent",
+    "scope",
+    "acceptance",
+    "verification",
+    "source",
+    "policy",
+  ]),
+});
+
 export const PLAN_GRAPH_TASK_FINAL_ONLY_VERIFICATION_MODE = "final-only-release-verification";
 export const PLAN_GRAPH_TASK_TESTS_DEFERRED_UNTIL = "release-handoff";
 const TASK_REF_TOKEN_SOURCE = "(?:T?\\d+[A-Za-z]?|[A-Za-z]\\d+[A-Za-z]?)(?:\\.\\d+[A-Za-z]?)*";
@@ -59,7 +85,8 @@ export function atomizePlanToWorkItems(markdown, options = {}) {
     requireTasks: Boolean(options.requireTasks || options.planReviewPassed),
   });
   const epicId = options.epicId || createEpicId(parsed.title, planPath);
-  const childItems = createChildItems(parsed, epicId, options);
+  const planStepExpansion = createPlanStepExpansionDecision(parsed, options);
+  const childItems = createChildItems(parsed, epicId, { ...options, planStepExpansion });
   const gateItems = createGateItems(parsed, epicId, childItems, options);
   const followupItems = createFollowupItems(parsed, epicId, childItems, options);
   applyCriticalPathBlocks(childItems, parsed.criticalPath);
@@ -95,6 +122,7 @@ export function atomizePlanToWorkItems(markdown, options = {}) {
   });
 
   const items = [epic, ...childItems, ...gateItems, ...followupItems];
+  const atomizationPreviewSummary = createAtomizationPreviewSummary({ parsed, items, planStepExpansion });
   const taskBudgetReport = evaluateTaskBudgetPolicy({
     items,
     policy: taskBudgetPolicy,
@@ -147,6 +175,8 @@ export function atomizePlanToWorkItems(markdown, options = {}) {
         line: item.line,
       })),
       atomicInventoryIds: parsed.atomicInventory.map((item) => item.id),
+      planStepExpansion,
+      atomizationPreviewSummary,
     },
   });
   const validation = validateWorkItemGraph(graph);
@@ -247,9 +277,42 @@ export function parsePlanForWorkItems(markdown, planPath = ".supervibe/artifacts
       current.writeScope.push(...parseFileScopeEntries(inlineFiles[1]));
     }
 
+    const inlineWriteSet = /^\*\*(?:Write set|Write scope|Write paths|Files touched):\*\*\s*(.+)$/i.exec(line.trim());
+    if (inlineWriteSet) {
+      current.writeScope.push(...parseWriteSetEntries(inlineWriteSet[1]));
+    }
+
     const fileMatch = /^\s*-\s*(Create|Modify|Test|Delete|Remove|Read):\s+`([^`]+)`/i.exec(line);
     if (fileMatch) {
       current.writeScope.push({ action: normalizeFileScopeAction(fileMatch[1]), path: normalizePath(fileMatch[2]) });
+    }
+
+    const writeSetBullet = /^\s*[-*]\s*(?:Write set|Write scope|Write path|Writes?):\s*(.+)$/i.exec(line);
+    if (writeSetBullet) {
+      current.writeScope.push(...parseWriteSetEntries(writeSetBullet[1]));
+    }
+
+    const graphMetadata = /^\s*[-*]\s*Graph metadata:\s*(.+)$/i.exec(line.trim());
+    if (graphMetadata) {
+      const metadata = parseTaskGraphMetadata(graphMetadata[1]);
+      current.dependencies.push(...metadata.deps.map((dependency) => normalizeTaskRef(dependency, 0)).filter(Boolean));
+      current.writeScope.push(...metadata.writeSet.map((filePath) => ({ action: "touch", path: normalizePath(filePath) })));
+      current.ownerCapability = metadata.ownerCapability || current.ownerCapability;
+      current.proofPolicy = metadata.proofPolicy || current.proofPolicy;
+      current.riskClass = metadata.riskClass || current.riskClass;
+    }
+
+    const outputArtifact = /^\s*[-*]\s*Output artifact:\s*(.+)$/i.exec(line.trim());
+    if (outputArtifact) {
+      const artifactPath = normalizeMetadataPath(outputArtifact[1]);
+      if (artifactPath) {
+        current.outputArtifacts.push(artifactPath);
+        current.writeScope.push({ action: "create", path: artifactPath });
+      }
+    }
+
+    if (/^\s*[-*]\s*(?:Specific change|Local verification definition):/i.test(line.trim()) && /\b(no mutation|read-only)\b/i.test(line)) {
+      current.noMutation = true;
     }
 
     const rollback = /^\*\*Rollback:\*\*\s*(.+)$/i.exec(line.trim());
@@ -280,6 +343,8 @@ export function parsePlanForWorkItems(markdown, planPath = ".supervibe/artifacts
   }
 
   if (current) tasks.push(current);
+  normalizeParsedTaskDependencies(tasks);
+  normalizeParsedTaskWriteScopes(tasks);
 
   return {
     title,
@@ -316,6 +381,70 @@ export function createWorkItemGraph({ epicId, planPath, title, items, metadata =
     items,
     dependencyEdges: createDependencyEdges(items),
     tasks: workItemsToLoopTasks(items),
+    taskCards: createCompactTaskCards(items),
+  };
+}
+
+export function createCompactTaskCards(items = []) {
+  return (Array.isArray(items) ? items : [])
+    .filter((item) => item?.type !== "epic")
+    .map((item) => normalizeCompactTaskCard(item));
+}
+
+export function normalizeCompactTaskCard(item = {}) {
+  const hints = item.executionHints && typeof item.executionHints === "object" ? item.executionHints : {};
+  const source = item.discoveredFrom && typeof item.discoveredFrom === "object" ? item.discoveredFrom : {};
+  const verificationPolicy = item.verificationPolicy && typeof item.verificationPolicy === "object" ? item.verificationPolicy : {};
+  const writeScope = normalizeCompactWriteScope(item.writeScope);
+  return {
+    schemaVersion: COMPACT_TASK_CARD_SCHEMA_VERSION,
+    kind: COMPACT_TASK_CARD_SCHEMA.kind,
+    id: String(item.itemId || item.id || ""),
+    title: safeInline(item.title || "Untitled task", 160),
+    type: WORK_ITEM_TYPES.includes(item.type) ? item.type : "task",
+    status: item.status || "open",
+    priority: item.priority || "medium",
+    parentId: item.parentId ?? null,
+    blockedBy: uniqueStrings(item.blockedBy ?? []),
+    blocks: uniqueStrings(item.blocks ?? []),
+    parallelGroup: item.parallelGroup ?? null,
+    estimatedSize: item.estimatedSize ?? "medium",
+    agent: {
+      capability: item.agentCapability?.required || hints.requiredAgentCapability || capabilityForWorkItem(item),
+      requiredCapability: item.requiredAgentCapability || item.agentCapability?.required || hints.requiredAgentCapability || capabilityForWorkItem(item),
+      source: item.agentCapability?.source || hints.agentCapabilitySource || null,
+      alternates: uniqueStrings([...(item.agentCapability?.alternates || []), ...(hints.agentCapabilityAlternates || [])]),
+      owner: item.owner ?? null,
+    },
+    scope: {
+      write: writeScope,
+      ids: uniqueStrings([...(item.scopeIds ?? []), ...(hints.scopeIds ?? [])]),
+      requirements: uniqueStrings([...(item.requirementIds ?? []), ...(hints.requirementIds ?? [])]),
+      contracts: uniqueStrings([...(item.contractRows ?? []), ...(hints.contractRows ?? [])]),
+    },
+    acceptance: compactTextList(item.acceptanceCriteria, 6, 180),
+    verification: {
+      commands: compactTextList(item.verificationCommands, 5, 180),
+      deferredCommands: compactTextList(item.deferredVerificationCommands, 5, 180),
+      hints: compactTextList(item.verificationHints, 8, 160),
+      policyMode: verificationPolicy.mode || hints.verificationPolicyMode || null,
+    },
+    source: {
+      type: source.type || null,
+      path: source.path ? normalizePath(source.path) : null,
+      line: Number.isInteger(source.line) ? source.line : null,
+      taskRef: source.taskRef || hints.sourceTaskRef || null,
+    },
+    policy: {
+      riskLevel: hints.policyRiskLevel || inferPolicyRisk(String(item.title || "") + " " + writeScope.map((entry) => entry.path).join(" ")),
+      proofPolicy: hints.proofPolicy || null,
+      rollbackRequired: item.rollbackRequirement?.required ?? hints.rollbackRequired ?? null,
+      rollbackPresent: item.rollbackRequirement?.satisfied ?? hints.rollbackPresent ?? null,
+      rollbackRequirement: item.rollbackRequirement?.summary || hints.rollbackRequirement || null,
+      stopConditions: compactTextList(hints.stopConditions, 6, 120),
+      testsDeferredUntil: verificationPolicy.testsDeferredUntil || hints.testsDeferredUntil || null,
+      validatorsDeferredUntil: verificationPolicy.validatorsDeferredUntil || hints.validatorsDeferredUntil || null,
+    },
   };
 }
 
@@ -467,7 +596,9 @@ export function workItemsToLoopTasks(items = []) {
       ]),
       policyRiskLevel: item.executionHints?.policyRiskLevel ?? "low",
       stopConditions: item.executionHints?.stopConditions ?? ["policy_stop", "budget_stop", "verification_failed"],
-      requiredAgentCapability: item.executionHints?.requiredAgentCapability ?? capabilityForWorkItem(item),
+      requiredAgentCapability: item.requiredAgentCapability ?? item.executionHints?.requiredAgentCapability ?? capabilityForWorkItem(item),
+      agentCapability: item.agentCapability ?? null,
+      rollbackRequirement: item.rollbackRequirement ?? null,
       confidenceRubricId: item.executionHints?.confidenceRubricId ?? "autonomous-loop",
       writeScope: item.writeScope,
       labels: item.labels || [],
@@ -596,11 +727,159 @@ export function createWorkItemPreview(graph, validation = validateWorkItemGraph(
     graph.metadata?.taskBudgetPolicy?.report?.prompt
       ? `TASK_BUDGET_PROMPT: ${safeInline(graph.metadata.taskBudgetPolicy.report.prompt, 220)}`
       : "TASK_BUDGET_PROMPT: none",
+    ...formatAtomizationPreviewSummaryLines(graph.metadata?.atomizationPreviewSummary),
     "SCOPE_EDIT_HINT: Before approval, answer with item ids to exclude, defer, split, or reprioritize.",
     "ITEMS_DETAIL:",
     ...(previewItems.length > 0 ? previewItems : ["- none"]),
     tasks.length > previewItems.length ? `ITEMS_DETAIL_TRUNCATED: ${tasks.length - previewItems.length} more` : "ITEMS_DETAIL_TRUNCATED: 0",
   ].join("\n");
+}
+
+export function createAtomizationPreviewSummary({ parsed = {}, items = [], planStepExpansion = null, hotspotLimit = 5, groupLimit = 8 } = {}) {
+  const allItems = Array.isArray(items) ? items : [];
+  const childItems = allItems.filter((item) => item?.type !== "epic");
+  const implementationItems = childItems.filter((item) => !["gate", "followup"].includes(item?.type));
+  const blockedItems = childItems.filter((item) => (item.blockedBy || []).length > 0);
+  const finalItems = childItems.filter(isFinalGateWorkItem);
+  const subsystemGroups = createPreviewSubsystemGroups(implementationItems, groupLimit);
+  const writeSetHotspots = createPreviewWriteSetHotspots(implementationItems, hotspotLimit);
+  const expansion = planStepExpansion || parsed.planStepExpansion || {};
+  return {
+    schemaVersion: 1,
+    counts: {
+      tasks: implementationItems.length,
+      children: childItems.length,
+      gates: childItems.filter((item) => item.type === "gate").length,
+      followups: childItems.filter((item) => item.type === "followup").length,
+      blocked: blockedItems.length,
+      final: finalItems.length,
+      subtasks: childItems.filter((item) => item.type === "subtask").length,
+    },
+    subsystemGroups,
+    writeSetHotspots,
+    blockedTasks: compactPreviewItems(blockedItems, 8),
+    finalTasks: compactPreviewItems(finalItems, 8),
+    stepAtomization: {
+      mode: expansion.mode || (expansion.expand ? "expanded" : "collapsed"),
+      expand: Boolean(expansion.expand),
+      reason: expansion.reason || "not-recorded",
+      eligible: Boolean(expansion.eligible),
+      taskCount: Number.isInteger(expansion.taskCount) ? expansion.taskCount : parsed.tasks?.length ?? null,
+      stepCount: Number.isInteger(expansion.stepCount) ? expansion.stepCount : null,
+      projectedChildItems: Number.isInteger(expansion.projectedChildItems) ? expansion.projectedChildItems : null,
+      maxChildItems: Number.isInteger(expansion.maxChildItems) ? expansion.maxChildItems : null,
+    },
+  };
+}
+
+function formatAtomizationPreviewSummaryLines(summary = null) {
+  if (!summary) return ["ATOMIZATION_SUMMARY: not-recorded"];
+  const counts = summary.counts || {};
+  const step = summary.stepAtomization || {};
+  return [
+    "ATOMIZATION_SUMMARY: tasks=" + (counts.tasks ?? 0)
+      + " children=" + (counts.children ?? 0)
+      + " groups=" + ((summary.subsystemGroups || []).length)
+      + " hotspots=" + ((summary.writeSetHotspots || []).length)
+      + " blocked=" + (counts.blocked ?? 0)
+      + " final=" + (counts.final ?? 0)
+      + " stepMode=" + (step.mode || "unknown")
+      + " stepReason=" + (step.reason || "unknown"),
+    "SUBSYSTEM_GROUPS: " + formatPreviewSubsystemGroups(summary.subsystemGroups),
+    "WRITE_SET_HOTSPOTS: " + formatPreviewWriteSetHotspots(summary.writeSetHotspots),
+    "BLOCKED_TASKS: " + formatPreviewTaskRefs(summary.blockedTasks),
+    "FINAL_TASKS: " + formatPreviewTaskRefs(summary.finalTasks),
+    "STEP_ATOMIZATION: mode=" + (step.mode || "unknown")
+      + " eligible=" + Boolean(step.eligible)
+      + " projected=" + (step.projectedChildItems ?? "unknown")
+      + " max=" + (step.maxChildItems ?? "none"),
+  ];
+}
+
+function createPreviewSubsystemGroups(items = [], limit = 8) {
+  const groups = new Map();
+  for (const item of items) {
+    const name = inferPreviewSubsystem(item);
+    const group = groups.get(name) || { name, taskCount: 0, blockedCount: 0, finalCount: 0, itemIds: [], writePaths: [] };
+    group.taskCount += 1;
+    if ((item.blockedBy || []).length > 0) group.blockedCount += 1;
+    if (isFinalGateWorkItem(item)) group.finalCount += 1;
+    if (item.itemId) group.itemIds.push(item.itemId);
+    group.writePaths.push(...normalizeCompactWriteScope(item.writeScope).map((entry) => entry.path));
+    groups.set(name, group);
+  }
+  return [...groups.values()]
+    .map((group) => ({
+      ...group,
+      itemIds: uniqueStrings(group.itemIds).slice(0, 8),
+      writePaths: uniqueStrings(group.writePaths).slice(0, 5),
+    }))
+    .sort((left, right) => right.taskCount - left.taskCount || left.name.localeCompare(right.name))
+    .slice(0, limit);
+}
+
+function createPreviewWriteSetHotspots(items = [], limit = 5) {
+  const byPath = new Map();
+  for (const item of items) {
+    for (const entry of normalizeCompactWriteScope(item.writeScope)) {
+      const path = entry.path;
+      const hotspot = byPath.get(path) || { path, count: 0, actions: [], itemIds: [] };
+      hotspot.count += 1;
+      hotspot.actions.push(entry.action || "touch");
+      if (item.itemId) hotspot.itemIds.push(item.itemId);
+      byPath.set(path, hotspot);
+    }
+  }
+  return [...byPath.values()]
+    .map((hotspot) => ({
+      path: hotspot.path,
+      count: hotspot.count,
+      actions: uniqueStrings(hotspot.actions).slice(0, 4),
+      itemIds: uniqueStrings(hotspot.itemIds).slice(0, 8),
+    }))
+    .sort((left, right) => right.count - left.count || left.path.localeCompare(right.path))
+    .filter((hotspot, index) => hotspot.count > 1 || index < limit)
+    .slice(0, limit);
+}
+
+function inferPreviewSubsystem(item = {}) {
+  const explicit = item.subsystem || item.component || item.package || item.workspace || item.subproject || item.repo;
+  if (explicit) return safeInline(explicit, 80);
+  const firstPath = normalizeCompactWriteScope(item.writeScope)[0]?.path || "";
+  if (!firstPath) return "unscoped";
+  const segments = firstPath.split("/").filter(Boolean);
+  if (segments.length === 0) return "root";
+  if (segments[0].startsWith(".")) return segments.slice(0, 2).join("/") || segments[0];
+  return segments[0];
+}
+
+function compactPreviewItems(items = [], limit = 8) {
+  return items.slice(0, limit).map((item) => ({
+    id: item.itemId || item.id || "unknown",
+    title: safeInline(item.title || "untitled", 100),
+    blockedBy: uniqueStrings(item.blockedBy || []).slice(0, 5),
+  }));
+}
+
+function formatPreviewSubsystemGroups(groups = []) {
+  if (!Array.isArray(groups) || groups.length === 0) return "none";
+  return groups
+    .map((group) => safeInline(group.name || "unscoped") + "=" + (group.taskCount || 0)
+      + (group.blockedCount ? "/blocked:" + group.blockedCount : "")
+      + (group.finalCount ? "/final:" + group.finalCount : ""))
+    .join(",");
+}
+
+function formatPreviewWriteSetHotspots(hotspots = []) {
+  if (!Array.isArray(hotspots) || hotspots.length === 0) return "none";
+  return hotspots
+    .map((hotspot) => safeInline(hotspot.path || "unknown", 100) + "=" + (hotspot.count || 0))
+    .join(",");
+}
+
+function formatPreviewTaskRefs(tasks = []) {
+  if (!Array.isArray(tasks) || tasks.length === 0) return "none";
+  return tasks.map((task) => safeInline(task.id || "unknown", 120)).join(",");
 }
 
 function formatPreviewItem(item) {
@@ -623,7 +902,8 @@ function createChildItems(parsed, epicId, options = {}) {
     return createAtomicInventoryItems(parsed, epicId, options);
   }
   const groups = parsed.parallelGroups;
-  const expandSteps = shouldExpandPlanSteps(parsed, options);
+  const planStepExpansion = options.planStepExpansion || createPlanStepExpansionDecision(parsed, options);
+  const expandSteps = planStepExpansion.expand;
   const items = [];
   for (const [index, task] of parsed.tasks.entries()) {
     const item = createWorkItem({
@@ -637,9 +917,12 @@ function createChildItems(parsed, epicId, options = {}) {
       related: task.dependencies.map((dependency) => taskItemId(epicId, dependency, dependency)),
       blockedBy: task.dependencies.map((dependency) => taskItemId(epicId, dependency, dependency)),
       discoveredFrom: { type: "plan", path: parsed.planPath, line: task.line, taskRef: task.ref },
-      acceptanceCriteria: task.acceptanceCriteria.length > 0
-        ? task.acceptanceCriteria
-        : [`Complete ${task.title} from ${parsed.planPath}:${task.line}`],
+      acceptanceCriteria: buildAcceptanceCriteria(
+        task.acceptanceCriteria.length > 0
+          ? task.acceptanceCriteria
+          : [`Complete ${task.title} from ${parsed.planPath}:${task.line}`],
+        task,
+      ),
       verificationCommands: task.verificationCommands.length > 0
         ? [...new Set(task.verificationCommands)]
         : parsed.planVerificationCommands,
@@ -665,6 +948,8 @@ function createChildItems(parsed, epicId, options = {}) {
       executionHints: {
         sourceTaskRef: task.ref,
         rollback: task.rollback,
+        proofPolicy: task.proofPolicy,
+        externalDependencies: task.externalDependencies,
         scopeIds: task.scopeIds,
         requirementIds: task.requirementIds,
         contractRows: task.contractRows,
@@ -672,9 +957,11 @@ function createChildItems(parsed, epicId, options = {}) {
           ? task.stopConditions
           : ["policy_stop", "budget_stop", "verification_failed"],
         receiptHints: parsed.globalMetadata.receiptHints,
-        requiredAgentCapability: inferCapability(task.title),
+        requiredAgentCapability: task.ownerCapability || inferCapability(task.title),
+        agentCapabilitySource: task.ownerCapability ? "plan-metadata" : "title-inference",
+        agentCapabilityAlternates: inferAlternateCapabilities(task.title),
         confidenceRubricId: "autonomous-loop",
-        policyRiskLevel: inferPolicyRisk(`${task.title} ${task.writeScope.map((item) => item.path).join(" ")}`),
+        policyRiskLevel: task.riskClass || inferPolicyRisk(`${task.title} ${task.writeScope.map((item) => item.path).join(" ")}`),
         repo: options.repo || null,
         package: options.package || null,
         workspace: options.workspace || null,
@@ -689,6 +976,7 @@ function createChildItems(parsed, epicId, options = {}) {
     if (!expandSteps && task.steps.length > 0) {
       taskItem.executionHints.planStepsCollapsed = true;
       taskItem.executionHints.planStepCount = task.steps.length;
+      taskItem.executionHints.planStepCollapseReason = planStepExpansion.reason;
       taskItem.executionHints.planSteps = task.steps.map((step) => ({
         number: step.number,
         title: step.title,
@@ -718,16 +1006,40 @@ function createChildItems(parsed, epicId, options = {}) {
 }
 
 function shouldExpandPlanSteps(parsed, options = {}) {
-  if (options.expandSteps === true) return true;
-  if (options.expandSteps === false || options.collapseSteps === true) return false;
+  return createPlanStepExpansionDecision(parsed, options).expand;
+}
+
+function createPlanStepExpansionDecision(parsed, options = {}) {
   const taskCount = parsed.tasks.length;
   const stepCount = parsed.tasks.reduce((sum, task) => sum + (task.steps?.length || 0), 0);
   const gateCount = parsed.reviewGates.length;
   const followupCount = parsed.tasks.reduce((sum, task) => sum + (task.followups?.length || 0), 0);
   const projectedChildItems = taskCount + stepCount + gateCount + followupCount;
   const maxChildItems = parsed.globalMetadata?.taskBudgetPolicy?.maxChildItemsPerAtomizationRun;
-  if (Number.isInteger(maxChildItems) && projectedChildItems > maxChildItems) return false;
-  return true;
+  const budgetAllowsExpansion = !Number.isInteger(maxChildItems) || projectedChildItems <= maxChildItems;
+  const eligible = stepCount > 0 && budgetAllowsExpansion;
+  const forcedCollapse = options.expandSteps === false || options.collapseSteps === true;
+  const explicitExpansion = options.expandSteps === true;
+  const expand = eligible && !forcedCollapse;
+  let reason = "default-expansion-eligible";
+  if (forcedCollapse) reason = "collapse-requested";
+  else if (!budgetAllowsExpansion) reason = "child-item-budget";
+  else if (stepCount === 0) reason = "no-plan-steps";
+  else if (explicitExpansion) reason = "explicit-expansion-eligible";
+  return {
+    schemaVersion: 1,
+    mode: expand ? "expanded" : "collapsed",
+    expand,
+    eligible,
+    reason,
+    defaultBehavior: "expand-when-budget-allows",
+    taskCount,
+    stepCount,
+    gateCount,
+    followupCount,
+    projectedChildItems,
+    maxChildItems: Number.isInteger(maxChildItems) ? maxChildItems : null,
+  };
 }
 
 function createAtomicInventoryItems(parsed, epicId, options = {}) {
@@ -809,6 +1121,8 @@ function createAtomicInventoryItems(parsed, epicId, options = {}) {
         receiptRequirement: "runtime scoped agent receipt required",
         evidenceExpectation: "verification command output plus scoped agent receipt",
         requiredAgentCapability: inferCapability(entry.title),
+        agentCapabilitySource: "atomic-title-inference",
+        agentCapabilityAlternates: inferAlternateCapabilities(entry.title),
         confidenceRubricId: "autonomous-loop",
         policyRiskLevel: inferPolicyRisk(`${entry.title} ${(ownerTask?.writeScope || []).map((item) => item.path).join(" ")}`),
         repo: options.repo || null,
@@ -874,7 +1188,10 @@ function createStepSubtaskItems({ parsed, epicId, task, parentItem, options = {}
         stepNumber: step.number,
         parentItemId: parentItem.itemId,
       },
-      acceptanceCriteria: [`Complete step ${step.number}: ${step.title}`],
+      acceptanceCriteria: buildAcceptanceCriteria([`Complete step ${step.number}: ${step.title}`], {
+        ...task,
+        rollback: task.rollback || parentItem.executionHints?.rollback || null,
+      }),
       verificationCommands: step.verificationCommands.length > 0
         ? [...new Set(step.verificationCommands)]
         : parentItem.verificationCommands.length > 0
@@ -902,6 +1219,8 @@ function createStepSubtaskItems({ parsed, epicId, task, parentItem, options = {}
         parentTaskRef: task.ref,
         sourceStepNumber: step.number,
         requiredAgentCapability: inferCapability(step.title),
+        agentCapabilitySource: "step-title-inference",
+        agentCapabilityAlternates: inferAlternateCapabilities(step.title),
         policyRiskLevel: inferPolicyRisk(`${step.title} ${parentItem.writeScope.map((entry) => entry.path).join(" ")}`),
       },
     });
@@ -988,13 +1307,16 @@ function createWorkItem(item) {
     existing: item.verificationPolicy,
     deferredVerificationCommands,
   });
+  const executionHints = item.executionHints ?? {};
+  const agentCapability = normalizeAgentCapability(item, executionHints);
+  const rollbackRequirement = createRollbackRequirement(item, executionHints);
   return {
     ...item,
     status: item.status ?? "open",
     blocks: uniqueStrings(item.blocks ?? []),
     related: uniqueStrings(item.related ?? []),
     blockedBy: uniqueStrings(item.blockedBy ?? []),
-    acceptanceCriteria: uniqueStrings(item.acceptanceCriteria ?? []),
+    acceptanceCriteria: normalizeAcceptanceCriteria(item.acceptanceCriteria ?? []),
     verificationCommands,
     deferredVerificationCommands,
     verificationPolicy,
@@ -1009,6 +1331,9 @@ function createWorkItem(item) {
     workspace: item.workspace ?? null,
     subproject: item.subproject ?? null,
     requiredGates: uniqueStrings(item.requiredGates ?? []),
+    requiredAgentCapability: agentCapability.required,
+    agentCapability,
+    rollbackRequirement,
     scopeIds: uniqueStrings([
       ...(item.scopeIds ?? []),
       ...(item.executionHints?.scopeIds ?? []),
@@ -1035,7 +1360,15 @@ function createWorkItem(item) {
     evidenceScore: normalizeScoreField(item.evidenceScore, "evidence"),
     estimatedSize: item.estimatedSize ?? "medium",
     parallelGroup: item.parallelGroup ?? null,
-    executionHints: enrichExecutionHintsWithVerificationPolicy(item.executionHints ?? {}, verificationPolicy, deferredVerificationCommands),
+    executionHints: enrichExecutionHintsWithVerificationPolicy({
+      ...executionHints,
+      requiredAgentCapability: agentCapability.required,
+      agentCapabilitySource: agentCapability.source,
+      agentCapabilityAlternates: agentCapability.alternates,
+      rollbackRequired: rollbackRequirement.required,
+      rollbackPresent: rollbackRequirement.satisfied,
+      rollbackRequirement: rollbackRequirement.summary,
+    }, verificationPolicy, deferredVerificationCommands),
   };
 }
 
@@ -1184,9 +1517,11 @@ function applyFinalGateBlocks(items = []) {
 
 function isFinalGateWorkItem(item = {}) {
   const title = String(item.title || "").toLowerCase();
-  if (/\b10\s*\/\s*10\b|\bten\s+of\s+ten\b/.test(title)) return true;
-  return /\b(final|release)\b/.test(title)
-    && /\b(review|gate|proof|verification|check|sweep|handoff)\b/.test(title);
+  const hasFinalContext = /\b(final|release)\b/.test(title)
+    && /\b(review|gate|proof|verification|check|sweep|handoff|command|block)\b/.test(title);
+  const hasTenOfTenGateContext = /\b10\s*\/\s*10\b|\bten\s+of\s+ten\b/.test(title)
+    && /\b(gate|review|proof|verification|check|sweep|handoff)\b/.test(title);
+  return hasFinalContext || hasTenOfTenGateContext;
 }
 
 function parseCriticalPath(markdown) {
@@ -1213,13 +1548,110 @@ function parseFileScopeEntries(value = "") {
   let match = pattern.exec(String(value || ""));
   while (match) {
     const rawPath = (match[2] || match[3] || "").trim();
-    const path = normalizePath(rawPath.replace(/[.]+$/u, ""));
-    if (path && !["none", "n/a", "na", "-"].includes(path.toLowerCase())) {
+    const path = normalizeMetadataPath(rawPath);
+    if (isMeaningfulPath(path)) {
       entries.push({ action: normalizeFileScopeAction(match[1]), path });
     }
     match = pattern.exec(String(value || ""));
   }
   return uniqueWriteScopeEntries(entries);
+}
+
+function parseWriteSetEntries(value = "") {
+  const text = String(value || "");
+  const explicit = parseFileScopeEntries(text);
+  if (explicit.length > 0) return explicit;
+  const paths = [];
+  const backtickPattern = /`([^`]+)`/g;
+  let match = backtickPattern.exec(text);
+  while (match) {
+    paths.push(match[1]);
+    match = backtickPattern.exec(text);
+  }
+  if (paths.length === 0) {
+    paths.push(...text.split(/[,;|]/));
+  }
+  return uniqueWriteScopeEntries(paths
+    .map((entry) => normalizeMetadataPath(entry.replace(/^[-*]\s*/, "")))
+    .filter(isMeaningfulPath)
+    .map((path) => ({ action: "touch", path })));
+}
+
+function isMeaningfulPath(path = "") {
+  return Boolean(path) && !["none", "n/a", "na", "-"].includes(String(path).toLowerCase());
+}
+
+function normalizeParsedTaskDependencies(tasks = []) {
+  const localRefs = new Set(tasks.map((task) => task.ref).filter(Boolean));
+  for (const task of tasks) {
+    const dependencies = uniqueStrings(task.dependencies || []);
+    task.dependencies = dependencies.filter((dependency) => localRefs.has(dependency));
+    task.externalDependencies = dependencies.filter((dependency) => dependency && !localRefs.has(dependency));
+  }
+}
+
+function normalizeParsedTaskWriteScopes(tasks = []) {
+  for (const task of tasks) {
+    if (!task.noMutation) {
+      task.writeScope = uniqueWriteScopeEntries(task.writeScope || []);
+      continue;
+    }
+    const outputPaths = new Set(task.outputArtifacts || []);
+    task.writeScope = uniqueWriteScopeEntries((task.writeScope || []).filter((entry) => outputPaths.has(entry.path)));
+  }
+}
+function parseTaskGraphMetadata(value = "") {
+  return {
+    deps: parseGraphMetadataArray(value, "deps"),
+    writeSet: parseGraphMetadataArray(value, "writeSet").map(normalizeMetadataPath).filter(Boolean),
+    ownerCapability: parseGraphMetadataScalar(value, "ownerCapability"),
+    proofPolicy: parseGraphMetadataScalar(value, "proofPolicy"),
+    riskClass: parseGraphMetadataScalar(value, "riskClass"),
+  };
+}
+
+function parseGraphMetadataArray(value = "", key = "") {
+  const pattern = new RegExp("\\b" + escapeRegex(key) + "\\s*=\\s*(\\[[^\\]]*\\])", "i");
+  const match = pattern.exec(String(value || ""));
+  if (!match) return [];
+  try {
+    const parsed = JSON.parse(match[1]);
+    return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+  } catch {
+    return match[1]
+      .replace(/^\[|\]$/g, "")
+      .split(",")
+      .map((item) => item.replace(/^['"`]|['"`]$/g, "").trim())
+      .filter(Boolean);
+  }
+}
+
+function parseGraphMetadataScalar(value = "", key = "") {
+  const pattern = new RegExp("\\b" + escapeRegex(key) + "\\s*=\\s*([^;]+)", "i");
+  const match = pattern.exec(String(value || ""));
+  return match ? match[1].replace(/^['"`]|['"`.]$/g, "").trim() : null;
+}
+
+function normalizeMetadataPath(value = "") {
+  return normalizePath(String(value || "")
+    .replace(/^['"`]|['"`]$/g, "")
+    .replace(/[.]+$/u, "")
+    .trim());
+}
+
+function normalizeCompactWriteScope(entries = []) {
+  return uniqueWriteScopeEntries(Array.isArray(entries) ? entries : [])
+    .map((entry) => ({
+      action: entry.action || "touch",
+      path: normalizePath(entry.path || ""),
+    }))
+    .filter((entry) => entry.path);
+}
+
+function compactTextList(values = [], limit = 6, maxLength = 160) {
+  return uniqueStrings(Array.isArray(values) ? values : [])
+    .slice(0, limit)
+    .map((value) => safeInline(value, maxLength));
 }
 
 function normalizeFileScopeAction(action = "") {
@@ -1361,9 +1793,15 @@ function createParsedTask({ ref, title, line, planPath }) {
     contractRows: [],
     stopConditions: [],
     dependencies: [],
+    externalDependencies: [],
     acceptanceCriteria: [],
     verificationCommands: [],
     writeScope: [],
+    outputArtifacts: [],
+    noMutation: false,
+    ownerCapability: null,
+    proofPolicy: null,
+    riskClass: null,
     estimatedSize: "medium",
     rollback: null,
     followups: [],
@@ -1576,6 +2014,70 @@ function inferCapability(title) {
   if (text.includes("review") || text.includes("gate")) return "quality-gate-reviewer";
   if (text.includes("doc") || text.includes("readme")) return "technical-writer";
   return "stack-developer";
+}
+
+function inferAlternateCapabilities(title) {
+  const primary = inferCapability(title);
+  const text = String(title).toLowerCase();
+  const alternates = [];
+  if (/\b(test|verify|validation|check)\b/.test(text)) alternates.push("qa-test-engineer");
+  if (/\b(doc|docs|readme|evidence|artifact)\b/.test(text)) alternates.push("technical-writer");
+  if (/\b(security|policy|permission|credential)\b/.test(text)) alternates.push("security-auditor");
+  if (/\b(review|gate|audit)\b/.test(text)) alternates.push("quality-gate-reviewer");
+  alternates.push("stack-developer");
+  return uniqueStrings(alternates).filter((capability) => capability !== primary);
+}
+
+function normalizeAgentCapability(item = {}, hints = {}) {
+  const required = item.requiredAgentCapability
+    || item.agentCapability?.required
+    || hints.requiredAgentCapability
+    || capabilityForWorkItem(item);
+  return {
+    schemaVersion: 1,
+    required,
+    source: item.agentCapability?.source || hints.agentCapabilitySource || "inferred",
+    alternates: uniqueStrings([
+      ...(item.agentCapability?.alternates || []),
+      ...(hints.agentCapabilityAlternates || []),
+      ...inferAlternateCapabilities(item.title),
+    ]),
+  };
+}
+
+function createRollbackRequirement(item = {}, hints = {}) {
+  const type = item.type || "task";
+  const required = !["epic", "gate", "followup"].includes(type);
+  const rawRollback = hints.rollback || item.rollback || item.rollbackPlan || null;
+  const satisfied = !required || Boolean(rawRollback);
+  return {
+    schemaVersion: 1,
+    required,
+    satisfied,
+    source: rawRollback ? "plan" : "default-requirement",
+    summary: rawRollback || (required ? "Document rollback or explicit no-op rationale before completion." : "Rollback not required for this work item type."),
+  };
+}
+
+function buildAcceptanceCriteria(criteria = [], task = {}) {
+  const base = Array.isArray(criteria) ? criteria : [criteria];
+  const rollbackCriterion = task.rollback
+    ? "Rollback path remains documented for this work item."
+    : "Rollback path or explicit no-op rationale is documented before completion.";
+  return normalizeAcceptanceCriteria([...base, rollbackCriterion]);
+}
+
+function normalizeAcceptanceCriteria(criteria = []) {
+  const values = Array.isArray(criteria) ? criteria : String(criteria || "").split(/\r?\n/);
+  return uniqueStrings(values
+    .flatMap((value) => String(value || "").split(/\r?\n/))
+    .map((value) => value
+      .replace(/^\s*[-*]\s+(?:\[[ xX]\]\s*)?/, "")
+      .replace(/^\s*\[[ xX]\]\s*/, "")
+      .replace(/^Acceptance Criteria:\s*/i, "")
+      .replace(/\s+/g, " ")
+      .trim())
+    .filter((value) => value && !["none", "n/a", "na", "-"].includes(value.toLowerCase())));
 }
 
 function inferPolicyRisk(text) {

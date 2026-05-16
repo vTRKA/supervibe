@@ -5,6 +5,7 @@ import { calculateReadyFront } from "./autonomous-loop-ready-front.mjs";
 import { createTaskGraph } from "./autonomous-loop-task-graph.mjs";
 import { attachExternalClaim, claimTask, releaseClaim } from "./autonomous-loop-claims.mjs";
 import { createUnavailableTaskTrackerAdapter } from "./supervibe-durable-task-tracker-adapter.mjs";
+import { createBlockerV1 } from "./supervibe-work-state.mjs";
 
 export function defaultTrackerMappingPath(rootDir = process.cwd()) {
   return join(rootDir, ".supervibe", "memory", "loops", "task-tracker-map.json");
@@ -149,6 +150,42 @@ export function diagnoseTrackerSyncConflicts({ graph = {}, mapping = createEmpty
   return {
     ok: conflicts.length === 0,
     status: conflicts.length === 0 ? "clean" : "conflicts-found",
+    conflicts,
+  };
+}
+
+export function createTrackerSyncDiagnostics({
+  graph = {},
+  mapping = createEmptyMapping(),
+  externalState = {},
+  requireComplete = false,
+  repairCommand = "node scripts/supervibe-loop.mjs --tracker-doctor --fix",
+} = {}) {
+  const validation = validateTrackerMapping({ graph, mapping, requireComplete });
+  const conflicts = diagnoseTrackerSyncConflicts({ graph, mapping, externalState });
+  const validationIssues = [...(validation.issues || [])].sort(compareTrackerIssue);
+  const conflictItems = [...(conflicts.conflicts || [])].sort(compareTrackerConflict);
+  const blockers = [
+    ...blockersForTrackerMappingIssues(validationIssues, repairCommand),
+    ...blockersForTrackerConflicts(conflictItems, repairCommand),
+  ].sort(compareTrackerBlocker);
+  const affectedTaskIds = uniqueSorted(blockers.flatMap((blocker) => blocker.affectedTaskIds || []));
+  const status = blockers.length === 0 ? "clean" : "blocked";
+  const firstBlocker = blockers[0] || null;
+
+  return {
+    schemaVersion: 1,
+    kind: "tracker-sync-diagnostics",
+    ok: blockers.length === 0,
+    status,
+    blockerCode: firstBlocker?.code || null,
+    affectedTaskIds,
+    blockers,
+    blocker: firstBlocker,
+    nextAction: firstBlocker?.nextAction || "tracker sync is clean; continue workflow execution",
+    repairCommand: firstBlocker?.repairCommand || null,
+    releaseImpact: firstBlocker?.releaseImpact || "Tracker sync has no release-blocking diagnostics.",
+    validation,
     conflicts,
   };
 }
@@ -428,6 +465,114 @@ export function summarizeTrackerMappingForBundle(mapping = createEmptyMapping())
     stale: items.filter((item) => item.status === "stale" || item.externalStatus === "stale").length,
     lastSync: mapping.lastSync || null,
   };
+}
+
+function blockersForTrackerMappingIssues(issues = [], repairCommand) {
+  const groups = new Map();
+  for (const issue of issues) {
+    const code = blockerCodeForTrackerIssue(issue.code);
+    const key = `${code}:${issue.code}`;
+    const current = groups.get(key) || {
+      issueCode: issue.code,
+      blockerCode: code,
+      affectedTaskIds: [],
+      externalIds: [],
+    };
+    current.affectedTaskIds.push(...affectedTaskIdsForTrackerIssue(issue));
+    if (issue.externalId) current.externalIds.push(issue.externalId);
+    groups.set(key, current);
+  }
+  return [...groups.values()].map((group) => enrichTrackerBlocker(createBlockerV1({
+    code: group.blockerCode,
+    message: trackerMappingBlockerMessage(group),
+    repairCommand,
+    releaseImpact: "Release workflow readiness is blocked until the tracker mapping is deterministic and matches the active graph.",
+  }), {
+    affectedTaskIds: uniqueSorted(group.affectedTaskIds),
+    nextAction: nextActionForTrackerIssue(group.issueCode),
+  }));
+}
+
+function blockersForTrackerConflicts(conflicts = [], repairCommand) {
+  const groups = new Map();
+  for (const conflict of conflicts) {
+    const key = conflict.status || "conflict";
+    const current = groups.get(key) || { status: key, affectedTaskIds: [], externalIds: [] };
+    current.affectedTaskIds.push(conflict.itemId);
+    if (conflict.externalId) current.externalIds.push(conflict.externalId);
+    groups.set(key, current);
+  }
+  return [...groups.values()].map((group) => enrichTrackerBlocker(createBlockerV1({
+    code: "needs-human-input",
+    message: `Tracker sync has ${group.affectedTaskIds.length} ${group.status} conflict(s).`,
+    repairCommand,
+    releaseImpact: "Release workflow readiness is blocked until native and external tracker changes are reconciled.",
+  }), {
+    affectedTaskIds: uniqueSorted(group.affectedTaskIds),
+    nextAction: nextActionForTrackerConflict(group.status),
+  }));
+}
+
+function enrichTrackerBlocker(blocker, { affectedTaskIds = [], nextAction }) {
+  return {
+    ...blocker,
+    affectedTaskIds: uniqueSorted(affectedTaskIds),
+    nextAction,
+  };
+}
+
+function blockerCodeForTrackerIssue(code) {
+  if (code === "duplicate-external-task") return "write-set-conflict";
+  if (code === "missing-mapping" || code === "missing-item-hash") return "receipt-missing";
+  return "policy-hard-stop";
+}
+
+function affectedTaskIdsForTrackerIssue(issue = {}) {
+  return uniqueSorted([...(issue.nativeIds || []), issue.itemId].filter(Boolean));
+}
+
+function trackerMappingBlockerMessage(group) {
+  const affected = uniqueSorted(group.affectedTaskIds);
+  return `Tracker mapping issue ${group.issueCode} affects ${affected.length} task(s).`;
+}
+
+function nextActionForTrackerIssue(code) {
+  if (code === "missing-mapping") return "rerun tracker sync push to materialize missing mapping records";
+  if (code === "orphan-mapping") return "run tracker doctor repair to prune orphan mappings";
+  if (code === "native-id-mismatch") return "rebuild tracker mapping from the canonical work graph";
+  if (code === "missing-item-hash") return "rerun tracker sync push to refresh item hashes";
+  if (code === "duplicate-external-task") return "inspect duplicate external tracker links and remap one native task";
+  if (code === "graph-id-mismatch") return "repair tracker mapping graph id before sync";
+  return "repair tracker mapping before sync";
+}
+
+function nextActionForTrackerConflict(status) {
+  if (status === "both-changed") return "manually reconcile native and external tracker changes before overwrite";
+  if (status === "native-newer") return "push native graph update to the external tracker";
+  if (status === "external-newer") return "pull external tracker update into native graph review";
+  return "inspect tracker sync conflict before continuing";
+}
+
+function compareTrackerIssue(left, right) {
+  return String(left.code || "").localeCompare(String(right.code || ""))
+    || String(left.itemId || "").localeCompare(String(right.itemId || ""))
+    || String(left.externalId || "").localeCompare(String(right.externalId || ""));
+}
+
+function compareTrackerConflict(left, right) {
+  return String(left.status || "").localeCompare(String(right.status || ""))
+    || String(left.itemId || "").localeCompare(String(right.itemId || ""))
+    || String(left.externalId || "").localeCompare(String(right.externalId || ""));
+}
+
+function compareTrackerBlocker(left, right) {
+  return right.priority - left.priority
+    || String(left.code || "").localeCompare(String(right.code || ""))
+    || String(left.nextAction || "").localeCompare(String(right.nextAction || ""));
+}
+
+function uniqueSorted(values = []) {
+  return [...new Set(values.filter(Boolean).map((value) => String(value)))].sort();
 }
 
 function createEmptyMapping() {

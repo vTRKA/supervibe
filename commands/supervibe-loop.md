@@ -342,6 +342,20 @@ note, controller-authored summary, command receipt, skill receipt, or stale
 global receipt; it needs the current run's scoped runtime receipt bound to the
 named host-agent invocation and output artifact.
 
+## Work Graph Command Compatibility
+
+| Command | Work graph role | Writes graph state | Main handoff | Exit states |
+| --- | --- | --- | --- | --- |
+| `/supervibe-plan` | Produces and reviews the plan that can be atomized into a graph. | No graph writes. | `/supervibe-loop --atomize-plan <plan> --plan-review-passed` after review passes. | `plan-ready`, `review-required`, `replan-required`, `blocked` |
+| `/supervibe-loop` | Owns atomization, queue control, claims, execution, completion checks, tracker sync, and archive candidates. | Yes, for explicit graph mutations and execution state. | `/supervibe-status --file <graph.json>` for read-only inspection, or verification/review gates before shipping. | `ready`, `running`, `blocked`, `awaiting-user-acceptance`, `completed-awaiting-archive`, `failed` |
+| `/supervibe-status` | Reads the active graph, loop state, receipts, stale claims, blockers, and reports the next safe action. | No, except explicitly requested local dashboard/report/view artifacts. | Back to `/supervibe-loop` for mutations or `/supervibe-plan --review` when review evidence is missing. | `ok`, `warnings`, `blocked`, `failed` |
+
+Compatibility contract notes:
+- The native `graph.json` is canonical once atomization succeeds; plan and status commands must not mutate it.
+- Each command must print one recommended next action and preserve the current user gate instead of silently crossing from planning, review, atomization, execution, verification, or archive.
+- Exit states must distinguish missing evidence, no ready work, blocked dependencies, user acceptance, and completed-awaiting-archive so another command can resume without guessing.
+- Status-compatible output must include enough graph identity to continue safely: graph path, epic or run id when known, current phase, ready/blocked/terminal counts, evidence gaps, and the exact mutation command when mutation is needed.
+
 ## Contract
 
 - Build a task queue from a reviewed work-item graph or request. Direct plan execution is legacy diagnostic-only; reviewed plans must atomize into a graph before guided, manual, fresh-context, or worktree execution.

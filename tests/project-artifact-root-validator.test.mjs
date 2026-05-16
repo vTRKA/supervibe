@@ -23,6 +23,18 @@ test("project artifact root validator rejects legacy project-root artifact paths
   assert.ok(result.issues.some((issue) => issue.legacy === "prototypes/"));
 });
 
+test("project artifact root validator allows external documentation URLs that contain docs/specs", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-artifact-root-"));
+  const file = "docs/reference.md";
+  const absPath = join(root, ...file.split("/"));
+  await mkdir(dirname(absPath), { recursive: true });
+  await writeFile(absPath, "OpenTelemetry spec: https://opentelemetry.io/docs/specs/otel/\n", "utf8");
+
+  const result = validateProjectArtifactRoot(root, [file]);
+
+  assert.equal(result.pass, true);
+  assert.deepEqual(result.issues, []);
+});
 test("project artifact root validator rejects nested .supervibe artifact roots", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-artifact-root-"));
   const file = "commands/example.md";

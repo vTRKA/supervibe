@@ -18,6 +18,7 @@ export async function buildCodeGraphContext({
   await store.init();
   try {
     const searchQuery = String(query || symbol || "").trim();
+    const queryQuality = evaluateCodeGraphQueryQualityGuard({ query: searchQuery, symbol, taskType });
     const ragChunks = searchQuery
       ? await store.search({ query: searchQuery, limit, semantic: useEmbeddings })
       : [];
@@ -85,6 +86,7 @@ export async function buildCodeGraphContext({
       retrievalPipeline,
       graphHealth,
       quality,
+      queryQuality,
       taskTypeGate,
       impactSummary,
       stats: {
@@ -109,6 +111,9 @@ function formatCodeGraphContextMarkdown(context = {}) {
     "",
     `Query: ${context.query || "none"}`,
     `Seeds: ${(context.seedNames || []).join(", ") || "none"}`,
+    "",
+    "## Query Quality Guard",
+    formatQueryQualityGuard(context.queryQuality),
     "",
     "## RAG Entry Chunks",
     formatRagChunks(context.ragChunks || []),
@@ -163,6 +168,81 @@ function selectSeedNames({ symbol, ragChunks, entrySymbols, query }) {
     if (/[A-Z_]/.test(token) || /^use[A-Z0-9_]/.test(token)) seeds.push(token);
   }
   return [...new Set(seeds)].filter(Boolean);
+}
+
+
+export function evaluateCodeGraphQueryQualityGuard({
+  query = "",
+  symbol = "",
+  taskType = "feature",
+} = {}) {
+  const normalizedQuery = String(query || "").trim().replace(/\s+/g, " ");
+  const normalizedSymbol = String(symbol || "").trim();
+  const normalizedTaskType = normalizeTaskType(taskType);
+  const rawTokens = normalizedQuery.match(/[A-Za-z_$][A-Za-z0-9_$-]*/g) || [];
+  const tokens = rawTokens.map((token) => token.toLowerCase());
+  const meaningfulTokens = tokens.filter((token) => token.length >= 3 && !QUERY_QUALITY_STOP_WORDS.has(token));
+  const issues = [];
+  const repairHints = [];
+  const expansionHints = [];
+  const hasPathAnchor = /(?:^|\s)(?:[A-Za-z0-9_.-]+\/)+[A-Za-z0-9_.-]+\.[A-Za-z0-9]+(?::\d+)?(?:\s|$)/.test(normalizedQuery);
+  const hasFunctionCallAnchor = /\b[A-Za-z_$][A-Za-z0-9_$]*\s*\(/.test(normalizedQuery);
+  const hasSymbolAnchor = Boolean(normalizedSymbol) || hasFunctionCallAnchor || rawTokens.some((token) => (
+    token.includes("_")
+    || token.includes("$")
+    || /[a-z][A-Z]/.test(token)
+    || /^[A-Z][A-Za-z0-9_$]{2,}$/.test(token)
+  ));
+  const hasQuotedAnchor = /["'`][^"'`]{3,}["'`]/.test(normalizedQuery);
+  const genericOnly = meaningfulTokens.length > 0 && meaningfulTokens.every((token) => QUERY_QUALITY_GENERIC_TERMS.has(token));
+
+  if (!normalizedQuery) {
+    issues.push("missing-query");
+    repairHints.push("add an exact symbol, file path, command name, or behavior phrase");
+  }
+  if (normalizedQuery && meaningfulTokens.length < 2 && !hasSymbolAnchor && !hasPathAnchor) {
+    issues.push("too-short");
+    repairHints.push("add one code anchor plus the behavior or failure mode you need");
+  }
+  if (genericOnly) {
+    issues.push("generic-query");
+    repairHints.push("replace generic words with a function, class, script, command, or file path");
+  }
+  if (normalizedQuery && !hasSymbolAnchor && !hasPathAnchor && !hasQuotedAnchor && meaningfulTokens.length < 4) {
+    issues.push("missing-code-anchor");
+    repairHints.push("include a concrete symbol, file path, CLI command, config key, or exact error text");
+  }
+  if (meaningfulTokens.length > 18) {
+    issues.push("overloaded-query");
+    repairHints.push("split into one query for the primary symbol and one query for the expected behavior");
+  }
+
+  if (!hasPathAnchor) expansionHints.push("add a file path when the change area is known");
+  if (!hasSymbolAnchor) expansionHints.push("add the exported function, class, command, or config key when available");
+  if (!hasQuotedAnchor && ["debug", "feature"].includes(normalizedTaskType)) {
+    expansionHints.push("add exact UI text, error text, or a behavior phrase in quotes");
+  }
+  if (["refactor", "rename", "move", "delete", "extract", "public-api"].includes(normalizedTaskType)) {
+    expansionHints.push("use a full symbol id or file-qualified symbol before structural work");
+  }
+  if (issues.length === 0) expansionHints.push("query has enough shape for retrieval; inspect selected sources before changing code");
+
+  return {
+    schemaVersion: 1,
+    pass: issues.length === 0,
+    advisory: true,
+    interrupt: false,
+    issues,
+    repairHints: [...new Set(repairHints)].slice(0, 5),
+    expansionHints: [...new Set(expansionHints)].slice(0, 5),
+    metrics: {
+      tokenCount: rawTokens.length,
+      meaningfulTokenCount: meaningfulTokens.length,
+      hasSymbolAnchor,
+      hasPathAnchor,
+      hasQuotedAnchor,
+    },
+  };
 }
 
 function buildContextQuality({ retrievalPipeline, graphHealth, semanticAnchors, relatedFiles }) {
@@ -344,6 +424,11 @@ export function summarizeCodeGraphQueryOutput({
     resolvedEdgeRate,
     unresolvedDiagnostics,
   });
+  const unresolvedHotspotActions = buildUnresolvedHotspotActions({
+    unresolvedDiagnostics,
+    taskTypeGate,
+    limit,
+  });
 
   return {
     schemaVersion: 1,
@@ -363,6 +448,7 @@ export function summarizeCodeGraphQueryOutput({
     unresolvedSampleTotal: unresolvedDiagnostics.total,
     caveats,
     topAffectedFiles,
+    unresolvedHotspotActions,
     nextInvestigationHints,
   };
 }
@@ -374,6 +460,7 @@ export function formatCodeGraphImpactSummary(summary = {}) {
     `unresolvedClasses=${formatUnresolvedClasses(summary.unresolvedClasses)}`,
     `caveats=${(summary.caveats || []).join("; ") || "none"}`,
     `topAffectedFiles=${formatAffectedFilesInline(summary.topAffectedFiles)}`,
+    `unresolvedHotspotActions=${formatUnresolvedHotspotActions(summary.unresolvedHotspotActions)}`,
     `next=${(summary.nextInvestigationHints || []).join("; ") || "none"}`,
   ]);
 }
@@ -465,6 +552,19 @@ function formatRetrievalQuality(pipeline = {}) {
     `stages=${stages}`,
     `selected=${pipeline.selected?.length || 0}`,
     `fallback=${pipeline.fallback?.used ? "used" : "not-used"} (${pipeline.fallback?.reason || "none"})`,
+  ]);
+}
+
+function formatQueryQualityGuard(guard = {}) {
+  return formatList([
+    `pass=${Boolean(guard.pass)}`,
+    `advisory=${guard.advisory !== false}`,
+    `interrupt=${guard.interrupt === true}`,
+    `issues=${guard.issues?.join("; ") || "none"}`,
+    `repairHints=${guard.repairHints?.join("; ") || "none"}`,
+    `expansionHints=${guard.expansionHints?.join("; ") || "none"}`,
+    `tokens=${guard.metrics?.tokenCount ?? 0}`,
+    `anchors=symbol:${guard.metrics?.hasSymbolAnchor === true} path:${guard.metrics?.hasPathAnchor === true} quoted:${guard.metrics?.hasQuotedAnchor === true}`,
   ]);
 }
 
@@ -612,6 +712,71 @@ function buildNextInvestigationHints({
   return [...new Set(hints)].slice(0, 6);
 }
 
+function buildUnresolvedHotspotActions({
+  unresolvedDiagnostics = {},
+  taskTypeGate = {},
+  limit = 8,
+} = {}) {
+  const structuralHardStop = taskTypeGate?.pass === false
+    && (taskTypeGate.failures || []).some((failure) => /^structural task requires /.test(String(failure || "")));
+  return (unresolvedDiagnostics.topAffectedFiles || [])
+    .slice(0, limit)
+    .map((file) => {
+      const primaryClass = selectPrimaryUnresolvedClass(file.classes);
+      return {
+        path: file.path,
+        unresolvedCount: numberOrZero(file.unresolvedCount || file.count),
+        primaryClass,
+        examples: file.examples || [],
+        severity: structuralHardStop ? "hard-stop" : "advisory",
+        nextAction: nextActionForUnresolvedClass(primaryClass, file),
+        rationale: structuralHardStop
+          ? "structural task lacks required graph proof; resolve or refresh before treating impact as complete"
+          : "unresolved edges make this affected file partial evidence, but do not block localized source work",
+      };
+    });
+}
+
+function selectPrimaryUnresolvedClass(classes = []) {
+  if (typeof classes === "string") {
+    const first = classes.split(",").map((item) => item.trim()).filter(Boolean)[0] || "";
+    return first.split(":")[0] || "unknown";
+  }
+  const sorted = (classes || [])
+    .map((item) => ({
+      name: item.name || item.class || "unknown",
+      count: numberOrZero(item.count),
+    }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  return sorted[0]?.name || "unknown";
+}
+
+function nextActionForUnresolvedClass(primaryClass, file = {}) {
+  const target = file.path ? ` in ${file.path}` : "";
+  if (primaryClass === "ambiguous-local-symbol") {
+    return `pin the ambiguous symbol by full path-qualified symbol id before relying on impact${target}`;
+  }
+  if (primaryClass === "import-or-scope-limitation") {
+    return `inspect imports and local scope around unresolved examples${target}`;
+  }
+  if (primaryClass === "external-or-reexport") {
+    return `confirm whether unresolved examples are package imports or re-export boundaries${target}`;
+  }
+  if (primaryClass === "dynamic-language-pattern") {
+    return `treat dynamic calls as manual-review points and inspect runtime dispatch${target}`;
+  }
+  if (primaryClass === "missing-symbol") {
+    return `search for the missing target symbol and refresh the index if it exists${target}`;
+  }
+  return `sample unresolved examples and decide whether to refresh graph data${target}`;
+}
+
+function formatUnresolvedHotspotActions(actions = []) {
+  return (actions || []).map((action) => (
+    `${action.path} ${action.severity} ${action.primaryClass}: ${action.nextAction}`
+  )).join("; ") || "none";
+}
+
 function inferResolvedEdgeRate({ impactEdges = [], callers = [], callees = [] } = {}) {
   const rows = [...(impactEdges || []), ...(callers || []), ...(callees || [])];
   const total = rows.length;
@@ -693,6 +858,16 @@ function trimMarkdown(markdown, maxChars) {
   if (!maxChars || markdown.length <= maxChars) return markdown;
   return `${markdown.slice(0, Math.max(0, maxChars - 90))}\n\n## Trim Notice\n- Context trimmed to ${maxChars} chars.\n`;
 }
+
+const QUERY_QUALITY_STOP_WORDS = new Set([
+  "the", "and", "for", "with", "from", "this", "that", "into", "when", "where", "what", "why", "how",
+  "please", "need", "needs", "make", "add", "change", "update", "fix", "use", "using", "about", "around",
+]);
+
+const QUERY_QUALITY_GENERIC_TERMS = new Set([
+  "bug", "bugs", "fix", "issue", "issues", "problem", "problems", "error", "errors", "feature", "change",
+  "update", "refactor", "code", "context", "thing", "stuff", "logic", "flow", "work", "works", "broken",
+]);
 
 function inferCodeGraphTaskType(text = "") {
   const value = String(text || "").toLowerCase();

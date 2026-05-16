@@ -11,8 +11,10 @@ This template is grounded in the official OpenCode documentation:
 
 OpenCode uses JSON or JSONC config, Markdown agents, MCP servers, providers and
 models, permissions, server settings, watcher ignores, plugins, and schema-backed
-validation. Supervibe provider tooling should keep project config in
-`opencode.json` and avoid mutating global config unless explicitly requested.
+validation. Supervibe provider tooling may document project `opencode.json`
+templates as user-owned inputs, but Genesis and Adapt runtime writes are
+user-provider-home scoped only and must not create or mutate project runtime
+configs.
 
 ## Scope And Precedence
 
@@ -87,10 +89,33 @@ for global agents. The `.opencode` and global config directories use plural
 subdirectory names such as `agents/`, `commands/`, `plugins/`, `skills/`,
 `tools/`, and `themes/`.
 
+These are OpenCode-local adapter locations. Shipped Supervibe plugin agents live
+under tracked `agents/`; do not copy production plugin agents into
+`.opencode/agents/` or any other provider-local agent directory.
+
 Per-agent permission overrides are supported and should be used to narrow risky
 subagents. Review-only agents should deny `edit`; build agents can ask for
 `bash`; orchestrators can control which subagents they may invoke through
 `permission.task` with glob patterns.
+
+## Supervibe Workflow Policy
+
+Before broad source search for command-like requests, route with
+`node scripts/supervibe-commands.mjs --match "<user request>"`; stop on
+`INTENT: missing_slash_command` or `HARD_STOP: true`.
+
+For plan, graph, and task workflows, defer tests and global validators to the
+final release or merge gate. Use text search and scoped diff checks while
+drafting.
+
+Claimed Supervibe command, skill, agent, worker, reviewer, validator, producer,
+or external-tool invocations require runtime-issued workflow receipts. A command,
+skill, or question-proposal receipt cannot substitute for worker, reviewer,
+validator, agent, or durable artifact proof.
+
+Keep production guidance free of internal initiative names, task ids, temporary
+evidence paths, and source-only rationale unless those labels are part of the
+public user contract.
 
 ## MCP
 

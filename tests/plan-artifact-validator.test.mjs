@@ -224,6 +224,36 @@ test('validate-plan-artifacts CLI fails bad file', async () => {
   }));
 });
 
+test('validate-plan-artifacts treats reviewed phase epic shards as derived plans', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'plan-validator-phase-shard-'));
+  const plansDir = join(dir, '.supervibe', 'artifacts', 'plans');
+  const phaseDir = join(plansDir, 'IVAN-SUPER-UPDATE');
+  await mkdir(phaseDir, { recursive: true });
+  await writeFile(join(plansDir, '2026-05-15-IVAN-SUPER-UPDATE.md'), GOOD_PLAN, 'utf8');
+  await writeFile(join(phaseDir, '2026-05-15-IVAN-SUPER-UPDATE-P0.md'), [
+    '# IVAN-SUPER-UPDATE P0 Phase Epic Plan',
+    '',
+    'Status: phase-split execution plan derived from reviewed IVAN-SUPER-UPDATE',
+    'Source plan: .supervibe/artifacts/plans/2026-05-15-IVAN-SUPER-UPDATE.md',
+    'Execution mode: main branch, epic-first, multi-agent ready',
+    '',
+    '## Goal',
+    '',
+    'Execute a derived phase epic without pretending it is the canonical implementation plan.',
+    '',
+  ].join('\n'), 'utf8');
+
+  const output = execFileSync(process.execPath, [
+    join(process.cwd(), 'scripts', 'validate-plan-artifacts.mjs'),
+    '--all',
+  ], {
+    cwd: dir,
+    encoding: 'utf8',
+    stdio: 'pipe',
+  });
+  assert.match(output, /OK\s+phase-plan\s+\.supervibe\/artifacts\/plans\/IVAN-SUPER-UPDATE\/2026-05-15-IVAN-SUPER-UPDATE-P0\.md/);
+});
+
 test('validate-plan-artifacts strict mode fails active graph with missing source and snapshot', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'plan-validator-active-source-'));
   const graphDir = join(dir, '.supervibe', 'memory', 'work-items', 'epic-missing-source');

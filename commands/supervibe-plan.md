@@ -11,6 +11,20 @@ last-verified: "2026-05-10"
 
 Direct trigger for the `supervibe:writing-plans` skill. Use after `/supervibe-brainstorm` (or any other producer of an approved spec) to lay out exactly how the work gets done.
 
+## Work Graph Command Compatibility
+
+| Command | Planning responsibility | Graph mutation allowed | Handoff | Exit states |
+| --- | --- | --- | --- | --- |
+| `/supervibe-plan` | Resolve approved spec, write durable plan, run mandatory review, and hand off only after explicit user gates. | No | `/supervibe-loop --atomize-plan <plan> --plan-review-passed` after review passes. | `plan-draft`, `review-required`, `plan-reviewed`, `replan-required`, `blocked` |
+| `/supervibe-loop` | Atomize reviewed plans into the native work graph, then execute or mutate work only after the next visible user gate. | Yes, after review and atomization gates pass. | `/supervibe-status --file <graph.json>` for read-only inspection or loop execution commands for mutations. | `ready`, `running`, `blocked`, `awaiting-user-acceptance`, `completed-awaiting-archive`, `failed` |
+| `/supervibe-status` | Read plan/graph state and report the next safe action without changing task state. | No | Back to plan review, loop atomization, loop repair, or no action. | `ok`, `warnings`, `blocked`, `failed` |
+
+Command contract notes:
+- A plan is not an executable graph. The plan command may produce a reviewed plan and review evidence, but only the loop command can create or mutate `graph.json`.
+- The review pass state must include current-run reviewer receipts before the atomization handoff is offered as actionable.
+- Each planning exit must preserve a resume cursor: plan path, review artifact path when known, next command, user gate, and stop reason.
+- If atomization or execution is requested before review evidence exists, route to `/supervibe-plan --review <plan>` and stop.
+
 ## Continuation Contract
 
 Do not stop after individual plan phases, file-structure mapping, first task group, or the first review-gate draft. A `/supervibe-plan` invocation should show a compact plan-scope preview, wait for an explicit approve/revise/exclude-or-defer/stop choice, then write the full plan before the review handoff, unless the user explicitly stops/pauses, the spec is missing or unapproved, or a single blocking ambiguity prevents a production-safe plan.

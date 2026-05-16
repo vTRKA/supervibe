@@ -15,6 +15,13 @@ const DEFAULT_CONTEXT_PACK_TOKEN_SLO = Object.freeze({
   warningRatio: 0.7,
   hardRatio: 1.0,
 });
+const DEFAULT_SUBAGENT_HYDRATION_MAX_TOKENS = 1_200;
+const DEFAULT_CONTEXT_PACK_SECTION_RATIOS = Object.freeze({
+  workflow: 0.45,
+  retrieval: 0.25,
+  sourcePointers: 0.2,
+  metrics: 0.1,
+});
 const TERMINAL_WORK_ITEM_STATUSES = new Set(["done", "closed", "complete", "completed", "verified", "skipped", "cancelled", "canceled"]);
 
 export async function buildContextPack({
@@ -26,6 +33,7 @@ export async function buildContextPack({
   evidenceLimit = 8,
   maxChars = 12_000,
   maxTokens = Math.ceil(maxChars / 4),
+  subagentHydrationMaxTokens = Math.min(DEFAULT_SUBAGENT_HYDRATION_MAX_TOKENS, maxTokens),
   tokenWarningRatio = DEFAULT_CONTEXT_PACK_TOKEN_SLO.warningRatio,
   tokenHardRatio = DEFAULT_CONTEXT_PACK_TOKEN_SLO.hardRatio,
   now = new Date().toISOString(),
@@ -112,6 +120,8 @@ export async function buildContextPack({
       maxChars,
       estimatedTokens: 0,
       tokenBudget: null,
+      subagentHydrationTokens: 0,
+      subagentHydrationBudget: null,
     },
     omitted: [
       "closed sibling task bodies",
@@ -129,11 +139,30 @@ export async function buildContextPack({
     warningRatio: tokenWarningRatio,
     hardRatio: tokenHardRatio,
   });
+  pack.contextBudget = evaluateContextPackBudget({
+    pack,
+    maxTokens,
+    warningRatio: tokenWarningRatio,
+    hardRatio: tokenHardRatio,
+  });
+  pack.subagentHydration = buildSubagentHydrationPack(pack, {
+    maxTokens: subagentHydrationMaxTokens,
+    warningRatio: tokenWarningRatio,
+    hardRatio: tokenHardRatio,
+  });
+  pack.summary.subagentHydrationTokens = pack.subagentHydration.tokenBudget.estimatedTokens;
+  pack.summary.subagentHydrationBudget = pack.subagentHydration.tokenBudget;
   markdown = trimPackMarkdown(formatContextPackMarkdown(pack), maxChars);
   pack.markdown = markdown;
   pack.summary.estimatedTokens = estimateTokens(markdown);
   pack.summary.tokenBudget = evaluateContextPackTokenSlo({
     estimatedTokens: pack.summary.estimatedTokens,
+    maxTokens,
+    warningRatio: tokenWarningRatio,
+    hardRatio: tokenHardRatio,
+  });
+  pack.contextBudget = evaluateContextPackBudget({
+    pack,
     maxTokens,
     warningRatio: tokenWarningRatio,
     hardRatio: tokenHardRatio,
@@ -194,14 +223,167 @@ export function formatContextPackMarkdown(pack = {}) {
     "## Omitted Context",
     formatList(pack.omitted || []),
     "",
+    "## Subagent Hydration",
+    `- Status: ${pack.subagentHydration?.tokenBudget?.status || "unknown"} (${pack.subagentHydration?.tokenBudget?.estimatedTokens ?? 0}/${pack.subagentHydration?.tokenBudget?.maxTokens ?? "unknown"})`,
+    `- Workflow only: ${pack.subagentHydration?.scope?.workflowOnly === true}`,
+    `- Retrieval omitted: ${formatInlineList(pack.subagentHydration?.scope?.omittedSources || [])}`,
+    "",
     "## Pack Metrics",
     `- Estimated tokens: ${pack.summary?.estimatedTokens ?? estimateTokens(JSON.stringify(pack))}`,
     `- Token budget: ${pack.summary?.tokenBudget?.status || "unknown"} (${pack.summary?.tokenBudget?.estimatedTokens ?? pack.summary?.estimatedTokens ?? 0}/${pack.summary?.tokenBudget?.maxTokens ?? "unknown"})`,
+    `- Context budget: ${pack.contextBudget?.status || "unknown"}; workflow=${pack.contextBudget?.sections?.workflow?.estimatedTokens ?? 0}, retrieval=${pack.contextBudget?.sections?.retrieval?.estimatedTokens ?? 0}, source-pointers=${pack.contextBudget?.sections?.sourcePointers?.estimatedTokens ?? 0}`,
     `- Total work items: ${pack.summary?.totalItems ?? 0}`,
     `- Omitted items: ${pack.summary?.omittedItems ?? 0}`,
     `- Cleanup-hidden evidence: ${pack.summary?.cleanupLifecycleHiddenEvidence ?? 0}`,
     "",
   ].join("\n");
+}
+
+
+export function buildSubagentHydrationPack(pack = {}, {
+  maxTokens = DEFAULT_SUBAGENT_HYDRATION_MAX_TOKENS,
+  warningRatio = DEFAULT_CONTEXT_PACK_TOKEN_SLO.warningRatio,
+  hardRatio = DEFAULT_CONTEXT_PACK_TOKEN_SLO.hardRatio,
+} = {}) {
+  const item = pack.activeItem || {};
+  const sourcePointers = {
+    semanticAnchors: (pack.semanticAnchors || []).map((anchor) => ({
+      filePath: anchor.filePath,
+      startLine: anchor.startLine,
+      anchorId: anchor.anchorId,
+      symbolName: anchor.symbolName || "",
+      responsibility: anchor.responsibility || "",
+    })),
+    fileLocalContracts: (pack.fileLocalContracts || []).map((contract) => ({
+      filePath: contract.filePath,
+      startLine: contract.startLine,
+      contractId: contract.contractId,
+      purpose: contract.purpose,
+      invariants: contract.invariants || [],
+      forbiddenChanges: contract.forbiddenChanges || [],
+    })),
+  };
+  const hydration = {
+    schemaVersion: 1,
+    kind: "subagent-hydration-pack",
+    generatedAt: pack.generatedAt || new Date().toISOString(),
+    graphId: pack.graphId || null,
+    taskId: item.itemId || item.id || null,
+    scope: {
+      workflowOnly: true,
+      retrievalSeparated: true,
+      sourcePointersSeparated: true,
+      omittedSources: [
+        "project memory summaries",
+        "raw evidence entries",
+        "index diagnostics",
+        "closed sibling task bodies",
+      ],
+    },
+    workflowSignal: pack.workflowSignal || null,
+    task: {
+      id: item.itemId || item.id || null,
+      status: item.effectiveStatus || item.status || "unknown",
+      title: item.title || item.goal || "none",
+      priority: item.priority || item.severity || "normal",
+      owner: item.owner || item.claims?.[0]?.agentId || "unowned",
+      acceptance: item.acceptanceCriteria || item.acceptance || [],
+      verification: item.verificationCommands || item.verification || [],
+      writeScope: (item.writeScope || []).map((scope) => scope.path || scope),
+    },
+    dependencies: (pack.dependencies || []).map((dep) => ({
+      id: dep.itemId || dep.id,
+      status: dep.effectiveStatus || dep.status || "unknown",
+      title: dep.title || dep.goal || "",
+    })),
+    blockers: (pack.blockers || []).map((blocker) => ({
+      id: blocker.itemId || blocker.id,
+      status: blocker.effectiveStatus || blocker.status || "unknown",
+      title: blocker.title || blocker.goal || "",
+      reason: blocker.blockerReason || blocker.blockReason || blocker.dependencyBlockers?.join(",") || "blocked",
+      nextAction: blocker.blockerNextAction || `inspect ${blocker.itemId || blocker.id}`,
+    })),
+    sourcePointers,
+    nextAction: pack.workflowSignal?.nextAction || (item.itemId ? `continue ${item.itemId}` : "select an active work item"),
+  };
+  hydration.markdown = trimPackMarkdown(formatSubagentHydrationMarkdown(hydration), Math.max(0, Number(maxTokens || 0) * 4));
+  hydration.tokenBudget = evaluateContextPackTokenSlo({
+    estimatedTokens: estimateTokens(hydration.markdown),
+    maxTokens,
+    warningRatio,
+    hardRatio,
+  });
+  return hydration;
+}
+
+export function evaluateContextPackBudget({
+  pack = {},
+  maxTokens = 3_000,
+  warningRatio = DEFAULT_CONTEXT_PACK_TOKEN_SLO.warningRatio,
+  hardRatio = DEFAULT_CONTEXT_PACK_TOKEN_SLO.hardRatio,
+  sectionRatios = DEFAULT_CONTEXT_PACK_SECTION_RATIOS,
+} = {}) {
+  const sections = {
+    workflow: formatContextBudgetWorkflowSection(pack),
+    retrieval: [
+      "## Evidence",
+      formatList((pack.evidence || []).map((entry) => `${entry.kind || "evidence"} ${entry.path || entry.command || entry.summary || ""}`)),
+      "",
+      "## Relevant Memory",
+      formatList((pack.memory || []).map((entry) => `${entry.id} (${entry.category}, score=${entry.score}, ${entry.freshness}): ${entry.summary}`)),
+      "",
+    ].join("\n"),
+    sourcePointers: [
+      "## Semantic Anchors",
+      formatList((pack.semanticAnchors || []).map((anchor) => `${anchor.filePath}:${anchor.startLine} ${anchor.anchorId} ${anchor.symbolName || ""} ${anchor.responsibility || ""}`)),
+      "",
+      "## File-Local Contracts",
+      formatList((pack.fileLocalContracts || []).map((contract) => `${contract.filePath}:${contract.startLine} ${contract.contractId} ${contract.purpose} invariants=${formatInlineList(contract.invariants)} forbidden=${formatInlineList(contract.forbiddenChanges)}`)),
+      "",
+    ].join("\n"),
+    metrics: [
+      "## Omitted Context",
+      formatList(pack.omitted || []),
+      "",
+      "## Pack Metrics",
+      `- Estimated tokens: ${pack.summary?.estimatedTokens ?? 0}`,
+      `- Token budget: ${pack.summary?.tokenBudget?.status || "unknown"}`,
+      "",
+    ].join("\n"),
+  };
+  const evaluatedSections = Object.fromEntries(Object.entries(sections).map(([name, markdown]) => {
+    const estimatedTokens = estimateTokens(markdown);
+    const sectionMaxTokens = Math.max(1, Math.floor(Number(maxTokens || 0) * Number(sectionRatios[name] || 0)));
+    return [name, {
+      estimatedTokens,
+      maxTokens: sectionMaxTokens,
+      pressure: Number((estimatedTokens / sectionMaxTokens).toFixed(3)),
+      pass: estimatedTokens <= sectionMaxTokens,
+    }];
+  }));
+  const totalTokens = Object.values(evaluatedSections).reduce((sum, section) => sum + section.estimatedTokens, 0);
+  const tokenBudget = evaluateContextPackTokenSlo({
+    estimatedTokens: totalTokens,
+    maxTokens,
+    warningRatio,
+    hardRatio,
+  });
+  return {
+    status: tokenBudget.status,
+    pass: tokenBudget.pass && evaluatedSections.workflow.pass,
+    maxTokens: Number(maxTokens || 0),
+    estimatedTokens: totalTokens,
+    pressure: tokenBudget.pressure,
+    sections: evaluatedSections,
+    separation: {
+      workflowExcludesRetrieval: true,
+      retrievalExcludesWorkflow: true,
+      sourcePointersSeparate: true,
+    },
+    nextAction: tokenBudget.pass && evaluatedSections.workflow.pass
+      ? "execute"
+      : "split context or lower retrieval limits before multi-agent handoff",
+  };
 }
 
 export function filterCleanupContextItems(items = [], { includeHistory = false, reachability = null } = {}) {
@@ -360,6 +542,90 @@ async function collectFileLocalContracts({ rootDir, activeItem, semanticAnchors 
     if (contracts.length >= limit) break;
   }
   return contracts.slice(0, limit);
+}
+
+function formatSubagentHydrationMarkdown(hydration = {}) {
+  const sourcePointers = [
+    ...(hydration.sourcePointers?.semanticAnchors || []).map((anchor) => `${anchor.filePath}:${anchor.startLine} ${anchor.anchorId} ${anchor.symbolName} ${anchor.responsibility}`),
+    ...(hydration.sourcePointers?.fileLocalContracts || []).map((contract) => `${contract.filePath}:${contract.startLine} ${contract.contractId} ${contract.purpose}`),
+  ];
+  return [
+    "# Subagent Hydration Pack",
+    "",
+    "Generated: " + (hydration.generatedAt || "unknown"),
+    "Task: " + (hydration.taskId || "none"),
+    "Graph: " + (hydration.graphId || "unknown"),
+    "",
+    "## Workflow Signal",
+    formatWorkflowSignal(hydration.workflowSignal),
+    "",
+    "## Task Contract",
+    "- ID: " + (hydration.task?.id || "none"),
+    "- Status: " + (hydration.task?.status || "unknown"),
+    "- Title: " + (hydration.task?.title || "none"),
+    "- Priority: " + (hydration.task?.priority || "normal"),
+    "- Owner: " + (hydration.task?.owner || "unowned"),
+    "",
+    "## Acceptance",
+    formatList(hydration.task?.acceptance || []),
+    "",
+    "## Verification",
+    formatList(hydration.task?.verification || []),
+    "",
+    "## Write Scope",
+    formatList(hydration.task?.writeScope || []),
+    "",
+    "## Dependencies",
+    formatList((hydration.dependencies || []).map((dep) => `${dep.id}: ${dep.status} ${dep.title}`)),
+    "",
+    "## Current Blockers",
+    formatList((hydration.blockers || []).map((blocker) => `${blocker.id}: ${blocker.status} ${blocker.title} reason=${blocker.reason} next=${blocker.nextAction}`)),
+    "",
+    "## Source Pointers",
+    formatList(sourcePointers),
+    "",
+    "## Omitted Retrieval",
+    formatList(hydration.scope?.omittedSources || []),
+    "",
+    "## Next Action",
+    "- " + (hydration.nextAction || "execute"),
+    "",
+  ].join("\n");
+}
+
+function formatContextBudgetWorkflowSection(pack = {}) {
+  const item = pack.activeItem || {};
+  return [
+    "## Workflow Signal",
+    formatWorkflowSignal(pack.workflowSignal, pack.flow),
+    "",
+    "## Active Work",
+    "- ID: " + (item.itemId || item.id || "none"),
+    "- Status: " + (item.effectiveStatus || item.status || "unknown"),
+    "- Title: " + (item.title || item.goal || "none"),
+    "- Priority: " + (item.priority || item.severity || "normal"),
+    "- Owner: " + (item.owner || item.claims?.[0]?.agentId || "unowned"),
+    "",
+    "## Acceptance",
+    formatList(item.acceptanceCriteria || item.acceptance || []),
+    "",
+    "## Verification",
+    formatList(item.verificationCommands || item.verification || []),
+    "",
+    "## Write Scope",
+    formatList((item.writeScope || []).map((scope) => scope.path || scope)),
+    "",
+    "## Dependencies",
+    formatList((pack.dependencies || []).map((dep) => `${dep.itemId || dep.id}: ${dep.effectiveStatus || dep.status || "unknown"} ${dep.title || dep.goal || ""}`)),
+    "",
+    "## Current Blockers",
+    formatList((pack.blockers || []).map((blocker) => {
+      const reason = blocker.blockerReason || blocker.blockReason || blocker.dependencyBlockers?.join(",") || "blocked";
+      const nextAction = blocker.blockerNextAction || `inspect ${blocker.itemId || blocker.id}`;
+      return `${blocker.itemId || blocker.id}: ${blocker.effectiveStatus || blocker.status || "unknown"} ${blocker.title || blocker.goal || ""} reason=${reason} next=${nextAction}`;
+    })),
+    "",
+  ].join("\n");
 }
 
 function formatWorkflowSignal(signal = null, flow = null) {

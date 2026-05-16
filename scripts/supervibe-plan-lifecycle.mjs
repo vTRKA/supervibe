@@ -5,6 +5,7 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { buildSafeRepairPreview } from "./lib/supervibe-next-action-engine.mjs";
+import { createBlockerV1 } from "./lib/supervibe-work-state.mjs";
 
 export const PLAN_LIFECYCLE_STATUSES = Object.freeze([
   "active",
@@ -132,6 +133,7 @@ export function createPlanLifecycleReport({ rootDir = process.cwd(), planPath = 
     && (!activePlanPath || planKey(state.rootDir, entry.path) !== planKey(state.rootDir, activePlanPath))
   ));
   const activeSource = inspectActiveGraphSourceSync({ rootDir: state.rootDir });
+  const activeGraphResolver = resolveActiveGraphResolverDiagnostics({ rootDir: state.rootDir });
   const sourceEvaluation = activeSource.sourcePath
     ? evaluatePlanSourceAgainstLifecycle({ rootDir: state.rootDir, sourcePath: activeSource.sourcePath })
     : { issues: [], warnings: [], status: "missing" };
@@ -158,11 +160,245 @@ export function createPlanLifecycleReport({ rootDir = process.cwd(), planPath = 
     archiveAction,
     staleActiveSource,
     activeSource,
+    activeGraphResolver,
     sourceEvaluation,
     staleClosedPlans,
     nextAction,
     state,
   };
+}
+
+export function createPlanLifecycleStateSummary({ rootDir = process.cwd(), planPath = null } = {}) {
+  const report = createPlanLifecycleReport({ rootDir, planPath });
+  const blockers = [];
+  const activeTaskIds = report.activeGraphResolver?.affectedTaskIds || [];
+  const baseRepairCommand = planPath
+    ? `node scripts/supervibe-plan-lifecycle.mjs --repair --plan "${report.activePlanPath || planPath}"`
+    : "node scripts/supervibe-plan-lifecycle.mjs --repair --plan <plan.md>";
+
+  if (!report.activePlanPath) {
+    blockers.push(lifecycleSummaryBlocker({
+      code: "policy-hard-stop",
+      message: "No active plan pointer or registry-backed active plan was found.",
+      affectedTaskIds: activeTaskIds,
+      nextAction: "set active plan pointer before atomization, review, or execution",
+      repairCommand: baseRepairCommand,
+      releaseImpact: "Plan, graph, and task workflows cannot release deterministically without a canonical active plan.",
+    }));
+  }
+
+  if (report.staleActiveSource) {
+    blockers.push(lifecycleSummaryBlocker({
+      code: "policy-hard-stop",
+      message: "Active graph source does not match lifecycle state.",
+      affectedTaskIds: activeTaskIds,
+      nextAction: "repair active graph source before atomization, review, or execution",
+      repairCommand: baseRepairCommand,
+      releaseImpact: "Release readiness is blocked until the active graph source points at the canonical active plan.",
+    }));
+  }
+
+  if ((report.staleClosedPlans || []).length > 0) {
+    blockers.push(lifecycleSummaryBlocker({
+      code: "dependency-not-ready",
+      message: `${report.staleClosedPlans.length} closed plan(s) still need archive indexing.`,
+      affectedTaskIds: [],
+      nextAction: "index or archive stale closed plans before release",
+      repairCommand: baseRepairCommand,
+      releaseImpact: "Release evidence remains ambiguous while closed plans are outside the archive index.",
+    }));
+  }
+
+  if (report.activeGraphResolver?.blocker) {
+    blockers.push(lifecycleSummaryBlocker({
+      ...report.activeGraphResolver.blocker,
+      affectedTaskIds: activeTaskIds,
+      nextAction: report.activeGraphResolver.nextAction,
+      repairCommand: report.activeGraphResolver.repairCommand,
+      releaseImpact: report.activeGraphResolver.releaseImpact,
+    }));
+  }
+
+  blockers.sort((left, right) => right.priority - left.priority || left.code.localeCompare(right.code));
+
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    kind: "plan-lifecycle-state-summary",
+    status: blockers.length ? "blocked" : "ready",
+    activePlanPath: report.activePlanPath,
+    activeStatus: report.activeStatus,
+    activePlanSource: report.activePlanSource,
+    activeGraphPath: report.activeGraphResolver?.graphPath || null,
+    affectedTaskIds: [...new Set(blockers.flatMap((blocker) => blocker.affectedTaskIds || []))].sort(),
+    blockers,
+    blocker: blockers[0] || null,
+    nextAction: blockers[0]?.nextAction || report.nextAction || "continue lifecycle workflow",
+    repairCommand: blockers[0]?.repairCommand || null,
+    releaseImpact: blockers[0]?.releaseImpact || "No lifecycle state blocker detected.",
+  };
+}
+
+export function resolveActiveGraphResolverDiagnostics({ rootDir = process.cwd(), graphPath = null } = {}) {
+  const resolvedRoot = resolve(rootDir);
+  const activeSource = graphPath
+    ? { status: "active", graphPath: resolveProjectPath(resolvedRoot, graphPath), sourcePath: null }
+    : inspectActiveGraphSourceSync({ rootDir: resolvedRoot });
+  const resolvedGraphPath = activeSource.graphPath;
+  const baseRepairCommand = "node scripts/supervibe-loop.mjs --status";
+
+  if (!resolvedGraphPath) {
+    return activeGraphDiagnostic({
+      rootDir: resolvedRoot,
+      status: "blocked",
+      graphPath: null,
+      affectedTaskIds: [],
+      blocker: createBlockerV1({
+        code: "policy-hard-stop",
+        message: "No active work-item graph is registered.",
+        repairCommand: baseRepairCommand,
+        releaseImpact: "Plan, graph, and task workflows cannot dispatch until an active graph is selected or repaired.",
+      }),
+      nextAction: "select or repair the active work-item graph before dispatch",
+      repairCommand: baseRepairCommand,
+      releaseImpact: "Release workflow readiness is blocked because there is no deterministic active graph.",
+    });
+  }
+
+  let graph;
+  try {
+    graph = JSON.parse(readFileSync(resolvedGraphPath, "utf8"));
+  } catch (error) {
+    return activeGraphDiagnostic({
+      rootDir: resolvedRoot,
+      status: "blocked",
+      graphPath: resolvedGraphPath,
+      affectedTaskIds: [],
+      blocker: createBlockerV1({
+        code: "policy-hard-stop",
+        message: `Active work-item graph is unreadable: ${error.message}`,
+        repairCommand: baseRepairCommand,
+        releaseImpact: "Workflow dispatch and release readiness cannot be trusted until the active graph can be read.",
+      }),
+      nextAction: "repair or regenerate the active work-item graph JSON",
+      repairCommand: baseRepairCommand,
+      releaseImpact: "Release workflow readiness is blocked by an unreadable active graph.",
+    });
+  }
+
+  const items = Array.isArray(graph.items) ? graph.items : [];
+  const itemById = new Map(items.map((item) => [item.itemId || item.id, item]).filter(([id]) => id));
+  const taskItems = items.filter((item) => isDispatchableGraphItem(item));
+  const readyTaskIds = [];
+  const affectedTaskIds = [];
+  const blockedDetails = [];
+
+  for (const item of taskItems) {
+    const itemId = item.itemId || item.id;
+    const deps = graphItemDependencies(item);
+    const unmet = deps.filter((depId) => !isGraphDependencySatisfied(itemById.get(depId)));
+    if (unmet.length === 0) readyTaskIds.push(itemId);
+    else {
+      affectedTaskIds.push(itemId);
+      blockedDetails.push({ itemId, unmetDependencyIds: unmet });
+    }
+  }
+
+  if (readyTaskIds.length > 0) {
+    return activeGraphDiagnostic({
+      rootDir: resolvedRoot,
+      status: "ready",
+      graphPath: resolvedGraphPath,
+      readyTaskIds,
+      affectedTaskIds: [],
+      nextAction: `claim one ready task: ${readyTaskIds[0]}`,
+      repairCommand: null,
+      releaseImpact: "No active graph resolver blocker; at least one task is dispatchable.",
+    });
+  }
+
+  const blocker = createBlockerV1({
+    code: "dependency-not-ready",
+    message: affectedTaskIds.length
+      ? `No ready tasks; ${affectedTaskIds.length} task(s) are waiting on unfinished dependencies.`
+      : "No ready tasks were found in the active graph.",
+    repairCommand: baseRepairCommand,
+    releaseImpact: "The active graph cannot dispatch additional work until dependencies complete or the graph is repaired.",
+  });
+
+  return activeGraphDiagnostic({
+    rootDir: resolvedRoot,
+    status: "blocked",
+    graphPath: resolvedGraphPath,
+    affectedTaskIds,
+    blockedDetails,
+    blocker,
+    nextAction: affectedTaskIds.length
+      ? "complete upstream dependencies or repair dependency edges before dispatch"
+      : "inspect active graph items and repair missing ready work",
+    repairCommand: baseRepairCommand,
+    releaseImpact: "Release workflow readiness remains blocked until at least one active graph task is ready.",
+  });
+}
+
+function lifecycleSummaryBlocker({ affectedTaskIds = [], nextAction, ...input }) {
+  const blocker = createBlockerV1(input);
+  return {
+    ...blocker,
+    affectedTaskIds: [...new Set(affectedTaskIds.filter(Boolean))].sort(),
+    nextAction,
+  };
+}
+
+function activeGraphDiagnostic({
+  rootDir,
+  status,
+  graphPath,
+  readyTaskIds = [],
+  affectedTaskIds = [],
+  blockedDetails = [],
+  blocker = null,
+  nextAction,
+  repairCommand,
+  releaseImpact,
+}) {
+  const blockers = blocker ? [{
+    ...blocker,
+    affectedTaskIds,
+    nextAction,
+  }] : [];
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    kind: "active-graph-resolver-diagnostics",
+    status,
+    graphPath: graphPath ? normalizeProjectPath(rootDir, graphPath) : null,
+    readyTaskIds,
+    affectedTaskIds,
+    blockedDetails,
+    blockers,
+    blocker: blockers[0] || null,
+    nextAction,
+    repairCommand,
+    releaseImpact,
+  };
+}
+
+function isDispatchableGraphItem(item = {}) {
+  const itemId = item.itemId || item.id;
+  if (!itemId || item.type === "epic" || item.kind === "epic") return false;
+  const status = String(item.status || item.state || "open").trim().toLowerCase();
+  return ["open", "ready"].includes(status);
+}
+
+function graphItemDependencies(item = {}) {
+  const deps = item.dependencies || item.dependsOn || item.deps || [];
+  return (Array.isArray(deps) ? deps : [deps])
+    .map((dep) => typeof dep === "string" ? dep : dep?.itemId || dep?.id)
+    .filter(Boolean);
+}
+
+function isGraphDependencySatisfied(item = {}) {
+  const status = String(item?.status || item?.state || "").trim().toLowerCase();
+  return ["done", "closed", "complete", "completed", "skipped", "cancelled"].includes(status);
 }
 
 export function formatPlanLifecycleReport(report = {}) {
@@ -181,6 +417,29 @@ export function formatPlanLifecycleReport(report = {}) {
   for (const issue of report.sourceEvaluation?.issues || []) lines.push(`ISSUE: ${issue}`);
   for (const plan of report.staleClosedPlans || []) lines.push(`ARCHIVE_CANDIDATE: ${plan.path} status=${plan.status}`);
   lines.push(`NEXT_ACTION: ${report.nextAction || "inspect plan lifecycle"}`);
+  return lines.join("\n");
+}
+
+export function formatPlanLifecycleStateSummary(summary = {}) {
+  const lines = [
+    "SUPERVIBE_PLAN_LIFECYCLE_STATE_SUMMARY",
+    `STATUS: ${summary.status || "unknown"}`,
+    `ACTIVE_PLAN: ${summary.activePlanPath || "none"}`,
+    `ACTIVE_STATUS: ${summary.activeStatus || "missing"}`,
+    `ACTIVE_SOURCE: ${summary.activePlanSource || "missing"}`,
+    `ACTIVE_GRAPH: ${summary.activeGraphPath || "none"}`,
+    `AFFECTED_TASK_IDS: ${(summary.affectedTaskIds || []).join(",") || "none"}`,
+    `BLOCKERS: ${summary.blockers?.length || 0}`,
+  ];
+  for (const blocker of summary.blockers || []) {
+    lines.push(`BLOCKER: code=${blocker.code} affectedTaskIds=${(blocker.affectedTaskIds || []).join(",") || "none"}`);
+    lines.push(`  NEXT_ACTION: ${blocker.nextAction || "inspect lifecycle state"}`);
+    lines.push(`  REPAIR_COMMAND: ${blocker.repairCommand || "none"}`);
+    lines.push(`  RELEASE_IMPACT: ${blocker.releaseImpact}`);
+  }
+  lines.push(`NEXT_ACTION: ${summary.nextAction || "inspect lifecycle state"}`);
+  lines.push(`REPAIR_COMMAND: ${summary.repairCommand || "none"}`);
+  lines.push(`RELEASE_IMPACT: ${summary.releaseImpact || "unknown"}`);
   return lines.join("\n");
 }
 
@@ -634,6 +893,7 @@ async function main() {
       plan: { type: "string" },
       status: { type: "boolean", default: false },
       repair: { type: "boolean", default: false },
+      summary: { type: "boolean", default: false },
       apply: { type: "boolean", default: false },
       "dry-run": { type: "boolean", default: false },
       "receipt-id": { type: "string" },
@@ -647,6 +907,7 @@ async function main() {
   if (values.help) {
     console.log(`Usage:
   node scripts/supervibe-plan-lifecycle.mjs --status [--root <dir>]
+  node scripts/supervibe-plan-lifecycle.mjs --summary [--root <dir>] [--plan <plan.md>]
   node scripts/supervibe-plan-lifecycle.mjs --repair --plan <plan.md> [--dry-run]
   node scripts/supervibe-plan-lifecycle.mjs --repair --plan <plan.md> --apply --receipt-id <workflow-id>
   node scripts/supervibe-plan-lifecycle.mjs --delete-plan <plan.md> --receipt-id <workflow-id>`);
@@ -672,6 +933,13 @@ async function main() {
     });
     if (values.json) console.log(JSON.stringify(result, null, 2));
     else console.log(formatPlanLifecycleRepairResult(result));
+    return;
+  }
+
+  if (values.summary) {
+    const summary = createPlanLifecycleStateSummary({ rootDir, planPath: values.plan || null });
+    if (values.json) console.log(JSON.stringify(summary, null, 2));
+    else console.log(formatPlanLifecycleStateSummary(summary));
     return;
   }
 

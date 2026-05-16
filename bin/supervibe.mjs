@@ -22,6 +22,7 @@ const RUNNABLE_COMMANDS = Object.freeze({
   "supervibe-ui": "scripts/supervibe-ui.mjs",
   "supervibe-update": "scripts/supervibe-upgrade.mjs",
   "supervibe-validate": "scripts/supervibe-workflow-validate.mjs",
+  "supervibe-work": "scripts/lib/supervibe-work-facade.mjs",
 });
 
 const AI_CLI_ONLY_COMMANDS = Object.freeze(new Set([
@@ -64,6 +65,7 @@ const SUBCOMMAND_ALIASES = Object.freeze({
   upgrade: "supervibe-update",
   validate: "supervibe-validate",
   verify: "supervibe-verify",
+  work: "supervibe-work",
 });
 
 const HELP_FORWARD_COMMANDS = Object.freeze(new Set([
@@ -77,6 +79,7 @@ const HELP_FORWARD_COMMANDS = Object.freeze(new Set([
   "supervibe-stage",
   "supervibe-update",
   "supervibe-ui",
+  "supervibe-work",
 ]));
 
 const args = process.argv.slice(2);
@@ -138,9 +141,10 @@ function resolveInvocation({ argv1, args }) {
   const binaryName = normalizeCommandName(basename(String(argv1 || "supervibe"), ".mjs"));
   const firstArg = args[0] ? normalizeCommandName(args[0]) : "";
   const requestedHelp = args.includes("--help") || args.includes("-h");
-  const rootHelp = args.length === 0 && binaryName === "supervibe" || requestedHelp && binaryName === "supervibe" && !firstArg;
+  const isRootBinary = binaryName === "supervibe" || binaryName === "sv";
+  const rootHelp = args.length === 0 && isRootBinary || requestedHelp && isRootBinary && !firstArg;
 
-  if (binaryName !== "supervibe") {
+  if (!isRootBinary) {
     return { commandName: binaryName, args, rootHelp: false, commandHelp: requestedHelp };
   }
 
@@ -176,6 +180,7 @@ function formatHelp() {
     "SUPERVIBE_TERMINAL_HELP",
     "Usage:",
     "  supervibe <command> [args]",
+    "  sv work <action> [args]",
     "  supervibe-adapt --dry-run --project <path>",
     "  supervibe-status --index-health",
     "  supervibe-doctor --host all",

@@ -97,6 +97,20 @@ stale claims, orphaned evidence, and terminal counts. Use `--ready`, `--blocked`
 `--stale`, and `--orphan` to include focused rows for the current graph or the
 graph passed with `--file`.
 
+## Work Graph Command Compatibility
+
+| Command | Status responsibility | Graph mutation allowed | Preferred next command | Exit states surfaced |
+| --- | --- | --- | --- | --- |
+| `/supervibe-plan` | Show missing review, unatomized plan, or handoff state when plan artifacts are referenced. | No | `/supervibe-plan --review <plan>` or `/supervibe-loop --atomize-plan <plan> --plan-review-passed` | `review-required`, `plan-ready`, `blocked` |
+| `/supervibe-loop` | Show active graph, run state, assignments, claims, blockers, evidence, archive candidates, and resume/stop commands. | No | `/supervibe-loop --file <graph.json>`, `--claim-ready`, `--validate-completion`, or `--close-eligible` | `ready`, `running`, `blocked`, `awaiting-user-acceptance`, `completed-awaiting-archive`, `failed` |
+| `/supervibe-status` | Provide read-only summary, saved views, reports, dashboards, queries, policy, role, anchors, waves, and assignment explanations. | No, except explicit report/dashboard/view writes. | The single `NEXT_ACTION` printed in the status block. | `ok`, `warnings`, `blocked`, `failed` |
+
+Command contract notes:
+- Status is the read-only compatibility layer between plan and loop commands; it must not claim, close, reopen, skip, cancel, sync, or atomize work.
+- Every graph-aware status block must include graph path, detected source, lifecycle state, ready/blocked/stale/orphan counts, evidence gaps, and one exact next command or `none`.
+- If both a plan artifact and a graph artifact are visible, status must prefer the active graph for execution state and report the plan only as provenance or missing-review context.
+- Missing or stale graph evidence exits as `blocked` or `warnings` with a repair command, not as successful completion.
+
 ## Output Contract
 
 ```text

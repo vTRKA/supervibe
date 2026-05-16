@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
+import { basename, join } from "node:path";
 import {
   archiveMemoryGcCandidates,
   createMemoryGcPolicy,
@@ -21,6 +24,9 @@ if (args.help) {
     "Usage:",
     "  npm run supervibe:memory-gc -- --dry-run",
     "  npm run supervibe:memory-gc -- --policy",
+    "  npm run supervibe:memory-gc -- --queues",
+    "  npm run supervibe:memory-gc -- --dedupe-queue",
+    "  npm run supervibe:memory-gc -- --compact-queue",
     "  npm run supervibe:memory-gc -- --scheduled --dry-run",
     "  npm run supervibe:memory-gc -- --scheduled --auto --apply",
     "  npm run supervibe:memory-gc -- --category learnings --apply",
@@ -58,6 +64,17 @@ try {
     now: args.now || scan.now,
     scan,
   });
+  if (args.queues || args["dedupe-queue"] || args["compact-queue"]) {
+    const includeDedupe = args.queues || args["dedupe-queue"];
+    const includeCompact = args.queues || args["compact-queue"];
+    const queueLimit = Number(args["queue-limit"] || 20);
+    const queues = {
+      ...(includeDedupe ? { dedupe: await buildDedupeQueue({ rootDir, limit: queueLimit }) } : {}),
+      ...(includeCompact ? { compact: buildCompactQueue({ scan, schedule, limit: queueLimit }) } : {}),
+    };
+    console.log(args.json ? JSON.stringify({ schedule, queues }, null, 2) : formatQueueReport(queues));
+    process.exit(0);
+  }
   if (args.policy) {
     console.log(args.json ? JSON.stringify(schedule, null, 2) : formatMemoryGcSchedule(schedule));
     process.exit(0);
@@ -99,6 +116,9 @@ function parseArgs(argv) {
     else if (arg === "--dry-run") parsed.apply = false;
     else if (arg === "--json") parsed.json = true;
     else if (arg === "--stats") parsed.stats = true;
+    else if (arg === "--queues") parsed.queues = true;
+    else if (arg === "--dedupe-queue") parsed["dedupe-queue"] = true;
+    else if (arg === "--compact-queue") parsed["compact-queue"] = true;
     else if (arg === "--restore") parsed.restore = argv[++i];
     else if (arg.startsWith("--restore=")) parsed.restore = arg.slice("--restore=".length);
     else if (arg.startsWith("--")) {
@@ -112,4 +132,94 @@ function parseArgs(argv) {
     }
   }
   return parsed;
+}
+
+async function buildDedupeQueue({ rootDir, limit = 20 } = {}) {
+  const indexPath = join(rootDir, ".supervibe", "memory", "index.json");
+  if (!existsSync(indexPath)) {
+    return {
+      status: "missing-index",
+      indexPath,
+      candidates: [],
+      total: 0,
+      limit,
+      nextAction: "build memory index before duplicate review",
+    };
+  }
+  const index = JSON.parse(await readFile(indexPath, "utf8"));
+  const candidates = [];
+  const seen = new Set();
+  const append = (candidate, source) => {
+    const id = String(candidate.id || candidate.entryId || candidate.file || candidate.path || "");
+    if (!id || seen.has(id)) return;
+    seen.add(id);
+    candidates.push({
+      id,
+      entryId: candidate.entryId || candidate.id || null,
+      reason: candidate.reason || "possible-duplicate",
+      state: candidate.state || "new",
+      source,
+      action: "review-before-write",
+    });
+  };
+  for (const candidate of index.lifecycle?.candidateQueues?.duplicateReview || []) append(candidate, "lifecycle");
+  for (const candidate of index.quality?.duplicateCandidates || []) append(candidate, "quality");
+  return {
+    status: candidates.length ? "candidates" : "empty",
+    indexPath,
+    candidates: candidates.slice(0, limit),
+    total: candidates.length,
+    limit,
+    nextAction: candidates.length ? "review duplicates before changing memory entries" : "none",
+  };
+}
+
+function buildCompactQueue({ scan, schedule, limit = 20 } = {}) {
+  const candidates = (scan.candidates || []).map((candidate) => ({
+    id: candidate.id,
+    category: candidate.category,
+    file: basename(candidate.filePath),
+    reason: candidate.reason,
+    ageDays: candidate.ageDays,
+    confidence: candidate.confidence,
+    autoEligible: (schedule.autoArchiveReasons || []).includes(candidate.reason),
+    action: "review-before-write",
+  }));
+  return {
+    status: candidates.length ? "candidates" : "empty",
+    candidates: candidates.slice(0, limit),
+    total: candidates.length,
+    limit,
+    scheduledDue: Boolean(schedule.due),
+    autoEligible: schedule.autoEligible || 0,
+    nextAction: candidates.length ? "review compaction candidates before archival apply" : "none",
+  };
+}
+
+function formatQueueReport(queues = {}) {
+  const blocks = [];
+  if (queues.dedupe) blocks.push(formatSingleQueue("SUPERVIBE_MEMORY_DEDUPE_QUEUE", queues.dedupe));
+  if (queues.compact) blocks.push(formatSingleQueue("SUPERVIBE_MEMORY_COMPACT_QUEUE", queues.compact));
+  return blocks.join("\n\n");
+}
+
+function formatSingleQueue(title, queue) {
+  const lines = [
+    title,
+    `STATUS: ${queue.status}`,
+    `CANDIDATES: ${queue.total}`,
+    `SHOWING: ${queue.candidates.length}`,
+    `NEXT_ACTION: ${queue.nextAction}`,
+  ];
+  for (const candidate of queue.candidates) {
+    const suffix = [
+      candidate.category ? `category=${candidate.category}` : null,
+      candidate.file ? `file=${candidate.file}` : null,
+      candidate.reason ? `reason=${candidate.reason}` : null,
+      candidate.state ? `state=${candidate.state}` : null,
+      candidate.autoEligible === true ? "autoEligible=true" : null,
+    ].filter(Boolean).join(" ");
+    lines.push(`- ${candidate.id}${suffix ? ` ${suffix}` : ""}`);
+  }
+  return lines.join("\n");
 }

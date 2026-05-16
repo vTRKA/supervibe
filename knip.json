@@ -6,15 +6,87 @@
     "scripts/hooks/*.mjs",
     "scripts/lib/memory-preflight.mjs",
     "scripts/lib/regression-scorer.mjs",
-    ".husky/*"
+    ".husky/*",
+    "scripts/lib/supervibe-memory-autonomy.mjs",
+    "scripts/lib/supervibe-ready-diagnostics.mjs",
+    "scripts/lib/supervibe-work-facade.mjs"
   ],
   "ignoreIssues": {
-    "scripts/lib/autonomous-loop-provider-policy-guard.mjs": ["exports"],
-    "scripts/lib/supervibe-durable-task-tracker-adapter.mjs": ["exports"],
-    "scripts/lib/supervibe-work-item-comments.mjs": ["exports"],
-    "scripts/lib/supervibe-work-item-query.mjs": ["exports"],
-    "scripts/lib/supervibe-work-item-template-catalog.mjs": ["exports"],
-    "scripts/lib/supervibe-worktree-session-manager.mjs": ["exports"]
+    "scripts/lib/autonomous-loop-provider-policy-guard.mjs": [
+      "exports"
+    ],
+    "scripts/lib/supervibe-durable-task-tracker-adapter.mjs": [
+      "exports"
+    ],
+    "scripts/lib/supervibe-work-item-comments.mjs": [
+      "exports"
+    ],
+    "scripts/lib/supervibe-work-item-query.mjs": [
+      "exports"
+    ],
+    "scripts/lib/supervibe-work-item-template-catalog.mjs": [
+      "exports"
+    ],
+    "scripts/lib/supervibe-worktree-session-manager.mjs": [
+      "exports"
+    ],
+    "scripts/lib/code-index-health-status.mjs": [
+      "exports"
+    ],
+    "scripts/lib/code-watcher.mjs": [
+      "exports"
+    ],
+    "scripts/lib/supervibe-agent-run-bridge.mjs": [
+      "exports"
+    ],
+    "scripts/lib/supervibe-codegraph-context.mjs": [
+      "exports"
+    ],
+    "scripts/lib/supervibe-context-pack.mjs": [
+      "exports"
+    ],
+    "scripts/lib/supervibe-memory-autonomy.mjs": [
+      "exports"
+    ],
+    "scripts/lib/supervibe-plan-to-work-items.mjs": [
+      "exports"
+    ],
+    "scripts/lib/supervibe-proof-projection.mjs": [
+      "exports"
+    ],
+    "scripts/lib/supervibe-ready-diagnostics.mjs": [
+      "exports"
+    ],
+    "scripts/lib/supervibe-task-budget-policy.mjs": [
+      "exports"
+    ],
+    "scripts/lib/supervibe-task-graph-maturity.mjs": [
+      "exports"
+    ],
+    "scripts/lib/supervibe-task-tracker-sync.mjs": [
+      "exports"
+    ],
+    "scripts/lib/supervibe-verification-cache-v2.mjs": [
+      "exports"
+    ],
+    "scripts/lib/supervibe-wave-controller.mjs": [
+      "exports"
+    ],
+    "scripts/lib/supervibe-work-facade.mjs": [
+      "exports"
+    ],
+    "scripts/lib/supervibe-work-item-actions.mjs": [
+      "exports"
+    ],
+    "scripts/lib/supervibe-work-state.mjs": [
+      "exports"
+    ],
+    "scripts/lib/supervibe-workflow-receipt-runtime.mjs": [
+      "exports"
+    ]
   },
-  "project": ["scripts/**/*.mjs", "tests/**/*.mjs"]
+  "project": [
+    "scripts/**/*.mjs",
+    "tests/**/*.mjs"
+  ]
 }

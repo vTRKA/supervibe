@@ -28,6 +28,11 @@ import {
   removeAgentLeaseForInvocation,
   upsertAgentLeaseFromInvocation,
 } from "./lib/supervibe-agent-lease-registry.mjs";
+import {
+  createHostInvocationProofProjectionV1,
+  formatProjectionIssues,
+  validateHostInvocationProofProjectionV1,
+} from "./lib/supervibe-proof-projection.mjs";
 
 const HOST_INVOCATION_SOURCES = Object.freeze({
   claude: "claude-code-task-hook",
@@ -132,6 +137,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     setInvocationLogPath(logPath);
     let record = null;
     let receiptResult = null;
+    let proofProjectionResult = null;
     try {
       record = await logInvocation({
         agent_id: agentId,
@@ -191,6 +197,16 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         record,
         options,
       });
+      proofProjectionResult = await maybeWriteHostInvocationProofProjection({
+        rootDir,
+        host,
+        source,
+        invocationId,
+        agentId,
+        record,
+        receiptResult,
+        options,
+      });
       const span = createTraceSpan({
         name: "supervibe.agent.invocation",
         traceId: traceContext.traceId,
@@ -233,6 +249,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       console.log(`WORKFLOW_RECEIPT: ${receiptResult.receiptPath}`);
       console.log(`ARTIFACT_LINKS: ${receiptResult.artifactLinksPath}`);
     }
+    if (proofProjectionResult) {
+      console.log(`PROOF_PROJECTION: ${proofProjectionResult.path}`);
+      console.log(`PROOF_TRUST_STATUS: ${proofProjectionResult.projection.trustStatus}`);
+    }
     process.exit(0);
   } catch (error) {
     console.error("SUPERVIBE_AGENT_INVOCATION_ERROR");
@@ -241,6 +261,55 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
 }
 
+async function maybeWriteHostInvocationProofProjection({
+  rootDir,
+  host,
+  source,
+  invocationId,
+  agentId,
+  record,
+  receiptResult = null,
+  options = {},
+} = {}) {
+  if (host !== "codex") return null;
+  if (source !== "codex-spawn-agent") return null;
+  if (!record?.structured_output?.directory) return null;
+  const outputArtifacts = splitList(options["output-artifacts"] || options.outputArtifacts);
+  const artifactPath = outputArtifacts[0] || record.structured_output.json;
+  const projection = createHostInvocationProofProjectionV1({
+    artifactId: `${sanitizePathSegment(agentId)}-${sanitizePathSegment(invocationId)}-host-invocation`,
+    artifactPath,
+    receiptId: receiptResult?.receipt?.receiptId || null,
+    ledgerHash: receiptResult?.ledgerEntry?.entryHash || receiptResult?.receipt?.runtime?.canonicalHash || null,
+    hostInvocation: {
+      source,
+      invocationId,
+      agentId,
+      traceId: record.trace_id || null,
+      spanId: record.span_id || null,
+      evidencePath: record.structured_output.json,
+    },
+    producer: {
+      type: inferSubjectType(options),
+      id: options["subject-id"] || agentId,
+    },
+    artifactLink: receiptResult ? {
+      artifactPath,
+      receiptId: receiptResult.receipt?.receiptId || null,
+      receiptPath: receiptResult.receiptPath || null,
+      sha256: receiptResult.receipt?.outputHashes?.[0]?.sha256 || null,
+    } : null,
+  });
+  const issues = validateHostInvocationProofProjectionV1(projection);
+  if (issues.length) {
+    throw new Error(`host invocation proof projection invalid: ${formatProjectionIssues(issues)}`);
+  }
+  const projectionPath = `${normalizeRelPath(record.structured_output.directory)}/proof-projection.json`;
+  const absPath = join(rootDir, ...projectionPath.split("/"));
+  mkdirSync(dirname(absPath), { recursive: true });
+  await writeFile(absPath, `${JSON.stringify(projection, null, 2)}\n`, "utf8");
+  return { path: projectionPath, projection };
+}
 async function maybeRegisterHostManagedSubagentCleanup({
   rootDir,
   host,

@@ -25,6 +25,8 @@ last-verified: 2026-05-02T00:00:00.000Z
 
 Executing Plans provides a reusable Supervibe operating method for Use WHEN an approved implementation-plan exists to execute it phase-by-phase with mandatory verification per task and confidence-gate per phase. Triggers: 'выполни план', 'execute plan', 'запусти план', 'погнали по плану'.
 It keeps the work evidence-first, scope-bounded, confidence-scored, and verified before completion claims.
+Execution is source-bound: each change must map to the reviewed plan, current
+repository evidence, trusted runtime receipts, and the final release/merge gate.
 ## When to Use
 
 WHEN a plan exists at `.supervibe/artifacts/plans/YYYY-MM-DD-<feature>.md` with confidence-scoring ≥9, OR user explicitly says "execute the plan".
@@ -34,6 +36,10 @@ If subagents available, prefer `supervibe:subagent-driven-development` for fresh
 ## Expert Operating Standard
 
 Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+Manual drafts, inline worker summaries, or controller-authored substitutions are
+diagnostic only. They cannot satisfy production artifact, worker, reviewer,
+validator, command, or external-tool output requirements without an owning
+runtime invocation and trusted receipt.
 
 ## Step 0 — Read source of truth (required)
 
@@ -85,10 +91,11 @@ condition. If the plan omits these, repair the plan or route back to
 
 ## Definition Of Done
 
-A plan task is done only after the implementation matches the plan, verification
-evidence is captured, no unapproved extras shipped, and confidence is at least
-9/10. A phase is done only when all tasks in that phase are done or explicitly
-blocked/partial with user acceptance.
+A plan task is done only after the implementation matches the plan, allowed
+development checks are recorded, final-gate verification remains scheduled, no
+unapproved extras shipped, required receipts are trusted, and confidence is at
+least 9/10. A phase is done only when all tasks in that phase are done or
+explicitly blocked/partial with user acceptance.
 
 ## Decision tree
 
@@ -111,9 +118,12 @@ Per task: blocked?
    a. Mark in_progress
    b. Follow steps exactly (don't skip verifications)
    c. Check scope safety: the work maps to an approved requirement or scope-change note
-   d. Run verification command via Bash
-   e. Show output verbatim
-   f. If pass → mark complete; if fail → STOP, debug
+   d. Run only allowed non-final development checks, record any final-only
+      validator or test as scheduled for the release/merge gate, and preserve
+      the command or artifact evidence
+   e. Show relevant output or evidence summary
+   f. If an allowed check fails -> STOP, debug; if a final-only validator is
+      needed -> mark it scheduled, not passed
    g. Commit step (skip if user said no commits)
 4. **Per-phase confidence gate** — invoke `supervibe:confidence-scoring` with artifact-type=agent-output for the phase deliverable; ≥9 required to proceed
 5. **After last phase** — invoke `supervibe:requesting-code-review`
@@ -129,6 +139,8 @@ Per task: blocked?
 - Do not use this skill to bypass the command or workflow that owns durable artifacts.
 - Do not use it when source evidence, RAG/CodeGraph, or required verification is missing.
 - Do not use it to replace a specialist producer, worker, or reviewer that must issue runtime evidence.
+- Do not use it to leak manual production artifacts from controller-authored
+  drafts, copied notes, or unreceipted specialist output.
 
 ## Common rationalizations
 
@@ -150,6 +162,9 @@ Per task: blocked?
   order is safe.
 - The executor runs broad release checks inside every child task instead of
   targeted checks during work and the full release gate at handoff.
+- Development execution runs `node --test`, `npm test`, `npm run check`,
+  `npm run validate:*`, or `node scripts/validate-*` before the final
+  release/merge gate.
 
 ## Checklist
 
@@ -173,7 +188,8 @@ Return:
   `complete`.
 - `taskLedger`: task id, owner, status, write set, evidence, and blockers.
 - `verification`: targeted commands, exit codes, artifacts, and release-gate
-  status.
+  status, including skipped-final-only entries for deferred validators and
+  tests.
 - `scopeChanges`: approved additions, rejected extras, and deferred follow-ups.
 - `receipts`: command, worker, reviewer, validator, and external-tool receipts
   required by the owning workflow.
@@ -188,18 +204,24 @@ Return:
 - DO NOT: edit plan tasks during execution (file an issue/note for retro)
 - DO NOT: start on main branch without explicit user consent
 - DO NOT: accept worker-added "nice to have" functionality as progress
+- DO NOT: run final-only tests or validators during plan, graph, or task
+  development; schedule them for the final release/merge gate
+- DO NOT: treat hand-written receipts or manual production drafts as trusted
+  evidence
 - ALWAYS: stop and ask when blocked; never guess
 - ALWAYS: invoke `supervibe:verification` before any "done" claim
 - ALWAYS: explain why unapproved additions are being deferred or rejected
 
 ## Verification
 
-- Run the targeted `node --test ...`, `npm run validate:*`, or stack command
-  assigned to each completed task.
-- Run `npm run validate:workflow-receipts` when command/worker/reviewer
-  receipts are part of the execution claim.
-- Before release handoff, run the plan's final gate such as `npm run check`
-  only once the graph or release slice is complete.
+- During plan, graph, and task development, do not run `node --test`,
+  `npm test`, `npm run check`, `npm run validate:*`, or
+  `node scripts/validate-*`; record them as final-only checks.
+- Run allowed lightweight checks assigned by the plan only when they are not
+  tests or validators, and capture their output.
+- At the final release/merge gate, run the plan's scheduled tests, validators,
+  receipt validation, and release check once the graph or release slice is
+  complete.
 - Confirm every task ledger row has acceptance, evidence, scope-safety, and
   residual-risk status before returning `complete`.
 

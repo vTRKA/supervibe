@@ -3,16 +3,53 @@
 // Auto-reindexes memory entries (.supervibe/memory/**) AND source code on change.
 // Stop with Ctrl+C.
 
-import { startWatcher } from './lib/code-watcher.mjs';
+import {
+  formatWatcherHeartbeatStatus,
+  readWatcherHeartbeatStatus,
+  startWatcher,
+} from './lib/code-watcher.mjs';
 
 const PROJECT_ROOT = process.cwd();
+
+function printUsage() {
+  console.log([
+    'Usage: node scripts/watch-memory.mjs [options]',
+    '',
+    'Options:',
+    '  --status          Print heartbeat status and exit without starting the watcher',
+    '  --check           Print heartbeat status and exit 0 only when the watcher is running',
+    '  --safe-start      Start only when no fresh heartbeat is present',
+    '  --no-embeddings   Disable embeddings for watcher indexing',
+    '  --help            Show this help',
+  ].join('\n'));
+}
 
 async function main() {
   const args = process.argv.slice(2);
   const noEmbeddings = args.includes('--no-embeddings');
+  const statusOnly = args.includes('--status');
+  const checkOnly = args.includes('--check');
+  const safeStart = args.includes('--safe-start');
 
-  console.log(`Starting supervibe memory + code watcher in ${PROJECT_ROOT}`);
-  if (noEmbeddings) console.log('  (embeddings disabled — BM25 only)');
+  if (args.includes('--help') || args.includes('-h')) {
+    printUsage();
+    return;
+  }
+
+  if (statusOnly || checkOnly || safeStart) {
+    const status = readWatcherHeartbeatStatus(PROJECT_ROOT);
+    console.log(formatWatcherHeartbeatStatus(status));
+
+    if (statusOnly) return;
+    if (checkOnly) process.exit(status.running ? 0 : 2);
+    if (safeStart && status.running) {
+      console.log('[supervibe-watcher] safe start skipped; watcher heartbeat is fresh');
+      return;
+    }
+  }
+
+  console.log('Starting supervibe memory + code watcher in ' + PROJECT_ROOT);
+  if (noEmbeddings) console.log('  (embeddings disabled - BM25 only)');
 
   const handle = await startWatcher(PROJECT_ROOT, {
     useEmbeddings: !noEmbeddings,
@@ -20,7 +57,7 @@ async function main() {
   });
 
   const shutdown = async (sig) => {
-    console.log(`\n[supervibe-watcher] received ${sig}, shutting down...`);
+    console.log('\n[supervibe-watcher] received ' + sig + ', shutting down...');
     await handle.stop();
     process.exit(0);
   };

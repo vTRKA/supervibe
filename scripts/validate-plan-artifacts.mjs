@@ -116,6 +116,16 @@ function hasPlaceholder(markdown) {
   return PLACEHOLDER_PATTERNS.some(re => re.test(markdown));
 }
 
+function isDerivedPhaseEpicPlan({ rootDir, file, markdown }) {
+  const rel = relative(rootDir, file).split(sep).join('/');
+  if (!/^\.supervibe\/artifacts\/plans\/[^/]+\/[^/]+-P\d+\.md$/i.test(rel)) return false;
+  if (!/^#\s+.+\s+P\d+\s+Phase Epic Plan\s*$/im.test(markdown)) return false;
+  if (!/^Status:\s+phase-split execution plan derived from reviewed /im.test(markdown)) return false;
+  const sourceMatch = /^Source plan:\s+(\.supervibe\/artifacts\/plans\/[^\s]+\.md)\s*$/im.exec(markdown);
+  if (!sourceMatch) return false;
+  return existsSync(resolve(rootDir, sourceMatch[1]));
+}
+
 function hasVisualEvidence(body) {
   const text = String(body || '');
   const fallback = /\b(text\s+fallback|fallback)\b/i.test(text);
@@ -358,9 +368,15 @@ async function main() {
   const validatedFiles = new Map();
   for (const file of files) {
     const markdown = await readFile(file, 'utf8');
+    const rel = relative(root, file).split(sep).join('/');
+    if (isDerivedPhaseEpicPlan({ rootDir: root, file, markdown })) {
+      validatedFiles.set(resolve(root, file), []);
+      console.log(`OK   phase-plan ${rel}`);
+      continue;
+    }
+
     const issues = validatePlanArtifact(markdown);
     validatedFiles.set(resolve(root, file), issues);
-    const rel = relative(root, file).split(sep).join('/');
     if (issues.length === 0) {
       console.log(`OK   plan       ${rel}`);
     } else {

@@ -20,6 +20,7 @@ import {
   isTrustedTaskCompletionReceiptForGraph,
   trustedReceiptScopeFromReceipt,
 } from "./supervibe-receipt-completion-trust.mjs";
+import { createBlockerV1 } from "./supervibe-work-state.mjs";
 
 const ROUTING_CASES = Object.freeze([
   ["создай задачи и эпик из плана", "task_graph_create_from_plan"],
@@ -50,6 +51,9 @@ const COMMAND_SHORTCUT_CASES = Object.freeze([
 
 const ACTIVE_GRAPH_EPIC_STATUSES = new Set(["open", "active", "ready", "claimed", "blocked", "deferred", "review"]);
 const TERMINAL_GRAPH_EPIC_STATUSES = new Set(["closed", "complete", "completed", "done", "skipped", "cancelled"]);
+const TERMINAL_TASK_STATUSES = new Set(["closed", "complete", "completed", "done", "skipped", "cancelled"]);
+const EXECUTABLE_TASK_STATUSES = new Set(["open", "ready"]);
+const IN_FLIGHT_TASK_STATUSES = new Set(["claimed", "review"]);
 
 const REQUIRED_LOOP_TOKENS = Object.freeze([
   "--atomize-plan",
@@ -156,6 +160,7 @@ export function buildTaskGraphMaturityReport(rootDir = process.cwd(), options = 
     ? 0
     : Number(((passed / requiredDimensions.length) * 10).toFixed(1));
   const pass = score === 10 && requiredDimensions.every((dimension) => dimension.pass);
+  const executability = buildGraphExecutabilityScore(rootDir, { requireActiveGraph });
   return {
     kind: "supervibe-task-graph-maturity",
     rootDir,
@@ -165,7 +170,131 @@ export function buildTaskGraphMaturityReport(rootDir = process.cwd(), options = 
     score,
     pass,
     status: pass ? "10-of-10-ready" : "needs-work",
+    executability,
     dimensions,
+  };
+}
+
+
+export function buildGraphExecutabilityScore(rootDir = process.cwd(), options = {}) {
+  const requireActiveGraph = Boolean(options.requireActiveGraph);
+  const resolution = resolveActiveWorkItemGraphSync({ rootDir });
+  const evidence = (resolution.candidates || []).slice(0, 5).map((file) => relative(rootDir, file).split(sep).join("/"));
+  const checks = [];
+  const blockers = [];
+  const repairCommand = "node scripts/supervibe-loop.mjs --status";
+
+  const activeSelected = resolution.status === "active";
+  checks.push(scoreCheck("active-graph-selected", activeSelected, 2));
+  if (!activeSelected) {
+    blockers.push(executabilityBlocker({
+      code: resolution.status === "ambiguous" ? "needs-human-input" : "policy-hard-stop",
+      message: resolution.status === "ambiguous"
+        ? "Multiple active work-item graph candidates require an explicit user choice before execution."
+        : "No active work-item graph is selected for execution.",
+      affectedTaskIds: [],
+      nextAction: resolution.nextAction || "select or atomize one active reviewed graph before execution",
+      repairCommand,
+      releaseImpact: "Plan, graph, and task workflows cannot dispatch deterministically without exactly one active graph.",
+    }));
+  }
+
+  let graph = null;
+  let graphPathEvidence = null;
+  if (activeSelected) {
+    graphPathEvidence = relative(rootDir, resolution.graphPath).split(sep).join("/");
+    try {
+      graph = JSON.parse(readFileSync(resolution.graphPath, "utf8"));
+      checks.push(scoreCheck("active-graph-readable", true, 2));
+    } catch (error) {
+      checks.push(scoreCheck("active-graph-readable", false, 2));
+      blockers.push(executabilityBlocker({
+        code: "policy-hard-stop",
+        message: "Active graph cannot be read: " + error.message,
+        affectedTaskIds: [],
+        nextAction: "repair or regenerate the active work-item graph JSON",
+        repairCommand,
+        releaseImpact: "Workflow dispatch and release readiness cannot be trusted until the active graph can be read.",
+      }));
+    }
+  } else {
+    checks.push(scoreCheck("active-graph-readable", false, 2));
+  }
+
+  const registry = activeSelected ? validateWorkItemRegistryIntegrity({ rootDir }) : { pass: false, issues: [] };
+  checks.push(scoreCheck("registry-integrity", registry.pass === true, 2));
+  if (activeSelected && registry.pass !== true) {
+    blockers.push(executabilityBlocker({
+      code: "policy-hard-stop",
+      message: String(registry.issues.length) + " work-item registry issue(s) block deterministic graph execution.",
+      affectedTaskIds: affectedIdsFromIssues(registry.issues),
+      nextAction: "repair work-item registry integrity before dispatch",
+      repairCommand,
+      releaseImpact: "Graph execution can target stale or wrong items while registry integrity is broken.",
+    }));
+  }
+
+  let receiptPolicy = { pass: false, issues: [] };
+  if (graph) receiptPolicy = validateActiveGraphReceiptPolicy({ rootDir, graph, graphPath: resolution.graphPath });
+  checks.push(scoreCheck("active-graph-receipt-policy", receiptPolicy.pass === true, 2));
+  if (graph && receiptPolicy.pass !== true) {
+    blockers.push(executabilityBlocker({
+      code: "receipt-missing",
+      message: String(receiptPolicy.issues.length) + " active graph receipt binding issue(s) block trusted execution.",
+      affectedTaskIds: affectedIdsFromIssues(receiptPolicy.issues),
+      nextAction: "bind the active graph to trusted runtime-issued host receipts",
+      repairCommand: "node scripts/workflow-receipt.mjs recovery-status",
+      releaseImpact: "Release workflow readiness is blocked until graph provenance and host invocation proof are trusted.",
+    }));
+  }
+
+  const readiness = graph ? summarizeGraphReadiness(graph) : emptyReadiness();
+  checks.push(scoreCheck("dispatchable-work", readiness.dispatchableTaskIds.length > 0 || readiness.inFlightTaskIds.length > 0, 2));
+  if (graph && readiness.dispatchableTaskIds.length === 0 && readiness.inFlightTaskIds.length === 0 && readiness.remainingTaskIds.length > 0) {
+    const affectedTaskIds = readiness.blockedTaskIds.length > 0 ? readiness.blockedTaskIds : readiness.remainingTaskIds;
+    blockers.push(executabilityBlocker({
+      code: "dependency-not-ready",
+      message: "Active graph has remaining work but no dispatchable or in-flight task.",
+      affectedTaskIds,
+      nextAction: affectedTaskIds.length ? "complete or repair dependencies for " + affectedTaskIds[0] : "inspect graph dependencies before dispatch",
+      repairCommand,
+      releaseImpact: "The active graph cannot dispatch additional work until dependencies complete, blockers clear, or the graph is repaired.",
+    }));
+  }
+
+  const total = checks.reduce((sum, check) => sum + check.weight, 0);
+  const earned = checks.reduce((sum, check) => sum + (check.pass ? check.weight : 0), 0);
+  const score = total === 0 ? 0 : Number(((earned / total) * 10).toFixed(1));
+  const pass = score === 10 && blockers.length === 0;
+  const primaryBlocker = blockers[0] || null;
+  const nextAction = primaryBlocker?.nextAction
+    || (readiness.dispatchableTaskIds[0] ? "claim ready task: " + readiness.dispatchableTaskIds[0] : "no graph execution repair needed");
+
+  return {
+    kind: "supervibe-graph-executability-score",
+    schemaVersion: 1,
+    score,
+    pass,
+    status: pass ? "executable" : requireActiveGraph ? "blocked" : "informational-blocked",
+    activeProofRequired: requireActiveGraph,
+    activeGraphResolution: {
+      status: resolution.status,
+      source: resolution.source || null,
+      graphPath: graphPathEvidence,
+      readOnly: resolution.readOnly === true,
+      userChoiceRequired: resolution.userChoiceRequired === true,
+      executionBlocked: resolution.executionBlocked === true,
+    },
+    totals: readiness.totals,
+    dispatchableTaskIds: readiness.dispatchableTaskIds,
+    inFlightTaskIds: readiness.inFlightTaskIds,
+    affectedTaskIds: uniqueStrings(blockers.flatMap((blocker) => blocker.affectedTaskIds || [])),
+    nextAction,
+    repairCommand: primaryBlocker?.repairCommand || null,
+    releaseImpact: primaryBlocker?.releaseImpact || "No graph executability blocker detected.",
+    blockers,
+    checks,
+    evidence: graphPathEvidence ? [graphPathEvidence] : evidence,
   };
 }
 
@@ -251,8 +380,22 @@ export function formatTaskGraphMaturityReport(report) {
     `MATURITY_SCOPE: ${report.maturityScope || "unknown"}`,
     `ACTIVE_PROOF_REQUIRED: ${report.activeProofRequired === true}`,
     `GLOBAL_CAPABILITY_ONLY: ${report.globalCapabilityOnly === true}`,
+    "EXECUTABILITY:",
+    `  SCORE: ${report.executability?.score ?? 0}/10`,
+    `  STATUS: ${report.executability?.status || "unknown"}`,
+    `  PASS: ${report.executability?.pass === true}`,
+    `  NEXT_ACTION: ${report.executability?.nextAction || "inspect graph executability"}`,
+    `  REPAIR_COMMAND: ${report.executability?.repairCommand || "none"}`,
+    `  RELEASE_IMPACT: ${report.executability?.releaseImpact || "unknown"}`,
     "DIMENSIONS:",
   ];
+  for (const blocker of report.executability?.blockers || []) {
+    lines.push(`  BLOCKER: ${blocker.code}: ${blocker.message}`);
+    lines.push(`    AFFECTED_TASK_IDS: ${(blocker.affectedTaskIds || []).join(", ") || "none"}`);
+    lines.push(`    NEXT_ACTION: ${blocker.nextAction || "inspect blocker"}`);
+    lines.push(`    REPAIR_COMMAND: ${blocker.repairCommand || "none"}`);
+    lines.push(`    RELEASE_IMPACT: ${blocker.releaseImpact}`);
+  }
   for (const dimension of report.dimensions) {
     lines.push(`- ${dimension.id}: ${dimension.pass ? "pass" : "fail"}${dimension.required === false ? " (informational)" : ""}`);
     if (dimension.summary) lines.push(`  SUMMARY: ${dimension.summary}`);
@@ -648,6 +791,97 @@ function walkFiles(dir) {
     else out.push(path);
   }
   return out;
+}
+
+
+function scoreCheck(id, pass, weight) {
+  return { id, pass: pass === true, weight };
+}
+
+function executabilityBlocker({ affectedTaskIds = [], nextAction, ...input }) {
+  const blocker = createBlockerV1(input);
+  return {
+    ...blocker,
+    affectedTaskIds: uniqueStrings(affectedTaskIds),
+    nextAction: String(nextAction || input.message || blocker.message).trim(),
+  };
+}
+
+function summarizeGraphReadiness(graph = {}) {
+  const items = Array.isArray(graph.items) ? graph.items : Array.isArray(graph.tasks) ? graph.tasks : [];
+  const tasks = items.filter((item) => item && item.type !== "epic" && taskId(item));
+  const statusById = new Map(tasks.map((item) => [taskId(item), normalizedStatus(item)]));
+  const dispatchableTaskIds = [];
+  const inFlightTaskIds = [];
+  const blockedTaskIds = [];
+  const remainingTaskIds = [];
+  const terminalTaskIds = [];
+
+  for (const item of tasks) {
+    const id = taskId(item);
+    const status = normalizedStatus(item);
+    if (TERMINAL_TASK_STATUSES.has(status)) {
+      terminalTaskIds.push(id);
+      continue;
+    }
+    remainingTaskIds.push(id);
+    if (IN_FLIGHT_TASK_STATUSES.has(status)) {
+      inFlightTaskIds.push(id);
+      continue;
+    }
+    const unresolved = dependencyIds(item).filter((depId) => !TERMINAL_TASK_STATUSES.has(statusById.get(depId) || ""));
+    if (EXECUTABLE_TASK_STATUSES.has(status) && unresolved.length === 0) dispatchableTaskIds.push(id);
+    else blockedTaskIds.push(id);
+  }
+
+  return {
+    dispatchableTaskIds: dispatchableTaskIds.sort(),
+    inFlightTaskIds: inFlightTaskIds.sort(),
+    blockedTaskIds: blockedTaskIds.sort(),
+    remainingTaskIds: remainingTaskIds.sort(),
+    totals: {
+      tasks: tasks.length,
+      terminal: terminalTaskIds.length,
+      remaining: remainingTaskIds.length,
+      dispatchable: dispatchableTaskIds.length,
+      inFlight: inFlightTaskIds.length,
+      blocked: blockedTaskIds.length,
+    },
+  };
+}
+
+function emptyReadiness() {
+  return {
+    dispatchableTaskIds: [],
+    inFlightTaskIds: [],
+    blockedTaskIds: [],
+    remainingTaskIds: [],
+    totals: { tasks: 0, terminal: 0, remaining: 0, dispatchable: 0, inFlight: 0, blocked: 0 },
+  };
+}
+
+function taskId(item = {}) {
+  return String(item.itemId || item.taskId || item.id || "").trim();
+}
+
+function normalizedStatus(item = {}) {
+  return String(item.status || item.effectiveStatus || "open").trim().toLowerCase();
+}
+
+function dependencyIds(item = {}) {
+  return uniqueStrings([
+    ...(Array.isArray(item.blockedBy) ? item.blockedBy : []),
+    ...(Array.isArray(item.dependencies) ? item.dependencies : []),
+    ...(Array.isArray(item.dependsOn) ? item.dependsOn : []),
+  ]);
+}
+
+function affectedIdsFromIssues(issues = []) {
+  return uniqueStrings(issues.map((issue) => issue.itemId || issue.taskId || issue.workItemId || issue.id).filter(Boolean));
+}
+
+function uniqueStrings(values = []) {
+  return [...new Set(values.map((value) => String(value || "").trim()).filter(Boolean))].sort();
 }
 
 function readOptional(path) {

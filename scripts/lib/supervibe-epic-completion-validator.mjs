@@ -268,8 +268,31 @@ function hasSkipImpact(item = {}) {
 }
 
 function isDryRunEvidence(evidence) {
-  const text = typeof evidence === "string" ? evidence : JSON.stringify(evidence || {});
-  return /\bdry[-_ ]?run\b/i.test(text);
+  if (typeof evidence === "string") return /\bdry[-_ ]?run\b/i.test(evidence);
+  if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)) return false;
+  if (evidence.dryRun === true || evidence.dry_run === true || evidence.isDryRun === true) return true;
+  if (evidence.preview === true || evidence.previewOnly === true) return true;
+
+  const explicitModeFields = [
+    evidence.mode,
+    evidence.executionMode,
+    evidence.evidenceMode,
+    evidence.lifecycle,
+    evidence.status,
+    evidence.result,
+    evidence.outcome,
+  ];
+  if (explicitModeFields.some((value) => /^(dry[-_ ]?run|preview|planned-not-executed|not-executed)$/i.test(String(value || "").trim()))) {
+    return true;
+  }
+
+  const commandFields = [
+    evidence.command,
+    evidence.verificationCommand,
+    evidence.check,
+    ...(Array.isArray(evidence.commands) ? evidence.commands : []),
+  ];
+  return commandFields.some((value) => /(^|\s)--dry-run(\s|$)/i.test(String(value || "")));
 }
 
 function isLegacyEvidence(evidence) {

@@ -9,7 +9,7 @@ Runs locally. No Docker. Windows, macOS, and Linux.
 
 Supervibe commands are agent-gated by default: every `/supervibe-*` workflow has required specialist agents, active durable work is blocked until scoped runtime receipts exist, and inline/controller-only output stays diagnostic. Design and prototype flows additionally require their producer and reviewer agents before completion can be claimed.
 
-**v2.1** - current plugin `v2.1.39` - MIT - 2276 tests
+**v2.1** - current plugin `v2.1.40` - MIT - 2298 tests
 
 > **Compliance notice:** This tool is designed exclusively for development assistance. By using it, you agree to comply with the Terms of Service (ToS) and Acceptable Use Policy (AUP) of all involved services, including Anthropic. Unauthorized automated usage, OAuth token abuse, or violation of third-party policies is the sole responsibility of the end user.
 
@@ -37,7 +37,7 @@ flowchart LR
 | Verify and review | `/supervibe-status`, `/supervibe-security-audit`, reviewer agents | Validator output, reviewer findings, confidence gate status, residual risks |
 | Record memory and status | `/supervibe-status` | Durable memory, context-pack citations, close or resume action |
 
-For the deeper system map, use [agent roster](docs/agent-roster.md) for specialist boundaries, [workflow hardening](docs/supervibe-workflow-hardening.md) for command and evidence gates, [reference packs](docs/reference-packs.md) for context loading, [confidence gates](docs/confidence-gates-spec.md) for score behavior, and [multi-agent orchestration](docs/multi-agent-orchestration.md) for parallel work.
+For the deeper system map, use [workflow quickstart](docs/supervibe-workflow-ux.md) for the everyday MVP flow, [agent roster](docs/agent-roster.md) for specialist boundaries, [workflow hardening](docs/supervibe-workflow-hardening.md) for command and evidence gates, [reference packs](docs/reference-packs.md) for context loading, [confidence gates](docs/confidence-gates-spec.md) for score behavior, and [multi-agent orchestration](docs/multi-agent-orchestration.md) for parallel work.
 
 ## Pick Your Starting Point
 
@@ -117,6 +117,23 @@ Plain version:
 5. Read the dry-run before approving.
 6. Approve only the files you want Supervibe to manage.
 7. Run `/supervibe --status` or `/supervibe-status`.
+
+## Workflow Quickstart
+
+Use this path when Supervibe is already installed and the project is connected:
+
+```text
+start -> check graph status -> dispatch ready work -> collect receipts -> recover blockers -> final validation
+```
+
+1. Start with `/supervibe` or the command for the work you already know, such as `/supervibe-brainstorm`, `/supervibe-plan`, `/supervibe-design`, or `/supervibe-loop --guided --file <graph.json>`.
+2. Check status with `/supervibe-status` or `/supervibe-loop --status --epic <epic-id>` before mutating work. The useful states are `ready`, `blocked`, `claimed`, `stale`, `orphan`, `review`, and `done`.
+3. Dispatch ready work through the workflow command instead of copying specialist output into chat. Durable work should show the selected agents or workers and bind their output to current-run receipts.
+4. Treat receipts as proof, not decoration. A completion claim should point to scoped receipts, task evidence, and any review or verification output required by the workflow.
+5. If the graph is blocked or stale, use status and recovery commands first: resume an interrupted loop, clear stale claims, attach missing evidence, or rerun close eligibility before declaring work complete.
+6. Defer full test and validator suites for plan, graph, and task workflows until the final release or merge gate. Run targeted checks only when the workflow explicitly asks for them during development.
+
+See [workflow quickstart](docs/supervibe-workflow-ux.md) for examples and recovery notes.
 
 ## Where To Type Commands
 
@@ -258,7 +275,7 @@ The installer:
 After restart, you should see something like:
 
 ```text
-[supervibe] welcome  plugin v2.1.39 initialized for this project
+[supervibe] welcome  plugin v2.1.40 initialized for this project
 [supervibe] code RAG  N files / M chunks (fresh)
 [supervibe] code graph  N symbols / M edges (X% resolved)
 ```

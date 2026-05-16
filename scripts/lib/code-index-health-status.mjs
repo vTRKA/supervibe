@@ -9,6 +9,215 @@ import { runRetrievalPipeline } from "./supervibe-retrieval-pipeline.mjs";
 
 export const DEFAULT_REPAIRABLE_CONTENT_CHANGED_ROWS = 2;
 export const DEFAULT_STALE_SOURCE_DETAIL_LIMIT = 25;
+export const DEFAULT_MTIME_SCAN_TOLERANCE_MS = 1000;
+export const CODE_INDEX_FRESHNESS_THRESHOLD_TABLE_SCHEMA_VERSION = 1;
+export const CODE_INDEX_FRESHNESS_THRESHOLD_TABLE = Object.freeze([
+  Object.freeze({
+    id: "strict-gate-failure",
+    priority: 10,
+    status: "failed",
+    label: "strict-failed",
+    appliesWhen: {
+      strict: true,
+      failedGateCount: { min: 1 },
+    },
+    thresholds: {
+      staleRows: "any",
+      contentChangedRows: "any",
+      nonFreshFailureCount: "any",
+    },
+    mode: {
+      readyForMode: false,
+      strictReady: false,
+      devReady: false,
+      repairable: false,
+      degraded: false,
+    },
+    failedGatePolicy: "preserve-all",
+    repairActionHint: SOURCE_RAG_INDEX_COMMAND,
+    reasonTemplate: "strict index health rejects unresolved stale or failed gates",
+  }),
+  Object.freeze({
+    id: "structural-stale-hard-stop",
+    priority: 15,
+    status: "failed",
+    label: "structural-stale-hard-stop",
+    appliesWhen: {
+      structuralTask: true,
+      freshnessDriftRows: { min: 1 },
+    },
+    thresholds: {
+      staleRows: "any",
+      contentChangedRows: "any",
+      nonFreshFailureCount: "any",
+      structuralTask: true,
+    },
+    mode: {
+      readyForMode: false,
+      strictReady: false,
+      devReady: false,
+      repairable: false,
+      degraded: false,
+    },
+    failedGatePolicy: "preserve-all",
+    repairActionHint: CODEGRAPH_INDEX_COMMAND,
+    reasonTemplate: "structural task requires green index freshness before graph-dependent claims",
+  }),
+  Object.freeze({
+    id: "repairable-content-changed",
+    priority: 20,
+    status: "repairable-stale",
+    label: "repairable-content-changed",
+    appliesWhen: {
+      repairAvailable: true,
+      staleRows: { equals: 0 },
+      contentChangedRows: { min: 1, max: "repairableContentChangedRows" },
+      nonFreshFailureCount: { equals: 0 },
+    },
+    thresholds: {
+      staleRows: 0,
+      contentChangedRows: "1..{repairableContentChangedRows}",
+      nonFreshFailureCount: 0,
+    },
+    mode: {
+      readyForMode: true,
+      strictReady: false,
+      devReady: true,
+      repairable: true,
+      degraded: false,
+    },
+    failedGatePolicy: "drop-content-stale",
+    repairActionHint: SOURCE_RAG_INDEX_COMMAND,
+    reasonTemplate: "contentChangedRows={contentChangedRows} is within dev repair threshold {repairableContentChangedRows}",
+  }),
+  Object.freeze({
+    id: "repair-unavailable-content-changed",
+    priority: 30,
+    status: "degraded-context",
+    label: "degraded-content-changed",
+    appliesWhen: {
+      repairAvailable: false,
+      staleRows: { equals: 0 },
+      contentChangedRows: { min: 1, max: "repairableContentChangedRows" },
+      nonFreshFailureCount: { equals: 0 },
+    },
+    thresholds: {
+      staleRows: 0,
+      contentChangedRows: "1..{repairableContentChangedRows}",
+      nonFreshFailureCount: 0,
+    },
+    mode: {
+      readyForMode: true,
+      strictReady: false,
+      devReady: true,
+      repairable: false,
+      degraded: true,
+    },
+    failedGatePolicy: "drop-content-stale",
+    repairActionHint: SOURCE_RAG_INDEX_COMMAND,
+    reasonTemplate: "read path can use a stable snapshot, but repair requires an explicit index command",
+  }),
+  Object.freeze({
+    id: "stale-index-rows",
+    priority: 40,
+    status: "failed",
+    label: "stale-index-rows",
+    appliesWhen: {
+      staleRows: { min: 1 },
+    },
+    thresholds: {
+      staleRows: ">=1",
+      contentChangedRows: "any",
+      nonFreshFailureCount: "any",
+    },
+    mode: {
+      readyForMode: false,
+      strictReady: false,
+      devReady: false,
+      repairable: false,
+      degraded: false,
+    },
+    failedGatePolicy: "preserve-all",
+    repairActionHint: SOURCE_RAG_INDEX_COMMAND,
+    reasonTemplate: "stale index rows require an explicit rebuild",
+  }),
+  Object.freeze({
+    id: "content-changed-over-threshold",
+    priority: 50,
+    status: "degraded-context",
+    label: "large-delta-degraded-context",
+    appliesWhen: {
+      staleRows: { equals: 0 },
+      contentChangedRows: { minExclusive: "repairableContentChangedRows" },
+      nonFreshFailureCount: { equals: 0 },
+    },
+    thresholds: {
+      staleRows: 0,
+      contentChangedRows: ">{repairableContentChangedRows}",
+      nonFreshFailureCount: 0,
+    },
+    mode: {
+      readyForMode: true,
+      strictReady: false,
+      devReady: true,
+      repairable: false,
+      degraded: true,
+    },
+    failedGatePolicy: "drop-content-stale",
+    repairActionHint: SOURCE_RAG_INDEX_COMMAND,
+    reasonTemplate: "contentChangedRows={contentChangedRows} exceeds repair threshold {repairableContentChangedRows}; context is advisory until index repair completes",
+  }),
+  Object.freeze({
+    id: "non-freshness-gate-failure",
+    priority: 60,
+    status: "failed",
+    label: "non-freshness-gate-failure",
+    appliesWhen: {
+      nonFreshFailureCount: { min: 1 },
+    },
+    thresholds: {
+      staleRows: 0,
+      contentChangedRows: 0,
+      nonFreshFailureCount: ">=1",
+    },
+    mode: {
+      readyForMode: false,
+      strictReady: false,
+      devReady: false,
+      repairable: false,
+      degraded: false,
+    },
+    failedGatePolicy: "preserve-all",
+    repairActionHint: SOURCE_RAG_INDEX_COMMAND,
+    reasonTemplate: "non-freshness index health gate failed",
+  }),
+  Object.freeze({
+    id: "ready",
+    priority: 70,
+    status: "ready",
+    label: "fresh",
+    appliesWhen: {
+      staleRows: { equals: 0 },
+      contentChangedRows: { equals: 0 },
+      failedGateCount: { equals: 0 },
+    },
+    thresholds: {
+      staleRows: 0,
+      contentChangedRows: 0,
+      nonFreshFailureCount: 0,
+    },
+    mode: {
+      readyForMode: true,
+      strictReady: true,
+      devReady: true,
+      repairable: false,
+      degraded: false,
+    },
+    failedGatePolicy: "preserve-all",
+    repairActionHint: "none",
+    reasonTemplate: "index health gate is ready",
+  }),
+]);
 const READ_SNAPSHOT_MODE = "read-only-transaction";
 
 export function repairableContentChangedRowsLimit(value = process.env.SUPERVIBE_INDEX_REPAIRABLE_CONTENT_ROWS) {
@@ -24,74 +233,76 @@ export function buildCodeIndexFreshnessStatus({
   repairAvailable = true,
   repairableContentChangedRows = repairableContentChangedRowsLimit(),
   snapshot = null,
+  taskType = "feature",
+  sourceType = "code-index",
+  sourceIds = null,
+  privacyStatus = "local-only",
 } = {}) {
   const staleRows = (health.staleRows || []).length;
   const contentChangedRows = (health.contentChangedRows || []).length;
   const partialRows = (health.partialIndexedFiles || []).length;
   const rawFailedGates = gate.failedGates || [];
   const nonFreshFailures = rawFailedGates.filter((item) => !["content-stale", "stale-rows"].includes(item.code));
-  const contentRepairable = staleRows === 0
-    && contentChangedRows > 0
-    && contentChangedRows <= repairableContentChangedRows
-    && nonFreshFailures.length === 0;
-  const noFreshnessFailures = staleRows === 0 && contentChangedRows === 0;
+  const thresholdEvaluation = evaluateCodeIndexFreshnessThreshold({
+    strict,
+    repairAvailable,
+    repairableContentChangedRows,
+    staleRows,
+    contentChangedRows,
+    partialRows,
+    failedGates: rawFailedGates,
+    nonFreshFailures,
+    taskType,
+  });
 
-  let status = "ready";
-  let readyForMode = rawFailedGates.length === 0;
-  let strictReady = rawFailedGates.length === 0;
-  let effectiveFailedGates = rawFailedGates;
-  let reason = "index health gate is ready";
-  let nextAction = "none";
-
-  if (strict && rawFailedGates.length > 0) {
-    status = "failed";
-    readyForMode = false;
-    reason = "strict index health rejects unresolved stale or failed gates";
-    nextAction = SOURCE_RAG_INDEX_COMMAND;
-  } else if (contentRepairable && repairAvailable) {
-    status = "repairable-stale";
-    readyForMode = true;
-    strictReady = false;
-    effectiveFailedGates = rawFailedGates.filter((item) => item.code !== "content-stale");
-    reason = `contentChangedRows=${contentChangedRows} is within dev repair threshold ${repairableContentChangedRows}`;
-    nextAction = SOURCE_RAG_INDEX_COMMAND;
-  } else if (contentRepairable && !repairAvailable) {
-    status = "degraded-context";
-    readyForMode = true;
-    strictReady = false;
-    effectiveFailedGates = rawFailedGates.filter((item) => item.code !== "content-stale");
-    reason = "read path can use a stable snapshot, but repair requires an explicit index command";
-    nextAction = SOURCE_RAG_INDEX_COMMAND;
-  } else if (!noFreshnessFailures) {
-    status = "failed";
-    readyForMode = false;
-    strictReady = false;
-    reason = staleRows > 0
-      ? "stale index rows require an explicit rebuild"
-      : `contentChangedRows=${contentChangedRows} exceeds dev repair threshold ${repairableContentChangedRows}`;
-    nextAction = SOURCE_RAG_INDEX_COMMAND;
-  } else if (nonFreshFailures.length > 0 || rawFailedGates.length > 0) {
-    status = "failed";
-    readyForMode = false;
-    strictReady = false;
-    reason = "non-freshness index health gate failed";
-    nextAction = SOURCE_RAG_INDEX_COMMAND;
-  }
+  const status = thresholdEvaluation.status;
+  const readyForMode = thresholdEvaluation.readyForMode;
+  const strictReady = thresholdEvaluation.strictReady;
+  const effectiveFailedGates = thresholdEvaluation.effectiveFailedGates;
+  const reason = thresholdEvaluation.reason;
+  const nextAction = thresholdEvaluation.nextAction;
 
   const staleSourceExplanation = buildCodeIndexStaleSourceExplanation({
     health,
     repairCommand: SOURCE_RAG_INDEX_COMMAND,
     graphRepairCommand: CODEGRAPH_INDEX_COMMAND,
   });
+  const retrievalEvidence = buildCodeIndexRetrievalEvidence({
+    freshness: {
+      status,
+      thresholdId: thresholdEvaluation.thresholdId,
+      readyForMode,
+      strictReady,
+      devReady: thresholdEvaluation.devReady,
+      repairable: thresholdEvaluation.repairable,
+      degraded: thresholdEvaluation.degraded,
+      reason,
+      nextAction,
+      staleRows,
+      contentChangedRows,
+      partialRows,
+      failedGates: rawFailedGates,
+      effectiveFailedGates,
+      snapshot,
+    },
+    sourceType,
+    sourceIds: sourceIds || deriveFreshnessSourceIds(health),
+    taskType,
+    privacyStatus,
+  });
 
   return {
     status,
+    label: thresholdEvaluation.label,
+    thresholdId: thresholdEvaluation.thresholdId,
+    thresholdSchemaVersion: thresholdEvaluation.schemaVersion,
+    threshold: thresholdEvaluation.threshold,
     readyForMode,
     strictReady,
-    devReady: status === "ready" || status === "repairable-stale" || status === "degraded-context",
+    devReady: thresholdEvaluation.devReady,
     repairAvailable,
-    repairable: status === "repairable-stale",
-    degraded: status === "degraded-context",
+    repairable: thresholdEvaluation.repairable,
+    degraded: thresholdEvaluation.degraded,
     strict,
     reason,
     nextAction,
@@ -106,6 +317,7 @@ export function buildCodeIndexFreshnessStatus({
     warnings: gate.warnings || [],
     snapshot,
     staleSourceExplanation,
+    retrievalEvidence,
   };
 }
 
@@ -117,6 +329,15 @@ export function buildMissingCodeIndexFreshnessStatus({ dbPath = null } = {}) {
   });
   return {
     status: "not-built",
+    label: "missing",
+    thresholdId: "missing-index",
+    thresholdSchemaVersion: CODE_INDEX_FRESHNESS_THRESHOLD_TABLE_SCHEMA_VERSION,
+    threshold: {
+      staleRows: "unknown",
+      contentChangedRows: "unknown",
+      nonFreshFailureCount: "unknown",
+      dbPath: "required",
+    },
     readyForMode: false,
     strictReady: false,
     devReady: false,
@@ -151,6 +372,171 @@ export function buildMissingCodeIndexFreshnessStatus({ dbPath = null } = {}) {
       retryCount: 0,
     },
     staleSourceExplanation,
+    retrievalEvidence: buildCodeIndexRetrievalEvidence({
+      freshness: {
+        status: "not-built",
+        readyForMode: false,
+        strictReady: false,
+        devReady: false,
+        repairable: false,
+        degraded: false,
+        reason: dbPath
+          ? `code index database is missing: ${dbPath}`
+          : "code index database is missing",
+        nextAction: SOURCE_RAG_INDEX_COMMAND,
+        staleRows: 0,
+        contentChangedRows: 0,
+        partialRows: 0,
+        failedGates: [{ code: "code-index-not-built" }],
+        snapshot: { status: "not-built", mode: "none", path: dbPath },
+      },
+      sourceType: "code-index",
+      sourceIds: dbPath ? [dbPath] : [],
+      privacyStatus: "local-only",
+    }),
+  };
+}
+
+export function buildPreContextMtimeScanStatus({
+  rootDir = process.cwd(),
+  indexedRows = [],
+  fileStats = null,
+  mtimeToleranceMs = DEFAULT_MTIME_SCAN_TOLERANCE_MS,
+  repairableContentChangedRows = repairableContentChangedRowsLimit(),
+  taskType = "feature",
+  nowMs = Date.now(),
+  privacyStatus = "local-only",
+} = {}) {
+  const changedRows = [];
+  const removedRows = [];
+  const unchangedRows = [];
+  const unreadableRows = [];
+  const toleranceMs = nonNegativeInt(mtimeToleranceMs, DEFAULT_MTIME_SCAN_TOLERANCE_MS);
+
+  for (const row of indexedRows || []) {
+    const relPath = sourceRowPath(row);
+    if (!relPath) continue;
+    const indexedMtimeMs = indexedRowMtimeMs(row);
+    const statResult = resolveMtimeScanFileStat({ rootDir, relPath, fileStats });
+    if (statResult.status === "missing") {
+      removedRows.push(relPath);
+      continue;
+    }
+    if (statResult.status === "unreadable") {
+      unreadableRows.push(relPath);
+      continue;
+    }
+    if (Number.isFinite(indexedMtimeMs) && statResult.mtimeMs > indexedMtimeMs + toleranceMs) {
+      changedRows.push(relPath);
+    } else {
+      unchangedRows.push(relPath);
+    }
+  }
+
+  const health = {
+    staleRows: removedRows,
+    contentChangedRows: changedRows,
+    partialIndexedFiles: unreadableRows,
+  };
+  const failedGates = [];
+  if (removedRows.length > 0) {
+    failedGates.push({
+      code: "stale-rows",
+      message: "pre-context mtime scan found indexed files missing from disk",
+      actual: removedRows.length,
+    });
+  }
+  if (changedRows.length > 0) {
+    failedGates.push({
+      code: "content-stale",
+      message: "pre-context mtime scan found files newer than indexed snapshot",
+      actual: changedRows.length,
+    });
+  }
+
+  const freshness = buildCodeIndexFreshnessStatus({
+    health,
+    gate: { failedGates },
+    strict: false,
+    repairAvailable: false,
+    repairableContentChangedRows,
+    snapshot: {
+      status: "pre-context-scan",
+      mode: "mtime-scan",
+      createdAt: new Date(nonNegativeInt(nowMs, Date.now())).toISOString(),
+      scannedRows: (indexedRows || []).length,
+      retryCount: 0,
+    },
+    taskType,
+    sourceType: "mtime-scan",
+    sourceIds: [...changedRows, ...removedRows, ...unreadableRows],
+    privacyStatus,
+  });
+
+  return {
+    schemaVersion: 1,
+    status: freshness.status,
+    freshnessMode: freshness.retrievalEvidence.freshnessMode,
+    trustRole: freshness.retrievalEvidence.trustRole,
+    hardStop: freshness.retrievalEvidence.hardStop,
+    reason: freshness.reason,
+    nextAction: freshness.nextAction,
+    repairCommand: SOURCE_RAG_INDEX_COMMAND,
+    graphRepairCommand: CODEGRAPH_INDEX_COMMAND,
+    mtimeToleranceMs: toleranceMs,
+    scannedRows: (indexedRows || []).length,
+    changedRows,
+    removedRows,
+    unreadableRows,
+    unchangedRows: unchangedRows.length,
+    largeDelta: changedRows.length > repairableContentChangedRows,
+    privacyStatus,
+    retrievalEvidence: freshness.retrievalEvidence,
+    freshness,
+  };
+}
+
+export function buildCodeIndexRetrievalEvidence({
+  freshness = {},
+  sourceType = "code-index",
+  sourceIds = [],
+  taskType = "feature",
+  indexSnapshotId = null,
+  privacyStatus = "local-only",
+} = {}) {
+  const normalizedTaskType = normalizeTaskType(taskType);
+  const structuralTask = isStructuralTaskType(normalizedTaskType);
+  const status = freshness.status || "unknown";
+  const freshnessMode = status === "ready" ? "green" : status;
+  const driftRows = nonNegativeInt(freshness.staleRows, 0) + nonNegativeInt(freshness.contentChangedRows, 0);
+  const hardStop = status === "failed"
+    || status === "not-built"
+    || (structuralTask && freshnessMode !== "green");
+  const trustRole = freshnessMode === "green" && !hardStop ? "proof-bearing" : hardStop ? "blocked" : "advisory";
+  const repairHints = buildFreshnessRepairHints({ freshness, structuralTask });
+
+  return {
+    schemaVersion: 1,
+    kind: "RetrievalEvidenceV1",
+    sourceType: normalizeEvidenceToken(sourceType, "code-index"),
+    sourceIds: normalizeEvidenceSourceIds(sourceIds),
+    freshnessMode,
+    trustRole,
+    hardStop,
+    hardStopReason: hardStop ? freshness.reason || "index freshness is not green" : null,
+    taskType: normalizedTaskType,
+    structuralTask,
+    indexSnapshotId: indexSnapshotId || buildIndexSnapshotId(freshness.snapshot),
+    privacyStatus: normalizeEvidenceToken(privacyStatus, "local-only"),
+    provenance: {
+      thresholdId: freshness.thresholdId || null,
+      status,
+      staleRows: nonNegativeInt(freshness.staleRows, 0),
+      contentChangedRows: nonNegativeInt(freshness.contentChangedRows, 0),
+      partialRows: nonNegativeInt(freshness.partialRows, 0),
+      driftRows,
+    },
+    repairHints,
   };
 }
 
@@ -193,6 +579,64 @@ export function buildCodeIndexStaleSourceExplanation({
   };
 }
 
+
+export function getCodeIndexFreshnessThresholdTable({
+  repairableContentChangedRows = DEFAULT_REPAIRABLE_CONTENT_CHANGED_ROWS,
+} = {}) {
+  const repairLimit = repairableContentChangedRowsLimit(repairableContentChangedRows);
+  return CODE_INDEX_FRESHNESS_THRESHOLD_TABLE.map((row) => ({
+    ...row,
+    thresholds: materializeFreshnessThresholds(row.thresholds, { repairableContentChangedRows: repairLimit }),
+  }));
+}
+
+export function evaluateCodeIndexFreshnessThreshold({
+  strict = false,
+  repairAvailable = true,
+  repairableContentChangedRows = DEFAULT_REPAIRABLE_CONTENT_CHANGED_ROWS,
+  staleRows = 0,
+  contentChangedRows = 0,
+  partialRows = 0,
+  failedGates = [],
+  nonFreshFailures = null,
+  taskType = "feature",
+} = {}) {
+  const repairLimit = repairableContentChangedRowsLimit(repairableContentChangedRows);
+  const normalized = {
+    strict: strict === true,
+    repairAvailable: repairAvailable === true,
+    repairableContentChangedRows: repairLimit,
+    staleRows: nonNegativeInt(staleRows, 0),
+    contentChangedRows: nonNegativeInt(contentChangedRows, 0),
+    partialRows: nonNegativeInt(partialRows, 0),
+    structuralTask: isStructuralTaskType(taskType),
+    failedGateCount: (failedGates || []).length,
+    nonFreshFailureCount: (nonFreshFailures || (failedGates || []).filter((item) => !["content-stale", "stale-rows"].includes(item.code))).length,
+  };
+  normalized.freshnessDriftRows = normalized.staleRows + normalized.contentChangedRows;
+  const row = CODE_INDEX_FRESHNESS_THRESHOLD_TABLE.find((candidate) => thresholdRowMatches(candidate, normalized))
+    || CODE_INDEX_FRESHNESS_THRESHOLD_TABLE.find((candidate) => candidate.id === "non-freshness-gate-failure");
+  const effectiveFailedGates = row.failedGatePolicy === "drop-content-stale"
+    ? (failedGates || []).filter((item) => item.code !== "content-stale")
+    : (failedGates || []);
+
+  return {
+    schemaVersion: CODE_INDEX_FRESHNESS_THRESHOLD_TABLE_SCHEMA_VERSION,
+    thresholdId: row.id,
+    label: row.label,
+    status: row.status,
+    threshold: materializeFreshnessThresholds(row.thresholds, normalized),
+    readyForMode: row.mode.readyForMode,
+    strictReady: row.mode.strictReady,
+    devReady: row.mode.devReady,
+    repairable: row.mode.repairable,
+    degraded: row.mode.degraded,
+    reason: formatFreshnessReason(row.reasonTemplate, normalized),
+    nextAction: row.repairActionHint,
+    effectiveFailedGates,
+  };
+}
+
 export function isMissingCodeIndexError(error = {}) {
   return error?.code === "SUPERVIBE_CODE_INDEX_MISSING";
 }
@@ -221,6 +665,9 @@ export function formatCodeIndexFreshnessStatus(freshness = {}) {
   return [
     "SUPERVIBE_CODE_INDEX_FRESHNESS",
     `STATUS: ${freshness.status || "unknown"}`,
+    `LABEL: ${freshness.label || "unknown"}`,
+    `THRESHOLD_ID: ${freshness.thresholdId || "unknown"}`,
+    `THRESHOLD_SCHEMA_VERSION: ${freshness.thresholdSchemaVersion || CODE_INDEX_FRESHNESS_THRESHOLD_TABLE_SCHEMA_VERSION}`,
     `MODE_READY: ${freshness.readyForMode === true}`,
     `DEV_READY: ${freshness.devReady === true}`,
     `STRICT_READY: ${freshness.strictReady === true}`,
@@ -231,6 +678,10 @@ export function formatCodeIndexFreshnessStatus(freshness = {}) {
     `REPAIR_THRESHOLD: ${freshness.repairableContentChangedRows ?? DEFAULT_REPAIRABLE_CONTENT_CHANGED_ROWS}`,
     `REPAIR_COMMAND: ${freshness.repairCommand || SOURCE_RAG_INDEX_COMMAND}`,
     `GRAPH_REPAIR_COMMAND: ${freshness.graphRepairCommand || CODEGRAPH_INDEX_COMMAND}`,
+    `FRESHNESS_MODE: ${freshness.retrievalEvidence?.freshnessMode || "unknown"}`,
+    `TRUST_ROLE: ${freshness.retrievalEvidence?.trustRole || "unknown"}`,
+    `HARD_STOP: ${freshness.retrievalEvidence?.hardStop === true}`,
+    `REPAIR_HINTS: ${(freshness.retrievalEvidence?.repairHints || []).join("; ") || "none"}`,
     `READ_SNAPSHOT_MODE: ${snapshot.mode || "none"}`,
     `READ_SNAPSHOT_DB_AGE_MS: ${snapshot.dbAgeMs ?? "unknown"}`,
     `READ_SNAPSHOT_RETRIES: ${snapshot.retryCount ?? 0}`,
@@ -507,6 +958,35 @@ function normalizeSourceRows(rows = []) {
   return [...new Set((rows || []).map(sourceRowPath).filter(Boolean))].sort();
 }
 
+function indexedRowMtimeMs(row = {}) {
+  const value = row.indexedMtimeMs
+    ?? row.indexed_mtime_ms
+    ?? row.mtimeMs
+    ?? row.mtime_ms
+    ?? row.updatedMtimeMs
+    ?? row.indexedAtMs
+    ?? Date.parse(row.indexed_at || row.indexedAt || row.updated_at || row.updatedAt || "");
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function resolveMtimeScanFileStat({ rootDir, relPath, fileStats }) {
+  const normalizedPath = normalizeSourcePath(relPath);
+  const supplied = fileStats instanceof Map ? fileStats.get(normalizedPath) : fileStats?.[normalizedPath];
+  if (supplied) {
+    if (supplied.exists === false || supplied.status === "missing") return { status: "missing", mtimeMs: null };
+    const mtimeMs = Number(supplied.mtimeMs ?? supplied.mtime_ms ?? Date.parse(supplied.mtime || ""));
+    return Number.isFinite(mtimeMs) ? { status: "present", mtimeMs } : { status: "unreadable", mtimeMs: null };
+  }
+  const absPath = join(rootDir, normalizedPath);
+  if (!existsSync(absPath)) return { status: "missing", mtimeMs: null };
+  try {
+    return { status: "present", mtimeMs: statSync(absPath).mtimeMs };
+  } catch {
+    return { status: "unreadable", mtimeMs: null };
+  }
+}
+
 function sourceRowPath(row) {
   if (typeof row === "string") return normalizeSourcePath(row);
   if (!row || typeof row !== "object") return "";
@@ -523,6 +1003,46 @@ function sourceRowPath(row) {
 
 function normalizeSourcePath(value = "") {
   return String(value || "").replace(/\\/g, "/").trim();
+}
+
+function deriveFreshnessSourceIds(health = {}) {
+  return [
+    ...normalizeSourceRows(health.staleRows || []),
+    ...normalizeSourceRows(health.contentChangedRows || []),
+    ...normalizeSourceRows(health.partialIndexedFiles || []),
+  ];
+}
+
+function buildFreshnessRepairHints({ freshness = {}, structuralTask = false } = {}) {
+  const hints = [];
+  if (structuralTask && (freshness.status !== "ready" || nonNegativeInt(freshness.staleRows, 0) > 0 || nonNegativeInt(freshness.contentChangedRows, 0) > 0)) {
+    hints.push("run " + CODEGRAPH_INDEX_COMMAND + " before structural work");
+  }
+  if (freshness.status === "not-built") hints.push("run " + SOURCE_RAG_INDEX_COMMAND);
+  if (nonNegativeInt(freshness.contentChangedRows, 0) > 0) hints.push("run " + SOURCE_RAG_INDEX_COMMAND + " to refresh changed content");
+  if (nonNegativeInt(freshness.staleRows, 0) > 0) hints.push("run " + SOURCE_RAG_INDEX_COMMAND + " to remove stale rows");
+  if (nonNegativeInt(freshness.partialRows, 0) > 0) hints.push("inspect partial index rows, then run " + SOURCE_RAG_INDEX_COMMAND);
+  if (!hints.length && freshness.nextAction && freshness.nextAction !== "none") hints.push("run " + freshness.nextAction);
+  return [...new Set(hints)];
+}
+
+function buildIndexSnapshotId(snapshot = {}) {
+  const pathPart = snapshot?.path ? normalizeSourcePath(snapshot.path).split("/").pop() : "code-index";
+  const timePart = snapshot?.dbMtime || snapshot?.createdAt || snapshot?.status || "unknown";
+  return pathPart + ":" + timePart;
+}
+
+function normalizeEvidenceToken(value, fallback) {
+  const normalized = String(value || "").trim().toLowerCase().replace(/[^a-z0-9._:-]+/g, "-").replace(/^-+|-+$/g, "");
+  return normalized || fallback;
+}
+
+function normalizeEvidenceSourceIds(sourceIds = []) {
+  return [...new Set((Array.isArray(sourceIds) ? sourceIds : [sourceIds]).map(normalizeSourcePath).filter(Boolean))].sort();
+}
+
+function isStructuralTaskType(taskType = "") {
+  return ["refactor", "rename", "move", "delete", "extract", "public-api"].includes(normalizeTaskType(taskType));
 }
 
 function formatSourceRows(bucket = {}) {
@@ -848,6 +1368,34 @@ function trimMarkdown(markdown, maxChars) {
   const text = String(markdown || "");
   if (text.length <= limit) return text;
   return `${text.slice(0, Math.max(0, limit - 80)).replace(/\s+$/g, "")}\n\n[trimmed to ${limit} chars]`;
+}
+
+
+function thresholdRowMatches(row, metrics) {
+  return Object.entries(row.appliesWhen || {}).every(([key, condition]) => valueMatchesThreshold(metrics[key], condition, metrics));
+}
+
+function valueMatchesThreshold(value, condition, metrics) {
+  if (condition === undefined || condition === "any") return true;
+  if (typeof condition !== "object" || condition === null) return value === condition;
+  if (Object.hasOwn(condition, "equals") && value !== resolveThresholdValue(condition.equals, metrics)) return false;
+  if (Object.hasOwn(condition, "min") && value < resolveThresholdValue(condition.min, metrics)) return false;
+  if (Object.hasOwn(condition, "max") && value > resolveThresholdValue(condition.max, metrics)) return false;
+  if (Object.hasOwn(condition, "minExclusive") && value <= resolveThresholdValue(condition.minExclusive, metrics)) return false;
+  return true;
+}
+
+function resolveThresholdValue(value, metrics) {
+  if (typeof value === "string" && Object.hasOwn(metrics, value)) return metrics[value];
+  return value;
+}
+
+function materializeFreshnessThresholds(thresholds = {}, metrics = {}) {
+  return Object.fromEntries(Object.entries(thresholds).map(([key, value]) => [key, formatFreshnessReason(value, metrics)]));
+}
+
+function formatFreshnessReason(template, metrics) {
+  return String(template).replace(/\{([A-Za-z0-9_]+)\}/g, (_match, key) => String(metrics[key] ?? "unknown"));
 }
 
 function nonNegativeInt(value, fallback) {

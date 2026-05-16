@@ -4,7 +4,9 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   backfillWorkflowReceiptEvidenceSnapshots,
+  diagnoseWorkItemReceiptDrift,
   issueWorkflowInvocationReceipt,
+  lookupWorkItemReceipt,
   pruneStaleWorkflowReceipts,
   readWorkflowReceipts,
   rebuildWorkflowReceiptLedger,
@@ -60,6 +62,8 @@ USAGE:
   node scripts/workflow-receipt.mjs issue --command /supervibe-design --skill supervibe:brandbook --stage <stage> --reason <text> --output <path> --handoff <id>
   node scripts/workflow-receipt.mjs issue --command /supervibe-loop --stage <stage> --reason <text> --output <path> --handoff <id> --graph-id <epic-id> --task-id <work-item-id>
   node scripts/workflow-receipt.mjs inspect
+  node scripts/workflow-receipt.mjs lookup-work-item --task-id <work-item-id> [--graph-id <graph-id>] [--artifact <path>] [--json]
+  node scripts/workflow-receipt.mjs diagnose-work-item-drift --task-id <work-item-id> [--graph-id <graph-id>] [--artifact <path>] [--json]
   node scripts/workflow-receipt.mjs reissue --receipt <receipt-json> [--reason <text>]
   node scripts/workflow-receipt.mjs prune-stale [--apply]
   node scripts/workflow-receipt.mjs rebuild-ledger [--prune-stale]
@@ -160,6 +164,39 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (proofScope.message) console.log(`PROOF_NOTE: ${proofScope.message}`);
     if (proofScope.repairHint) console.log(`REPAIR_HINT: ${proofScope.repairHint}`);
     process.exit(0);
+  }
+
+  if (options.operation === "lookup-work-item" || options.operation === "lookup-workitem") {
+    const result = lookupWorkItemReceipt(rootDir, {
+      ...options,
+      taskId: options["task-id"] || options["work-item-id"] || options.task,
+      graphId: options["graph-id"] || options["work-graph-id"] || options.graph,
+      artifact: options.artifact || options.output,
+      secret: options.secret || null,
+    });
+    if (options.json === true) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      console.log(formatWorkItemReceiptLookup(result));
+    }
+    process.exit(result.pass ? 0 : 1);
+  }
+
+  if (options.operation === "diagnose-work-item-drift" || options.operation === "work-item-drift") {
+    const result = diagnoseWorkItemReceiptDrift(rootDir, {
+      ...options,
+      taskId: options["task-id"] || options["work-item-id"] || options.task,
+      graphId: options["graph-id"] || options["work-graph-id"] || options.graph,
+      artifact: options.artifact || options.output,
+      receipt: options.receipt || options["receipt-id"],
+      secret: options.secret || null,
+    });
+    if (options.json === true) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      console.log(formatWorkItemReceiptDriftDiagnostic(result));
+    }
+    process.exit(result.pass ? 0 : 1);
   }
 
   if (options.operation === "validate") {
@@ -760,6 +797,73 @@ function buildHostInvocation(options) {
     traceId: options["host-trace-id"] || null,
     spanId: options["host-span-id"] || null,
   };
+}
+
+function formatWorkItemReceiptLookup(result = {}) {
+  const lines = [
+    "SUPERVIBE_WORK_ITEM_RECEIPT_LOOKUP",
+    `STATUS: ${result.status || "missing"}`,
+    `PASS: ${result.pass === true}`,
+    `CHECKED: ${result.checked || 0}`,
+    `MATCHED: ${result.matched || 0}`,
+  ];
+  const scope = result.scope || {};
+  if (scope.graphId) lines.push(`GRAPH_ID: ${scope.graphId}`);
+  if (scope.taskId) lines.push(`TASK_ID: ${scope.taskId}`);
+  if (scope.artifactPaths?.length) lines.push(`ARTIFACT_SCOPE: ${scope.artifactPaths.join(",")}`);
+  const selected = result.selected || null;
+  if (selected) {
+    lines.push(`RECEIPT_ID: ${selected.receiptId || "none"}`);
+    lines.push(`RECEIPT_PATH: ${selected.receiptPath || "none"}`);
+    lines.push(`LEDGER_HASH: ${selected.ledger?.entryHash || selected.runtime?.canonicalHash || "none"}`);
+    lines.push(`MATCHED_BY: ${(selected.matchedBy || []).join(",") || "none"}`);
+    for (const artifact of selected.matchedArtifacts || []) lines.push(`ARTIFACT: ${artifact}`);
+    if (selected.supersededBy?.receiptId) lines.push(`SUPERSEDED_BY: ${selected.supersededBy.receiptId}`);
+    if (selected.migration?.state) lines.push(`MIGRATION_STATE: ${selected.migration.state}`);
+    for (const issue of selected.driftIssues || []) lines.push(`DRIFT_ISSUE: ${issue}`);
+    for (const issue of selected.trust?.issues || []) lines.push(`TRUST_ISSUE: ${issue}`);
+  }
+  const projection = result.proofProjection || {};
+  lines.push(`PROOF_PROJECTION_SCHEMA: ${projection.schemaVersion || "none"}`);
+  lines.push(`PROOF_TRUST_STATUS: ${projection.trustStatus || "none"}`);
+  lines.push(`PROOF_PROVENANCE: ${projection.provenance?.source || "none"}`);
+  return lines.join("\n");
+}
+
+function formatWorkItemReceiptDriftDiagnostic(result = {}) {
+  const lines = [
+    "SUPERVIBE_WORK_ITEM_RECEIPT_DRIFT_DIAGNOSTIC",
+    `STATUS: ${result.status || "missing"}`,
+    `PASS: ${result.pass === true}`,
+    `CHECKED: ${result.checked || 0}`,
+    `MATCHED: ${result.matched || 0}`,
+    `DIAGNOSTICS: ${result.totals?.diagnostics || 0}`,
+    `MISSING_ARTIFACT_LINK: ${result.totals?.missingArtifactLink || 0}`,
+    `HASH_MISMATCH: ${result.totals?.hashMismatch || 0}`,
+    `STALE: ${result.totals?.stale || 0}`,
+    `SUPERSEDED: ${result.totals?.superseded || 0}`,
+    `MIGRATED: ${result.totals?.migrated || 0}`,
+    `UNTRUSTED: ${result.totals?.untrusted || 0}`,
+  ];
+  const scope = result.scope || {};
+  if (scope.graphId) lines.push(`GRAPH_ID: ${scope.graphId}`);
+  if (scope.taskId) lines.push(`TASK_ID: ${scope.taskId}`);
+  if (scope.artifactPaths?.length) lines.push(`ARTIFACT_SCOPE: ${scope.artifactPaths.join(",")}`);
+  if (result.selected) {
+    lines.push(`SELECTED_STATUS: ${result.selected.status || "none"}`);
+    lines.push(`RECEIPT_ID: ${result.selected.receiptId || "none"}`);
+    lines.push(`RECEIPT_PATH: ${result.selected.receiptPath || "none"}`);
+    if (result.selected.supersededBy?.receiptId) lines.push(`SUPERSEDED_BY: ${result.selected.supersededBy.receiptId}`);
+    if (result.selected.migration?.state) lines.push(`MIGRATION_STATE: ${result.selected.migration.state}`);
+  }
+  for (const item of result.selectedDiagnostics || []) {
+    lines.push(`DIAGNOSTIC: ${item.code} classification=${item.classification} severity=${item.severity}`);
+    if (item.artifactPath) lines.push(`DIAGNOSTIC_ARTIFACT: ${item.artifactPath}`);
+    lines.push(`DIAGNOSTIC_MESSAGE: ${item.message}`);
+    lines.push(`REPAIR_HINT: ${item.repairHint}`);
+  }
+  lines.push(`NEXT_REPAIR_COMMAND: ${result.nextRepairCommand || "none"}`);
+  return lines.join("\n");
 }
 
 function reportWorkflowReceiptError(error) {

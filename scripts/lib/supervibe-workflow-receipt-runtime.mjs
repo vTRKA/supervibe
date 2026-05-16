@@ -488,6 +488,89 @@ export function validateScopedWorkflowReceipts(rootDir = process.cwd(), options 
   };
 }
 
+export const WORK_ITEM_RECEIPT_LOOKUP_STATUSES = Object.freeze([
+  "trusted",
+  "missing",
+  "untrusted",
+  "stale",
+  "superseded",
+  "migrated",
+  "legacy",
+]);
+
+export function lookupWorkItemReceipt(rootDir = process.cwd(), options = {}) {
+  const scope = normalizeWorkItemReceiptLookupScope(options);
+  if (!scope.taskId && !scope.graphId && scope.artifactPaths.length === 0 && !scope.receiptId) {
+    throw new Error("lookup requires --task-id, --graph-id, --artifact, or --receipt");
+  }
+  const receipts = readAllWorkflowReceipts(rootDir).filter((receipt) => !receipt.__invalidJson);
+  const ledgerEntries = readReceiptLedgerSync(rootDir).filter((entry) => !entry.__invalidJson);
+  const supersededBy = supersededReceiptMap(receipts);
+  const candidates = receipts
+    .map((receipt) => classifyWorkItemReceiptCandidate(rootDir, receipt, {
+      scope,
+      ledgerEntries,
+      supersededBy,
+      secret: options.secret ?? null,
+    }))
+    .filter(Boolean)
+    .sort(compareWorkItemReceiptCandidates);
+  const selected = candidates.find((candidate) => candidate.status === "trusted")
+    || candidates.find((candidate) => candidate.status === "migrated")
+    || candidates.find((candidate) => candidate.status === "legacy")
+    || candidates[0]
+    || null;
+  const status = selected?.status || "missing";
+  return {
+    schemaVersion: "WorkItemReceiptLookupV1",
+    status,
+    pass: ["trusted", "migrated"].includes(status),
+    scope,
+    selected,
+    candidates,
+    checked: receipts.length,
+    matched: candidates.length,
+    proofProjection: selected
+      ? proofProjectionForWorkItemReceiptLookup(selected, scope)
+      : missingProofProjectionForWorkItemReceiptLookup(scope),
+  };
+}
+
+export function diagnoseWorkItemReceiptDrift(rootDir = process.cwd(), options = {}) {
+  const lookup = lookupWorkItemReceipt(rootDir, options);
+  const candidates = lookup.candidates || [];
+  const diagnostics = candidates.flatMap((candidate) => workItemReceiptDriftDiagnostics(candidate));
+  const selectedDiagnostics = lookup.selected
+    ? diagnostics.filter((item) => item.receiptId === lookup.selected.receiptId)
+    : [];
+  const stale = candidates.filter((item) => item.status === "stale").length;
+  const untrusted = candidates.filter((item) => item.status === "untrusted").length;
+  const superseded = candidates.filter((item) => item.status === "superseded").length;
+  const migrated = candidates.filter((item) => item.status === "migrated").length;
+  return {
+    schemaVersion: "WorkItemReceiptDriftDiagnosticV1",
+    pass: lookup.pass && selectedDiagnostics.every((item) => item.severity !== "error"),
+    status: lookup.status,
+    scope: lookup.scope,
+    checked: lookup.checked,
+    matched: lookup.matched,
+    selected: lookup.selected ? workItemReceiptDiagnosticSummary(lookup.selected) : null,
+    totals: {
+      diagnostics: diagnostics.length,
+      stale,
+      untrusted,
+      superseded,
+      migrated,
+      missingArtifactLink: diagnostics.filter((item) => item.code === "missing-artifact-link").length,
+      hashMismatch: diagnostics.filter((item) => item.code === "hash-mismatch").length,
+    },
+    diagnostics,
+    selectedDiagnostics,
+    nextRepairCommand: nextWorkItemReceiptDriftRepairCommand({ lookup, diagnostics, selectedDiagnostics }),
+    proofProjection: lookup.proofProjection,
+  };
+}
+
 export function validateWorkflowReceipts(rootDir = process.cwd(), options = {}) {
   const receipts = readAllWorkflowReceipts(rootDir);
   const issues = [];
@@ -1048,6 +1131,407 @@ function inferGraphIdFromTaskId(taskId = "") {
   const graphId = match?.[1] || null;
   if (!graphId || graphId === normalizedTaskId) return null;
   return graphId;
+}
+
+function normalizeWorkItemReceiptLookupScope(options = {}) {
+  const taskId = normalizeOptional(options.taskId || options["task-id"] || options.workItemId || options["work-item-id"]) || null;
+  const graphId = normalizeOptional(options.graphId || options["graph-id"] || options.workGraphId || options["work-graph-id"] || inferGraphIdFromTaskId(taskId)) || null;
+  return {
+    receiptId: normalizeOptional(options.receiptId || options.receipt || options["receipt-id"]) || null,
+    command: normalizeCommand(options.command || options.workflowCommand || options.cmd),
+    handoffId: normalizeOptional(options.handoffId || options.handoff || options.slug) || null,
+    stage: normalizeOptional(options.stage) || null,
+    subjectId: normalizeOptional(options.subjectId || options["subject-id"] || options.agentId || options.agent || options.worker || options.reviewer || options.skill) || null,
+    graphId,
+    taskId,
+    artifactPaths: uniqueStrings([
+      options.artifact,
+      options.artifactPath,
+      options.outputArtifact,
+      ...(arrayFrom(options.artifacts || options.artifactPaths || options.outputArtifacts || options.output || options.outputs)),
+    ]).map(normalizeRelPath),
+  };
+}
+
+function classifyWorkItemReceiptCandidate(rootDir, receipt, { scope, ledgerEntries, supersededBy, secret }) {
+  if (scope.receiptId && receipt.receiptId !== scope.receiptId) return null;
+  if (scope.command && normalizeCommand(receipt.command) !== scope.command) return null;
+  if (scope.handoffId && receipt.handoffId !== scope.handoffId) return null;
+  if (scope.stage && String(receipt.stage || "") !== scope.stage) return null;
+  if (scope.subjectId) {
+    const ids = [receipt.subjectId, receipt.agentId, receipt.skillId].filter(Boolean).map(String);
+    if (!ids.includes(scope.subjectId)) return null;
+  }
+
+  const artifactLinks = readReceiptArtifactLinks(rootDir, receipt)
+    .filter((link) => !link.receiptId || link.receiptId === receipt.receiptId);
+  const evidence = workItemReceiptMatchEvidence(receipt, artifactLinks, scope);
+  if (!evidence.matches) return null;
+
+  const trust = validateWorkflowReceiptTrust(rootDir, receipt, { secret, skipLedgerChain: true });
+  const driftIssues = receiptArtifactDriftIssues(rootDir, receipt);
+  const ledgerEntry = ledgerEntries.find((entry) => entry.receiptId === receipt.receiptId) || null;
+  const superseded = supersededBy.get(receipt.receiptId) || null;
+  const legacy = evidence.modes.includes("legacy-artifact") || evidence.modes.includes("legacy-path-token");
+  const migrated = Boolean(receipt.recovery?.operation || receipt.supersedes?.receiptId || receipt.evidenceSnapshot?.migration);
+  const status = superseded
+    ? "superseded"
+    : driftIssues.length > 0
+      ? "stale"
+      : trust.pass
+        ? legacy
+          ? "legacy"
+          : migrated
+            ? "migrated"
+            : "trusted"
+        : "untrusted";
+
+  return {
+    status,
+    receiptId: receipt.receiptId || null,
+    receiptPath: receipt.__file || null,
+    command: receipt.command || null,
+    handoffId: receipt.handoffId || null,
+    stage: receipt.stage || null,
+    subjectType: receipt.subjectType || null,
+    subjectId: receipt.subjectId || null,
+    agentId: receipt.agentId || null,
+    workItemBinding: receipt.workItemBinding || null,
+    matchedBy: evidence.modes,
+    matchedArtifacts: evidence.artifacts,
+    artifactLinks: artifactLinks.map((link) => compactOptionalObject({
+      artifactPath: normalizeRelPath(link.artifactPath),
+      receiptId: link.receiptId || null,
+      receiptPath: normalizeRelPath(link.receiptPath || ""),
+      sha256: link.sha256 || null,
+      workItemBinding: link.workItemBinding || null,
+    })),
+    ledger: ledgerEntry ? {
+      entryHash: ledgerEntry.entryHash || null,
+      canonicalHash: ledgerEntry.canonicalHash || null,
+      artifactLinksPath: normalizeRelPath(ledgerEntry.artifactLinksPath || ""),
+      issuedAt: ledgerEntry.issuedAt || null,
+    } : null,
+    runtime: {
+      issuer: receipt.runtime?.issuer || null,
+      issuedAt: receipt.runtime?.issuedAt || null,
+      keyId: receipt.runtime?.keyId || null,
+      canonicalHash: receipt.runtime?.canonicalHash || null,
+    },
+    hostInvocation: receipt.hostInvocation || null,
+    outputArtifacts: normalizePathList(receipt.outputArtifacts || [], rootDir),
+    outputHashes: Array.isArray(receipt.outputHashes) ? receipt.outputHashes : [],
+    trust: {
+      pass: trust.pass,
+      issues: trust.issues,
+      diagnostics: trust.diagnostics || [],
+    },
+    driftIssues,
+    supersededBy: superseded,
+    migration: compactOptionalObject({
+      state: migrated ? "migrated" : legacy ? "legacy" : null,
+      operation: receipt.recovery?.operation || null,
+      originalReceiptId: receipt.supersedes?.receiptId || receipt.recovery?.originalReceiptId || null,
+      originalReceiptPath: receipt.supersedes?.receiptPath || receipt.recovery?.originalReceiptPath || null,
+    }),
+  };
+}
+
+function workItemReceiptMatchEvidence(receipt = {}, artifactLinks = [], scope = {}) {
+  const modes = [];
+  const artifacts = new Set();
+  if (scope.receiptId && receipt.receiptId === scope.receiptId) modes.push("receipt-id");
+  const binding = receipt.workItemBinding || null;
+  if (workItemBindingMatchesScope(binding, scope)) modes.push("receipt-work-item-binding");
+  for (const link of artifactLinks) {
+    if (workItemBindingMatchesScope(link.workItemBinding, scope)) {
+      modes.push("artifact-link-work-item-binding");
+      if (link.artifactPath) artifacts.add(normalizeRelPath(link.artifactPath));
+    }
+  }
+
+  const receiptArtifacts = receiptArtifactPaths(receipt);
+  if (scope.artifactPaths.length > 0) {
+    for (const artifact of receiptArtifacts) {
+      if (!scope.artifactPaths.some((expected) => sameWorkflowArtifact(artifact, expected))) continue;
+      modes.push(binding ? "artifact" : "legacy-artifact");
+      artifacts.add(artifact);
+    }
+    for (const link of artifactLinks) {
+      const artifact = normalizeRelPath(link.artifactPath);
+      if (!scope.artifactPaths.some((expected) => sameWorkflowArtifact(artifact, expected))) continue;
+      modes.push(link.workItemBinding ? "artifact-link" : "legacy-artifact-link");
+      artifacts.add(artifact);
+    }
+  }
+
+  if (!binding && !artifactLinks.some((link) => link.workItemBinding) && (scope.taskId || scope.graphId)) {
+    const tokens = uniqueStrings([scope.taskId, scope.graphId]);
+    for (const artifact of receiptArtifacts) {
+      if (tokens.some((token) => token && normalizeRelPath(artifact).includes(token))) {
+        modes.push("legacy-path-token");
+        artifacts.add(artifact);
+      }
+    }
+  }
+
+  return {
+    matches: modes.length > 0,
+    modes: uniqueStrings(modes),
+    artifacts: [...artifacts].sort(),
+  };
+}
+
+function workItemBindingMatchesScope(binding = null, scope = {}) {
+  if (!binding) return false;
+  const taskId = normalizeOptional(binding.taskId || binding.workItemId) || null;
+  const graphId = normalizeOptional(binding.graphId || binding.workGraphId) || inferGraphIdFromTaskId(taskId) || null;
+  if (scope.taskId && taskId !== scope.taskId) return false;
+  if (scope.graphId && graphId !== scope.graphId) return false;
+  return Boolean(scope.taskId || scope.graphId);
+}
+
+function receiptArtifactPaths(receipt = {}) {
+  return uniqueStrings([
+    ...(Array.isArray(receipt.outputArtifacts) ? receipt.outputArtifacts : []),
+    ...(Array.isArray(receipt.outputHashes) ? receipt.outputHashes.map((item) => item.path) : []),
+  ]).map(normalizeRelPath);
+}
+
+function readReceiptArtifactLinks(rootDir, receipt = {}) {
+  if (!receipt.__file) return [];
+  const linksPath = join(rootDir, ...dirname(receipt.__file).split("/"), ARTIFACT_LINKS_FILE);
+  const manifest = readJsonSync(linksPath);
+  return Array.isArray(manifest?.links) ? manifest.links : [];
+}
+
+function supersededReceiptMap(receipts = []) {
+  const out = new Map();
+  for (const receipt of receipts) {
+    const originalReceiptId = receipt.supersedes?.receiptId || receipt.recovery?.originalReceiptId;
+    if (!originalReceiptId) continue;
+    const current = compactOptionalObject({
+      receiptId: receipt.receiptId || null,
+      receiptPath: receipt.__file || null,
+      issuedAt: receipt.runtime?.issuedAt || receipt.completedAt || receipt.startedAt || null,
+    });
+    const previous = out.get(originalReceiptId);
+    if (!previous || compareReceiptReplacement(current, previous) > 0) out.set(originalReceiptId, current);
+  }
+  return out;
+}
+
+function compareWorkItemReceiptCandidates(left, right) {
+  const statusRank = { trusted: 0, migrated: 1, legacy: 2, stale: 3, superseded: 4, untrusted: 5 };
+  return (statusRank[left.status] ?? 9) - (statusRank[right.status] ?? 9)
+    || compareReceiptReplacement(right.runtime || {}, left.runtime || {})
+    || String(left.receiptPath || "").localeCompare(String(right.receiptPath || ""))
+    || String(left.receiptId || "").localeCompare(String(right.receiptId || ""));
+}
+
+function compareReceiptReplacement(left = {}, right = {}) {
+  return String(left.issuedAt || "").localeCompare(String(right.issuedAt || ""))
+    || String(left.receiptPath || "").localeCompare(String(right.receiptPath || ""))
+    || String(left.receiptId || "").localeCompare(String(right.receiptId || ""));
+}
+
+function proofProjectionForWorkItemReceiptLookup(candidate = {}, scope = {}) {
+  const trusted = ["trusted", "migrated"].includes(candidate.status);
+  const missing = candidate.status === "legacy";
+  const artifactPath = candidate.matchedArtifacts[0] || candidate.outputArtifacts[0] || scope.artifactPaths[0] || candidate.receiptPath || "unknown";
+  return compactOptionalObject({
+    schemaVersion: "ProofProjectionV1",
+    artifactId: scope.taskId || scope.graphId || candidate.receiptId || "work-item-receipt-lookup",
+    artifactPath,
+    trustStatus: trusted ? "trusted" : missing ? "missing-proof" : "untrusted",
+    provenance: trusted ? {
+      source: "runtime-receipt",
+      receiptId: candidate.receiptId,
+      reason: "Runtime workflow receipt binds the work item lookup to receipt, ledger, and artifact-link evidence.",
+    } : missing ? {
+      source: "legacy-missing-proof",
+      reason: "Legacy receipt candidate lacks deterministic work item binding; runtime reissue is required before trusted adoption.",
+    } : {
+      source: "runtime-receipt",
+      receiptId: candidate.receiptId,
+      reason: "Runtime receipt candidate exists but is not trusted for this work item lookup.",
+    },
+    receiptId: candidate.receiptId,
+    ledgerHash: candidate.ledger?.entryHash || candidate.runtime?.canonicalHash || null,
+    producer: compactOptionalObject({
+      type: candidate.subjectType || null,
+      id: candidate.agentId || candidate.subjectId || null,
+    }),
+    hostInvocation: candidate.hostInvocation || null,
+    evidence: candidate.matchedArtifacts.map((artifact) => ({
+      kind: "artifact",
+      artifactPath: artifact,
+      receiptId: candidate.receiptId,
+    })),
+    migration: candidate.migration || null,
+    notes: candidate.status === "superseded"
+      ? ["Receipt has been superseded by a newer runtime-issued receipt."]
+      : candidate.status === "stale"
+        ? candidate.driftIssues
+        : candidate.status === "untrusted"
+          ? candidate.trust.issues
+          : [],
+  });
+}
+
+function missingProofProjectionForWorkItemReceiptLookup(scope = {}) {
+  return {
+    schemaVersion: "ProofProjectionV1",
+    artifactId: scope.taskId || scope.graphId || scope.receiptId || "work-item-receipt-lookup",
+    artifactPath: scope.artifactPaths[0] || "unknown",
+    trustStatus: "missing-proof",
+    provenance: {
+      source: "legacy-missing-proof",
+      reason: "No runtime-issued workflow receipt matched the requested work item lookup scope.",
+    },
+    migration: {
+      from: "missing-work-item-receipt-binding",
+      behavior: "issue or reissue a runtime workflow receipt with work item binding before trusted use",
+    },
+  };
+}
+
+function workItemReceiptDiagnosticSummary(candidate = {}) {
+  return compactOptionalObject({
+    status: candidate.status || null,
+    receiptId: candidate.receiptId || null,
+    receiptPath: candidate.receiptPath || null,
+    command: candidate.command || null,
+    handoffId: candidate.handoffId || null,
+    stage: candidate.stage || null,
+    subjectType: candidate.subjectType || null,
+    subjectId: candidate.subjectId || null,
+    agentId: candidate.agentId || null,
+    workItemBinding: candidate.workItemBinding || null,
+    matchedBy: candidate.matchedBy || [],
+    matchedArtifacts: candidate.matchedArtifacts || [],
+    supersededBy: candidate.supersededBy || null,
+    migration: candidate.migration || null,
+  });
+}
+
+function workItemReceiptDriftDiagnostics(candidate = {}) {
+  const diagnostics = [];
+  const base = {
+    receiptId: candidate.receiptId || null,
+    receiptPath: candidate.receiptPath || null,
+    classification: candidate.status || "unknown",
+  };
+  if (candidate.status === "superseded") {
+    diagnostics.push({
+      ...base,
+      code: "superseded-receipt",
+      severity: "warning",
+      message: "receipt was superseded by a newer runtime-issued receipt",
+      repairHint: candidate.supersededBy?.receiptPath
+        ? "use the superseding receipt at " + candidate.supersededBy.receiptPath
+        : "rerun work item receipt lookup and use the newest trusted replacement receipt",
+    });
+  }
+  if (candidate.status === "migrated") {
+    diagnostics.push({
+      ...base,
+      code: "migrated-receipt",
+      severity: "info",
+      message: "receipt was produced by a runtime migration or reissue path",
+      repairHint: "keep the migration metadata and cite this receipt only with its runtime ledger entry",
+    });
+  }
+  if (candidate.status === "legacy") {
+    diagnostics.push({
+      ...base,
+      code: "legacy-receipt-binding",
+      severity: "warning",
+      message: "receipt matched through legacy artifact evidence rather than deterministic work item binding",
+      repairHint: "reissue the receipt with --graph-id and --task-id to create deterministic work item binding",
+    });
+  }
+  if (candidate.status === "untrusted") {
+    diagnostics.push({
+      ...base,
+      code: "untrusted-receipt",
+      severity: "error",
+      message: "receipt failed runtime trust validation",
+      repairHint: "run node scripts/workflow-receipt.mjs recovery-status, then reissue or rebuild the ledger using workflow-receipt repair commands",
+    });
+  }
+
+  for (const issue of [...(candidate.driftIssues || []), ...(candidate.trust?.issues || [])]) {
+    const code = workItemReceiptDriftIssueCode(issue);
+    if (!code) continue;
+    diagnostics.push({
+      ...base,
+      code,
+      severity: "error",
+      artifactPath: extractReceiptDriftIssuePath(issue),
+      message: issue,
+      repairHint: workItemReceiptDriftRepairHint(code, candidate),
+    });
+  }
+  return dedupeWorkItemReceiptDiagnostics(diagnostics);
+}
+
+function workItemReceiptDriftIssueCode(issue = "") {
+  const text = String(issue || "");
+  if (/artifact link manifest missing|artifact link missing/i.test(text)) return "missing-artifact-link";
+  if (/hash mismatch/i.test(text)) return "hash-mismatch";
+  if (/output artifact missing/i.test(text)) return "missing-output-artifact";
+  if (/canonical hash mismatch|signature mismatch|keyId mismatch|runtime .*missing|runtime .*invalid|ledger .*mismatch|ledger entry missing/i.test(text)) return "untrusted-receipt";
+  return null;
+}
+
+function extractReceiptDriftIssuePath(issue = "") {
+  const text = String(issue || "");
+  const colon = /^.+?:\s*(.+)$/.exec(text);
+  if (colon) return normalizeRelPath(colon[1]);
+  const artifactLink = /for\s+(.+)$/i.exec(text);
+  return artifactLink ? normalizeRelPath(artifactLink[1]) : null;
+}
+
+function workItemReceiptDriftRepairHint(code, candidate = {}) {
+  const receiptPath = candidate.receiptPath || "<receipt-json>";
+  if (code === "missing-artifact-link") {
+    return "reissue the receipt to regenerate artifact-links.json: node scripts/workflow-receipt.mjs reissue --receipt " + receiptPath;
+  }
+  if (code === "hash-mismatch" || code === "missing-output-artifact") {
+    return "treat the receipt as stale; regenerate the stable output artifact, then reissue or prune stale receipts with explicit --apply";
+  }
+  return "inspect trust state with node scripts/workflow-receipt.mjs recovery-status and repair using reissue, prune-stale, or rebuild-ledger";
+}
+
+function dedupeWorkItemReceiptDiagnostics(diagnostics = []) {
+  const seen = new Set();
+  const out = [];
+  for (const item of diagnostics) {
+    const key = [item.receiptId, item.code, item.artifactPath || "", item.message || ""].join("\0");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
+}
+
+function nextWorkItemReceiptDriftRepairCommand({ lookup = {}, diagnostics = [], selectedDiagnostics = [] } = {}) {
+  if (!lookup.selected) return "node scripts/workflow-receipt.mjs lookup-work-item --task-id <work-item-id> --graph-id <graph-id>";
+  const active = selectedDiagnostics.length ? selectedDiagnostics : diagnostics;
+  if (active.some((item) => item.code === "missing-artifact-link")) {
+    return "node scripts/workflow-receipt.mjs reissue --receipt " + (lookup.selected.receiptPath || "<receipt-json>");
+  }
+  if (active.some((item) => item.code === "hash-mismatch" || item.code === "missing-output-artifact")) {
+    return "node scripts/workflow-receipt.mjs prune-stale --apply";
+  }
+  if (active.some((item) => item.code === "untrusted-receipt")) {
+    return "node scripts/workflow-receipt.mjs recovery-status";
+  }
+  if (lookup.selected.status === "superseded" && lookup.selected.supersededBy?.receiptPath) {
+    return "node scripts/workflow-receipt.mjs lookup-work-item --receipt " + lookup.selected.supersededBy.receiptId;
+  }
+  return lookup.pass ? "none" : "node scripts/workflow-receipt.mjs reissue --receipt " + (lookup.selected.receiptPath || "<receipt-json>");
 }
 
 function normalizeCommand(value) {

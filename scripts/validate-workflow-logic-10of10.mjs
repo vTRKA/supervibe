@@ -34,47 +34,192 @@ const REQUIRED_EVIDENCE = Object.freeze([
   "verification-policy",
 ]);
 
+export const WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS = Object.freeze({
+  development: Object.freeze({
+    id: "development",
+    graph: Object.freeze({
+      minTaskGraphScore: 10,
+      requireActiveGraph: false,
+      requireSourcePlanSnapshots: true,
+      requireStrictCompletionEvidence: true,
+    }),
+    receipts: Object.freeze({
+      minTrustedReceipts: 1,
+      minTrustedHostAgentReceipts: 1,
+      requireReceiptRuntimePass: true,
+      requireAgentProducerReceiptPass: true,
+    }),
+    multiAgent: Object.freeze({
+      minAgentInvocations: 1,
+      minParallelAgents: 2,
+      requireMandatoryFanoutAfterCompaction: true,
+      requireMandatoryFanoutForSimpleTasks: true,
+    }),
+    retrievalMemoryFreshness: Object.freeze({
+      minMemoryEntries: 1,
+      minRelevantMemoryEntries: 1,
+      minRelevantMemoryConfidence: 9,
+      maxMissingOrStaleRows: 0,
+      maxSourceStaleRows: 0,
+      maxContentChangedRows: 0,
+      requireCodeRagFresh: true,
+      requireCodeGraphFresh: true,
+      requireSourceReadinessSignals: true,
+      requireStalenessPolicySignals: true,
+      requireAutorefreshOrFallbackSignals: true,
+      requireMemoryAutonomySignals: true,
+    }),
+    verificationCache: Object.freeze({
+      finalOnlyVerification: true,
+      developmentTestsAllowed: false,
+      developmentValidatorsAllowed: false,
+      releaseCacheRequired: false,
+      releaseCachePassStatus: "pass",
+      requireCacheKeyInputDeclarations: true,
+      requireDryRunNotWrittenSemantics: true,
+      requireBypassForceNonReuse: true,
+      requireProofBinding: true,
+      requireFinalReleaseFullCheckPolicy: true,
+    }),
+    releaseGates: Object.freeze({
+      requireActiveReview: false,
+      releaseFullCheckRequired: false,
+      releaseFinalValidationRequired: false,
+      fullSuiteAllowed: false,
+      minReleaseFullCheckEvidence: 0,
+    }),
+    devLoopMaturity: Object.freeze({
+      requireReadyClaimClosePath: true,
+      requireScopedVerificationDiscipline: true,
+      requireHonestFinalGatePolicy: true,
+    }),
+    dispatchMaturity: Object.freeze({
+      requireHostInvocationProof: true,
+      requireWriteSetSeparation: true,
+      requireReceiptBinding: true,
+      requireFinalSweepSeparation: true,
+      forbidControllerOnlySpecialistProof: true,
+    }),
+    docsConsistency: Object.freeze({
+      requireDocsConsistencySignals: true,
+      forbidInternalInitiativeLabels: true,
+    }),
+  }),
+  release: Object.freeze({
+    id: "release",
+    graph: Object.freeze({
+      minTaskGraphScore: 10,
+      requireActiveGraph: true,
+      requireSourcePlanSnapshots: true,
+      requireStrictCompletionEvidence: true,
+    }),
+    receipts: Object.freeze({
+      minTrustedReceipts: 1,
+      minTrustedHostAgentReceipts: 1,
+      requireReceiptRuntimePass: true,
+      requireAgentProducerReceiptPass: true,
+    }),
+    multiAgent: Object.freeze({
+      minAgentInvocations: 1,
+      minParallelAgents: 2,
+      requireMandatoryFanoutAfterCompaction: true,
+      requireMandatoryFanoutForSimpleTasks: true,
+    }),
+    retrievalMemoryFreshness: Object.freeze({
+      minMemoryEntries: 5,
+      minRelevantMemoryEntries: 1,
+      minRelevantMemoryConfidence: 9,
+      maxMissingOrStaleRows: 0,
+      maxSourceStaleRows: 0,
+      maxContentChangedRows: 0,
+      requireCodeRagFresh: true,
+      requireCodeGraphFresh: true,
+      requireSourceReadinessSignals: true,
+      requireStalenessPolicySignals: true,
+      requireAutorefreshOrFallbackSignals: true,
+      requireMemoryAutonomySignals: true,
+    }),
+    verificationCache: Object.freeze({
+      finalOnlyVerification: true,
+      developmentTestsAllowed: false,
+      developmentValidatorsAllowed: false,
+      releaseCacheRequired: true,
+      releaseCachePassStatus: "pass",
+      requireCacheKeyInputDeclarations: true,
+      requireDryRunNotWrittenSemantics: true,
+      requireBypassForceNonReuse: true,
+      requireProofBinding: true,
+      requireFinalReleaseFullCheckPolicy: true,
+    }),
+    releaseGates: Object.freeze({
+      requireActiveReview: true,
+      releaseFullCheckRequired: true,
+      releaseFinalValidationRequired: true,
+      fullSuiteAllowed: true,
+      minReleaseFullCheckEvidence: 1,
+    }),
+    devLoopMaturity: Object.freeze({
+      requireReadyClaimClosePath: true,
+      requireScopedVerificationDiscipline: true,
+      requireHonestFinalGatePolicy: true,
+    }),
+    dispatchMaturity: Object.freeze({
+      requireHostInvocationProof: true,
+      requireWriteSetSeparation: true,
+      requireReceiptBinding: true,
+      requireFinalSweepSeparation: true,
+      forbidControllerOnlySpecialistProof: true,
+    }),
+    docsConsistency: Object.freeze({
+      requireDocsConsistencySignals: true,
+      forbidInternalInitiativeLabels: true,
+    }),
+  }),
+});
+
 export const WORKFLOW_LOGIC_GATE_PROFILES = Object.freeze({
   development: Object.freeze({
     id: "development",
     label: "Development Gate",
     scope: "task-local",
-    activeGraphRequired: false,
-    requireActiveReview: false,
-    releaseFullCheckRequired: false,
+    thresholds: WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.development,
+    activeGraphRequired: WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.development.graph.requireActiveGraph,
+    requireActiveReview: WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.development.releaseGates.requireActiveReview,
+    releaseFullCheckRequired: WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.development.releaseGates.releaseFullCheckRequired,
     targetedOnly: false,
-    fullSuiteAllowed: false,
-    finalOnlyVerification: true,
-    developmentTestsAllowed: false,
-    developmentValidatorsAllowed: false,
-    releaseFinalValidationRequired: false,
+    fullSuiteAllowed: WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.development.releaseGates.fullSuiteAllowed,
+    finalOnlyVerification: WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.development.verificationCache.finalOnlyVerification,
+    developmentTestsAllowed: WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.development.verificationCache.developmentTestsAllowed,
+    developmentValidatorsAllowed: WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.development.verificationCache.developmentValidatorsAllowed,
+    releaseFinalValidationRequired: WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.development.releaseGates.releaseFinalValidationRequired,
     verificationPolicy: PLAN_GRAPH_TASK_FINAL_ONLY_VERIFICATION_POLICY,
-    minMemoryEntries: 1,
-    minRelevantMemoryEntries: 1,
-    minTrustedReceipts: 1,
-    minHostAgentReceipts: 1,
-    minAgentInvocations: 1,
+    minMemoryEntries: WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.development.retrievalMemoryFreshness.minMemoryEntries,
+    minRelevantMemoryEntries: WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.development.retrievalMemoryFreshness.minRelevantMemoryEntries,
+    minTrustedReceipts: WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.development.receipts.minTrustedReceipts,
+    minHostAgentReceipts: WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.development.receipts.minTrustedHostAgentReceipts,
+    minAgentInvocations: WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.development.multiAgent.minAgentInvocations,
     policy: "Plan, graph, and task development work must schedule no tests or validators; all verification is deferred to the final release gate.",
   }),
   release: Object.freeze({
     id: "release",
     label: "Release Gate",
     scope: "phase-or-release-gate",
-    activeGraphRequired: true,
-    requireActiveReview: true,
-    releaseFullCheckRequired: true,
+    thresholds: WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.release,
+    activeGraphRequired: WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.release.graph.requireActiveGraph,
+    requireActiveReview: WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.release.releaseGates.requireActiveReview,
+    releaseFullCheckRequired: WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.release.releaseGates.releaseFullCheckRequired,
     targetedOnly: false,
-    fullSuiteAllowed: true,
-    finalOnlyVerification: true,
-    developmentTestsAllowed: false,
-    developmentValidatorsAllowed: false,
-    releaseFinalValidationRequired: true,
+    fullSuiteAllowed: WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.release.releaseGates.fullSuiteAllowed,
+    finalOnlyVerification: WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.release.verificationCache.finalOnlyVerification,
+    developmentTestsAllowed: WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.release.verificationCache.developmentTestsAllowed,
+    developmentValidatorsAllowed: WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.release.verificationCache.developmentValidatorsAllowed,
+    releaseFinalValidationRequired: WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.release.releaseGates.releaseFinalValidationRequired,
     verificationPolicy: PLAN_GRAPH_TASK_FINAL_ONLY_VERIFICATION_POLICY,
-    minMemoryEntries: 5,
-    minRelevantMemoryEntries: 1,
-    minTrustedReceipts: 1,
-    minHostAgentReceipts: 1,
-    minAgentInvocations: 1,
+    minMemoryEntries: WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.release.retrievalMemoryFreshness.minMemoryEntries,
+    minRelevantMemoryEntries: WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.release.retrievalMemoryFreshness.minRelevantMemoryEntries,
+    minTrustedReceipts: WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.release.receipts.minTrustedReceipts,
+    minHostAgentReceipts: WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.release.receipts.minTrustedHostAgentReceipts,
+    minAgentInvocations: WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.release.multiAgent.minAgentInvocations,
     policy: "Release work must run the deferred final validation gate with active graph proof, trusted review evidence, and a recorded full-check evidence entry.",
   }),
 });
@@ -112,7 +257,7 @@ export async function buildWorkflowLogicTenOfTenReport(rootDir = process.cwd(), 
     gateProfile,
   ] = await Promise.all([
     Promise.resolve(collectMemoryEvidence(resolvedRoot, profile)),
-    collectIndexEvidence(resolvedRoot),
+    collectIndexEvidence(resolvedRoot, profile),
     Promise.resolve(collectReceiptEvidence(resolvedRoot, profile)),
     Promise.resolve(collectGraphProofEvidence(resolvedRoot, profile)),
     Promise.resolve(collectAgentLeaseEvidence(resolvedRoot, profile, { now: options.now })),
@@ -174,6 +319,8 @@ export function scoreWorkflowLogicTenOfTen({ profile = "development", evidence =
     status: score === 10 && blockers.length === 0 ? "10-of-10-ready" : score >= 8 ? "near-10-evidence-gaps" : "hardening-required",
     strictTenOfTenReady: score === 10 && blockers.length === 0,
     requiredEvidence: REQUIRED_EVIDENCE,
+    rubricThresholds: gateProfile.thresholds,
+    availableRubricModes: Object.keys(WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS),
     gateProfile: {
       id: gateProfile.id,
       scope: gateProfile.scope,
@@ -205,6 +352,9 @@ export function formatWorkflowLogicTenOfTenReport(report = {}) {
     `SCORE: ${report.score ?? 0}/${report.maxScore || 10}`,
     `STATUS: ${report.status || "unknown"}`,
     `REQUIRED_EVIDENCE: ${(report.requiredEvidence || REQUIRED_EVIDENCE).join(",")}`,
+    `RUBRIC_MODE: ${report.rubricThresholds?.id || report.profile || "development"}`,
+    `RUBRIC_MODES: ${(report.availableRubricModes || Object.keys(WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS)).join(",")}`,
+    `RUBRIC_THRESHOLDS: ${formatRubricThresholdSummary(report.rubricThresholds || WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.development)}`,
     `GATE_SCOPE: ${report.gateProfile?.scope || "unknown"}`,
     `TARGETED_ONLY: ${report.gateProfile?.targetedOnly === true}`,
     `FULL_SUITE_ALLOWED: ${report.gateProfile?.fullSuiteAllowed === true}`,
@@ -244,12 +394,13 @@ function collectMemoryEvidence(rootDir, profile) {
   const entries = Array.isArray(index.entries) ? index.entries : [];
   const relevant = entries.filter((entry) => {
     const tags = Array.isArray(entry.tags) ? entry.tags.join(" ") : "";
-    return Number(entry.confidence || 0) >= 9 && MEMORY_TAG_RE.test(tags);
+    const threshold = profile.thresholds?.retrievalMemoryFreshness?.minRelevantMemoryConfidence ?? 9;
+    return Number(entry.confidence || 0) >= threshold && MEMORY_TAG_RE.test(tags);
   });
   const pass = entries.length >= profile.minMemoryEntries && relevant.length >= profile.minRelevantMemoryEntries;
   return {
     pass,
-    summary: `entries=${entries.length}/${profile.minMemoryEntries}, relevantHighConfidence=${relevant.length}/${profile.minRelevantMemoryEntries}`,
+    summary: `entries=${entries.length}/${profile.minMemoryEntries}, relevantHighConfidence=${relevant.length}/${profile.minRelevantMemoryEntries}, confidence>=${profile.thresholds?.retrievalMemoryFreshness?.minRelevantMemoryConfidence ?? 9}`,
     details: {
       indexPath: toRel(rootDir, indexPath),
       generatedAt: index.generatedAt || null,
@@ -261,7 +412,7 @@ function collectMemoryEvidence(rootDir, profile) {
   };
 }
 
-async function collectIndexEvidence(rootDir) {
+async function collectIndexEvidence(rootDir, profile = WORKFLOW_LOGIC_GATE_PROFILES.development) {
   const codeDbPath = join(rootDir, ".supervibe", "memory", "code.db");
   if (!existsSync(codeDbPath)) {
     return {
@@ -290,17 +441,20 @@ async function collectIndexEvidence(rootDir) {
     const workflowFailedCodes = failedCodes.filter((code) => code !== "stale-rows" || missing.sourceStaleRows.length > 0);
     const sourceReady = workflowFailedCodes.every((code) => !SOURCE_HEALTH_BLOCKERS.has(code));
     const graphReady = workflowFailedCodes.length === 0;
-    const noStale = missingOrStale === 0;
+    const freshness = profile.thresholds?.retrievalMemoryFreshness || WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.development.retrievalMemoryFreshness;
+    const noStale = missingOrStale <= freshness.maxMissingOrStaleRows
+      && missing.sourceStaleRows.length <= freshness.maxSourceStaleRows
+      && missing.contentChangedRows.length <= freshness.maxContentChangedRows;
     return {
       rag: {
         pass: sourceReady && noStale,
-        summary: `source=${gate.indexedSourceFiles || 0}/${gate.eligibleSourceFiles || 0}, missingOrStale=${missingOrStale ?? "unknown"}, failed=${workflowFailedCodes.join(",") || "none"}`,
+        summary: `source=${gate.indexedSourceFiles || 0}/${gate.eligibleSourceFiles || 0}, missingOrStale=${missingOrStale ?? "unknown"}/${freshness.maxMissingOrStaleRows}, sourceStale=${missing.sourceStaleRows.length}/${freshness.maxSourceStaleRows}, contentChanged=${missing.contentChangedRows.length}/${freshness.maxContentChangedRows}, failed=${workflowFailedCodes.join(",") || "none"}`,
         details: { gate, missing },
         nextAction: sourceReady && noStale ? null : "Refresh source RAG with build-code-index --source-only and confirm source health has no missing, stale, or content-changed source rows.",
       },
       codegraph: {
         pass: graphReady && noStale,
-        summary: `ready=${graphReady}, missingOrStale=${missingOrStale ?? "unknown"}, warnings=${warningCodes.join(",") || "none"}`,
+        summary: `ready=${graphReady}, missingOrStale=${missingOrStale ?? "unknown"}/${freshness.maxMissingOrStaleRows}, sourceStale=${missing.sourceStaleRows.length}/${freshness.maxSourceStaleRows}, contentChanged=${missing.contentChangedRows.length}/${freshness.maxContentChangedRows}, warnings=${warningCodes.join(",") || "none"}`,
         details: { gate, missing },
         nextAction: graphReady && noStale ? null : "Refresh CodeGraph with build-code-index --graph and rerun index health before 10/10 claims.",
       },
@@ -342,8 +496,11 @@ function collectReceiptEvidence(rootDir, profile) {
     }
   }
   const agentInvocations = Number(agentReceipts.agentInvocations ?? agentReceipts.loggedAgentInvocations ?? 0);
-  const pass = workflowReceipts.pass === true
-    && agentReceipts.pass === true
+  const receiptThresholds = profile.thresholds?.receipts || WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.development.receipts;
+  const receiptRuntimePass = !receiptThresholds.requireReceiptRuntimePass || workflowReceipts.pass === true;
+  const agentProducerPass = !receiptThresholds.requireAgentProducerReceiptPass || agentReceipts.pass === true;
+  const pass = receiptRuntimePass
+    && agentProducerPass
     && trustedReceipts >= profile.minTrustedReceipts
     && trustedHostAgentReceipts >= profile.minHostAgentReceipts
     && agentInvocations >= profile.minAgentInvocations;
@@ -364,13 +521,16 @@ function collectGraphProofEvidence(rootDir, profile) {
   const sourceSnapshot = (taskGraph.dimensions || []).find((item) => item.id === "source-plan-snapshots");
   const strictEvidence = (taskGraph.dimensions || []).find((item) => item.id === "strict-completion-evidence");
   const currentGraph = (taskGraph.dimensions || []).find((item) => item.id === "current-graph");
+  const graphThresholds = profile.thresholds?.graph || WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.development.graph;
+  const graphScorePass = Number(taskGraph.score || 0) >= graphThresholds.minTaskGraphScore;
   const pass = taskGraph.pass === true
+    && graphScorePass
     && sourceSnapshot?.pass === true
     && strictEvidence?.pass === true
     && (!profile.activeGraphRequired || currentGraph?.pass === true);
   return {
     pass,
-    summary: `taskGraph=${taskGraph.score}/10, activeRequired=${profile.activeGraphRequired}, sourceSnapshot=${sourceSnapshot?.pass === true}, strictEvidence=${strictEvidence?.pass === true}`,
+    summary: `taskGraph=${taskGraph.score}/${graphThresholds.minTaskGraphScore}, activeRequired=${profile.activeGraphRequired}, sourceSnapshot=${sourceSnapshot?.pass === true}, strictEvidence=${strictEvidence?.pass === true}`,
     details: {
       taskGraph,
       sourceSnapshot: sourceSnapshot || null,
@@ -503,27 +663,491 @@ function collectGateProfileEvidence(rootDir, profile) {
   const schedulerReleaseBoundaryPresent = /Full verification commands.*release gates/i.test(commandPlan)
     && /FULL_SUITE_ALLOWED/.test(commandPlan)
     && /Full checks run once at final phase\/release handoff/i.test(loop);
+  const releaseGateThresholds = profile.thresholds?.releaseGates || WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.development.releaseGates;
+  const verificationCacheThresholds = profile.thresholds?.verificationCache || WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.development.verificationCache;
+  const devLoopMaturity = collectDevLoopMaturityEvidence(rootDir, profile);
+  const retrievalFreshnessGate = collectRetrievalFreshnessGateEvidence(rootDir, profile);
+  const dispatchMaturityGate = collectDispatchMaturityGateEvidence(rootDir, profile);
+  const verificationCacheSafety = collectVerificationCacheSafetyEvidence(rootDir, profile);
+  const docsConsistencyGate = collectDocsConsistencyEvidence(rootDir, profile);
   const releaseEvidence = findReleaseFullCheckEvidence(rootDir);
+  const requiredReleaseEvidence = releaseGateThresholds.minReleaseFullCheckEvidence ?? 0;
+  const releaseEvidencePass = releaseEvidence.length >= requiredReleaseEvidence;
   const pass = finalOnlyPolicy.pass === true
     && schedulerReleaseBoundaryPresent
-    && (!profile.releaseFullCheckRequired || releaseEvidence.length > 0);
+    && devLoopMaturity.pass === true
+    && retrievalFreshnessGate.pass === true
+    && dispatchMaturityGate.pass === true
+    && verificationCacheSafety.pass === true
+    && docsConsistencyGate.pass === true
+    && (!profile.releaseFullCheckRequired || releaseEvidencePass);
   return {
     pass,
-    summary: `profile=${profile.id}, finalOnlyPolicy=${finalOnlyPolicy.pass === true}, developmentTestsAllowed=${profile.developmentTestsAllowed === true}, developmentValidatorsAllowed=${profile.developmentValidatorsAllowed === true}, releaseFinalRequired=${profile.releaseFinalValidationRequired === true}, schedulerReleaseBoundary=${schedulerReleaseBoundaryPresent}, releaseFullCheckEvidence=${releaseEvidence.length}`,
+    summary: `profile=${profile.id}, finalOnlyPolicy=${finalOnlyPolicy.pass === true}, developmentTestsAllowed=${profile.developmentTestsAllowed === true}, developmentValidatorsAllowed=${profile.developmentValidatorsAllowed === true}, releaseFinalRequired=${profile.releaseFinalValidationRequired === true}, schedulerReleaseBoundary=${schedulerReleaseBoundaryPresent}, devLoopMaturity=${devLoopMaturity.pass === true}, retrievalFreshness=${retrievalFreshnessGate.pass === true}, dispatchMaturity=${dispatchMaturityGate.pass === true}, docsConsistency=${docsConsistencyGate.pass === true}, releaseFullCheckEvidence=${releaseEvidence.length}/${requiredReleaseEvidence}, releaseCacheRequired=${verificationCacheThresholds.releaseCacheRequired === true}, cacheSafety=${verificationCacheSafety.pass === true}`,
     details: {
       profile,
       finalOnlyPolicy,
+      devLoopMaturity,
+      retrievalFreshnessGate,
+      dispatchMaturityGate,
+      verificationCacheSafety,
+      docsConsistencyGate,
+      releaseGateThresholds,
+      verificationCacheThresholds,
       releaseEvidence: releaseEvidence.slice(0, 8),
-      evidencePaths: ["scripts/lib/supervibe-workflow-readiness-model.mjs", "scripts/command-agent-plan.mjs", "scripts/supervibe-loop.mjs"],
+      evidencePaths: [
+        "scripts/lib/supervibe-workflow-readiness-model.mjs",
+        "scripts/command-agent-plan.mjs",
+        "scripts/supervibe-loop.mjs",
+        "scripts/lib/supervibe-work-state.mjs",
+        "scripts/lib/supervibe-wave-controller.mjs",
+        "scripts/lib/supervibe-agent-run-bridge.mjs",
+        "scripts/lib/supervibe-final-review-sweep.mjs",
+        "scripts/lib/agent-producer-contract.mjs",
+        "scripts/run-release-check.mjs",
+        "scripts/lib/supervibe-verification-cache-v2.mjs",
+        "README.md",
+        "AGENTS.md",
+        "CLAUDE.md",
+        "GEMINI.md",
+        "docs/supervibe-workflow-hardening.md",
+        "docs/supervibe-workflow-logic-10of10.md",
+        "docs/provider-configs/",
+      ],
     },
     nextAction: pass
       ? null
       : finalOnlyPolicy.pass !== true
         ? finalOnlyPolicy.nextAction
+        : devLoopMaturity.pass !== true
+          ? devLoopMaturity.nextAction
+        : retrievalFreshnessGate.pass !== true
+          ? retrievalFreshnessGate.nextAction
+        : dispatchMaturityGate.pass !== true
+          ? dispatchMaturityGate.nextAction
+        : verificationCacheSafety.pass !== true
+          ? verificationCacheSafety.nextAction
+        : docsConsistencyGate.pass !== true
+          ? docsConsistencyGate.nextAction
         : profile.releaseFullCheckRequired
           ? "Run the release full-check gate once and record passing graph-level evidence before release readiness."
           : "Restore plan/graph/task final-only verification policy and release-bound scheduler signals.",
   };
+}
+
+function collectDocsConsistencyEvidence(rootDir, profile) {
+  const thresholds = profile.thresholds?.docsConsistency || WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.development.docsConsistency;
+  const docFiles = collectProductionGuidanceFiles(rootDir);
+  const docs = docFiles.map((file) => ({
+    file,
+    rel: toRel(rootDir, file),
+    text: readOptional(file),
+  }));
+  const allText = docs.map((doc) => doc.text).join("\n\n");
+  const providerText = docs
+    .filter((doc) => doc.rel.startsWith("docs/provider-configs/") || ["AGENTS.md", "CLAUDE.md", "GEMINI.md"].includes(doc.rel))
+    .map((doc) => doc.text)
+    .join("\n\n");
+  const commandRouting = /supervibe-commands\.mjs\s+--match/i.test(allText)
+    && /missing_slash_command/i.test(allText)
+    && /HARD_STOP/i.test(allText);
+  const receiptProvenance = /runtime-issued workflow receipts?/i.test(allText)
+    && /hostInvocation\.(?:source|invocationId)/.test(allText)
+    && /provenance/i.test(allText);
+  const graphTaskUx = /task graph/i.test(allText)
+    && /ready\/claim\/close|ready, claim, and close|status must prefer the active graph|visible task graph/i.test(allText);
+  const cacheSemantics = /verification cache|release cache/i.test(allText)
+    && /previous all-pass cache never converts into a fresh release pass|previous-pass-cache-ignored|force\/bypass non-reuse|force.*non-reuse/i.test(allText);
+  const finalReleaseValidation = /do not run tests or (?:global )?validators during development/i.test(allText)
+    && /final release or merge gate|final release\/merge gate|final validation block/i.test(allText);
+  const providerGuidance = /user-provider-home scoped|selected user provider config|provider runtime config/i.test(providerText)
+    && /project runtime configs/i.test(providerText);
+  const leakFindings = thresholds.forbidInternalInitiativeLabels === false
+    ? []
+    : scanInternalInitiativeLabelLeaks(docs);
+  const checks = [
+    ["command-routing", !thresholds.requireDocsConsistencySignals || commandRouting],
+    ["real-receipts-provenance", !thresholds.requireDocsConsistencySignals || receiptProvenance],
+    ["graph-task-ux", !thresholds.requireDocsConsistencySignals || graphTaskUx],
+    ["cache-semantics", !thresholds.requireDocsConsistencySignals || cacheSemantics],
+    ["final-release-validation-policy", !thresholds.requireDocsConsistencySignals || finalReleaseValidation],
+    ["provider-guidance-boundaries", !thresholds.requireDocsConsistencySignals || providerGuidance],
+    ["no-internal-initiative-labels", leakFindings.length === 0],
+  ];
+  const failed = checks.filter(([, passed]) => !passed).map(([id]) => id);
+  const pass = failed.length === 0;
+  return {
+    pass,
+    summary: `checks=${checks.length - failed.length}/${checks.length}, failed=${failed.join(",") || "none"}, files=${docs.length}, leaks=${leakFindings.length}`,
+    details: {
+      failed,
+      checks: Object.fromEntries(checks.map(([id, passed]) => [id, passed])),
+      leakFindings: leakFindings.slice(0, 12),
+      thresholds,
+      evidencePaths: docs.map((doc) => doc.rel),
+    },
+    nextAction: pass
+      ? null
+      : "Restore production docs and provider guidance for command routing, runtime receipt provenance, graph/task UX, verification cache semantics, final release validation policy, provider config boundaries, and removal of internal initiative labels.",
+  };
+}
+
+function collectVerificationCacheSafetyEvidence(rootDir, profile) {
+  const thresholds = profile.thresholds?.verificationCache || WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.development.verificationCache;
+  const sources = {
+    releaseCheck: readOptional(join(rootDir, "scripts", "run-release-check.mjs")),
+    cacheSchema: readOptional(join(rootDir, "scripts", "lib", "supervibe-verification-cache-v2.mjs")),
+    validator: readOptional(join(rootDir, "scripts", "validate-workflow-logic-10of10.mjs")),
+  };
+  const checks = [
+    [
+      "cache-key-input-declarations",
+      !thresholds.requireCacheKeyInputDeclarations
+        || (/RELEASE_CHECK_CACHE_SAFETY_SIGNALS/.test(sources.releaseCheck)
+          && /createVerificationGateInputDeclarationV2/.test(sources.releaseCheck)
+          && /function buildGateInputDeclaration/.test(sources.releaseCheck)
+          && /fileInputs/.test(sources.releaseCheck)
+          && /environmentInputs/.test(sources.releaseCheck)
+          && /versionInputs/.test(sources.releaseCheck)
+          && /bypassForceInputs/.test(sources.releaseCheck)
+          && /inputContentHashes/.test(sources.releaseCheck)
+          && /invalidationInputs/.test(sources.releaseCheck)),
+    ],
+    [
+      "dry-run-not-written",
+      !thresholds.requireDryRunNotWrittenSemantics
+        || (/not-written-dry-run/.test(sources.releaseCheck)
+          && /DRY_RUN_PASS/.test(sources.releaseCheck)
+          && /PASS: not-applicable-dry-run/.test(sources.releaseCheck)
+          && /CACHE_RESULT:/.test(sources.releaseCheck)
+          && /RELEASE_RESULT: not-executed/.test(sources.releaseCheck)
+          && /if \(options\.dryRun\)/.test(sources.releaseCheck)),
+    ],
+    [
+      "bypass-force-non-reuse",
+      !thresholds.requireBypassForceNonReuse
+        || (/bypassForceInputs/.test(sources.releaseCheck)
+          && /clearCache/.test(sources.releaseCheck)
+          && /fromStart/.test(sources.releaseCheck)
+          && /previous-pass-cache-ignored/.test(sources.releaseCheck)
+          && /failed.*interrupted.*running/.test(sources.releaseCheck)
+          && /canReuseVerificationCacheRecordV2/.test(sources.releaseCheck)),
+    ],
+    [
+      "proof-binding",
+      !thresholds.requireProofBinding
+        || (/function buildGateProofHashes/.test(sources.releaseCheck)
+          && /receiptDependencyHash/.test(sources.releaseCheck)
+          && /proofHashes/.test(sources.releaseCheck)
+          && /VERIFICATION_CACHE_RECORD_V2_INVALIDATION_FIELDS/.test(sources.cacheSchema)
+          && /proofHashes/.test(sources.cacheSchema)),
+    ],
+    [
+      "final-release-full-check-policy",
+      !thresholds.requireFinalReleaseFullCheckPolicy
+        || (/previous all-pass cache never converts into a fresh release pass/.test(sources.releaseCheck)
+          && /previous-pass-cache-ignored/.test(sources.releaseCheck)
+          && /ReleaseEvidenceV1/.test(sources.releaseCheck)
+          && /stdoutPath/.test(sources.releaseCheck)
+          && /stderrPath/.test(sources.releaseCheck)
+          && /artifactPath/.test(sources.releaseCheck)
+          && /receiptId/.test(sources.releaseCheck)
+          && /ledgerHash/.test(sources.releaseCheck)
+          && /proofHash/.test(sources.releaseCheck)
+          && /hostInvocationSource/.test(sources.releaseCheck)
+          && /findReleaseFullCheckEvidence/.test(sources.validator)
+          && /RELEASE_FULL_CHECK_RE/.test(sources.validator)
+          && /minReleaseFullCheckEvidence/.test(sources.validator)),
+    ],
+  ];
+  const failed = checks.filter(([, pass]) => !pass).map(([id]) => id);
+  const pass = failed.length === 0;
+  return {
+    pass,
+    summary: `checks=${checks.length - failed.length}/${checks.length}, failed=${failed.join(",") || "none"}`,
+    details: {
+      failed,
+      thresholds,
+      checks: Object.fromEntries(checks.map(([id, passed]) => [id, passed])),
+      evidencePaths: [
+        "scripts/run-release-check.mjs",
+        "scripts/lib/supervibe-verification-cache-v2.mjs",
+        "scripts/validate-workflow-logic-10of10.mjs",
+      ],
+    },
+    nextAction: pass
+      ? null
+      : "Restore release verification cache safety signals for input declarations, dry-run non-writes, force/bypass non-reuse, proof-bound reuse keys, and final release full-check policy.",
+  };
+}
+
+function collectDispatchMaturityGateEvidence(rootDir, profile) {
+  const thresholds = profile.thresholds?.dispatchMaturity || WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.development.dispatchMaturity;
+  const sources = {
+    waveController: readOptional(join(rootDir, "scripts", "lib", "supervibe-wave-controller.mjs")),
+    agentRunBridge: readOptional(join(rootDir, "scripts", "lib", "supervibe-agent-run-bridge.mjs")),
+    agentInvocation: readOptional(join(rootDir, "scripts", "agent-invocation.mjs")),
+    agentProducerContract: readOptional(join(rootDir, "scripts", "lib", "agent-producer-contract.mjs")),
+    finalReviewSweep: readOptional(join(rootDir, "scripts", "lib", "supervibe-final-review-sweep.mjs")),
+    workflowReceipt: readOptional(join(rootDir, "scripts", "workflow-receipt.mjs")),
+  };
+  const checks = [
+    [
+      "host-invocation-proof",
+      !thresholds.requireHostInvocationProof
+        || ((/codex-spawn-agent/.test(sources.agentInvocation) || /codex-spawn-agent/.test(sources.agentRunBridge))
+          && /hostInvocation\.source/.test(sources.agentProducerContract)
+          && /hostInvocation\.invocationId/.test(sources.agentProducerContract)
+          && /planned dry-run invocation id cannot/.test(sources.agentRunBridge)
+          && /spawnExecutor is required for dispatch apply/.test(sources.waveController)),
+    ],
+    [
+      "write-set-separation",
+      !thresholds.requireWriteSetSeparation
+        || (/requireWriteSet/.test(sources.waveController)
+          && /detectWriteSetConflicts/.test(sources.waveController)
+          && /writeSetLocks/.test(sources.waveController)
+          && /createReservedWriteSetLock/.test(sources.waveController)
+          && /write-set lock conflict/.test(sources.waveController)),
+    ],
+    [
+      "receipt-binding",
+      !thresholds.requireReceiptBinding
+        || (/createSpawnInvocationLogBinding/.test(sources.agentRunBridge)
+          && /receiptId required for spawn invocation log binding/.test(sources.agentRunBridge)
+          && /ledgerHash required for spawn invocation log binding/.test(sources.agentRunBridge)
+          && /proofHash required for spawn invocation log binding/.test(sources.agentRunBridge)
+          && /issueWorkflowInvocationReceipt/.test(sources.agentInvocation)
+          && /validateHostInvocationProof/.test(sources.agentProducerContract)),
+    ],
+    [
+      "final-sweep-separation",
+      !thresholds.requireFinalSweepSeparation
+        || (/reviewMode = "final-sweep"/.test(sources.waveController)
+          && /deferredUntil:\s*finalSweepReview \? "graph-release-gate"/.test(sources.waveController)
+          && /finalSweepWork/.test(sources.waveController)
+          && /requiredAt:\s*"graph-release-gate"/.test(sources.finalReviewSweep)
+          && /midGraphBlocking:\s*false/.test(sources.finalReviewSweep)),
+    ],
+    [
+      "no-controller-only-specialist-emulation",
+      !thresholds.forbidControllerOnlySpecialistProof
+        || (/command-subject receipts are controller\/diagnostic evidence only/.test(sources.workflowReceipt)
+          && /cannot satisfy required producer, reviewer, worker, validator, or task-completion proof/.test(sources.workflowReceipt)
+          && /skill-only receipts cannot complete/.test(sources.agentProducerContract)
+          && /recovery\/reissue receipt is repair evidence only/.test(sources.agentProducerContract)
+          && /planned dry-run invocation id cannot issue a receipt/.test(sources.agentRunBridge)),
+    ],
+  ];
+  const failed = checks.filter(([, pass]) => !pass).map(([id]) => id);
+  const pass = failed.length === 0;
+  return {
+    pass,
+    summary: `checks=${checks.length - failed.length}/${checks.length}, failed=${failed.join(",") || "none"}`,
+    details: {
+      failed,
+      checks: Object.fromEntries(checks.map(([id, passed]) => [id, passed])),
+      thresholds,
+      evidencePaths: [
+        "scripts/lib/supervibe-wave-controller.mjs",
+        "scripts/lib/supervibe-agent-run-bridge.mjs",
+        "scripts/agent-invocation.mjs",
+        "scripts/lib/agent-producer-contract.mjs",
+        "scripts/lib/supervibe-final-review-sweep.mjs",
+        "scripts/workflow-receipt.mjs",
+      ],
+    },
+    nextAction: pass
+      ? null
+      : "Restore dispatch maturity signals for real host-agent invocation proof, write-set ownership/separation, receipt-bound output proof, final-sweep review separation, and rejection of controller-only specialist emulation.",
+  };
+}
+
+function collectRetrievalFreshnessGateEvidence(rootDir, profile) {
+  const thresholds = profile.thresholds?.retrievalMemoryFreshness || WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.development.retrievalMemoryFreshness;
+  const sources = {
+    validator: readOptional(join(rootDir, "scripts", "validate-workflow-logic-10of10.mjs")),
+    status: readOptional(join(rootDir, "scripts", "supervibe-status.mjs")),
+    buildIndex: readOptional(join(rootDir, "scripts", "build-code-index.mjs")),
+    watcher: readOptional(join(rootDir, "scripts", "lib", "code-watcher.mjs")),
+    autorepair: readOptional(join(rootDir, "scripts", "lib", "supervibe-index-autorepair.mjs")),
+    retrievalPolicy: readOptional(join(rootDir, "scripts", "lib", "supervibe-retrieval-decision-policy.mjs")),
+    searchCode: readOptional(join(rootDir, "scripts", "search-code.mjs")),
+    memoryBackfill: readOptional(join(rootDir, "scripts", "supervibe-memory-backfill.mjs")),
+    memoryGc: readOptional(join(rootDir, "scripts", "supervibe-memory-gc.mjs")),
+    memoryHealth: readOptional(join(rootDir, "scripts", "lib", "supervibe-memory-health.mjs")),
+    memoryAutonomy: readOptional(join(rootDir, "scripts", "lib", "supervibe-memory-autonomy.mjs")),
+    memoryWatch: readOptional(join(rootDir, "scripts", "watch-memory.mjs")),
+  };
+  const memoryAutonomyChecks = {
+    backfill: /scheduleMemoryBackfill/.test(sources.memoryBackfill)
+      && /review-memory-backfill-candidate/.test(sources.memoryBackfill)
+      && /intrusiveWrites:\s*false/.test(sources.memoryBackfill),
+    watcher: /Auto-reindexes memory entries/i.test(sources.memoryWatch)
+      && /startWatcher/.test(sources.memoryWatch)
+      && /heartbeat/i.test(sources.memoryWatch),
+    gc: /evaluateMemoryGcSchedule/.test(sources.memoryGc)
+      && /filterMemoryGcAutoCandidates/.test(sources.memoryGc)
+      && /writeMemoryGcScheduleRun/.test(sources.memoryGc),
+    degradedFallback: /largeProjectMode\s*=\s*"auto"/.test(sources.memoryHealth)
+      && /shouldEnforceMemoryMaturityGate/.test(sources.memoryHealth)
+      && /repairCommand/.test(sources.memoryHealth),
+    candidateOnlyPolicy: /candidateFirst:\s*true/.test(sources.memoryAutonomy)
+      && /durableWriteDefault:\s*false/.test(sources.memoryAutonomy)
+      && /explicitApprovalRequired:\s*true/.test(sources.memoryAutonomy),
+  };
+  const memoryAutonomyPass = (
+    memoryAutonomyChecks.backfill
+    && memoryAutonomyChecks.watcher
+    && memoryAutonomyChecks.gc
+    && memoryAutonomyChecks.candidateOnlyPolicy
+  ) || memoryAutonomyChecks.degradedFallback;
+  const checks = [
+    ["memory-readiness-signal", /collectMemoryEvidence/.test(sources.validator) && /buildMemoryHealthReport/.test(sources.status)],
+    ["rag-readiness-signal", /collectIndexHealthFromStore/.test(sources.validator) && /evaluateIndexHealthGate/.test(sources.validator) && /sourceReady/.test(sources.validator)],
+    ["codegraph-readiness-signal", /strictGraph:\s*true/.test(sources.validator) && /graphReady/.test(sources.validator)],
+    ["staleness-policy-signal", /collectMissingOrStaleFromHealth/.test(sources.validator) && /sourceStaleRows/.test(sources.validator) && /contentChangedRows/.test(sources.validator)],
+    ["bounded-refresh-signal", /--resume/.test(sources.buildIndex) && /--source-only/.test(sources.buildIndex) && /--graph/.test(sources.buildIndex) && /--max-files/.test(sources.buildIndex)],
+    ["auto-refresh-signal", (/auto-reindexes|periodic .*scan|heartbeat/i.test(sources.watcher) && /memory.*code|code.*memory/i.test(sources.watcher)) || (/plan-autorepair/.test(sources.buildIndex) && /buildSmallDeltaAutorepairPlan/.test(sources.autorepair))],
+    ["explicit-fallback-signal", /fallbackRequired:\s*true/.test(sources.retrievalPolicy) && /skipReason/.test(sources.retrievalPolicy) && /fallback=/.test(sources.searchCode)],
+    ["memory-autonomy-signal", memoryAutonomyPass],
+  ];
+  const requiredIds = new Set();
+  if (thresholds.requireSourceReadinessSignals !== false) {
+    requiredIds.add("memory-readiness-signal");
+    requiredIds.add("rag-readiness-signal");
+    requiredIds.add("codegraph-readiness-signal");
+  }
+  if (thresholds.requireStalenessPolicySignals !== false) {
+    requiredIds.add("staleness-policy-signal");
+    requiredIds.add("bounded-refresh-signal");
+  }
+  if (thresholds.requireAutorefreshOrFallbackSignals !== false) {
+    requiredIds.add("auto-refresh-signal");
+    requiredIds.add("explicit-fallback-signal");
+  }
+  if (thresholds.requireMemoryAutonomySignals !== false) {
+    requiredIds.add("memory-autonomy-signal");
+  }
+  const requiredChecks = checks.filter(([id]) => requiredIds.has(id));
+  const failed = requiredChecks
+    .filter(([, pass]) => !pass)
+    .map(([id]) => id);
+  const passedRequired = requiredChecks.length - failed.length;
+  const pass = failed.length === 0;
+  return {
+    pass,
+    summary: `checks=${passedRequired}/${requiredChecks.length}, failed=${failed.join(",") || "none"}`,
+    details: {
+      failed,
+      checks: Object.fromEntries(checks.map(([id, passed]) => [id, passed])),
+      memoryAutonomyChecks,
+      thresholds,
+      evidencePaths: [
+        "scripts/validate-workflow-logic-10of10.mjs",
+        "scripts/supervibe-status.mjs",
+        "scripts/build-code-index.mjs",
+        "scripts/lib/code-watcher.mjs",
+        "scripts/lib/supervibe-index-autorepair.mjs",
+        "scripts/lib/supervibe-retrieval-decision-policy.mjs",
+        "scripts/search-code.mjs",
+        "scripts/supervibe-memory-backfill.mjs",
+        "scripts/supervibe-memory-gc.mjs",
+        "scripts/lib/supervibe-memory-health.mjs",
+        "scripts/lib/supervibe-memory-autonomy.mjs",
+        "scripts/watch-memory.mjs",
+      ],
+    },
+    nextAction: pass
+      ? null
+      : "Restore retrieval freshness source signals: memory/RAG/CodeGraph readiness, stale-row policy, bounded refresh or watcher auto-refresh, explicit retrieval fallback, and autonomous memory backfill/watch/GC or degraded fallback.",
+  };
+}
+
+function collectDevLoopMaturityEvidence(rootDir, profile) {
+  const loop = readOptional(join(rootDir, "scripts", "supervibe-loop.mjs"));
+  const commandPlan = readOptional(join(rootDir, "scripts", "command-agent-plan.mjs"));
+  const workState = readOptional(join(rootDir, "scripts", "lib", "supervibe-work-state.mjs"));
+  const thresholds = profile.thresholds?.devLoopMaturity || WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.development.devLoopMaturity;
+  const checks = [
+    [
+      "ready-path",
+      !thresholds.requireReadyClaimClosePath
+        || (/ready-list/.test(loop) && /tasksReadyForAssignment/.test(loop) && /open:\s*\["ready"/.test(workState)),
+    ],
+    [
+      "claim-path",
+      !thresholds.requireReadyClaimClosePath
+        || (/claim-ready/.test(loop) && /type:\s*"claim"/.test(loop) && /ready:\s*\["claimed"/.test(workState)),
+    ],
+    [
+      "close-path",
+      !thresholds.requireReadyClaimClosePath
+        || (/close-eligible/.test(loop) && /workItemAction\.type === "close"/.test(loop) && /claimed:\s*\[[^\]]*"closed"/.test(workState)),
+    ],
+    [
+      "scoped-verification-discipline",
+      !thresholds.requireScopedVerificationDiscipline
+        || (/createTaskLocalVerificationPolicy/.test(loop)
+          && /targetedCommands/.test(loop)
+          && /deferredFullVerificationCommands/.test(loop)
+          && /Do not run tests or validators during development/.test(loop)),
+    ],
+    [
+      "honest-final-gate-policy",
+      !thresholds.requireHonestFinalGatePolicy
+        || (/createReleaseFullCheckGate/.test(loop)
+          && /allow-missing-release-full-check/.test(loop)
+          && /require-release-full-check/.test(loop)
+          && /Full verification commands.*release gates/i.test(commandPlan)),
+    ],
+  ];
+  const failed = checks.filter(([, pass]) => !pass).map(([id]) => id);
+  const pass = failed.length === 0;
+  return {
+    pass,
+    summary: `checks=${checks.length - failed.length}/${checks.length}, failed=${failed.join(",") || "none"}`,
+    details: {
+      failed,
+      thresholds,
+      evidencePaths: [
+        "scripts/supervibe-loop.mjs",
+        "scripts/command-agent-plan.mjs",
+        "scripts/lib/supervibe-work-state.mjs",
+      ],
+    },
+    nextAction: pass
+      ? null
+      : "Restore ready/claim/close loop paths, scoped task-local verification discipline, and explicit final-gate policy before 10/10 workflow-logic claims.",
+  };
+}
+
+function formatRubricThresholdSummary(thresholds = {}) {
+  return [
+    `graph.minTaskGraphScore=${thresholds.graph?.minTaskGraphScore ?? "unknown"}`,
+    `graph.requireActiveGraph=${thresholds.graph?.requireActiveGraph === true}`,
+    `receipts.minTrusted=${thresholds.receipts?.minTrustedReceipts ?? "unknown"}`,
+    `receipts.minHostAgent=${thresholds.receipts?.minTrustedHostAgentReceipts ?? "unknown"}`,
+    `multiAgent.minInvocations=${thresholds.multiAgent?.minAgentInvocations ?? "unknown"}`,
+    `multiAgent.minParallel=${thresholds.multiAgent?.minParallelAgents ?? "unknown"}`,
+    `retrieval.minMemory=${thresholds.retrievalMemoryFreshness?.minMemoryEntries ?? "unknown"}`,
+    `retrieval.maxMissingOrStale=${thresholds.retrievalMemoryFreshness?.maxMissingOrStaleRows ?? "unknown"}`,
+    `retrieval.sourceSignals=${thresholds.retrievalMemoryFreshness?.requireSourceReadinessSignals === true}`,
+    `retrieval.stalenessPolicy=${thresholds.retrievalMemoryFreshness?.requireStalenessPolicySignals === true}`,
+    `retrieval.autorefreshOrFallback=${thresholds.retrievalMemoryFreshness?.requireAutorefreshOrFallbackSignals === true}`,
+    `retrieval.memoryAutonomy=${thresholds.retrievalMemoryFreshness?.requireMemoryAutonomySignals === true}`,
+    `verificationCache.releaseRequired=${thresholds.verificationCache?.releaseCacheRequired === true}`,
+    `verificationCache.cacheSafetySignals=${thresholds.verificationCache?.requireCacheKeyInputDeclarations === true && thresholds.verificationCache?.requireDryRunNotWrittenSemantics === true && thresholds.verificationCache?.requireBypassForceNonReuse === true && thresholds.verificationCache?.requireProofBinding === true && thresholds.verificationCache?.requireFinalReleaseFullCheckPolicy === true}`,
+    `releaseGates.minFullCheckEvidence=${thresholds.releaseGates?.minReleaseFullCheckEvidence ?? "unknown"}`,
+    `devLoop.readyClaimClose=${thresholds.devLoopMaturity?.requireReadyClaimClosePath === true}`,
+    `dispatch.hostInvocationProof=${thresholds.dispatchMaturity?.requireHostInvocationProof === true}`,
+    `dispatch.writeSetSeparation=${thresholds.dispatchMaturity?.requireWriteSetSeparation === true}`,
+    `dispatch.receiptBinding=${thresholds.dispatchMaturity?.requireReceiptBinding === true}`,
+    `dispatch.finalSweepSeparation=${thresholds.dispatchMaturity?.requireFinalSweepSeparation === true}`,
+    `dispatch.noControllerOnlyEmulation=${thresholds.dispatchMaturity?.forbidControllerOnlySpecialistProof === true}`,
+    `docs.consistencySignals=${thresholds.docsConsistency?.requireDocsConsistencySignals === true}`,
+    `docs.noInternalInitiativeLabels=${thresholds.docsConsistency?.forbidInternalInitiativeLabels === true}`,
+  ].join(", ");
 }
 
 function resolveProfile(profile) {
@@ -677,6 +1301,44 @@ function collectGraphEvidence(graph = {}) {
     add(task.evidence, "task");
   }
   return out;
+}
+
+function collectProductionGuidanceFiles(rootDir) {
+  const explicitFiles = [
+    "README.md",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "GEMINI.md",
+    "docs/supervibe-workflow-hardening.md",
+    "docs/supervibe-workflow-logic-10of10.md",
+    "docs/supervibe-workflow-ux.md",
+  ];
+  const files = explicitFiles.map((file) => join(rootDir, ...file.split("/"))).filter((file) => existsSync(file));
+  for (const dir of [join(rootDir, "docs", "provider-configs"), join(rootDir, "commands")]) {
+    files.push(...walkFiles(dir).filter((file) => file.endsWith(".md")));
+  }
+  for (const dir of [join(rootDir, "skills", "writing-plans"), join(rootDir, "skills", "executing-plans")]) {
+    files.push(...walkFiles(dir).filter((file) => file.endsWith(".md")));
+  }
+  return Array.from(new Set(files)).filter((file) => !isRuntimeArtifactPath(relative(rootDir, file)) && !normalizePath(file).includes("/node_modules/"));
+}
+
+function scanInternalInitiativeLabelLeaks(docs = []) {
+  const leakPatterns = [
+    /\.supervibe\/artifacts\/evidence\/[A-Za-z0-9][A-Za-z0-9_-]+\//g,
+    /\bepic-[a-z0-9]+(?:-[a-z0-9]+){3,}\b/g,
+  ];
+  const findings = [];
+  for (const doc of docs) {
+    const lines = String(doc.text || "").split(/\r?\n/);
+    for (let index = 0; index < lines.length; index += 1) {
+      for (const pattern of leakPatterns) {
+        pattern.lastIndex = 0;
+        if (pattern.test(lines[index])) findings.push(`${doc.rel}:${index + 1}`);
+      }
+    }
+  }
+  return findings;
 }
 
 function readJson(path, fallback = null) {

@@ -45,6 +45,9 @@ const FORBIDDEN = Object.freeze([
 
 const NESTED_SUPERVIBE_ARTIFACT_ROOT = /(^|[^A-Za-z0-9_.\\/-])\.supervibe[\\/]artifacts[\\/][^`"')\s]+[\\/]_?\.supervibe[\\/]artifacts[\\/][^`"')\s]+/i;
 
+function stripUrls(line = "") {
+  return String(line).replace(/https?:\/\/[^\s`"')]+/g, "");
+}
 function trackedTextFiles(rootDir = process.cwd()) {
   const output = execFileSync("git", ["ls-files"], { cwd: rootDir, encoding: "utf8" });
   return output
@@ -72,9 +75,10 @@ export function validateProjectArtifactRoot(rootDir = process.cwd(), files = tra
           message: `${file}:${index + 1} nests .supervibe/artifacts inside another artifact path; use one canonical artifact root`,
         });
       }
+      const localPathLine = stripUrls(line);
       for (const rule of FORBIDDEN) {
-        if (!rule.pattern.test(line)) continue;
-        if (line.includes(rule.canonical)) continue;
+        if (!rule.pattern.test(localPathLine)) continue;
+        if (localPathLine.includes(rule.canonical)) continue;
         issues.push({
           file,
           line: index + 1,

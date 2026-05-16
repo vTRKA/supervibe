@@ -25,6 +25,7 @@ When Supervibe agents/skills reference Claude Code tools by name, mentally subst
 
 Same Supervibe project context, adapted for Gemini CLI:
 - 96 specialist agents in `./agents/` with responsibilities in `./docs/agent-roster.md`
+- Shipped Supervibe plugin agents live under tracked `./agents/`; provider-local adapter prompts or config may exist in host-specific locations, but those locations are not production plugin-agent storage.
 - Agent smartness is validated by `npm run validate:agent-content-quality`,
   `npm run validate:agent-skill-coverage`, `npm run validate:agent-empirical-hardening`, and `npm run validate:agent-tool-use-matrix`, not by padding files to a line count. Use `npm run supervibe:agent-heatmap` when you need per-agent quality scores instead of a pass/fail answer.
 - Every agent must explain each declared skill in `## Skills`; every process skill must have at least one owning agent.
@@ -47,7 +48,11 @@ node ./scripts/supervibe-commands.mjs --match "<user request>"
 ```
 If the output says `INTENT: missing_slash_command` or `HARD_STOP: true`, report the missing command and stop; do not inspect source files, marketplace command files, or repository paths to emulate it.
 
+For plan, graph, and task workflows, do not run tests or global validators during development. Defer `node --test`, `npm test`, `npm run check`, `validate:*`, and `node scripts/validate-*` to the final release or merge gate; use text search and scoped diff checks while drafting.
+
 For every claimed Supervibe command, skill, agent, reviewer, worker, validator, or external-tool invocation, issue a shared workflow receipt with `node ./scripts/workflow-receipt.mjs issue ...`. Hand-written receipts are untrusted; run `npm run validate:workflow-receipts` before claiming delegated work is complete.
+
+Runtime receipts prove only the invocation they name. Command, skill, and question-proposal receipts cannot substitute for agent, worker, reviewer, validator, or durable artifact proof.
 
 Inline/manual drafts are diagnostics only. Do not treat reading a skill or agent markdown file as an invocation. If a workflow names a specialist producer and Gemini cannot produce host invocation proof, report the blocked producer, offer provision/connect/stop choices, and do not claim the stage complete.
 
@@ -85,6 +90,8 @@ The same six core principles apply across host instruction files — these overr
 8. **Workflow receipts** - follow `rules/workflow-invocation-receipts.md`: runtime-issued receipts under `.supervibe/artifacts/_workflow-invocations/` and `.supervibe/memory/workflow-invocation-ledger.jsonl` are required for claimed delegated invocations.
 
 9. **Producer execution over inline emulation** - executable skill producers such as `scripts/brandbook-producer.mjs` promote durable skill outputs; agent, worker, and reviewer outputs require host invocation proof. Use `workflow-receipt.mjs recovery-status`, `reissue`, `prune-stale --apply`, or `rebuild-ledger` for recovery.
+
+10. **Production/provider boundaries** - keep production guidance free of internal initiative names, task ids, temporary evidence paths, and source-only rationale. Provider runtime config changes belong only in the selected user provider home; do not create or mutate project runtime configs such as `.codex/config.toml`, `.claude/settings*.json`, or root `config.toml`.
 
 ## Reference
 

@@ -211,6 +211,26 @@ Every architecture review must include durable output evidence fields:
 
 Architectural approval is BLOCKED when a required field is absent and no degraded reason is recorded.
 
+### Source-Bound Closure Guard
+
+Architecture approval must be bound to inspected source, not inferred workflow
+state. A review may only close when findings and no-issue claims cite current
+files, searches, graph applicability, and receipt/reviewer provenance. Degraded
+or missing evidence is a BLOCKED verdict unless the output records the degraded
+reason and the next source-backed repair step.
+
+Do not accept phantom closure signals: stale status files, external tracker
+state without native evidence, controller-written specialist summaries, missing
+host invocation ids, or receipts that do not identify the real reviewer/tool
+source. When durable workflow work names this reviewer, require the real
+reviewer invocation receipt before approval can satisfy a release, graph, or
+production-readiness gate.
+
+Before editing production agent guidance or shared review rules, check the diff
+for transient workflow ids, task ids, branch-local names, private evidence paths,
+and incident labels. Keep task-specific evidence in evidence artifacts only;
+reusable guidance must stay non-plan-specific.
+
 ## Procedure
 
 1. **Search project memory** via `supervibe:project-memory` for prior architectural decisions in this area, rejected alternatives, and past coupling incidents:

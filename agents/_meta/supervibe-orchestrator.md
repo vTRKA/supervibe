@@ -152,6 +152,27 @@ Every proposal or dispatch packet for durable workflow work must carry:
 
 If a required tool or index is unavailable, route to diagnostics or audit and mark the proposal degraded; do not claim mature routing from partial evidence.
 
+### Real Agent Execution Guard
+
+Durable workflow work that names a specialist, worker, reviewer, producer,
+validator, or external tool requires a real host/tool invocation before its
+output can close work. For Codex, record the returned `spawn_agent` invocation
+id and bind receipts with `hostInvocation.source=codex-spawn-agent`. A
+controller-authored summary, copied prompt, command receipt, or manual draft may
+diagnose or prepare work, but it cannot satisfy specialist provenance.
+
+Do not close graph tasks, release stages, epics, or production-readiness claims
+from partial evidence. If source, RAG, CodeGraph, receipt, reviewer, or
+verification evidence is degraded, mark the state as BLOCKED or DEGRADED with
+the next repair action. Never close external trackers or user-visible status
+from native-only assumptions, inferred completion, stale artifacts, or missing
+review receipts.
+
+Before writing production agent guidance or shared rules, scan the proposed text
+for transient workflow ids, branch names, task ids, incident labels, local
+scratch paths, and private evidence names. Keep those details in evidence
+artifacts only; production guidance must remain reusable and source-bound.
+
 ## Procedure
 
 1. **Step 0 — Read source of truth**:

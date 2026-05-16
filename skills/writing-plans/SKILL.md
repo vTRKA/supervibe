@@ -30,6 +30,10 @@ This skill turns an approved spec or approved requirements-intake outcome into a
 durable implementation plan. The planner owns scope control, retrieval evidence,
 visual/text-first explanation, review handoff, and the stop conditions that block
 atomization or execution until review passes.
+Plan output stays source-bound: every included task must trace to approved scope,
+current repository evidence, and final-gate verification. Runtime receipts are
+required for any delegated producer, reviewer, validator, worker, command, or
+external tool claim.
 
 Keep this file as the entrypoint contract. Detailed task patterns, templates,
 critical-path examples, rollback/risk examples, and phase-gate matrices live in
@@ -51,6 +55,10 @@ Follow `docs/references/skill-expert-operating-standard.md`: start from source
 of truth, preserve retrieval evidence, apply scope safety, use real producers
 with runtime receipts for durable delegated outputs, verify before completion
 claims, and keep confidence below gate when evidence is partial.
+Manual drafts, inline summaries, or copied specialist text are diagnostic only;
+they cannot become production plan, graph, review, or execution artifacts unless
+the owning runtime command or producer writes the artifact and a trusted receipt
+binds the output.
 
 ## Step 0 - Read source of truth
 
@@ -111,11 +119,15 @@ Five or more phases, broad production path, or high regression risk
    approved/deferred/rejected scope, MVP slice, anti-bloat boundary, rollout,
    security/privacy/performance/observability, runbook/migration/release notes,
    support owner, and post-release learning.
-6. Identify critical path, off-path parallel opportunities, and any receipt-backed
-   real-agent waves. Do not claim delegated output unless runtime receipts bind
-   real host invocations.
-7. Add Final Acceptance, Self-Review, and machine validation steps. Validate with
-   `node "<resolved-supervibe-plugin-root>/scripts/validate-plan-artifacts.mjs" --file <plan>`.
+6. Identify critical path, graph-ready dependencies, off-path parallel
+   opportunities, and any receipt-backed real-agent waves. Do not claim
+   delegated output unless runtime receipts bind real host invocations and their
+   source artifacts.
+7. Add Final Acceptance, Self-Review, and release-gate validation steps. For
+   plan, graph, and task workflows, schedule tests and validators only in the
+   final release/merge gate; do not run development-time `node --test`,
+   `npm test`, `npm run check`, `npm run validate:*`, or
+   `node scripts/validate-*` commands while drafting the plan.
 8. Score with `supervibe:confidence-scoring` for `implementation-plan`; score at
    least 9 before handoff. Reserve 10/10 for complete final-acceptance evidence.
 9. Save the durable plan only after the save gate is answered. Then summarize
@@ -142,6 +154,9 @@ in assumptions, scope safety, or review handoff.
   verification is missing without recording the blocker and lowered confidence.
 - Do not replace a specialist producer, worker, or reviewer that must issue
   runtime evidence.
+- Do not let manual text or controller-authored drafts leak into production
+  artifacts when a runtime command, producer, worker, reviewer, validator, or
+  receipt-backed handoff owns that output.
 
 ## Common rationalizations
 
@@ -159,13 +174,16 @@ in assumptions, scope safety, or review handoff.
 - `NEXT_STEP_HANDOFF` is missing, points to execution, or skips mandatory review.
 - Critical path, rollback, verification, or final acceptance evidence is absent.
 - Real-agent waves are described without runtime receipt requirements.
+- Plan verification asks executors to run development tests or validators before
+  the final release/merge gate.
 
 ## Checklist
 
 - Approved source of truth read and cited.
 - Scope boundary, deferred/rejected items, and owner decisions recorded.
 - Memory, Code RAG, CodeGraph, and visual/text-first evidence requirements set.
-- Every task has files, steps, verification, rollback, and stop condition.
+- Every task has files, steps, final-gate verification, rollback, and stop
+  condition.
 - Review handoff blocks atomization and execution until review passes.
 
 ## Failure modes
@@ -174,6 +192,7 @@ in assumptions, scope safety, or review handoff.
 - Hidden optional work enters the task graph without a scope decision.
 - Inline review notes are treated as reviewer-owned evidence.
 - Plan confidence is scored before validation and self-review.
+- Final-only validators are run or claimed before the release/merge gate.
 
 ## Output contract
 
@@ -181,7 +200,7 @@ Returns a plan file with these fields/sections: `Goal`, `Architecture`,
 `Tech Stack`, `Constraints`, `File Structure`, `Retrieval, CodeGraph, And Visual
 Evidence`, `Critical Path`, `Scope Safety Gate`, `Delivery Strategy`,
 `Production Readiness`, numbered tasks, `Final Acceptance Gate`, `Self-Review`,
-source-bound post-plan summary with table and ASCII map, mandatory review handoff, post-review atomization handoff,
+final-only validation schedule, source-bound post-plan summary with table and ASCII map, mandatory review handoff, post-review atomization handoff,
 a human-first Decision Card and a secondary machine-readable `NEXT_STEP_HANDOFF`.
 
 The handoff must name: `Current phase`, `Artifact`, `Next phase`, `Next command`,
@@ -194,11 +213,16 @@ The handoff must name: `Current phase`, `Artifact`, `Next phase`, `Next command`
 - Do not continue from plan to review until the current user choice is recorded.
 - Always include rollback safety, task-level verification, and approved-scope
   mapping.
+- Only the owning command or runtime producer may write durable production
+  artifacts; controller notes and manual drafts must remain clearly diagnostic.
 
 ## Verification
 
 - Plan exists at `.supervibe/artifacts/plans/YYYY-MM-DD-<feature>.md`.
-- `node "<resolved-supervibe-plugin-root>/scripts/validate-plan-artifacts.mjs" --file <plan>` exits 0.
+- Final release/merge gate includes
+  `node "<resolved-supervibe-plugin-root>/scripts/validate-plan-artifacts.mjs" --file <plan>`
+  and any other required tests or validators; development-time plan drafting
+  records the schedule instead of running final-only validators.
 - Scope Safety Gate lists approved, deferred, and rejected scope with tradeoffs.
 - Spec coverage maps every approved spec section to at least one task.
 - Confidence score for `implementation-plan` is at least 9 with no open blockers

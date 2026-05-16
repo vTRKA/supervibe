@@ -20,6 +20,7 @@ import { recoverCorruptCodeDb } from './lib/supervibe-db-migrations.mjs';
 import { buildRepoMap, formatRepoMapContext, selectRepoMapContext } from './lib/supervibe-repo-map.mjs';
 import { createWorkspaceNamespace } from './lib/supervibe-workspace-isolation.mjs';
 import { hashFile } from './lib/file-hash.mjs';
+import { buildSmallDeltaAutorepairPlan, createIndexRepairLockOwner, exitCodeForAutorepairPlan, formatSmallDeltaAutorepairPlan } from './lib/supervibe-index-autorepair.mjs';
 import { execFileSync } from 'node:child_process';
 import { closeSync, mkdirSync, openSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -81,6 +82,9 @@ Observability:
   --explain-policy          Show included/excluded source policy decisions and exit
   --watcher-diagnostics     Show watcher diagnostics and exit
   --clean-stale-lock        Inspect code-index.lock, remove it only when proven stale, and exit
+  --plan-autorepair         Print a deterministic small-delta repair plan and exit without indexing
+  --small-delta-limit <n>   Maximum missing/stale file count eligible for auto-repair planning (default: 50)
+  --lock-owner <id>         Human/tool owner recorded in code-index.lock for repair ownership diagnostics
   --verbose                 Include stack traces in failed_files.json
   --repo-map                Print a compact repo map and exit
   --help, -h                Show this help and exit
@@ -342,7 +346,7 @@ function inspectIndexLock({ rootDir, staleHeartbeatMs = 120000 } = {}) {
   const lockPath = join(rootDir, '.supervibe', 'memory', 'code-index.lock');
   const lock = readLock(lockPath);
   if (!lock) {
-    return { path: lockPath, present: false, status: 'absent', pidRunning: false, safeToResume: true, action: 'none' };
+    return { path: lockPath, present: false, status: 'absent', pidRunning: false, safeToResume: true, action: 'none', owner: null, invocation: null };
   }
   const pid = Number(lock.pid);
   const pidRunning = isPidRunning(pid);
@@ -361,6 +365,8 @@ function inspectIndexLock({ rootDir, staleHeartbeatMs = 120000 } = {}) {
     heartbeatStale,
     phase: lock.phase || null,
     activeIndexFile: lock.activeIndexFile || null,
+    owner: lock.owner || lock.lockOwner?.owner || null,
+    invocation: lock.invocation || lock.lockOwner?.invocation || null,
     safeToResume: stale,
     action: 'none',
   };
@@ -377,6 +383,8 @@ function formatIndexLockStatus(status) {
     `HEARTBEAT_AGE_MS: ${status.heartbeatAgeMs ?? 'unknown'}`,
     `PHASE: ${status.phase || 'none'}`,
     `ACTIVE_INDEX_FILE: ${status.activeIndexFile || 'none'}`,
+    `OWNER: ${status.owner || 'none'}`,
+    `INVOCATION: ${status.invocation || 'none'}`,
     `ACTION: ${status.action || 'none'}`,
     `SAFE_TO_RESUME: ${status.safeToResume ? 'true' : 'false'}`,
   ].join('\n');
@@ -413,7 +421,7 @@ function cleanStaleIndexLock({ rootDir } = {}) {
   return status;
 }
 
-function acquireIndexLock({ rootDir }) {
+function acquireIndexLock({ rootDir, owner = null } = {}) {
   const lockPath = join(rootDir, '.supervibe', 'memory', 'code-index.lock');
   mkdirSync(dirname(lockPath), { recursive: true });
 
@@ -429,6 +437,9 @@ function acquireIndexLock({ rootDir }) {
         command: process.argv.join(' '),
         phase: 'starting',
         activeIndexFile: null,
+        owner: owner?.owner || null,
+        invocation: owner?.invocation || null,
+        lockOwner: owner || null,
       }, null, 2));
       closeSync(fd);
       return {
@@ -626,6 +637,9 @@ async function main() {
       'explain-policy': { type: 'boolean', default: false },
       'watcher-diagnostics': { type: 'boolean', default: false },
       'clean-stale-lock': { type: 'boolean', default: false },
+      'plan-autorepair': { type: 'boolean', default: false },
+      'small-delta-limit': { type: 'string', default: '' },
+      'lock-owner': { type: 'string', default: '' },
       maintenance: { type: 'boolean', default: false },
       vacuum: { type: 'boolean', default: false },
       verbose: { type: 'boolean', default: false },
@@ -644,6 +658,8 @@ async function main() {
   const heartbeatSeconds = nonNegativeInt(values['heartbeat-seconds'] || process.env.SUPERVIBE_INDEX_HEARTBEAT_SECONDS, DEFAULT_HEARTBEAT_SECONDS);
   const maxFiles = nonNegativeInt(values['max-files'], 0);
   const maxSeconds = positiveNumber(values['max-seconds'] || process.env.SUPERVIBE_INDEX_MAX_SECONDS, 0);
+  const smallDeltaLimit = positiveInt(values['small-delta-limit'] || process.env.SUPERVIBE_INDEX_SMALL_DELTA_LIMIT, 50);
+  const lockOwner = createIndexRepairLockOwner({ owner: values['lock-owner'] });
   const largeFileOptions = {
     largeFileThresholdBytes: values['large-file-threshold-bytes'] ? positiveInt(values['large-file-threshold-bytes'], undefined) : undefined,
     largeFileThresholdLines: values['large-file-threshold-lines'] ? positiveInt(values['large-file-threshold-lines'], undefined) : undefined,
@@ -704,6 +720,41 @@ async function main() {
     }
     if (inventory.excluded.length > 50) console.log(`  ... ${inventory.excluded.length - 50} more`);
     progress.stop();
+    return;
+  }
+
+  if (values['plan-autorepair']) {
+    const diagnosticStore = new CodeStore(rootDir, {
+      useEmbeddings: false,
+      useGraph: graphEnabled,
+      ...largeFileOptions,
+    });
+    try {
+      await diagnosticStore.init();
+      const report = await collectMissingOrStaleFiles(diagnosticStore, rootDir, {
+        includeGraph: graphEnabled,
+        selectionLimit: Math.max(maxFiles || smallDeltaLimit, smallDeltaLimit) + 1,
+        prioritizeMissing: true,
+        filter: repairFilter,
+        onProgress: null,
+      });
+      const plan = buildSmallDeltaAutorepairPlan({
+        report,
+        lockStatus: inspectIndexLock({ rootDir }),
+        rootArg: values.root || '.',
+        includeStructure: graphEnabled,
+        sourceOnly,
+        maxFiles,
+        maxSeconds: maxSeconds || 120,
+        smallDeltaLimit,
+        jsonProgress: values['json-progress'],
+      });
+      console.log(formatSmallDeltaAutorepairPlan(plan));
+      process.exitCode = exitCodeForAutorepairPlan(plan);
+    } finally {
+      diagnosticStore.close();
+      progress.stop();
+    }
     return;
   }
 
@@ -780,7 +831,7 @@ async function main() {
   }
 
   try {
-    lock = acquireIndexLock({ rootDir });
+    lock = acquireIndexLock({ rootDir, owner: lockOwner });
 
     store = new CodeStore(rootDir, {
       useEmbeddings: !noEmbeddings,

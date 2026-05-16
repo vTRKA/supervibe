@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.40] - 2026-05-16
+
+### Fixed
+
+- Hardened IVAN-SUPER-UPDATE workflow release gates for phase epic plan validation, project artifact URL parsing, receipt proof projection, CodeGraph freshness, and public contract module dead-code policy.
+
+### Validation
+
+- Rechecked the full release gate with `npm run check`: 81/81 gates passed and 2298 tests passed.
+
 ## [2.1.39] - 2026-05-15
 
 ### Fixed

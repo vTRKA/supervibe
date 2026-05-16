@@ -3,12 +3,62 @@
 
 import chokidar from 'chokidar';
 import { join } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
 import { writeFile, rm } from 'node:fs/promises';
 import { MemoryStore } from './memory-store.mjs';
 import { CodeStore } from './code-store.mjs';
 import { createIndexWatcherLifecycle } from './supervibe-index-watcher.mjs';
 import { DEFAULT_INDEX_REFRESH_INTERVAL_MS, ensureIndexConfig } from './supervibe-index-config.mjs';
 import { scanCodeChanges, scanMemoryChanges } from './mtime-scan.mjs';
+
+export const WATCHER_HEARTBEAT_REL = '.supervibe/memory/.watcher-heartbeat';
+export const DEFAULT_WATCHER_STALE_MS = 15_000;
+
+export function readWatcherHeartbeatStatus(projectRoot, opts = {}) {
+  const now = Number(opts.now || Date.now());
+  const staleMs = Number(opts.staleMs || DEFAULT_WATCHER_STALE_MS);
+  const heartbeatPath = join(projectRoot, WATCHER_HEARTBEAT_REL);
+  const base = {
+    heartbeatPath,
+    staleMs,
+    watchers: ['memory', 'retrieval'],
+  };
+
+  if (!existsSync(heartbeatPath)) {
+    return { ...base, status: 'absent', running: false, ageMs: null, timestamp: null };
+  }
+
+  try {
+    const timestamp = Number(readFileSync(heartbeatPath, 'utf8'));
+    if (!Number.isFinite(timestamp)) {
+      return { ...base, status: 'corrupt', running: false, ageMs: null, timestamp: null, error: 'heartbeat is not numeric' };
+    }
+    const ageMs = Math.max(0, now - timestamp);
+    const running = ageMs <= staleMs;
+    return {
+      ...base,
+      status: running ? 'running' : 'stale',
+      running,
+      ageMs,
+      timestamp,
+    };
+  } catch (error) {
+    return { ...base, status: 'corrupt', running: false, ageMs: null, timestamp: null, error: error.message };
+  }
+}
+
+export function formatWatcherHeartbeatStatus(status) {
+  return [
+    'SUPERVIBE_WATCHER_HEARTBEAT_STATUS',
+    `STATUS: ${status.status}`,
+    `RUNNING: ${status.running ? 'yes' : 'no'}`,
+    `WATCHERS: ${status.watchers.join(',')}`,
+    `AGE_MS: ${status.ageMs ?? 'unknown'}`,
+    `STALE_MS: ${status.staleMs}`,
+    `HEARTBEAT_PATH: ${status.heartbeatPath}`,
+    status.error ? `ERROR: ${status.error}` : null,
+  ].filter(Boolean).join('\n');
+}
 
 export async function startWatcher(projectRoot, opts = {}) {
   const { useEmbeddings = true, verbose = true } = opts;
@@ -94,7 +144,7 @@ export async function startWatcher(projectRoot, opts = {}) {
   if (verbose) console.log(`[supervibe-watcher] watching .supervibe/memory/ + project source files`);
 
   // Heartbeat file: status command uses this to confirm watcher is alive.
-  const heartbeatPath = join(projectRoot, '.supervibe', 'memory', '.watcher-heartbeat');
+  const heartbeatPath = join(projectRoot, WATCHER_HEARTBEAT_REL);
   const heartbeatTimer = setInterval(async () => {
     try { await writeFile(heartbeatPath, String(Date.now())); } catch {}
   }, 5000);
