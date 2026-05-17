@@ -191,7 +191,7 @@ function previewForProvider(provider) {
     const maxThreads = limits.defaultMaxThreads ?? "review";
     const maxDepth = limits.defaultMaxDepth ?? "review";
     const jobRuntimeSeconds = limits.defaultJobRuntimeSeconds ?? "review";
-    return `approval_policy=never; sandbox_mode=workspace-write; default_permissions=:workspace; web_search=live; [features].apps=true; [features].multi_agent=true; [agents].max_threads=${maxThreads}; [agents].max_depth=${maxDepth}; [agents].job_max_runtime_seconds=${jobRuntimeSeconds}; [apps._default].enabled=true; [[tool_suggest.discoverables]].type=plugin; [[tool_suggest.discoverables]].id=supervibe@supervibe-marketplace`;
+    return `approval_policy=on-request; sandbox_mode=workspace-write; default_permissions=:workspace; web_search=live; [features].apps=true; [features].multi_agent=true; [agents].max_threads=${maxThreads}; [agents].max_depth=${maxDepth}; [agents].job_max_runtime_seconds=${jobRuntimeSeconds}; [apps._default].enabled=true; [[tool_suggest.discoverables]].type=plugin; [[tool_suggest.discoverables]].id=supervibe@supervibe-marketplace`;
   }
   if (provider.id === "claude-code") return "create .claude/settings.json with permissions deny rules, MCP allowlist, and hook placeholders";
   if (provider.id === "gemini-cli") return "create .gemini/settings.json with checkpointing, plan approval mode, MCP tool filters, and privacy settings";

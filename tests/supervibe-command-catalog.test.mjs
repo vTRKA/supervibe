@@ -1579,7 +1579,7 @@ test("command catalog covers primary workflow intents in English and Russian", (
     ["brainstorm the feature", "/supervibe-brainstorm"],
     ["напиши план реализации", "/supervibe-plan"],
     ["create implementation plan", "/supervibe-plan"],
-    ["выполни план", "/supervibe-loop --atomize-plan <plan-path> --user-approved-plan"],
+    ["выполни план", "/supervibe-loop --from-plan <plan-path> --start --fast-session"],
     ["execute reviewed plan", "/supervibe-execute-plan"],
     ["сделай дизайн макет UI", "/supervibe-design"],
     ["build a UI prototype", "/supervibe-design"],

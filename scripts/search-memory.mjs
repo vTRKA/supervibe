@@ -8,7 +8,7 @@
 
 import { searchMemory } from './lib/memory-store.mjs';
 import { curateProjectMemory, filterCurrentMemoryResults, readMarkdownMemoryEntries } from './lib/supervibe-memory-curator.mjs';
-import { buildProjectKnowledgeGraph, formatKnowledgeGraphSearch } from './lib/supervibe-project-knowledge-graph.mjs';
+import { buildProjectKnowledgeGraph, formatKnowledgeGraphSearch, queryProjectKnowledgeGraph } from './lib/supervibe-project-knowledge-graph.mjs';
 import { buildMemoryRelationshipGraph, formatMemoryRelationshipGraph } from './lib/supervibe-memory-backfill.mjs';
 import { buildSharedEvidencePacket, formatEvidencePacketSummary } from './lib/supervibe-evidence-packet.mjs';
 import { parseArgs } from 'node:util';
@@ -75,12 +75,24 @@ try {
     limit: searchLimit,
   });
   const results = orderMemorySearchResults(filteredResults, curation).slice(0, opts.limit);
+  let graphFallbackMatched = false;
+  let graphFallbackSummary = null;
   if (values.graph) {
     const graph = await buildProjectKnowledgeGraph({ rootDir: PROJECT_ROOT, curation });
+    const graphSearch = queryProjectKnowledgeGraph(graph, {
+      query: opts.query,
+      includeHistory,
+    });
     console.log(formatKnowledgeGraphSearch(graph, {
       query: opts.query,
       includeHistory,
     }));
+    if (results.length === 0 && (graphSearch.nodes.length > 0 || graphSearch.edges.length > 0)) {
+      graphFallbackMatched = true;
+      graphFallbackSummary = { nodes: graphSearch.nodes.length, edges: graphSearch.edges.length };
+      console.log('');
+      console.log(formatMemoryGraphFallbackWarning(graphSearch));
+    }
     console.log("");
     const entries = await readMarkdownMemoryEntries({ rootDir: PROJECT_ROOT });
     const relationshipGraph = buildMemoryRelationshipGraph(entries, {
@@ -116,12 +128,28 @@ try {
     }), { prefix: "MEMORY_EVIDENCE_PACKET" }));
     if (results.length > 0) console.log("");
   }
+  if (!values.graph && results.length === 0 && (opts.query || opts.tags.length)) {
+    const graph = await buildProjectKnowledgeGraph({ rootDir: PROJECT_ROOT, curation });
+    const graphSearch = queryProjectKnowledgeGraph(graph, {
+      query: opts.query,
+      includeHistory,
+    });
+    if (graphSearch.nodes.length > 0 || graphSearch.edges.length > 0) {
+      graphFallbackMatched = true;
+      graphFallbackSummary = { nodes: graphSearch.nodes.length, edges: graphSearch.edges.length };
+    }
+  }
   if (results.length === 0) {
     console.log('No memory entries matched.');
     if (opts.query || opts.tags.length) {
       console.log(`(query="${opts.query}", tags=[${opts.tags.join(',')}], type=${opts.type || 'any'})`);
     }
-    console.log('This is a SIGNAL — your task may be novel territory.');
+    if (graphFallbackMatched) {
+      if (graphFallbackSummary) console.log(`Graph fallback: nodes=${graphFallbackSummary.nodes}, edges=${graphFallbackSummary.edges}. Re-run with --graph for details.`);
+      console.log('This is a SIGNAL - direct memory search missed, but graph context exists; inspect graph fallback before treating this as novel.');
+    } else {
+      console.log('This is a SIGNAL - your task may be novel territory.');
+    }
     process.exit(0);
   }
 
@@ -142,6 +170,17 @@ try {
 } catch (err) {
   console.error('search-memory error:', err.message);
   process.exit(1);
+}
+
+function formatMemoryGraphFallbackWarning(graphSearch = {}) {
+  return [
+    'MEMORY_SEARCH_GRAPH_FALLBACK',
+    'DIRECT_MATCHES: 0',
+    `GRAPH_MATCHED_NODES: ${graphSearch.nodes?.length || 0}`,
+    `GRAPH_MATCHED_EDGES: ${graphSearch.edges?.length || 0}`,
+    'WARNING: direct memory search missed entries, but the project knowledge graph has related context.',
+    'NEXT_ACTION: inspect the --graph output and cite related memory/tag/file nodes before treating the task as novel.',
+  ].join('\n');
 }
 
 function orderMemorySearchResults(results = [], curation = null) {

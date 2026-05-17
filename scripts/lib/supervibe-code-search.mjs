@@ -9,17 +9,90 @@ const SOURCE_PREFIXES = [
   "apps/",
 ];
 
-const NOISY_PREFIXES = [
+const SOURCE_NOISE_PREFIXES = [
   ".supervibe/",
   "tests/",
   "test/",
   "fixtures/",
   "docs/",
+  "agents/",
+  "skills/",
+  "rules/",
+  "commands/",
   "node_modules/",
   "dist/",
   "build/",
   "coverage/",
 ];
+
+const HARD_NOISE_PREFIXES = [
+  ".supervibe/",
+  "node_modules/",
+  "dist/",
+  "build/",
+  "coverage/",
+];
+
+const ARTIFACT_PREFIXES = [
+  "agents/",
+  "skills/",
+  "rules/",
+  "commands/",
+  "docs/",
+  "schemas/",
+  "templates/",
+  "references/",
+  "questionnaires/",
+  "confidence-rubrics/",
+  "hooks/",
+];
+
+const ARTIFACT_ROLES = new Set([
+  "agent",
+  "skill",
+  "rule",
+  "command",
+  "docs",
+  "config",
+  "registry",
+  "template",
+  "reference",
+  "questionnaire",
+  "rubric",
+  "hook",
+]);
+
+const ARTIFACT_QUERY_HINTS = new Set([
+  "agent",
+  "agents",
+  "skill",
+  "skills",
+  "rule",
+  "rules",
+  "command",
+  "commands",
+  "slash",
+  "workflow",
+  "receipt",
+  "receipts",
+  "registry",
+  "schema",
+  "schemas",
+  "template",
+  "templates",
+  "reference",
+  "references",
+  "questionnaire",
+  "questionnaires",
+  "rubric",
+  "rubrics",
+  "hook",
+  "hooks",
+  "readme",
+  "agents.md",
+  "docs",
+  "documentation",
+]);
 
 const HYBRID_CODE_SEARCH_POLICY = "hybrid-lexical-embedding-v1";
 
@@ -81,7 +154,9 @@ export function rankHybridCodeSearchResults(results = [], {
       return {
         ...row,
         sourceBacked: preference.sourceBacked,
+        artifactBacked: preference.artifactBacked,
         ownerMatch: preference.ownerMatch,
+        retrievalLane: preference.retrievalLane,
         scoreComponents: {
           ...(row.scoreComponents || {}),
           sourceBacked: Number(preference.score.toFixed(6)),
@@ -135,6 +210,8 @@ function buildHybridRetrievalEvidence({
     semanticUsed,
     mergedScoringUsed,
   });
+  const routing = inferRetrievalRouting(query);
+  const roleCounts = countResultRoles(results);
 
   return {
     policy: HYBRID_CODE_SEARCH_POLICY,
@@ -151,12 +228,15 @@ function buildHybridRetrievalEvidence({
       merged: mergedCount,
       returned: results.length,
       sourceBacked: results.filter((row) => row.sourceBacked).length,
+      artifactBacked: results.filter((row) => row.artifactBacked).length,
       ownerMatches: results.filter((row) => row.ownerMatch).length,
+      roles: roleCounts,
     },
+    routing,
     fallback,
     scoring: {
       merge: "CodeStore RRF when lexical and semantic signals are available",
-      rerank: "source-backed owner modules boosted; generated/test/docs noise penalized",
+      rerank: routing.intent === "artifact" ? "artifact lanes boosted for command/agent/skill/rule/docs queries" : "source-backed owner modules boosted; generated/test/docs artifact lanes limited for source queries",
     },
   };
 }
@@ -171,7 +251,10 @@ export function formatHybridRetrievalEvidence(retrieval = {}) {
   const counts = retrieval.counts
     ? `counts=lexical:${retrieval.counts.lexical || 0}, merged:${retrieval.counts.merged || 0}, returned:${retrieval.counts.returned || 0}`
     : "counts=unknown";
-  return `Retrieval modes used: ${usedModes}; ${fallback}; ${counts}; policy=${retrieval.policy || HYBRID_CODE_SEARCH_POLICY}`;
+  const routing = retrieval.routing
+    ? `routing=${retrieval.routing.intent}/${retrieval.routing.lane}`
+    : "routing=unknown";
+  return `Retrieval modes used: ${usedModes}; ${fallback}; ${counts}; ${routing}; policy=${retrieval.policy || HYBRID_CODE_SEARCH_POLICY}`;
 }
 
 function normalizeLimit(limit) {
@@ -197,13 +280,22 @@ function tokenize(text = "") {
 function scoreSourceBackedOwner(row = {}, query = "") {
   const path = normalizePath(row.file || row.path || "");
   const lowerPath = path.toLowerCase();
-  const noisy = Boolean(row.generatedSource) || NOISY_PREFIXES.some((prefix) => lowerPath.startsWith(prefix));
-  const sourceBacked = !noisy && SOURCE_PREFIXES.some((prefix) => lowerPath.startsWith(prefix));
+  const role = String(row.metadata?.fileRole || row.fileRole || "source").toLowerCase();
+  const artifactType = String(row.metadata?.artifactType || row.artifactType || "source-code").toLowerCase();
+  const routing = inferRetrievalRouting(query);
+  const hardNoise = Boolean(row.generatedSource) || HARD_NOISE_PREFIXES.some((prefix) => lowerPath.startsWith(prefix));
+  const sourceNoise = hardNoise || SOURCE_NOISE_PREFIXES.some((prefix) => lowerPath.startsWith(prefix));
+  const sourceBacked = !sourceNoise && SOURCE_PREFIXES.some((prefix) => lowerPath.startsWith(prefix));
+  const artifactBacked = !hardNoise && (ARTIFACT_ROLES.has(role) || ARTIFACT_PREFIXES.some((prefix) => lowerPath.startsWith(prefix)) || artifactType.startsWith("supervibe-"));
   const queryTokens = tokenize(query);
   const candidateText = [
     path,
+    role,
+    artifactType,
     row.kind || "",
     row.name || "",
+    row.metadata?.heading || "",
+    ...(row.metadata?.symbolHints || []),
     row.snippet || "",
   ].join(" ").toLowerCase();
 
@@ -213,20 +305,50 @@ function scoreSourceBackedOwner(row = {}, query = "") {
   }
 
   let score = 0;
-  if (sourceBacked) score += 0.05;
-  if (tokenMatches > 0) score += Math.min(0.08, tokenMatches * 0.015);
-  if (sourceBacked && tokenMatches >= 2) score += 0.08;
-  if (sourceBacked && row.name && queryTokens.has(String(row.name).toLowerCase())) score += 0.04;
-  if (noisy) score -= 0.12;
+  if (routing.intent === "artifact") {
+    if (artifactBacked) score += 0.09;
+    if (sourceBacked) score += 0.02;
+    if (tokenMatches > 0) score += Math.min(0.1, tokenMatches * 0.018);
+    if (artifactBacked && tokenMatches >= 2) score += 0.08;
+    if (hardNoise) score -= 0.12;
+  } else {
+    if (sourceBacked) score += 0.05;
+    if (tokenMatches > 0) score += Math.min(0.08, tokenMatches * 0.015);
+    if (sourceBacked && tokenMatches >= 2) score += 0.08;
+    if (sourceBacked && row.name && queryTokens.has(String(row.name).toLowerCase())) score += 0.04;
+    if (sourceNoise) score -= 0.12;
+  }
   if (String(row.kind || "").toLowerCase() === "leftover") score -= 0.02;
 
   return {
     score,
     sourceBacked,
-    ownerMatch: sourceBacked && tokenMatches >= 2,
+    artifactBacked,
+    retrievalLane: routing.intent === "artifact" && artifactBacked ? "artifact" : sourceBacked ? "source" : role,
+    ownerMatch: (routing.intent === "artifact" ? artifactBacked : sourceBacked) && tokenMatches >= 2,
   };
 }
 
+
+function inferRetrievalRouting(query = "") {
+  const normalized = String(query || "").toLowerCase();
+  const tokens = tokenize(normalized);
+  for (const hint of ARTIFACT_QUERY_HINTS) {
+    if (normalized.includes(hint) || tokens.has(hint)) {
+      return { intent: "artifact", lane: "artifact", reason: "query mentions Supervibe artifact/documentation surface" };
+    }
+  }
+  return { intent: "source", lane: "source", reason: "query does not request an artifact lane" };
+}
+
+function countResultRoles(results = []) {
+  const counts = {};
+  for (const row of results || []) {
+    const role = String(row.metadata?.fileRole || row.fileRole || row.retrievalLane || "source");
+    counts[role] = (counts[role] || 0) + 1;
+  }
+  return counts;
+}
 function modesForResult(row = {}) {
   const mode = String(row.retrievalMode || "").toLowerCase();
   const modes = new Set();

@@ -15,6 +15,8 @@ test('detectLanguage by extension', () => {
   assert.strictEqual(detectLanguage('foo.rb'), 'ruby');
   assert.strictEqual(detectLanguage('foo.vue'), 'vue');
   assert.strictEqual(detectLanguage('foo.svelte'), 'svelte');
+  assert.strictEqual(detectLanguage('templates/design-system/tokens.css.tpl'), 'template');
+  assert.strictEqual(detectLanguage('templates/gitignore/_base'), 'template');
   assert.strictEqual(detectLanguage('foo.unknown'), null);
 });
 
@@ -132,4 +134,29 @@ pub async fn execute_service() {
   assert.ok(names.includes('ServiceRunner'), `expected trait chunk, got ${names.join(', ')}`);
   assert.ok(names.includes('ServiceKind'), `expected enum chunk, got ${names.join(', ')}`);
   assert.ok(names.includes('execute_service'), `expected fn chunk, got ${names.join(', ')}`);
+});
+
+
+test('chunkCode: markdown headings do not produce empty or oversized embedding chunks', async () => {
+  const bullets = Array.from({ length: 80 }, (_, i) => `- Rule ${i}: use source-backed retrieval evidence before making claims.`).join('\n');
+  const doc = `# Root\n\n## Setup\n\n${bullets}\n\n## Verification\n\n${bullets}`;
+  const chunks = await chunkCode(doc, 'AGENTS.md', { targetTokens: 80, overlapTokens: 8 });
+
+  assert.ok(chunks.length > 2);
+  for (const chunk of chunks) {
+    assert.ok(chunk.text.trim().length > 0);
+    assert.ok(chunk.tokens <= 160, `oversized chunk: ${chunk.tokens}`);
+  }
+});
+
+test('chunkCode: large javascript leftovers are split before embedding', async () => {
+  const longObject = Array.from({ length: 180 }, (_, i) => `  key${i}: "source-backed retrieval evidence and workflow receipt routing",`).join('\n');
+  const code = `const CATALOG = {\n${longObject}\n};\n\nexport function runCatalog() {\n  return CATALOG.key1;\n}`;
+  const chunks = await chunkCode(code, 'catalog.mjs', { targetTokens: 80, overlapTokens: 8 });
+
+  assert.ok(chunks.length > 2);
+  for (const chunk of chunks) {
+    assert.ok(chunk.text.trim().length > 0);
+    assert.ok(chunk.tokens <= 160, `oversized chunk: ${chunk.tokens}`);
+  }
 });

@@ -150,3 +150,32 @@ test("active plan review gate passes with baseline and mandatory risk reviewer r
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("active plan review gate without explicit plan accepts latest review when an active graph exists", async () => {
+  const root = await mkdtemp(join(tmpdir(), "plan-review-active-no-plan-"));
+  try {
+    const fixture = await readFile(FIXTURE, "utf8");
+    await writeReview(root, withMandatoryRiskCoverage(withPlanPath(fixture), "selected"));
+    await writeUtf8(root, ".supervibe/memory/work-items/example/graph.json", JSON.stringify({
+      epicId: "example",
+      items: [
+        { itemId: "example", type: "epic", status: "open" },
+        { itemId: "example-followup", type: "followup", status: "open", acceptanceCriteria: ["triaged"], verificationCommands: ["node --version"], noWriteScopeRequired: true },
+      ],
+    }, null, 2));
+    await issueReviewerReceipts(root, [
+      ...PLAN_REVIEW_BASE_REVIEWERS,
+      ...PLAN_REVIEW_MANDATORY_RISK_REVIEWERS,
+    ]);
+
+    const gate = await validatePlanReviewGateForPlan({
+      rootDir: root,
+      requireActiveReview: true,
+    });
+
+    assert.equal(gate.pass, true);
+    assert.deepEqual(gate.issues, []);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

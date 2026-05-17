@@ -18,6 +18,8 @@ const ACTION_ROUTES = Object.freeze({
   doctor: ["doctor"],
   prime: ["prime"],
   "prepare-loop": ["--dispatch-wave"],
+  start: ["--from-plan"],
+  quickstart: ["--from-plan"],
   atomize: ["--atomize-plan"],
   prepare: ["--atomize-plan"],
   priority: ["--priority"],
@@ -88,6 +90,8 @@ export function formatWorkFacadeHelp() {
     "  sv work status [--file <graph.json>]",
     "  sv work graph --file <state.json> [--format text|json|mermaid|dot]",
     "  sv work prepare-loop --file <graph.json> --max-concurrency 4 [--apply]",
+    "  sv work start <plan.md> [--dispatch] [--apply]",
+    "  sv work quickstart <plan.md> [--dispatch]",
     "  sv work prepare <plan.md> --user-approved-plan",
     "  sv work atomize <plan.md> --user-approved-plan",
     "  sv work ready --file <graph.json>",
@@ -107,6 +111,7 @@ export function formatWorkFacadeHelp() {
     "Routes:",
     "  status|summary|list -> supervibe-loop --status",
     "  graph|export|archive|doctor|prime -> supervibe-loop graph/export/archive/doctor/prime",
+    "  start|quickstart -> /supervibe-loop --from-plan <plan.md> --start --fast-session",
     "  prepare-loop|prepare|atomize|priority|ready|show|next|claim|claim-ready|run-ready|dispatch -> matching supervibe-loop work graph action",
     "  complete|close|block|unblock|skip|defer|create|discover|edit|delete|split|reparent|deps|dep-add|dep-remove|why|proof -> matching work-item action or view",
     "  completion-status|validate-completion|close-eligible|final-review|final-review-status|adopt|reconcile -> matching completion or receipt action",
@@ -170,10 +175,33 @@ function normalizeAction(value) {
 }
 
 function materializeCommandArgs({ action, route = [], passthroughArgs = [] } = {}) {
+  if (action === "start" || action === "quickstart") {
+    const { planPath, rest } = splitLeadingPlanPath(passthroughArgs);
+    return ["--from-plan", planPath || "<plan-path>", "--start", "--fast-session", ...rest];
+  }
   const commandArgs = [...route];
   if (action === "prepare-loop" && !hasExplicitApply(passthroughArgs)) commandArgs.push("--dry-run");
   commandArgs.push(...passthroughArgs);
   return commandArgs;
+}
+
+function splitLeadingPlanPath(args = []) {
+  const planIndex = args.findIndex((arg, index) => !String(arg || "").startsWith("--") && !isFlagValue(args, index));
+  if (planIndex < 0) return { planPath: null, rest: args };
+  return {
+    planPath: args[planIndex],
+    rest: args.filter((_, index) => index !== planIndex),
+  };
+}
+
+function isFlagValue(args = [], index = 0) {
+  if (index <= 0) return false;
+  const previous = String(args[index - 1] || "");
+  return previous.startsWith("--") && !isBooleanFacadeFlag(previous);
+}
+
+function isBooleanFacadeFlag(flag = "") {
+  return new Set(["--dispatch", "--fast-session", "--release-proof", "--apply", "--dry-run", "--preview", "--json"]).has(String(flag));
 }
 
 function hasExplicitApply(args = []) {

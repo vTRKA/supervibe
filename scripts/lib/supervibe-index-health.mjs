@@ -3,13 +3,14 @@ import { join } from 'node:path';
 
 import { hashFile } from './file-hash.mjs';
 import { discoverSourceFiles, GENERATED_DIRS } from './supervibe-index-policy.mjs';
+import { isGraphIndexableLanguage } from './code-chunker.mjs';
 import { CODEGRAPH_INDEX_COMMAND, SOURCE_RAG_INDEX_COMMAND } from './supervibe-command-catalog.mjs';
 
 const DEFAULT_COVERAGE_THRESHOLD = 0.9;
 function isGeneratedSourcePath(filePath = '') {
   const normalized = String(filePath).replace(/\\/g, '/');
   const segments = normalized.split('/').filter(Boolean);
-  return segments.some((segment) => GENERATED_DIRS.has(segment));
+  return segments.some((segment, index) => GENERATED_DIRS.has(segment) && !(index === 0 && segment === 'bin'));
 }
 
 function looksMinifiedSymbolName(name = '') {
@@ -36,10 +37,17 @@ export function buildIndexHealthSnapshot({
   const partialIndexedFiles = normalizeIndexedPaths(manifest.partialIndexedFiles || []);
   const languageCoverage = normalizeLanguageCoverage(manifest.languageCoverage || {});
   const symbolQuality = normalizeSymbolQuality(manifest.symbolQuality || {}, manifest.topSymbols || []);
-  const crossResolvedEdges = normalizeCrossResolvedEdges(manifest.crossResolvedEdges || {
+  const graphHealth = normalizeGraphHealthMetrics(manifest.graphHealth || {});
+  const crossResolvedEdges = normalizeCrossResolvedEdges(manifest.crossResolvedEdges || graphHealth.crossResolvedEdges || {
     resolved: manifest.resolvedEdges,
     total: manifest.totalEdges,
   });
+  const eligibleProjectEdges = normalizeEligibleProjectEdges(manifest.eligibleProjectEdges || graphHealth.eligibleProjectEdges || {});
+  const graphVersionStaleRows = normalizeIndexedPaths(manifest.graphVersionStaleRows || graphHealth.graphVersionStaleRows || []);
+  const embeddingHealth = normalizeEmbeddingHealth(manifest.embeddingHealth || {});
+  const chunkEntityHealth = normalizeChunkEntityHealth(manifest.chunkEntityHealth || {});
+  const semanticAnchorHealth = normalizeSemanticAnchorHealth(manifest.semanticAnchorHealth || {});
+  const retrievalLanes = normalizeRetrievalLanes(manifest.retrievalLanes || []);
   const sourceCoverage = eligibleSourceFiles === 0 ? 1 : indexedSourceFiles / eligibleSourceFiles;
   const issues = [];
 
@@ -102,6 +110,49 @@ export function buildIndexHealthSnapshot({
     });
   }
 
+  if (embeddingHealth.totalChunks > 0 && embeddingHealth.embeddedChunks === 0) {
+    issues.push({
+      code: 'semantic-embeddings-unavailable',
+      severity: 'warning',
+      message: 'semantic embeddings are missing; search falls back to lexical/BM25',
+      details: embeddingHealth,
+    });
+  } else if (embeddingHealth.totalChunks > 0 && embeddingHealth.coverage < 0.9) {
+    issues.push({
+      code: 'semantic-embeddings-partial',
+      severity: 'warning',
+      message: 'semantic embedding coverage is partial',
+      details: embeddingHealth,
+    });
+  }
+
+  if (chunkEntityHealth.rebuildRequired) {
+    issues.push({
+      code: 'chunk-entity-links-rebuild-required',
+      severity: 'warning',
+      message: 'chunk-to-entity link coverage is missing or stale',
+      details: chunkEntityHealth,
+    });
+  }
+
+  if (indexedSourceFiles > 0 && semanticAnchorHealth.totalAnchors === 0) {
+    issues.push({
+      code: 'semantic-anchors-missing',
+      severity: 'warning',
+      message: 'semantic anchors are missing for indexed code/artifacts',
+      details: semanticAnchorHealth,
+    });
+  }
+
+  if (graphVersionStaleRows.length > 0) {
+    issues.push({
+      code: 'graph-version-stale-rows',
+      severity: 'warning',
+      message: 'graph extractor version is stale for some graph-eligible rows',
+      details: { graphVersionStaleRows },
+    });
+  }
+
   return {
     generatedAt,
     projectRoot: manifest.projectRoot || null,
@@ -116,7 +167,14 @@ export function buildIndexHealthSnapshot({
     partialIndexedFiles,
     languageCoverage,
     symbolQuality,
+    graphHealth,
+    graphVersionStaleRows,
+    eligibleProjectEdges,
     crossResolvedEdges,
+    embeddingHealth,
+    chunkEntityHealth,
+    semanticAnchorHealth,
+    retrievalLanes,
     issues,
   };
 }
@@ -128,6 +186,11 @@ export async function collectIndexHealthFromStore(store, {
 } = {}) {
   const stats = store.stats();
   const grammarHealth = store.getGrammarHealth();
+  const graphHealth = store.getGraphHealthMetrics();
+  const embeddingHealth = store.getEmbeddingHealth();
+  const chunkEntityHealth = store.getChunkEntityHealth();
+  const semanticAnchorHealth = store.getSemanticAnchorHealth();
+  const retrievalLanes = store.getRetrievalLaneHealth();
   const indexedRows = store.db.prepare('SELECT path, language, index_status AS indexStatus, content_hash AS contentHash FROM code_files ORDER BY path').all();
   const indexedPaths = indexedRows.map((row) => row.path);
   const partialIndexedFiles = indexedRows
@@ -152,11 +215,14 @@ export async function collectIndexHealthFromStore(store, {
       indexed: health.files,
       filesWithSymbols: health.filesWithSymbols,
       configOnly: Boolean(health.configOnly),
+      graphEligible: Boolean(health.graphEligible),
+      retrievalOnly: health.graphEligible === false,
     };
   }
   for (const [language, eligible] of eligibleByLanguage) {
     if (!languageCoverage[language]) {
-      languageCoverage[language] = { eligible, indexed: 0, filesWithSymbols: 0, configOnly: false };
+      const graphEligible = isGraphIndexableLanguage(language);
+      languageCoverage[language] = { eligible, indexed: 0, filesWithSymbols: 0, configOnly: !graphEligible, graphEligible, retrievalOnly: !graphEligible };
     }
   }
 
@@ -172,7 +238,14 @@ export async function collectIndexHealthFromStore(store, {
       partialIndexedFiles,
       languageCoverage,
       topSymbols,
-      crossResolvedEdges: {
+      graphHealth,
+      graphVersionStaleRows: graphHealth.graphVersionStaleRows,
+      eligibleProjectEdges: graphHealth.eligibleProjectEdges,
+      embeddingHealth,
+      chunkEntityHealth,
+      semanticAnchorHealth,
+      retrievalLanes,
+      crossResolvedEdges: graphHealth.crossResolvedEdges || {
         resolved: stats.resolvedEdges,
         total: stats.totalEdges,
       },
@@ -229,10 +302,28 @@ export function formatIndexHealth(health = {}) {
     ...(languageLines.length ? languageLines : ['  - none']),
     `symbolQuality:`,
     `  minifiedTopSymbols: ${health.symbolQuality?.minifiedTopSymbols?.join(', ') || 'none'}`,
+    `semanticEmbeddings:`,
+    `  status: ${health.embeddingHealth?.status || 'unknown'}`,
+    `  embedded: ${health.embeddingHealth?.embeddedChunks || 0}/${health.embeddingHealth?.totalChunks || 0}`,
+    `  coverage: ${(numberOrZero(health.embeddingHealth?.coverage) * 100).toFixed(1)}%`,
+    `chunkEntityLinks:`,
+    `  status: ${health.chunkEntityHealth?.status || 'unknown'}`,
+    `  linkedChunks: ${health.chunkEntityHealth?.linkedChunks || 0}/${health.chunkEntityHealth?.totalChunks || 0}`,
+    `  entities: ${health.chunkEntityHealth?.totalEntities || 0}`,
+    `semanticAnchors:`,
+    `  status: ${health.semanticAnchorHealth?.status || 'unknown'}`,
+    `  total: ${health.semanticAnchorHealth?.totalAnchors || 0}`,
+    `  derived: ${health.semanticAnchorHealth?.derivedAnchors || 0}`,
+    `eligibleProjectEdges:`,
+    `  resolved: ${health.eligibleProjectEdges?.resolved || 0}`,
+    `  deterministic: ${health.eligibleProjectEdges?.deterministic || 0}`,
+    `  rate: ${(numberOrZero(health.eligibleProjectEdges?.rate) * 100).toFixed(1)}%`,
     `crossResolvedEdges:`,
     `  resolved: ${health.crossResolvedEdges?.resolved || 0}`,
     `  total: ${health.crossResolvedEdges?.total || 0}`,
     `  rate: ${(numberOrZero(health.crossResolvedEdges?.rate) * 100).toFixed(1)}%`,
+    `retrievalLanes:`,
+    ...formatRetrievalLaneLines(health.retrievalLanes || []),
     `issues:`,
     issueLines,
   ].join('\n');
@@ -289,7 +380,7 @@ export function evaluateIndexHealthGate(health = {}, {
     const indexed = numberOrZero(value.indexed);
     const symbolCoverage = numberOrZero(value.symbolCoverage);
     if (indexed >= 5 && symbolCoverage < minSymbolCoverage) {
-      if (value.configOnly) continue;
+      if (value.configOnly || value.retrievalOnly) continue;
       const item = {
         code: 'symbol-coverage',
         language,
@@ -318,6 +409,48 @@ export function evaluateIndexHealthGate(health = {}, {
       actual: edgeRate,
     });
   }
+  const eligibleEdges = health.eligibleProjectEdges || {};
+  const deterministicEdges = numberOrZero(eligibleEdges.deterministic);
+  const eligibleEdgeRate = numberOrZero(eligibleEdges.rate);
+  if (deterministicEdges >= 20 && eligibleEdgeRate < 0.8) {
+    const item = {
+      code: 'eligible-project-edge-resolution',
+      message: 'deterministic project edge resolution is below target',
+      expected: 0.8,
+      actual: eligibleEdgeRate,
+    };
+    if (strictGraph) failedGates.push(item);
+    else warnings.push(item);
+  }
+  if ((health.graphVersionStaleRows || []).length > 0) {
+    const item = {
+      code: 'graph-version-stale',
+      message: 'graph extractor version is stale for indexed rows',
+      actual: health.graphVersionStaleRows.length,
+    };
+    if (strictGraph) failedGates.push(item);
+    else warnings.push(item);
+  }
+  if (health.chunkEntityHealth?.rebuildRequired) {
+    warnings.push({
+      code: 'chunk-entity-links',
+      message: 'chunk-to-entity links need rebuild',
+      actual: health.chunkEntityHealth.status,
+    });
+  }
+  if (health.embeddingHealth?.totalChunks > 0 && health.embeddingHealth?.embeddedChunks === 0) {
+    warnings.push({
+      code: 'semantic-embeddings-unavailable',
+      message: 'semantic embeddings are unavailable; lexical retrieval remains usable',
+      repairCommand: health.embeddingHealth.repairCommand,
+    });
+  }
+  if (health.semanticAnchorHealth?.totalAnchors === 0 && numberOrZero(health.indexedSourceFiles) > 0) {
+    warnings.push({
+      code: 'semantic-anchors',
+      message: 'semantic anchors are not populated for indexed context',
+    });
+  }
 
   const languageReadiness = {};
   for (const [language, value] of Object.entries(health.languageCoverage || {})) {
@@ -326,7 +459,7 @@ export function evaluateIndexHealthGate(health = {}, {
     const sourceCoverageForLanguage = numberOrZero(value.coverage);
     const symbolCoverageForLanguage = numberOrZero(value.symbolCoverage);
     const sourceReady = eligibleForLanguage === 0 || sourceCoverageForLanguage >= coverageThreshold;
-    const graphReady = value.configOnly || (indexedForLanguage === 0 ? sourceReady : symbolCoverageForLanguage >= minSymbolCoverage);
+    const graphReady = value.configOnly || value.retrievalOnly || (indexedForLanguage === 0 ? sourceReady : symbolCoverageForLanguage >= minSymbolCoverage);
     languageReadiness[language] = {
       sourceReady,
       graphReady,
@@ -335,6 +468,7 @@ export function evaluateIndexHealthGate(health = {}, {
       sourceCoverage: sourceCoverageForLanguage,
       symbolCoverage: symbolCoverageForLanguage,
       configOnly: Boolean(value.configOnly),
+      retrievalOnly: Boolean(value.retrievalOnly),
       repairCommand: `${SOURCE_RAG_INDEX_COMMAND} --language ${language}`,
       graphRepairCommand: `${CODEGRAPH_INDEX_COMMAND} --language ${language}`,
     };
@@ -397,11 +531,96 @@ function normalizeLanguageCoverage(input) {
       indexed,
       filesWithSymbols,
       configOnly: Boolean(value.configOnly),
+      graphEligible: value.graphEligible !== false,
+      retrievalOnly: Boolean(value.retrievalOnly),
       coverage: eligible === 0 ? 1 : indexed / eligible,
       symbolCoverage: indexed === 0 ? 0 : filesWithSymbols / indexed,
     };
   }
   return output;
+}
+
+
+function normalizeEmbeddingHealth(input = {}) {
+  const totalChunks = numberOrZero(input.totalChunks);
+  const embeddedChunks = numberOrZero(input.embeddedChunks);
+  const coverage = totalChunks === 0 ? 1 : numberOrZero(input.coverage || embeddedChunks / totalChunks);
+  return {
+    totalChunks,
+    embeddedChunks,
+    missingEmbeddings: numberOrZero(input.missingEmbeddings ?? Math.max(0, totalChunks - embeddedChunks)),
+    coverage,
+    semanticActive: Boolean(input.semanticActive ?? embeddedChunks > 0),
+    status: input.status || (totalChunks === 0 ? 'empty' : embeddedChunks === 0 ? 'semantic-unavailable' : coverage >= 0.9 ? 'semantic-active' : 'partial-semantic'),
+    repairCommand: input.repairCommand || SOURCE_RAG_INDEX_COMMAND + ' --resume --embeddings-only --max-files 100 --health',
+  };
+}
+
+function normalizeChunkEntityHealth(input = {}) {
+  const totalChunks = numberOrZero(input.totalChunks);
+  const linkedChunks = numberOrZero(input.linkedChunks);
+  return {
+    pass: input.pass === true,
+    status: input.status || 'unknown',
+    totalChunks,
+    totalEntities: numberOrZero(input.totalEntities),
+    linkedChunks,
+    coverage: totalChunks === 0 ? 1 : numberOrZero(input.coverage || linkedChunks / totalChunks),
+    staleRows: numberOrZero(input.staleRows),
+    version: numberOrZero(input.version),
+    rebuildRequired: Boolean(input.rebuildRequired),
+  };
+}
+
+function normalizeSemanticAnchorHealth(input = {}) {
+  return {
+    pass: input.pass === true,
+    status: input.status || 'unknown',
+    totalAnchors: numberOrZero(input.totalAnchors),
+    derivedAnchors: numberOrZero(input.derivedAnchors),
+    filesWithAnchors: numberOrZero(input.filesWithAnchors),
+  };
+}
+
+function normalizeRetrievalLanes(input = []) {
+  return (input || []).map((lane) => ({
+    fileRole: String(lane.fileRole || 'source'),
+    artifactType: String(lane.artifactType || 'source-code'),
+    language: String(lane.language || 'unknown'),
+    files: numberOrZero(lane.files),
+    chunks: numberOrZero(lane.chunks),
+    embeddedChunks: numberOrZero(lane.embeddedChunks),
+    entities: numberOrZero(lane.entities),
+  })).sort((a, b) => b.chunks - a.chunks || a.fileRole.localeCompare(b.fileRole));
+}
+
+function normalizeGraphHealthMetrics(input = {}) {
+  return {
+    ...input,
+    graphVersionStaleRows: normalizeIndexedPaths(input.graphVersionStaleRows || []),
+    eligibleProjectEdges: normalizeEligibleProjectEdges(input.eligibleProjectEdges || {}),
+    crossResolvedEdges: normalizeCrossResolvedEdges(input.crossResolvedEdges || {}),
+  };
+}
+
+function normalizeEligibleProjectEdges(input = {}) {
+  const deterministic = numberOrZero(input.deterministic);
+  const resolved = numberOrZero(input.resolved);
+  return {
+    deterministic,
+    resolved,
+    unresolved: numberOrZero(input.unresolved),
+    ignored: numberOrZero(input.ignored),
+    ambiguous: numberOrZero(input.ambiguous),
+    missingSymbol: numberOrZero(input.missingSymbol),
+    totalObserved: numberOrZero(input.totalObserved),
+    rate: deterministic === 0 ? 1 : numberOrZero(input.rate || resolved / deterministic),
+  };
+}
+
+function formatRetrievalLaneLines(lanes = []) {
+  if (!lanes.length) return ['  - none'];
+  return lanes.slice(0, 8).map((lane) => '  - ' + lane.fileRole + '/' + lane.artifactType + '/' + lane.language + ': files=' + lane.files + ', chunks=' + lane.chunks + ', embedded=' + lane.embeddedChunks + ', entities=' + lane.entities);
 }
 
 function normalizeSymbolQuality(input, topSymbols) {

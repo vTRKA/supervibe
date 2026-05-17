@@ -1,8 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert";
 import { execSync } from "node:child_process";
-import { readFile, rm } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { parse as parseYaml } from "yaml";
 import { fileURLToPath } from "node:url";
 
@@ -10,7 +9,6 @@ const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const REGISTRY = `${ROOT}registry.yaml`;
 
 test("build-registry produces a registry.yaml with required top-level keys", async () => {
-  if (existsSync(REGISTRY)) await rm(REGISTRY);
   execSync("node scripts/build-registry.mjs", { cwd: ROOT, stdio: "pipe" });
   const content = await readFile(REGISTRY, "utf8");
   const data = parseYaml(content);
@@ -25,7 +23,6 @@ test("build-registry produces a registry.yaml with required top-level keys", asy
 });
 
 test("build-registry includes all 16 rubrics by name", async () => {
-  if (existsSync(REGISTRY)) await rm(REGISTRY);
   execSync("node scripts/build-registry.mjs", { cwd: ROOT, stdio: "pipe" });
   const content = await readFile(REGISTRY, "utf8");
   const data = parseYaml(content);
@@ -54,6 +51,18 @@ test("build-registry includes all 16 rubrics by name", async () => {
       `rubric ${name} missing from registry`,
     );
   }
+});
+
+
+test("build-registry is idempotent by default", async () => {
+  execSync("node scripts/build-registry.mjs", { cwd: ROOT, stdio: "pipe" });
+  const first = await readFile(REGISTRY, "utf8");
+  execSync("node scripts/build-registry.mjs", { cwd: ROOT, stdio: "pipe" });
+  const second = await readFile(REGISTRY, "utf8");
+  const data = parseYaml(second);
+
+  assert.strictEqual(data["generated-at"], "deterministic-local");
+  assert.strictEqual(second, first);
 });
 
 test("registry uses POSIX-style portable paths (no backslashes, no URL-encoding, no leading slash, no drive prefix)", async () => {

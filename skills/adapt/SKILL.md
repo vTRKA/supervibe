@@ -34,12 +34,12 @@ It keeps the work evidence-first, scope-bounded, confidence-scored, and verified
 
 ## Shared Dialogue Contract
 
-Lifecycle: `scan -> real-dry-run -> agent-plan -> review -> approved -> applied -> artifact/app/deploy verification`. Persist state in `.supervibe/memory/adapt/state.json` before every lifecycle transition. State must use layered fields: `artifactVerified`, `agentReceiptsVerified`, `appVerified`, and `deployVerified`.
+Lifecycle: `scan -> real-dry-run -> agent-plan -> review -> approved -> applied -> artifact/app/deploy verification`. Persist state in `.supervibe/memory/adapt/state.json` before every lifecycle transition. State must use layered fields: `artifactVerified`, `agentRuntimeVerified`, `appVerified`, and `deployVerified`.
 
 Lifecycle gates are split by phase: `--dry-run` is read-only and may run
-without real-agent receipts; `--apply` requires explicit user approval for
-writes; `--verify-agents` is the separate runtime smoke gate that can set
-`agentReceiptsVerified=true`.
+without host-agent telemetry; `--apply` requires explicit user approval for
+writes; optional `--verify-agents` is an advanced runtime smoke diagnostic and
+is not part of Adapt completion.
 
 Every interactive step asks one question at a time using `Step N/M` or `Step N/M`. Each question lists the recommended/default option first, gives a one-line tradeoff summary for every option, allows a free-form answer, and names the stop condition.
 
@@ -62,7 +62,7 @@ apply/revise wording.
 
 ## Expert Operating Standard
 
-Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime evidence for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
 
 ## Step 0 — Read source of truth (required)
 
@@ -148,12 +148,12 @@ Additional drift policy:
 ## Common rationalizations
 
 - "This is small, so no source check is needed" - reject when the skill changes code, config, or durable artifacts.
-- "The user asked for speed, so skip receipts" - reject when durable work, delegation, or review is claimed.
+- "The user asked for speed, so skip evidence" - reject when durable work, delegation, or review is claimed.
 - "Existing prose is enough evidence" - reject when validators or command output are required.
 
 ## Red flags
 
-- A durable artifact changes without a command, receipt, or verification path.
+- A durable artifact changes without a command, approval, or verification path.
 - The skill is used outside its phase without an explicit handoff.
 - Claims of completion appear before evidence and confidence scoring.
 
@@ -189,7 +189,7 @@ Returns:
 - DO NOT: assume a project has exactly `frontend/` and `backend/`; service
   discovery must support multiple service directories and must block unknown
   technologies instead of guessing.
-- DO NOT: claim real agents completed when `.supervibe/memory/agent-invocations.jsonl` or trusted runtime receipts are absent
+- DO NOT: claim optional real-agent diagnostics completed when host-agent telemetry is absent
 - DO NOT: invent new agent (suggest genesis for new components)
 - ALWAYS: re-audit after adapt to verify clean
 

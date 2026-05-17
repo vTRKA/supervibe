@@ -590,6 +590,35 @@ test("workflow receipt runtime serializes parallel ledger appends", async () => 
   }
 });
 
+test("workflow receipt runtime suppresses deleted ephemeral temp plan diagnostics", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-workflow-temp-plan-"));
+  try {
+    const outputRel = ".supervibe/artifacts/plans/temp-autonomy-todo.md";
+    await writeUtf8(root, outputRel, "# Temporary Plan: autonomy todo\nStatus: temporary ephemeral\n");
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-plan",
+      subjectType: "command",
+      subjectId: "supervibe:writing-plans",
+      stage: "stage-1-plan",
+      invocationReason: "temporary ephemeral plan deleted-after-completion",
+      outputArtifacts: [outputRel],
+      startedAt: "2026-05-17T00:00:00.000Z",
+      completedAt: "2026-05-17T00:01:00.000Z",
+      handoffId: "temp-autonomy-todo",
+      secret: "test-secret",
+    });
+    await rm(join(root, ...outputRel.split("/")), { force: true });
+
+    const result = validateWorkflowReceipts(root, { secret: "test-secret" });
+
+    assert.equal(result.pass, true);
+    assert.equal(result.diagnostics.some((item) => /temp-autonomy-todo/.test(item.message || item)), false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("workflow receipt runtime keeps snapshot trust and diagnoses artifact drift", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-workflow-receipts-"));
   try {

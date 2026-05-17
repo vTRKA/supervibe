@@ -2,20 +2,22 @@
 // Mirrors MemoryStore but for source code: per-file rows + per-chunk embeddings.
 // Hash-based change detection skips unchanged files on re-index.
 
+import { createHash } from 'node:crypto';
 import { readFile, mkdir, writeFile, stat } from 'node:fs/promises';
 import { createReadStream, existsSync, readFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { createInterface } from 'node:readline';
 import { Worker } from 'node:worker_threads';
 import { hashFile } from './file-hash.mjs';
-import { chunkCode, detectLanguage, estimateCodeTokens } from './code-chunker.mjs';
+import { chunkCode, detectLanguage, estimateCodeTokens, isGraphIndexableLanguage } from './code-chunker.mjs';
 import { parseSemanticAnchors } from './supervibe-semantic-anchor-index.mjs';
 import { loadNodeSqliteDatabaseSync } from './node-sqlite-runtime.mjs';
 import { classifyIndexPath, discoverSourceFiles, isGeneratedPath, looksMinifiedSymbolName, pruneCodeIndex } from './supervibe-index-policy.mjs';
 import { applyCodeDbMigrations } from './supervibe-db-migrations.mjs';
 
 export const CODE_GRAPH_EXTRACTOR_VERSION = 3;
-export const CODE_RAG_CHUNK_METADATA_VERSION = 1;
+export const CODE_RAG_CHUNK_METADATA_VERSION = 2;
+export const CODE_RAG_ENTITY_METADATA_VERSION = 1;
 const DEFAULT_LARGE_FILE_CHAR_THRESHOLD = 100_000;
 const DEFAULT_CHUNK_TIMEOUT_MS = 30_000;
 const DEFAULT_LARGE_FILE_THRESHOLD_BYTES = 128 * 1024;
@@ -26,6 +28,7 @@ const DEFAULT_LARGE_FILE_MAX_SECONDS = 30;
 const DEFAULT_GRAPH_EXTRACTION_LARGE_FILE_MODE = 'skip';
 const DEFAULT_LARGE_FILE_FALLBACK_MODE = 'structural';
 const DEFAULT_KNOWN_FAILED_TTL_SECONDS = 24 * 60 * 60;
+const DEFAULT_SEMANTIC_CANDIDATE_LIMIT = 5000;
 
 const EXTENSION_RESOLUTION = {
   typescript: ['.ts', '.tsx', '.d.ts', '.js', '.jsx', '/index.ts', '/index.tsx', '/index.js', '/index.jsx'],
@@ -57,6 +60,23 @@ function positiveInt(value, fallback) {
   return Number.isFinite(num) && num > 0 ? Math.trunc(num) : fallback;
 }
 
+function boundedNonNegativeInt(value, fallback = 0) {
+  const num = Number(value);
+  return Number.isFinite(num) && num >= 0 ? Math.trunc(num) : fallback;
+}
+
+function searchTermsForAnchors(query = '', maxTerms = 8) {
+  const terms = String(query || '')
+    .toLowerCase()
+    .match(/[\p{L}\p{N}_.\/-]+/gu) || [];
+  return [...new Set(terms)]
+    .filter((term) => term.length >= 3)
+    .slice(0, maxTerms);
+}
+
+function escapeLikeTerm(term = '') {
+  return String(term || '').replace(/[\\%_]/g, (match) => '\\' + match);
+}
 function redactIndexableSecrets(value = '') {
   let redacted = false;
   const text = String(value || '')
@@ -317,12 +337,18 @@ function inferChunkFileRole(relPath = '') {
   const normalized = normalizeRelPath(relPath).toLowerCase();
   const name = basename(normalized);
   if (normalized.startsWith('tests/') || /\.(test|spec)\.[cm]?[jt]sx?$/.test(name)) return 'test';
-  if (normalized.startsWith('docs/') || normalized.endsWith('.md') || normalized.endsWith('.mdx')) return 'docs';
   if (normalized.startsWith('agents/')) return 'agent';
   if (normalized.startsWith('skills/')) return 'skill';
   if (normalized.startsWith('rules/')) return 'rule';
   if (normalized.startsWith('commands/')) return 'command';
-  if (normalized.startsWith('scripts/')) return 'script';
+  if (normalized.startsWith('templates/')) return 'template';
+  if (normalized.startsWith('references/')) return 'reference';
+  if (normalized.startsWith('questionnaires/')) return 'questionnaire';
+  if (normalized.startsWith('confidence-rubrics/')) return 'rubric';
+  if (normalized.startsWith('hooks/')) return 'hook';
+  if (normalized === 'registry.yaml' || normalized === 'registry.yml') return 'registry';
+  if (normalized.startsWith('scripts/') || normalized.startsWith('bin/')) return 'script';
+  if (normalized.startsWith('docs/') || normalized.endsWith('.md') || normalized.endsWith('.mdx')) return 'docs';
   if (
     normalized.startsWith('.github/') ||
     normalized.startsWith('.codex/') ||
@@ -342,7 +368,8 @@ function inferChunkArtifactType(relPath = '', fileRole = '') {
   if (fileRole === 'test') return 'test-code';
   if (fileRole === 'docs') return 'documentation';
   if (fileRole === 'config') return 'configuration';
-  if (['agent', 'skill', 'rule', 'command'].includes(fileRole)) return `supervibe-${fileRole}`;
+  if (fileRole === 'registry') return 'supervibe-registry';
+  if (['agent', 'skill', 'rule', 'command', 'template', 'reference', 'questionnaire', 'rubric', 'hook'].includes(fileRole)) return `supervibe-${fileRole}`;
   if (fileRole === 'script') return 'automation-script';
   return 'source-code';
 }
@@ -351,7 +378,7 @@ function extractChunkHeading(chunk = {}, relPath = '') {
   const name = String(chunk.name || '').trim();
   if (name) return String(chunk.kind || 'symbol') === 'block' ? name : `${chunk.kind || 'symbol'}:${name}`;
   const text = String(chunk.text || '');
-  const markdownHeading = text.match(/^\s{0,3}#{1,6}\s+(.+)$/m)?.[1]?.trim();
+  const markdownHeading = text.match(/^[ \t]{0,3}#{1,6}\s+(.+)$/m)?.[1]?.trim();
   if (markdownHeading) return markdownHeading.slice(0, 160);
   const symbol = extractSymbolHints(chunk)[0];
   if (symbol) return symbol;
@@ -394,6 +421,151 @@ function buildChunkMetadata({ relPath, chunk, indexStatus = 'full' } = {}) {
   };
 }
 
+function stableEntityId(parts = []) {
+  const seed = parts.map((part) => String(part ?? '')).join(':');
+  return createHash('sha1').update(seed).digest('hex').slice(0, 16);
+}
+
+function chunkEntityId({ relPath, chunkIdx }) {
+  return normalizeRelPath(relPath) + '#chunk:' + chunkIdx;
+}
+
+function pathStem(relPath = '') {
+  return basename(normalizeRelPath(relPath)).replace(/\.(?:mdx?|json|ya?ml)\.tpl$/i, '').replace(/\.(?:mdx?|ya?ml|json|mjs|cjs|jsx?|tsx?|py|php|rs|go|java|rb)$/i, '');
+}
+
+function entityFromPath(relPath = '', fileRole = 'source') {
+  const normalized = normalizeRelPath(relPath);
+  if (fileRole === 'command') return { type: 'command', name: pathStem(normalized) };
+  if (fileRole === 'agent') return { type: 'agent', name: pathStem(normalized) };
+  if (fileRole === 'skill') {
+    const parts = normalized.split('/').filter(Boolean);
+    const skillName = parts.length >= 2 ? parts[1] : pathStem(normalized);
+    return { type: 'skill', name: skillName };
+  }
+  if (fileRole === 'rule') return { type: 'rule', name: pathStem(normalized) };
+  if (['template', 'reference', 'questionnaire', 'rubric', 'hook'].includes(fileRole)) return { type: fileRole, name: pathStem(normalized) };
+  const lower = normalized.toLowerCase();
+  if (lower === 'package.json') return { type: 'package', name: 'package.json' };
+  if (lower === 'registry.yaml' || lower === 'registry.yml') return { type: 'registry', name: basename(normalized) };
+  if (lower.startsWith('schemas/')) return { type: 'schema', name: pathStem(normalized) };
+  return null;
+}
+
+function extractHeadingEntities(chunk = {}) {
+  const text = String(chunk.text || '');
+  return [...text.matchAll(/^[ \t]{0,3}#{1,6}\s+(.+)$/gm)]
+    .map((match) => String(match[1] || '').trim())
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
+function buildChunkEntities({ relPath, chunkIdx, chunk, metadata, indexFingerprint = '' } = {}) {
+  const fileRole = metadata?.fileRole || inferChunkFileRole(relPath);
+  const heading = metadata?.heading || extractChunkHeading(chunk, relPath);
+  const symbolHints = parseJsonStringArray(metadata?.symbolHintsJson);
+  const entities = [];
+  const add = ({ type, name, confidence = 0.75, derivationSource = 'generated' }) => {
+    const cleanType = String(type || '').trim().toLowerCase();
+    const cleanName = String(name || '').trim();
+    if (!cleanType || !cleanName) return;
+    const entityId = cleanType + ':' + stableEntityId([relPath, cleanType, cleanName]);
+    if (entities.some((entry) => entry.entityType === cleanType && entry.entityId === entityId)) return;
+    entities.push({
+      chunkId: chunkEntityId({ relPath, chunkIdx }),
+      path: normalizeRelPath(relPath),
+      chunkIdx,
+      entityType: cleanType,
+      entityId,
+      entityName: cleanName.slice(0, 200),
+      sourcePath: normalizeRelPath(relPath),
+      startLine: Number(chunk?.startLine || 1),
+      endLine: Number(chunk?.endLine || chunk?.startLine || 1),
+      heading: heading || '',
+      confidence: Math.max(0, Math.min(1, Number(confidence) || 0)),
+      derivationSource,
+      indexFingerprint,
+      metadataVersion: CODE_RAG_ENTITY_METADATA_VERSION,
+    });
+  };
+
+  const pathEntity = entityFromPath(relPath, fileRole);
+  if (pathEntity) add({ ...pathEntity, confidence: 0.95, derivationSource: 'path-role' });
+
+  if (heading) add({ type: (fileRole === 'source' || fileRole === 'script') ? 'heading' : fileRole + '-heading', name: heading, confidence: 0.8, derivationSource: 'chunk-heading' });
+  for (const item of extractHeadingEntities(chunk)) add({ type: 'heading', name: item, confidence: 0.72, derivationSource: 'markdown-heading' });
+  for (const symbol of symbolHints) {
+    const type = ['source', 'script', 'test'].includes(fileRole) ? 'symbol' : fileRole + '-symbol';
+    add({ type, name: symbol, confidence: 0.82, derivationSource: 'symbol-hint' });
+  }
+
+  return entities;
+}
+
+function insertDerivedChunkEntities(db, { relPath, chunkIdx, chunk, metadata, indexFingerprint = '' } = {}) {
+  const entities = buildChunkEntities({ relPath, chunkIdx, chunk, metadata, indexFingerprint });
+  if (entities.length === 0) return 0;
+  const insert = db.prepare([
+    'INSERT OR REPLACE INTO code_chunk_entities (',
+    'chunk_id, path, chunk_idx, entity_type, entity_id, entity_name, source_path,',
+    'start_line, end_line, heading, confidence, derivation_source, index_fingerprint, metadata_version',
+    ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ].join(' '));
+  for (const entity of entities) {
+    insert.run(
+      entity.chunkId,
+      entity.path,
+      entity.chunkIdx,
+      entity.entityType,
+      entity.entityId,
+      entity.entityName,
+      entity.sourcePath,
+      entity.startLine,
+      entity.endLine,
+      entity.heading,
+      entity.confidence,
+      entity.derivationSource,
+      entity.indexFingerprint,
+      entity.metadataVersion,
+    );
+  }
+  return entities.length;
+}
+
+function buildGeneratedAnchorsFromEntities(db, relPath = '') {
+  let rows = [];
+  try {
+    rows = db.prepare([
+      'SELECT entity_type AS entityType, entity_name AS entityName, entity_id AS entityId,',
+      'MIN(start_line) AS startLine, MIN(end_line) AS endLine, MAX(heading) AS heading,',
+      'MAX(confidence) AS confidence, MIN(derivation_source) AS derivationSource',
+      'FROM code_chunk_entities WHERE path = ? GROUP BY entity_id',
+      'ORDER BY confidence DESC, startLine ASC LIMIT 32'
+    ].join(' ')).all(normalizeRelPath(relPath));
+  } catch {
+    rows = [];
+  }
+  return rows
+    .filter((row) => Number(row.confidence || 0) >= 0.7)
+    .map((row) => {
+      const entityType = String(row.entityType || 'entity');
+      const entityName = String(row.entityName || '').trim();
+      const anchorId = 'derived-' + stableEntityId([relPath, row.entityId || entityType, entityName, row.startLine || 1]);
+      return {
+        anchorId,
+        filePath: normalizeRelPath(relPath),
+        symbolName: /symbol|command|agent|skill|rule|schema|package|registry|template|reference|questionnaire|rubric|hook/.test(entityType) ? entityName : null,
+        visibility: ['symbol', 'command', 'agent', 'skill', 'rule', 'schema', 'package', 'registry', 'template', 'reference', 'questionnaire', 'rubric', 'hook'].includes(entityType) ? 'public' : 'internal',
+        responsibility: ('Generated ' + entityType + ' anchor: ' + entityName).slice(0, 240),
+        invariants: [],
+        verificationRefs: [],
+        startLine: Number(row.startLine || 1),
+        endLine: Number(row.endLine || row.startLine || 1),
+        source: 'derived-entity',
+      };
+    });
+}
+
 function parseJsonStringArray(value) {
   try {
     const parsed = JSON.parse(String(value || '[]'));
@@ -410,6 +582,20 @@ function isConfigOnlyGraphPath(relPath = '') {
     /^(next|vite|vitest|jest|playwright|eslint|prettier|postcss|tailwind|commitlint|lint-staged|knip|astro|svelte|nuxt)\.config\./.test(name) ||
     /^(babel|renovate)\.config\./.test(name)
   );
+}
+
+const COMMON_EXTERNAL_EDGE_NAMES = new Set([
+  'array', 'object', 'string', 'number', 'boolean', 'promise', 'map', 'set', 'date', 'regexp', 'json', 'math', 'console',
+  'push', 'pop', 'map', 'filter', 'reduce', 'forEach', 'find', 'some', 'every', 'includes', 'join', 'split', 'slice',
+  'trim', 'replace', 'match', 'test', 'parse', 'stringify', 'keys', 'values', 'entries', 'assign', 'from', 'resolve',
+  'reject', 'then', 'catch', 'finally', 'log', 'error', 'warn', 'info', 'readfile', 'writefile',
+]);
+
+function isActionableGraphEdgeName(name = '') {
+  const value = String(name || '').trim();
+  if (!/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(value)) return false;
+  if (COMMON_EXTERNAL_EDGE_NAMES.has(value.toLowerCase())) return false;
+  return true;
 }
 
 function deadlineExceededError(phase, relPath) {
@@ -627,6 +813,29 @@ export class CodeStore {
       CREATE INDEX IF NOT EXISTS idx_code_chunks_path ON code_chunks(path);
       CREATE INDEX IF NOT EXISTS idx_code_chunks_kind ON code_chunks(kind);
 
+      CREATE TABLE IF NOT EXISTS code_chunk_entities (
+        chunk_id TEXT NOT NULL,
+        path TEXT NOT NULL,
+        chunk_idx INTEGER NOT NULL,
+        entity_type TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        entity_name TEXT NOT NULL,
+        source_path TEXT NOT NULL,
+        start_line INTEGER NOT NULL,
+        end_line INTEGER NOT NULL,
+        heading TEXT,
+        confidence REAL NOT NULL,
+        derivation_source TEXT NOT NULL,
+        index_fingerprint TEXT NOT NULL,
+        metadata_version INTEGER NOT NULL DEFAULT 1,
+        PRIMARY KEY(chunk_id, entity_type, entity_id, derivation_source),
+        FOREIGN KEY(path, chunk_idx) REFERENCES code_chunks(path, chunk_idx) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_chunk_entities_path ON code_chunk_entities(path);
+      CREATE INDEX IF NOT EXISTS idx_chunk_entities_chunk ON code_chunk_entities(path, chunk_idx);
+      CREATE INDEX IF NOT EXISTS idx_chunk_entities_type_name ON code_chunk_entities(entity_type, entity_name);
+      CREATE INDEX IF NOT EXISTS idx_chunk_entities_entity_id ON code_chunk_entities(entity_id);
+
       CREATE VIRTUAL TABLE IF NOT EXISTS code_chunks_fts USING fts5(
         path UNINDEXED,
         chunk_idx UNINDEXED,
@@ -681,6 +890,7 @@ export class CodeStore {
         FOREIGN KEY(path) REFERENCES code_files(path) ON DELETE CASCADE
       );
       CREATE INDEX IF NOT EXISTS idx_anchor_path ON code_semantic_anchors(path);
+      CREATE INDEX IF NOT EXISTS idx_anchor_path_range ON code_semantic_anchors(path, start_line, end_line);
       CREATE INDEX IF NOT EXISTS idx_anchor_symbol ON code_semantic_anchors(symbol_name);
     `);
     ensureColumn(this.db, "code_files", "graph_version", "INTEGER NOT NULL DEFAULT 0");
@@ -694,6 +904,7 @@ export class CodeStore {
     ensureColumn(this.db, "code_chunks", "artifact_type", "TEXT NOT NULL DEFAULT 'source-code'");
     ensureColumn(this.db, "code_chunks", "freshness", "TEXT NOT NULL DEFAULT 'current'");
     ensureColumn(this.db, "code_chunks", "metadata_version", `INTEGER NOT NULL DEFAULT ${CODE_RAG_CHUNK_METADATA_VERSION}`);
+    this.ensureChunkEntitySchema();
     return this;
   }
 
@@ -701,8 +912,82 @@ export class CodeStore {
     if (this.db) { this.db.close(); this.db = null; }
   }
 
+  ensureChunkEntitySchema() {
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS code_chunk_entities (
+        chunk_id TEXT NOT NULL,
+        path TEXT NOT NULL,
+        chunk_idx INTEGER NOT NULL,
+        entity_type TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        entity_name TEXT NOT NULL,
+        source_path TEXT NOT NULL,
+        start_line INTEGER NOT NULL,
+        end_line INTEGER NOT NULL,
+        heading TEXT,
+        confidence REAL NOT NULL,
+        derivation_source TEXT NOT NULL,
+        index_fingerprint TEXT NOT NULL,
+        metadata_version INTEGER NOT NULL DEFAULT 1,
+        PRIMARY KEY(chunk_id, entity_type, entity_id, derivation_source)
+      );
+      CREATE INDEX IF NOT EXISTS idx_chunk_entities_path ON code_chunk_entities(path);
+      CREATE INDEX IF NOT EXISTS idx_chunk_entities_chunk ON code_chunk_entities(path, chunk_idx);
+      CREATE INDEX IF NOT EXISTS idx_chunk_entities_type_name ON code_chunk_entities(entity_type, entity_name);
+      CREATE INDEX IF NOT EXISTS idx_chunk_entities_entity_id ON code_chunk_entities(entity_id);
+    `);
+  }
+
   toRel(absPath) {
     return relative(this.projectRoot, absPath).split(sep).join('/');
+  }
+
+  fileHasMissingEmbeddings(relPath) {
+    if (!this.useEmbeddings) return false;
+    try {
+      const row = this.db.prepare(`
+        SELECT COUNT(*) AS totalChunks,
+               SUM(CASE WHEN embedding IS NULL THEN 1 ELSE 0 END) AS missingEmbeddings
+        FROM code_chunks
+        WHERE path = ?
+      `).get(normalizeRelPath(relPath));
+      return Number(row?.totalChunks || 0) > 0 && Number(row?.missingEmbeddings || 0) > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  fileHasStaleChunkMetadata(relPath) {
+    try {
+      const row = this.db.prepare(`
+        SELECT COUNT(*) AS n
+        FROM code_chunks
+        WHERE path = ?
+          AND (metadata_version < ?
+            OR file_role IS NULL OR file_role = ''
+            OR artifact_type IS NULL OR artifact_type = ''
+            OR freshness IS NULL OR freshness = ''
+            OR heading IS NULL OR heading = '')
+      `).get(normalizeRelPath(relPath), CODE_RAG_CHUNK_METADATA_VERSION);
+      return Number(row?.n || 0) > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  fileHasStaleChunkEntities(relPath) {
+    try {
+      const row = this.db.prepare(`
+        SELECT
+          (SELECT COUNT(*) FROM code_chunks WHERE path = ?) AS totalChunks,
+          (SELECT COUNT(DISTINCT cc.path || '#' || cc.chunk_idx) FROM code_chunks cc JOIN code_chunk_entities cce ON cce.path = cc.path AND cce.chunk_idx = cc.chunk_idx WHERE cc.path = ?) AS linkedChunks,
+          (SELECT COUNT(*) FROM code_chunk_entities WHERE path = ? AND metadata_version < ?) AS staleEntities
+      `).get(normalizeRelPath(relPath), normalizeRelPath(relPath), normalizeRelPath(relPath), CODE_RAG_ENTITY_METADATA_VERSION);
+      return Number(row?.totalChunks || 0) > 0
+        && (Number(row?.linkedChunks || 0) < Number(row?.totalChunks || 0) || Number(row?.staleEntities || 0) > 0);
+    } catch {
+      return false;
+    }
   }
 
   /** Index a single file. Skips if hash unchanged (idempotent). */
@@ -745,7 +1030,10 @@ export class CodeStore {
       const existingGraphVersion = Number(existing?.graph_version || 0);
       const preserveGraphWhenDisabled = !this.useGraph && existing && existing.content_hash === hash && existingGraphVersion > 0;
       const graphStale = this.useGraph && existingGraphVersion !== CODE_GRAPH_EXTRACTOR_VERSION;
-      if (existing && existing.content_hash === hash && !force && !graphStale) {
+      const embeddingStale = existing && existing.content_hash === hash && this.fileHasMissingEmbeddings(relPath);
+      const chunkMetadataStale = existing && existing.content_hash === hash && this.fileHasStaleChunkMetadata(relPath);
+      const chunkEntityStale = existing && existing.content_hash === hash && this.fileHasStaleChunkEntities(relPath);
+      if (existing && existing.content_hash === hash && !force && !graphStale && !embeddingStale && !chunkMetadataStale && !chunkEntityStale) {
         return { skipped: 'unchanged' };
       }
 
@@ -767,7 +1055,7 @@ export class CodeStore {
         largeByLines = lines >= this.largeFileThresholdLines;
       }
 
-      if (existing && existing.content_hash === hash && !force) {
+      if (existing && existing.content_hash === hash && !force && !embeddingStale && !chunkMetadataStale && !chunkEntityStale) {
         // Hash unchanged, but extractor/query semantics may have changed across
         // plugin versions. Rebuild only graph rows while preserving RAG chunks.
         if (graphStale) {
@@ -838,6 +1126,7 @@ export class CodeStore {
         lines = lineCountOf(content);
       }
 
+      this.db.prepare('DELETE FROM code_chunk_entities WHERE path = ?').run(relPath);
       this.db.prepare('DELETE FROM code_chunks WHERE path = ?').run(relPath);
       this.db.prepare('DELETE FROM code_chunks_fts WHERE path = ?').run(relPath);
 
@@ -940,6 +1229,13 @@ export class CodeStore {
         );
         await enter('fts-write', { chunk: i + 1, chunks: chunks.length });
         insertFTS.run(relPath, i, safeChunk.text, c.name || '');
+        insertDerivedChunkEntities(this.db, {
+          relPath,
+          chunkIdx: i,
+          chunk: { ...c, text: safeChunk.text },
+          metadata,
+          indexFingerprint: hash,
+        });
       }
 
       // Phase D: also extract code graph (symbols + edges) for this file.
@@ -998,6 +1294,7 @@ export class CodeStore {
       timeoutMs: deadlineMs,
     });
 
+    this.db.prepare('DELETE FROM code_chunk_entities WHERE path = ?').run(relPath);
     this.db.prepare('DELETE FROM code_chunks WHERE path = ?').run(relPath);
     this.db.prepare('DELETE FROM code_chunks_fts WHERE path = ?').run(relPath);
     if (!preserveGraph) this.clearGraphFor(relPath);
@@ -1056,7 +1353,7 @@ export class CodeStore {
       return error;
     };
 
-    const flush = () => {
+    const flush = async () => {
       const chunkText = redactIndexableSecrets(currentLines.join('\n').trim()).text;
       if (!chunkText) {
         currentLines = [];
@@ -1067,41 +1364,92 @@ export class CodeStore {
         return;
       }
       const endLine = currentStartLine + currentLines.length - 1;
-      const chunk = { kind: currentKind, name: currentName, text: chunkText };
-      const metadata = buildChunkMetadata({ relPath, chunk, indexStatus: 'partial' });
-      insertChunk.run(
-        relPath,
-        chunkIndex,
-        chunkText,
-        currentKind,
-        currentName,
-        currentStartLine,
+      let chunksToWrite = [{
+        kind: currentKind,
+        name: currentName,
+        text: chunkText,
+        startLine: currentStartLine,
         endLine,
-        estimateCodeTokens(chunkText),
-        null,
-        metadata.fileRole,
-        metadata.heading,
-        metadata.symbolHintsJson,
-        metadata.artifactType,
-        metadata.freshness,
-        metadata.metadataVersion,
-      );
-      insertFTS.run(relPath, chunkIndex, chunkText, currentName || '');
-      chunkIndex += 1;
-      updateFileProgress.run(lineNo, chunkIndex, bytesScanned, 'partial', relPath);
-      emit?.('fts-write', {
-        chunk: chunkIndex,
-        chunks: null,
-        chunkerMode: 'large-file',
-        chunkingStrategy,
-        indexStatus: 'partial',
-      });
-
-      const stopAfter = Number(process.env.SUPERVIBE_INDEX_TEST_LARGE_FILE_STOP_AFTER_CHUNKS || 0);
-      if (Number.isFinite(stopAfter) && stopAfter > 0 && chunkIndex >= stopAfter) {
-        throw failPartial(`test hook stopped large-file chunking after ${chunkIndex} chunk(s)`);
+        tokens: estimateCodeTokens(chunkText),
+      }];
+      if (estimateCodeTokens(chunkText) > 300 || this.useEmbeddings) {
+        const subChunks = await chunkCode(chunkText, relPath, {
+          tokenMode: 'approximate',
+          targetTokens: 250,
+          overlapTokens: 16,
+          shouldStop,
+        });
+        if (subChunks.length > 0) {
+          chunksToWrite = subChunks
+            .map((chunk) => ({
+              kind: chunk.kind || currentKind,
+              name: chunk.name || currentName,
+              text: String(chunk.text || '').trim(),
+              startLine: currentStartLine + Math.max(0, Number(chunk.startLine || 1) - 1),
+              endLine: currentStartLine + Math.max(0, Number(chunk.endLine || chunk.startLine || 1) - 1),
+              tokens: Number(chunk.tokens || estimateCodeTokens(chunk.text || '')),
+            }))
+            .filter((chunk) => chunk.text.length > 0);
+        }
       }
 
+      for (const chunk of chunksToWrite) {
+        let embeddingBuf = null;
+        if (this.useEmbeddings) {
+          await enter?.('embeddings', {
+            chunk: chunkIndex + 1,
+            chunks: null,
+            chunkerMode: 'large-file',
+            chunkingStrategy,
+            indexStatus: 'partial',
+          });
+          try {
+            const { embed, vectorToBuffer } = await loadEmbeddingHelpers();
+            embeddingBuf = vectorToBuffer(await embed(chunk.text, 'passage'));
+          } catch {}
+        }
+        const metadata = buildChunkMetadata({ relPath, chunk, indexStatus: 'partial' });
+        insertChunk.run(
+          relPath,
+          chunkIndex,
+          chunk.text,
+          chunk.kind,
+          chunk.name || null,
+          chunk.startLine,
+          chunk.endLine,
+          chunk.tokens,
+          embeddingBuf,
+          metadata.fileRole,
+          metadata.heading,
+          metadata.symbolHintsJson,
+          metadata.artifactType,
+          metadata.freshness,
+          metadata.metadataVersion,
+        );
+        insertFTS.run(relPath, chunkIndex, chunk.text, chunk.name || '');
+        insertDerivedChunkEntities(this.db, {
+          relPath,
+          chunkIdx: chunkIndex,
+          chunk,
+          metadata,
+          indexFingerprint: hash,
+        });
+        chunkIndex += 1;
+        emit?.('fts-write', {
+          chunk: chunkIndex,
+          chunks: null,
+          chunkerMode: 'large-file',
+          chunkingStrategy,
+          indexStatus: 'partial',
+        });
+
+        const stopAfter = Number(process.env.SUPERVIBE_INDEX_TEST_LARGE_FILE_STOP_AFTER_CHUNKS || 0);
+        if (Number.isFinite(stopAfter) && stopAfter > 0 && chunkIndex >= stopAfter) {
+          throw failPartial(`test hook stopped large-file chunking after ${chunkIndex} chunk(s)`);
+        }
+      }
+
+      updateFileProgress.run(lineNo, chunkIndex, bytesScanned, 'partial', relPath);
       currentLines = [];
       currentBytes = 0;
       currentStartLine = lineNo + 1;
@@ -1125,7 +1473,7 @@ export class CodeStore {
 
         const boundary = structuralRust ? rustStructuralBoundary(line) : null;
         if (boundary && currentLines.length > 0) {
-          flush();
+          await flush();
         }
         if (currentLines.length === 0) {
           currentStartLine = lineNo;
@@ -1140,10 +1488,10 @@ export class CodeStore {
         currentBytes += Buffer.byteLength(line, 'utf8') + 1;
 
         if (currentLines.length >= this.largeFileChunkLines || currentBytes >= this.largeFileChunkBytes) {
-          flush();
+          await flush();
         }
       }
-      flush();
+      await flush();
     } catch (error) {
       partialError = error;
     }
@@ -1278,7 +1626,10 @@ export class CodeStore {
 
   indexSemanticAnchorsFor(relPath, content) {
     this.db.prepare('DELETE FROM code_semantic_anchors WHERE path = ?').run(relPath);
-    const anchors = parseSemanticAnchors(content, { filePath: relPath });
+    const anchors = [
+      ...parseSemanticAnchors(content, { filePath: relPath }),
+      ...buildGeneratedAnchorsFromEntities(this.db, relPath),
+    ];
     if (anchors.length === 0) return { anchorsAdded: 0 };
     const insert = this.db.prepare(`
       INSERT OR REPLACE INTO code_semantic_anchors (
@@ -1529,6 +1880,7 @@ export class CodeStore {
   async removeFile(absPath) {
     const relPath = this.toRel(absPath);
     this.db.prepare('DELETE FROM code_chunks_fts WHERE path = ?').run(relPath);
+    this.db.prepare('DELETE FROM code_chunk_entities WHERE path = ?').run(relPath);
     this.db.prepare('DELETE FROM code_chunks WHERE path = ?').run(relPath);
     this.clearGraphFor(relPath);
     this.db.prepare('DELETE FROM code_files WHERE path = ?').run(relPath);
@@ -1631,6 +1983,93 @@ export class CodeStore {
     };
   }
 
+  getEmbeddingHealth() {
+    const totalChunks = Number(this.db.prepare('SELECT COUNT(*) AS n FROM code_chunks').get().n || 0);
+    const embeddedChunks = Number(this.db.prepare('SELECT COUNT(*) AS n FROM code_chunks WHERE embedding IS NOT NULL').get().n || 0);
+    const coverage = totalChunks === 0 ? 1 : embeddedChunks / totalChunks;
+    return {
+      totalChunks,
+      embeddedChunks,
+      missingEmbeddings: Math.max(0, totalChunks - embeddedChunks),
+      coverage,
+      semanticActive: embeddedChunks > 0,
+      status: totalChunks === 0 ? 'empty' : embeddedChunks === 0 ? 'semantic-unavailable' : coverage >= 0.9 ? 'semantic-active' : 'partial-semantic',
+      repairCommand: 'node scripts/build-code-index.mjs --root . --resume --embeddings-only --max-files 100 --health',
+    };
+  }
+
+  getChunkEntityHealth() {
+    const totalChunks = Number(this.db.prepare('SELECT COUNT(*) AS n FROM code_chunks').get().n || 0);
+    let totalEntities = 0;
+    let linkedChunks = 0;
+    let staleRows = 0;
+    try {
+      totalEntities = Number(this.db.prepare('SELECT COUNT(*) AS n FROM code_chunk_entities').get().n || 0);
+      linkedChunks = Number(this.db.prepare("SELECT COUNT(DISTINCT cc.path || '#' || cc.chunk_idx) AS n FROM code_chunks cc JOIN code_chunk_entities cce ON cce.path = cc.path AND cce.chunk_idx = cc.chunk_idx").get().n || 0);
+      staleRows = Number(this.db.prepare('SELECT COUNT(*) AS n FROM code_chunk_entities WHERE metadata_version < ?').get(CODE_RAG_ENTITY_METADATA_VERSION).n || 0);
+    } catch {
+      return { pass: false, status: 'table-missing', totalChunks, totalEntities: 0, linkedChunks: 0, coverage: 0, staleRows: 0, version: CODE_RAG_ENTITY_METADATA_VERSION, rebuildRequired: true };
+    }
+    const coverage = totalChunks === 0 ? 1 : linkedChunks / totalChunks;
+    return {
+      pass: totalChunks === 0 || (linkedChunks >= totalChunks && staleRows === 0),
+      status: totalChunks === 0 ? 'empty' : staleRows > 0 ? 'stale' : linkedChunks === 0 ? 'missing-links' : linkedChunks >= totalChunks ? 'linked' : 'partial-links',
+      totalChunks,
+      totalEntities,
+      linkedChunks,
+      coverage,
+      staleRows,
+      version: CODE_RAG_ENTITY_METADATA_VERSION,
+      rebuildRequired: staleRows > 0 || (totalChunks > 0 && linkedChunks < totalChunks),
+    };
+  }
+
+  getSemanticAnchorHealth() {
+    let totalAnchors = 0;
+    let derivedAnchors = 0;
+    let filesWithAnchors = 0;
+    try {
+      totalAnchors = Number(this.db.prepare('SELECT COUNT(*) AS n FROM code_semantic_anchors').get().n || 0);
+      derivedAnchors = Number(this.db.prepare("SELECT COUNT(*) AS n FROM code_semantic_anchors WHERE source = 'derived-entity'").get().n || 0);
+      filesWithAnchors = Number(this.db.prepare('SELECT COUNT(DISTINCT path) AS n FROM code_semantic_anchors').get().n || 0);
+    } catch {
+      return { pass: false, status: 'table-missing', totalAnchors: 0, derivedAnchors: 0, filesWithAnchors: 0 };
+    }
+    return {
+      pass: totalAnchors > 0,
+      status: totalAnchors > 0 ? 'present' : 'missing',
+      totalAnchors,
+      derivedAnchors,
+      filesWithAnchors,
+    };
+  }
+
+  getRetrievalLaneHealth() {
+    try {
+      const rows = this.db.prepare([
+        'SELECT cc.file_role AS fileRole, cc.artifact_type AS artifactType, cf.language AS language,',
+        'COUNT(DISTINCT cc.path) AS files,',
+        "COUNT(DISTINCT cc.path || '#' || cc.chunk_idx) AS chunks,",
+        "COUNT(DISTINCT CASE WHEN cc.embedding IS NOT NULL THEN cc.path || '#' || cc.chunk_idx END) AS embeddedChunks,",
+        'COUNT(DISTINCT e.entity_id) AS entities',
+        'FROM code_chunks cc JOIN code_files cf ON cf.path = cc.path',
+        'LEFT JOIN code_chunk_entities e ON e.path = cc.path AND e.chunk_idx = cc.chunk_idx',
+        'GROUP BY cc.file_role, cc.artifact_type, cf.language ORDER BY chunks DESC'
+      ].join(' ')).all();
+      return rows.map((row) => ({
+        fileRole: row.fileRole || 'source',
+        artifactType: row.artifactType || 'source-code',
+        language: row.language || 'unknown',
+        files: Number(row.files || 0),
+        chunks: Number(row.chunks || 0),
+        embeddedChunks: Number(row.embeddedChunks || 0),
+        entities: Number(row.entities || 0),
+      }));
+    } catch {
+      return [];
+    }
+  }
+
   maintain({ vacuum = false } = {}) {
     const started = Date.now();
     this.db.exec('PRAGMA optimize;');
@@ -1658,31 +2097,67 @@ export class CodeStore {
       ORDER BY files DESC
     `).all();
     return rows.map(r => {
+      const graphEligible = isGraphIndexableLanguage(r.lang);
       const paths = String(r.paths || '').split(',').filter(Boolean);
-      const configOnly = paths.length > 0 && paths.every(isConfigOnlyGraphPath);
+      const configOnly = !graphEligible || (paths.length > 0 && paths.every(isConfigOnlyGraphPath));
+      const coverage = !graphEligible ? 1 : (r.files === 0 ? 1 : r.files_with_symbols / r.files);
       return {
         language: r.lang,
         files: r.files,
         filesWithSymbols: r.files_with_symbols,
+        graphEligible,
         configOnly,
         healthy: r.files === 0 || r.files_with_symbols > 0 || configOnly,
-        coverage: r.files === 0 ? 1 : r.files_with_symbols / r.files,
-        reason: r.files > 0 && r.files_with_symbols === 0
-          ? configOnly
-            ? `zero symbols extracted for ${r.files} indexed config-only ${r.lang} file(s)`
-            : `zero symbols extracted for ${r.files} indexed ${r.lang} file(s)`
-          : 'symbols extracted',
+        coverage,
+        reason: !graphEligible
+          ? `retrieval-only ${r.lang} file(s) are excluded from CodeGraph symbol coverage`
+          : r.files > 0 && r.files_with_symbols === 0
+            ? configOnly
+              ? `zero symbols extracted for ${r.files} indexed config-only ${r.lang} file(s)`
+              : `zero symbols extracted for ${r.files} indexed ${r.lang} file(s)`
+            : 'symbols extracted',
       };
     });
   }
 
   getGraphHealthMetrics({ topSymbolLimit = 30 } = {}) {
-    const totalFiles = this.db.prepare('SELECT COUNT(*) AS n FROM code_files').get().n;
-    const filesWithSymbols = this.db.prepare('SELECT COUNT(DISTINCT path) AS n FROM code_symbols').get().n;
-    const indexedPaths = this.db.prepare('SELECT path FROM code_files').all().map((row) => row.path);
-    const generatedIndexedFiles = indexedPaths.filter(isGeneratedPath).length;
+    const fileRows = this.db.prepare('SELECT path, language, graph_version AS graphVersion FROM code_files').all();
+    const totalFiles = fileRows.length;
+    const graphEligiblePaths = new Set(fileRows.filter((row) => isGraphIndexableLanguage(row.language)).map((row) => row.path));
+    const retrievalOnlyFiles = Math.max(0, totalFiles - graphEligiblePaths.size);
+    const symbolPathRows = this.db.prepare('SELECT DISTINCT path FROM code_symbols').all();
+    const filesWithSymbols = symbolPathRows.filter((row) => graphEligiblePaths.has(row.path)).length;
+    const generatedIndexedFiles = fileRows.map((row) => row.path).filter(isGeneratedPath).length;
+    const graphVersionStaleRows = fileRows
+      .filter((row) => graphEligiblePaths.has(row.path) && Number(row.graphVersion || 0) !== CODE_GRAPH_EXTRACTOR_VERSION)
+      .map((row) => row.path)
+      .sort();
     const totalEdges = this.db.prepare('SELECT COUNT(*) AS n FROM code_edges').get().n;
     const resolvedEdges = this.db.prepare('SELECT COUNT(*) AS n FROM code_edges WHERE to_id IS NOT NULL').get().n;
+    const edgeRows = this.db.prepare('SELECT to_id AS toId, to_name AS toName, kind FROM code_edges').all();
+    const symbolNameCounts = new Map(this.db.prepare('SELECT name, COUNT(*) AS n FROM code_symbols GROUP BY name').all().map((row) => [row.name, Number(row.n || 0)]));
+    let deterministic = 0;
+    let deterministicResolved = 0;
+    let actionableUnresolved = 0;
+    let ignored = 0;
+    let ambiguous = 0;
+    let missingSymbol = 0;
+    for (const edge of edgeRows) {
+      if (!isActionableGraphEdgeName(edge.toName)) {
+        ignored += 1;
+        continue;
+      }
+      const candidates = symbolNameCounts.get(edge.toName) || 0;
+      if (candidates === 1) {
+        deterministic += 1;
+        if (edge.toId) deterministicResolved += 1;
+        else actionableUnresolved += 1;
+      } else if (candidates > 1) {
+        ambiguous += 1;
+      } else {
+        missingSymbol += 1;
+      }
+    }
     const topSymbols = this.db.prepare(`
       SELECT s.name AS name, COUNT(DISTINCT e.rowid) + COUNT(DISTINCT inbound.rowid) AS degree
       FROM code_symbols s
@@ -1701,10 +2176,23 @@ export class CodeStore {
         minifiedTopSymbolRatio: topSymbols.length === 0 ? 0 : minifiedTopSymbols.length / topSymbols.length,
       },
       sourceFileSymbolCoverage: {
-        files: totalFiles,
+        files: graphEligiblePaths.size,
+        totalIndexedFiles: totalFiles,
+        retrievalOnlyFiles,
         filesWithSymbols,
         generatedIndexedFiles,
-        coverage: totalFiles === 0 ? 1 : filesWithSymbols / totalFiles,
+        coverage: graphEligiblePaths.size === 0 ? 1 : filesWithSymbols / graphEligiblePaths.size,
+      },
+      graphVersionStaleRows,
+      eligibleProjectEdges: {
+        deterministic,
+        resolved: deterministicResolved,
+        unresolved: actionableUnresolved,
+        ignored,
+        ambiguous,
+        missingSymbol,
+        totalObserved: totalEdges,
+        rate: deterministic === 0 ? 1 : deterministicResolved / deterministic,
       },
       unresolvedImportRate: {
         unresolved: Math.max(0, totalEdges - resolvedEdges),
@@ -1718,8 +2206,7 @@ export class CodeStore {
       },
     };
   }
-
-  /** Hybrid search: FTS5 keyword + semantic cosine (max-over-chunks per file) → RRF. */
+  /** Hybrid search: FTS5 keyword + entity/anchor expansion + semantic cosine (max-over-chunks per file) -> RRF. */
   async search({ query, language = null, kind = null, limit = 10, semantic = true, queryVector = null } = {}) {
     if (!query || !query.trim()) return [];
 
@@ -1757,12 +2244,28 @@ export class CodeStore {
       }
     }
 
+    const k = 60;
+    const lexicalRows = [];
+    rows.forEach((row, index) => {
+      lexicalRows.push({
+        ...row,
+        retrievalMode: ftsMode,
+        score: 1 / (k + index + 1),
+      });
+    });
+
+    const entityRows = this._loadEntityAnchorCandidates({ query, language, kind, limit: Math.max(limit * 10, 50) });
+    entityRows.forEach((row, index) => {
+      lexicalRows.push({
+        ...row,
+        retrievalMode: 'entity-anchor',
+        score: 1 / (k + rows.length + index + 1),
+      });
+    });
+    const expandedRows = this._dedupeRowsByChunk(lexicalRows);
+
     if (!semantic || !this.useEmbeddings) {
-      for (const r of rows) {
-        r.retrievalMode = ftsMode;
-        r.score = -Math.abs(r.bm25 || 0);
-      }
-      return this._aggregateByFile(rows, limit);
+      return this._aggregateByFile(expandedRows, limit);
     }
 
     let queryVec;
@@ -1771,16 +2274,16 @@ export class CodeStore {
       embeddingHelpers = await loadEmbeddingHelpers();
       queryVec = queryVector || await embeddingHelpers.embed(query, 'query');
     }
-    catch { return this._aggregateByFile(rows, limit); }
+    catch { return this._aggregateByFile(expandedRows, limit); }
 
-    const k = 60;
-    const semanticRows = this._loadSemanticCandidates({ language, kind, limit: Math.max(limit * 50, 200) });
+    const semanticCandidateLimit = boundedNonNegativeInt(process.env.SUPERVIBE_SEMANTIC_CANDIDATE_LIMIT, DEFAULT_SEMANTIC_CANDIDATE_LIMIT);
+    const semanticRows = this._loadSemanticCandidates({ language, kind, limit: semanticCandidateLimit });
     for (const r of semanticRows) {
       r.semanticScore = r.embedding ? embeddingHelpers.cosineSimilarity(queryVec, embeddingHelpers.bufferToVector(r.embedding)) : 0;
     }
     semanticRows.sort((a, b) => b.semanticScore - a.semanticScore);
 
-    if (rows.length === 0) {
+    if (expandedRows.length === 0) {
       return this._aggregateByFile(
         semanticRows
           .filter((r) => r.semanticScore > 0)
@@ -1794,21 +2297,23 @@ export class CodeStore {
       );
     }
 
-    const bm25Sorted = [...rows].sort((a, b) => Math.abs(a.bm25) - Math.abs(b.bm25));
-    const bm25Ranks = new Map(bm25Sorted.map((r, i) => [`${r.path}#${r.chunk_idx}`, i + 1]));
+    const lexicalRanks = new Map(expandedRows.map((r, i) => [`${r.path}#${r.chunk_idx}`, i + 1]));
     const semRanks = new Map(semanticRows.map((r, i) => [`${r.path}#${r.chunk_idx}`, i + 1]));
     const semanticByKey = new Map(semanticRows.map((r) => [`${r.path}#${r.chunk_idx}`, r]));
     const combined = new Map();
 
-    for (const r of rows) {
+    for (const r of expandedRows) {
       const key = `${r.path}#${r.chunk_idx}`;
       const semanticRow = semanticByKey.get(key);
       const semanticScore = semanticRow?.semanticScore || (r.embedding ? embeddingHelpers.cosineSimilarity(queryVec, embeddingHelpers.bufferToVector(r.embedding)) : 0);
+      const retrievalMode = r.retrievalMode === 'entity-anchor'
+        ? (semanticScore > 0 ? 'entity-anchor+semantic' : 'entity-anchor')
+        : (semanticScore > 0 ? 'hybrid' : r.retrievalMode);
       combined.set(key, {
         ...r,
         semanticScore,
-        score: 1 / (k + (bm25Ranks.get(key) || 1000)) + 1 / (k + (semRanks.get(key) || 1000)),
-        retrievalMode: semanticScore > 0 ? 'hybrid' : ftsMode,
+        score: 1 / (k + (lexicalRanks.get(key) || 1000)) + 1 / (k + (semRanks.get(key) || 1000)),
+        retrievalMode,
       });
     }
 
@@ -1826,7 +2331,112 @@ export class CodeStore {
     return this._aggregateByFile(mergedRows, limit);
   }
 
-  _loadSemanticCandidates({ language = null, kind = null, limit = 500 } = {}) {
+  _dedupeRowsByChunk(rows = []) {
+    const byChunk = new Map();
+    for (const row of rows) {
+      const key = `${row.path}#${row.chunk_idx}`;
+      const existing = byChunk.get(key);
+      if (!existing || Number(row.score || 0) > Number(existing.score || 0)) {
+        byChunk.set(key, row);
+      }
+    }
+    return [...byChunk.values()].sort((a, b) => Number(b.score || 0) - Number(a.score || 0));
+  }
+
+  _loadEntityAnchorCandidates({ query, language = null, kind = null, limit = 100 } = {}) {
+    const terms = searchTermsForAnchors(query, 6);
+    if (terms.length === 0) return [];
+    const normalizedLimit = positiveInt(process.env.SUPERVIBE_ENTITY_ANCHOR_CANDIDATE_LIMIT || limit, 100);
+    const perLaneLimit = Math.max(normalizedLimit * 2, 20);
+    const chunkKeys = new Map();
+    const addKey = (path, chunkIdx) => {
+      const normalizedPath = normalizeRelPath(path);
+      const index = Number(chunkIdx);
+      if (!normalizedPath || !Number.isFinite(index)) return;
+      chunkKeys.set(normalizedPath + '#' + index, { path: normalizedPath, chunkIdx: index });
+    };
+
+    const entityStmt = this.db.prepare(`
+      SELECT path, chunk_idx AS chunkIdx
+      FROM code_chunk_entities
+      WHERE entity_name = ? COLLATE NOCASE
+         OR entity_id = ? COLLATE NOCASE
+         OR entity_name LIKE ? ESCAPE '\\' COLLATE NOCASE
+         OR entity_id LIKE ? ESCAPE '\\' COLLATE NOCASE
+         OR entity_name LIKE ? ESCAPE '\\' COLLATE NOCASE
+         OR entity_id LIKE ? ESCAPE '\\' COLLATE NOCASE
+      ORDER BY confidence DESC, path, chunk_idx
+      LIMIT ?
+    `);
+    const anchorStmt = this.db.prepare(`
+      SELECT path, start_line AS startLine, end_line AS endLine
+      FROM code_semantic_anchors
+      WHERE symbol_name = ? COLLATE NOCASE
+         OR anchor_id = ? COLLATE NOCASE
+         OR symbol_name LIKE ? ESCAPE '\\' COLLATE NOCASE
+         OR anchor_id LIKE ? ESCAPE '\\' COLLATE NOCASE
+         OR responsibility LIKE ? ESCAPE '\\' COLLATE NOCASE
+      ORDER BY path, start_line
+      LIMIT ?
+    `);
+    const anchorChunkStmt = this.db.prepare(`
+      SELECT chunk_idx AS chunkIdx
+      FROM code_chunks
+      WHERE path = ? AND start_line <= ? AND end_line >= ?
+      ORDER BY chunk_idx
+      LIMIT 3
+    `);
+
+    try {
+      for (const term of terms) {
+        if (chunkKeys.size >= normalizedLimit) break;
+        const escaped = escapeLikeTerm(term);
+        const prefix = escaped + '%';
+        const contains = '%' + escaped + '%';
+        for (const row of entityStmt.all(term, term, prefix, prefix, contains, contains, perLaneLimit)) {
+          addKey(row.path, row.chunkIdx);
+          if (chunkKeys.size >= normalizedLimit) break;
+        }
+        if (chunkKeys.size >= normalizedLimit) break;
+        for (const anchor of anchorStmt.all(term, term, prefix, prefix, contains, perLaneLimit)) {
+          for (const row of anchorChunkStmt.all(anchor.path, Number(anchor.endLine || anchor.startLine || 1), Number(anchor.startLine || 1))) {
+            addKey(anchor.path, row.chunkIdx);
+            if (chunkKeys.size >= normalizedLimit) break;
+          }
+          if (chunkKeys.size >= normalizedLimit) break;
+        }
+      }
+    } catch {
+      return [];
+    }
+
+    const rows = [];
+    const chunkStmt = this.db.prepare(`
+      SELECT cf.path AS path, cf.language AS language, cf.line_count AS line_count,
+             cc.chunk_idx AS chunk_idx, cc.chunk_text AS chunk_text, cc.kind AS kind, cc.name AS name,
+             cc.start_line AS start_line, cc.end_line AS end_line, cc.embedding AS embedding,
+             cc.file_role AS file_role, cc.heading AS heading, cc.symbol_hints_json AS symbol_hints_json,
+             cc.artifact_type AS artifact_type, cc.freshness AS freshness, cc.metadata_version AS metadata_version,
+             0 AS bm25
+      FROM code_chunks cc
+      JOIN code_files cf ON cf.path = cc.path
+      WHERE cc.path = ? AND cc.chunk_idx = ?
+        ${language ? 'AND cf.language = ?' : ''}
+        ${kind ? 'AND cc.kind = ?' : ''}
+      LIMIT 1
+    `);
+    for (const key of chunkKeys.values()) {
+      const params = [key.path, key.chunkIdx];
+      if (language) params.push(language);
+      if (kind) params.push(kind);
+      const row = chunkStmt.get(...params);
+      if (row) rows.push(row);
+      if (rows.length >= normalizedLimit) break;
+    }
+    return rows;
+  }
+
+  _loadSemanticCandidates({ language = null, kind = null, limit = 0 } = {}) {
     let sql = `
       SELECT cf.path AS path, cf.language AS language, cf.line_count AS line_count,
              cc.chunk_idx AS chunk_idx, cc.chunk_text AS chunk_text, cc.kind AS kind, cc.name AS name,
@@ -1841,12 +2451,15 @@ export class CodeStore {
     const params = [];
     if (language) { sql += ' AND cf.language = ?'; params.push(language); }
     if (kind) { sql += ' AND cc.kind = ?'; params.push(kind); }
-    sql += ' LIMIT ?';
-    params.push(limit);
+    sql += ' ORDER BY cf.path, cc.chunk_idx';
+    const normalizedLimit = boundedNonNegativeInt(limit, 0);
+    if (normalizedLimit > 0) {
+      sql += ' LIMIT ?';
+      params.push(normalizedLimit);
+    }
     try { return this.db.prepare(sql).all(...params); }
     catch { return []; }
   }
-
   _aggregateByFile(rows, limit) {
     const byFile = new Map();
     for (const r of rows) {

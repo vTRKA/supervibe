@@ -446,11 +446,16 @@ export function formatPlanLifecycleReport(report = {}) {
     `ACTIVE_PLAN_EXISTS: ${report.activePlanPath ? report.activePlanExists ? "true" : "false" : "none"}`,
     `ACTIVE_STATUS: ${report.activeStatus || "missing"}`,
     `ACTIVE_SOURCE: ${report.activePlanSource || "missing"}`,
+    !report.activePlanPath ? "PLAN_START_COMMAND: /supervibe-loop --from-plan <plan-path> --start --fast-session" : null,
+    !report.activePlanPath ? "PLAN_POINTER_COMMAND: node scripts/supervibe-plan-lifecycle.mjs --repair --plan <plan.md>" : null,
     `LATEST_REVIEWED_PLAN: ${report.latestReviewedPlan || "none"}`,
     `CLOSED_PLANS: ${report.closedPlanCount || 0}`,
     `ARCHIVE_ACTION: ${report.archiveAction || "none"}`,
     `STALE_ACTIVE_SOURCE: ${report.staleActiveSource ? "true" : "false"}`,
   ];
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    if (lines[index] === null || lines[index] === undefined) lines.splice(index, 1);
+  }
   if (report.activePlanPath && report.activePlanExists === false) lines.push(`ACTIVE_PLAN_WARNING: missing active plan target: ${report.activePlanPath}`);
   const hideTerminalSourceDrift = report.activeGraphTerminal && !report.staleActiveSource;
   if (report.activeSource?.sourcePath && !hideTerminalSourceDrift) lines.push(`ACTIVE_GRAPH_SOURCE: ${normalizeProjectPath(report.rootDir || process.cwd(), report.activeSource.sourcePath)}`);

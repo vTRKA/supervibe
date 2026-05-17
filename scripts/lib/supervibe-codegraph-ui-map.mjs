@@ -1,6 +1,12 @@
 import { CODEGRAPH_INDEX_COMMAND, SOURCE_RAG_INDEX_COMMAND } from "./supervibe-command-catalog.mjs";
 
 const DYNAMIC_NAME_PATTERN = /^(?:this|module|exports|default|constructor|prototype|require|import|then|catch|map|filter|reduce|forEach|push|set|get|has|emit|on|off)$/i;
+const LANGUAGE_BUILTIN_OR_RUNTIME_PATTERN = /^(?:String|Number|Boolean|Array|Object|Map|Set|WeakMap|WeakSet|Date|RegExp|JSON|Math|Promise|Error|TypeError|Symbol|BigInt|Buffer|URL|URLSearchParams|console|process|globalThis|setTimeout|clearTimeout|setInterval|clearInterval|readFile|readFileSync|writeFile|writeFileSync|mkdir|mkdirSync|stat|statSync)$/i;
+const NON_ACTIONABLE_UNRESOLVED_CLASSES = new Set([
+  "language-builtin-or-runtime-api",
+  "external-or-reexport",
+  "dynamic-language-pattern",
+]);
 const EXTERNAL_NAME_PATTERN = /^(?:node:|@?[a-z0-9][a-z0-9._-]*(?:\/[a-z0-9._-]+)*)$/i;
 const DEFAULT_LINKED_PACKET_LIMIT = 6;
 const DEFAULT_CODEGRAPH_MAP_MAX_NODES = 32;
@@ -77,6 +83,7 @@ export function classifyUnresolvedEdge(row = {}) {
   if (edgeKind.includes("import") || /^\.{1,2}\//.test(toName) || EXTERNAL_NAME_PATTERN.test(toName) && toName.includes("/")) {
     return "external-or-reexport";
   }
+  if (LANGUAGE_BUILTIN_OR_RUNTIME_PATTERN.test(toName)) return "language-builtin-or-runtime-api";
   if (DYNAMIC_NAME_PATTERN.test(toName) || /[.[\]?$]/.test(toName)) return "dynamic-language-pattern";
   return "missing-symbol";
 }
@@ -109,7 +116,9 @@ export function buildCodeGraphReadinessUi({
   const warningCodes = (indexGate.warnings || []).map((item) => item.code);
   const stale = failedCodes.includes("content-stale") || failedCodes.includes("stale-rows") || watcherDiagnostics.heartbeat?.status === "stale";
   const sourceReady = indexGate.ready === true && !failedCodes.includes("source-coverage");
-  const actionableHotspots = (unresolvedDiagnostics.topAffectedFiles || []).filter((file) => file.count >= 10).slice(0, 5);
+  const actionableHotspots = (unresolvedDiagnostics.topAffectedFiles || [])
+    .filter((file) => file.count >= 10 && unresolvedHotspotHasActionableClass(file))
+    .slice(0, 5);
   const ready = indexGate.ready === true && !stale;
   return {
     ready,
@@ -128,6 +137,22 @@ export function buildCodeGraphReadinessUi({
           ? "source RAG ready; inspect graph hotspots before structural work"
           : "not ready; rebuild source and graph indexes",
   };
+}
+
+function unresolvedHotspotHasActionableClass(file = {}) {
+  const classes = unresolvedClassNames(file.classes);
+  if (!classes.length) return true;
+  return classes.some((name) => !NON_ACTIONABLE_UNRESOLVED_CLASSES.has(name));
+}
+
+function unresolvedClassNames(classes = []) {
+  if (typeof classes === "string") {
+    return classes.split(",").map((item) => item.trim().split(":")[0]).filter(Boolean);
+  }
+  if (Array.isArray(classes)) {
+    return classes.map((item) => String(item?.name || item?.class || item || "").trim()).filter(Boolean);
+  }
+  return [];
 }
 
 export function formatCodeGraphReadinessUi(ui = {}) {

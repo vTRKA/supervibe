@@ -18,14 +18,55 @@ const EXTENSION_MAP = {
   '.java': 'java',
   '.rb': 'ruby',
   '.vue': 'vue',
-  '.svelte': 'svelte'
+  '.svelte': 'svelte',
+  '.md': 'markdown',
+  '.mdx': 'markdown',
+  '.json': 'json',
+  '.yaml': 'yaml',
+  '.yml': 'yaml'
 };
 
+const GRAPH_INDEXABLE_LANGUAGES = new Set([
+  'typescript',
+  'javascript',
+  'python',
+  'php',
+  'rust',
+  'go',
+  'java',
+  'ruby',
+  'vue',
+  'svelte',
+]);
+
+const RETRIEVAL_ONLY_LANGUAGES = new Set([
+  'markdown',
+  'json',
+  'yaml',
+  'template',
+]);
+
 export function detectLanguage(filePath) {
-  const dotIdx = filePath.lastIndexOf('.');
-  if (dotIdx < 0) return null;
-  const ext = filePath.slice(dotIdx).toLowerCase();
-  return EXTENSION_MAP[ext] || null;
+  const normalized = String(filePath || '').replace(/\\/g, '/').toLowerCase();
+  if (normalized.endsWith('.md.tpl') || normalized.endsWith('.mdx.tpl')) return 'markdown';
+  if (normalized.endsWith('.json.tpl')) return 'json';
+  if (normalized.endsWith('.yaml.tpl') || normalized.endsWith('.yml.tpl')) return 'yaml';
+  if (normalized.endsWith('.tpl')) return 'template';
+  const dotIdx = normalized.lastIndexOf('.');
+  if (dotIdx >= 0) {
+    const ext = normalized.slice(dotIdx);
+    if (EXTENSION_MAP[ext]) return EXTENSION_MAP[ext];
+  }
+  if (normalized.startsWith('templates/') || normalized.includes('/templates/')) return 'template';
+  return null;
+}
+
+export function isGraphIndexableLanguage(language = '') {
+  return GRAPH_INDEXABLE_LANGUAGES.has(String(language || '').toLowerCase());
+}
+
+export function isRetrievalOnlyLanguage(language = '') {
+  return RETRIEVAL_ONLY_LANGUAGES.has(String(language || '').toLowerCase());
 }
 
 const BLOCK_PATTERNS = {
@@ -38,10 +79,21 @@ const BLOCK_PATTERNS = {
   java: /^(?:public\s+|private\s+|protected\s+)?(?:static\s+)?(?:final\s+)?(?:abstract\s+)?(?:class\s+(\w+)|interface\s+(\w+))/gm,
   ruby: /^class\s+(\w+)|^module\s+(\w+)|^def\s+(\w+)/gm,
   vue: /^<script[^>]*>|^<template>|^<style[^>]*>/gm,
-  svelte: /^<script[^>]*>|^<style[^>]*>/gm
+  svelte: /^<script[^>]*>|^<style[^>]*>/gm,
+  markdown: /^[ \t]{0,3}#{1,6}\s+(.+)$/gm
 };
 
 function findBlockEnd(lines, startIdx, lang) {
+  if (lang === 'markdown') {
+    const heading = lines[startIdx]?.match(/^[ \t]{0,3}(#{1,6})\s+/);
+    const level = heading ? heading[1].length : 6;
+    for (let i = startIdx + 1; i < lines.length; i++) {
+      const next = lines[i].match(/^[ \t]{0,3}(#{1,6})\s+/);
+      if (next && next[1].length <= level) return i - 1;
+    }
+    return lines.length - 1;
+  }
+
   if (lang === 'python' || lang === 'ruby') {
     const startLine = lines[startIdx];
     const startIndent = startLine.match(/^(\s*)/)[1].length;
@@ -68,6 +120,12 @@ function findBlockEnd(lines, startIdx, lang) {
     }
   }
   return lines.length - 1;
+}
+
+function blockKindForLanguage(lang) {
+  if (lang === 'markdown') return 'section';
+  if (lang === 'python' || lang === 'java' || lang === 'php' || lang === 'ruby') return 'class-or-method';
+  return 'function-or-class';
 }
 
 function chunkingAbortedError() {
@@ -184,6 +242,41 @@ function pushApproxLineChunks(out, text, {
   flush();
 }
 
+async function pushBudgetedTextChunks(out, text, {
+  startLine,
+  endLine,
+  kind,
+  name = null,
+  targetTokens,
+  overlapTokens,
+  shouldStop = null,
+}) {
+  const source = String(text || '').trim();
+  if (!source) return;
+  const lineChunks = [];
+  pushApproxLineChunks(lineChunks, source, {
+    startLine,
+    endLine,
+    kind,
+    name,
+    targetTokens,
+    overlapTokens,
+    shouldStop,
+  });
+  for (const chunk of lineChunks) {
+    throwIfChunkingAborted(shouldStop);
+    const chunkTextValue = String(chunk.text || '').trim();
+    if (!chunkTextValue) continue;
+    out.push({
+      ...chunk,
+      text: chunkTextValue,
+      kind,
+      name,
+      tokens: await countTokens(chunkTextValue, { shouldStop }),
+    });
+  }
+}
+
 async function chunkCodeApproximate(code, filePath, {
   targetTokens,
   overlapTokens,
@@ -228,6 +321,7 @@ async function chunkCodeApproximate(code, filePath, {
     const before = code.slice(0, charIdx);
     const startLine = before.split('\n').length - 1;
     const endLine = findBlockEnd(lines, startLine, lang);
+    if (startLine < lastEndLine) continue;
 
     if (startLine > lastEndLine) {
       const leftoverText = lines.slice(lastEndLine, startLine).join('\n').trim();
@@ -247,7 +341,7 @@ async function chunkCodeApproximate(code, filePath, {
     const blockText = lines.slice(startLine, endLine + 1).join('\n');
     const blockName = m.slice(1).find(g => g) || null;
     const blockTokens = estimateCodeTokens(blockText);
-    const kind = lang === 'python' || lang === 'java' || lang === 'php' || lang === 'ruby' ? 'class-or-method' : 'function-or-class';
+    const kind = blockKindForLanguage(lang);
 
     if (blockTokens > targetTokens * 1.5) {
       pushApproxLineChunks(blocks, blockText, {
@@ -336,15 +430,21 @@ export async function chunkCode(code, filePath, opts = {}) {
     }];
   }
 
+  if (isRetrievalOnlyLanguage(lang) && !BLOCK_PATTERNS[lang]) {
+    return chunkCodeApproximate(code, filePath, { targetTokens, overlapTokens, shouldStop });
+  }
+
   if (!lang || !BLOCK_PATTERNS[lang]) {
-    const textChunks = await chunkText(code, { targetTokens, overlapTokens, shouldStop });
-    return textChunks.map(text => ({
-      text,
+    const blocks = [];
+    await pushBudgetedTextChunks(blocks, code, {
       startLine: 1,
       endLine: lines.length,
       kind: 'block',
-      tokens: 0
-    }));
+      targetTokens,
+      overlapTokens,
+      shouldStop,
+    });
+    return blocks;
   }
 
   const pattern = BLOCK_PATTERNS[lang];
@@ -359,18 +459,20 @@ export async function chunkCode(code, filePath, opts = {}) {
     const before = code.slice(0, charIdx);
     const startLine = before.split('\n').length - 1;
     const endLine = findBlockEnd(lines, startLine, lang);
+    if (startLine < lastEndLine) continue;
 
     if (startLine > lastEndLine) {
       const leftoverText = lines.slice(lastEndLine, startLine).join('\n').trim();
       if (leftoverText.length > 0) {
         const tokens = await countTokens(leftoverText, { shouldStop });
         if (tokens >= 8) {
-          blocks.push({
-            text: leftoverText,
+          await pushBudgetedTextChunks(blocks, leftoverText, {
             startLine: lastEndLine + 1,
             endLine: startLine,
             kind: 'leftover',
-            tokens
+            targetTokens,
+            overlapTokens,
+            shouldStop,
           });
         }
       }
@@ -381,23 +483,21 @@ export async function chunkCode(code, filePath, opts = {}) {
     const blockTokens = await countTokens(blockText, { shouldStop });
 
     if (blockTokens > targetTokens * 1.5) {
-      const subChunks = await chunkText(blockText, { targetTokens, overlapTokens, shouldStop });
-      for (const text of subChunks) {
-        blocks.push({
-          text,
-          startLine: startLine + 1,
-          endLine: endLine + 1,
-          kind: 'block',
-          name: blockName,
-          tokens: await countTokens(text, { shouldStop })
-        });
-      }
+      await pushBudgetedTextChunks(blocks, blockText, {
+        startLine: startLine + 1,
+        endLine: endLine + 1,
+        kind: blockKindForLanguage(lang),
+        name: blockName,
+        targetTokens,
+        overlapTokens,
+        shouldStop,
+      });
     } else {
       blocks.push({
         text: blockText,
         startLine: startLine + 1,
         endLine: endLine + 1,
-        kind: lang === 'python' || lang === 'java' || lang === 'php' || lang === 'ruby' ? 'class-or-method' : 'function-or-class',
+        kind: blockKindForLanguage(lang),
         name: blockName,
         tokens: blockTokens
       });
@@ -411,26 +511,27 @@ export async function chunkCode(code, filePath, opts = {}) {
     if (trailingText.length > 0) {
       const tokens = await countTokens(trailingText, { shouldStop });
       if (tokens >= 8) {
-        blocks.push({
-          text: trailingText,
+        await pushBudgetedTextChunks(blocks, trailingText, {
           startLine: lastEndLine + 1,
           endLine: lines.length,
           kind: 'leftover',
-          tokens
+          targetTokens,
+          overlapTokens,
+          shouldStop,
         });
       }
     }
   }
 
   if (blocks.length === 0) {
-    const textChunks = await chunkText(code, { targetTokens, overlapTokens, shouldStop });
-    return textChunks.map(text => ({
-      text,
+    await pushBudgetedTextChunks(blocks, code, {
       startLine: 1,
       endLine: lines.length,
       kind: 'block',
-      tokens: 0
-    }));
+      targetTokens,
+      overlapTokens,
+      shouldStop,
+    });
   }
 
   return blocks;

@@ -137,6 +137,45 @@ test("provider config apply writes user Codex config, preserves values, and igno
   }
 });
 
+test("provider config apply returns a manual patch when provider home cannot be written", async () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-provider-project-"));
+  const userHome = mkdtempSync(join(tmpdir(), "supervibe-provider-home-"));
+  const manifest = readProviderCapabilities();
+  try {
+    const codexHome = join(userHome, ".codex");
+    mkdirSync(codexHome, { recursive: true });
+    writeFileSync(join(codexHome, "locked"), "not a directory\n");
+    const provider = {
+      ...codexProvider(),
+      runtimeConfig: {
+        ...codexProvider().runtimeConfig,
+        configFile: "locked/config.toml",
+      },
+    };
+
+    const result = await applyUserProviderConfigDefaults({
+      provider,
+      providerId: "codex",
+      projectRoot,
+      userHome,
+      env: { CODEX_HOME: codexHome, USERPROFILE: userHome, HOME: userHome },
+      manifest,
+      write: true,
+    });
+
+    assert.equal(result.blocked, false);
+    assert.equal(result.written, false);
+    assert.equal(result.manualPatchRequired, true);
+    assert.equal(result.homeConfigAction, "manual-patch-required");
+    assert.equal(result.skipReason, "provider-config-write-unavailable");
+    assert.match(result.report.diff.preview, /approval_policy = "on-request"/);
+    assert.ok(result.report.issues.some((entry) => entry.code === "provider-config-write-unavailable"));
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+    rmSync(userHome, { recursive: true, force: true });
+  }
+});
+
 test("project provider runtime config detector is non-destructive", () => {
   const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-provider-project-"));
   try {

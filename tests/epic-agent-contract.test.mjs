@@ -68,6 +68,7 @@ test("plan atomization adds an epic-agent receipt contract for durable reviewed 
     planPath: ".supervibe/artifacts/plans/agent-contract.md",
     epicId: "epic-agent-contract",
     planReviewPassed: true,
+    releaseProof: true,
   });
 
   assert.equal(graph.metadata.epicAgentContract.required, true);
@@ -85,6 +86,7 @@ test("plan atomization adds task, reviewer, and evidence score fields to work it
     planPath: ".supervibe/artifacts/plans/agent-contract.md",
     epicId: "epic-agent-contract",
     planReviewPassed: true,
+    releaseProof: true,
   });
   const taskItem = graph.items.find((item) => item.itemId === "epic-agent-contract-t1");
   const loopTask = graph.tasks.find((task) => task.id === "epic-agent-contract-t1");
@@ -168,8 +170,9 @@ test("epic-agent contract rejects durable graph without a trusted host-agent rec
       planPath: ".supervibe/artifacts/plans/agent-contract.md",
       epicId: "epic-agent-contract",
       planReviewPassed: true,
+      releaseProof: true,
     });
-    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: root });
+    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: root, allowUntrustedProducerProof: true });
     const saved = JSON.parse(await readFile(graphPath, "utf8"));
     const report = validateEpicAgentContract({ rootDir: root, graph: saved, graphPath });
 
@@ -193,6 +196,7 @@ test("epic-agent contract accepts first-class graph producer proof without a leg
       planPath: ".supervibe/artifacts/plans/agent-contract.md",
       epicId: "epic-agent-contract-proof",
       planReviewPassed: true,
+      releaseProof: true,
       graphProducerProof: {
         command: "/supervibe-loop",
         stage: "work-item-atomization",
@@ -204,6 +208,14 @@ test("epic-agent contract accepts first-class graph producer proof without a leg
           invocationId: "codex-graph-proof-1",
         },
       },
+    });
+    const graphRel = ".supervibe/memory/work-items/epic-agent-contract-proof/graph.json";
+    await writeInvocation(root, {
+      agentId: "work-item-graph-builder",
+      invocationId: "codex-graph-proof-1",
+      outputRel: ".supervibe/artifacts/_agent-outputs/codex-graph-proof-1/agent-output.json",
+      handoffId: "epic-agent-contract-proof",
+      outputArtifacts: [graphRel],
     });
     const { graphPath } = await writeWorkItemGraph(graph, { rootDir: root });
     const saved = JSON.parse(await readFile(graphPath, "utf8"));
@@ -226,8 +238,9 @@ test("epic-agent contract accepts a runtime-issued trusted agent receipt bound t
       planPath: ".supervibe/artifacts/plans/agent-contract.md",
       epicId: "epic-agent-contract",
       planReviewPassed: true,
+      releaseProof: true,
     });
-    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: root });
+    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: root, allowUntrustedProducerProof: true });
     await writeInvocation(root, {
       agentId: "stack-developer",
       invocationId: "stack-agent-1",
@@ -269,8 +282,9 @@ test("epic-agent contract accepts a trusted reviewer receipt bound through graph
       planPath: ".supervibe/artifacts/plans/agent-contract.md",
       epicId: "epic-agent-contract",
       planReviewPassed: true,
+      releaseProof: true,
     });
-    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: root });
+    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: root, allowUntrustedProducerProof: true });
     const graphRel = relative(root, graphPath).replace(/\\/g, "/");
     const outputRel = ".supervibe/artifacts/_agent-outputs/quality-gate-graph-review/agent-output.json";
     await writeInvocation(root, {
@@ -316,8 +330,9 @@ test("epic-agent contract rejects stale graph input evidence after graph mutatio
       planPath: ".supervibe/artifacts/plans/agent-contract.md",
       epicId: "epic-agent-contract",
       planReviewPassed: true,
+      releaseProof: true,
     });
-    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: root });
+    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: root, allowUntrustedProducerProof: true });
     const graphRel = relative(root, graphPath).replace(/\\/g, "/");
     const outputRel = ".supervibe/artifacts/_agent-outputs/quality-gate-stale-review/agent-output.json";
     await writeInvocation(root, {
@@ -364,8 +379,9 @@ test("epic-agent contract rejects task-scoped graphId-only receipts", async () =
       planPath: ".supervibe/artifacts/plans/agent-contract.md",
       epicId: "epic-agent-contract",
       planReviewPassed: true,
+      releaseProof: true,
     });
-    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: root });
+    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: root, allowUntrustedProducerProof: true });
     const outputRel = ".supervibe/artifacts/_agent-outputs/task-scoped-review/agent-output.json";
     await writeInvocation(root, {
       agentId: "quality-gate-reviewer",
@@ -409,8 +425,9 @@ test("epic-agent contract accepts trusted reissued receipts as producer proof", 
       planPath: ".supervibe/artifacts/plans/agent-contract.md",
       epicId: "epic-agent-contract",
       planReviewPassed: true,
+      releaseProof: true,
     });
-    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: root });
+    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: root, allowUntrustedProducerProof: true });
     await writeInvocation(root, {
       agentId: "stack-developer",
       invocationId: "stack-agent-recovery",
@@ -455,7 +472,16 @@ test("epic-agent contract accepts trusted reissued receipts as producer proof", 
   }
 });
 
-async function writeInvocation(root, { agentId, invocationId, outputRel }) {
+async function writeInvocation(root, {
+  agentId,
+  invocationId,
+  outputRel,
+  command = "/supervibe-loop",
+  stage = "work-item-atomization",
+  handoffId = null,
+  subjectType = "agent",
+  outputArtifacts = [],
+}) {
   await mkdir(join(root, ".supervibe", "memory"), { recursive: true });
   await mkdir(dirname(join(root, outputRel)), { recursive: true });
   await writeFile(join(root, outputRel), `${JSON.stringify({ ok: true })}\n`, "utf8");
@@ -463,10 +489,17 @@ async function writeInvocation(root, { agentId, invocationId, outputRel }) {
     schemaVersion: 1,
     invocation_id: invocationId,
     agent_id: agentId,
+    subject_id: agentId,
+    subject_type: subjectType,
     task_summary: "create durable epic/task graph",
+    command,
+    stage,
+    handoff_id: handoffId,
     host: "codex",
     host_invocation_source: "codex-spawn-agent",
     status: "completed",
+    output_artifact: outputRel,
+    output_artifacts: outputArtifacts,
     structured_output: { json: outputRel },
   })}\n`, "utf8");
 }

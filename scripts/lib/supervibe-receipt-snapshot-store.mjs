@@ -101,10 +101,27 @@ export async function readWorkflowReceiptEvidenceSnapshot(rootDir = process.cwd(
 export function workflowReceiptLiveOutputDiagnostics(rootDir = process.cwd(), receipt = {}) {
   return (receipt.outputHashes || []).flatMap((output) => {
     const current = hashExistingPath(rootDir, output.path);
-    if (!current.exists) return ["live-output-missing: " + output.path];
+    if (!current.exists) {
+      if (isEphemeralDeletedOutput(output.path, receipt)) return [];
+      return ["live-output-missing: " + output.path];
+    }
     if (current.sha256 !== output.sha256) return ["live-output-changed: " + output.path];
     return [];
   });
+}
+
+function isEphemeralDeletedOutput(path, receipt = {}) {
+  const relPath = normalizeRelPath(path).toLowerCase();
+  const context = [
+    receipt.command,
+    receipt.stage,
+    receipt.handoffId,
+    receipt.subjectId,
+    receipt.invocationReason,
+  ].map((item) => String(item || "").toLowerCase()).join(" ");
+  if (!relPath.startsWith(".supervibe/artifacts/plans/")) return false;
+  if (!/(?:^|[-_/\s])temp(?:orary)?(?:[-_/\s]|$)/i.test(relPath + " " + context)) return false;
+  return /\bdeleted-after-completion\b|\bephemeral\b|\btemporary\b|(?:^|[-_/\s])temp(?:[-_/\s]|$)/i.test(context + " " + relPath);
 }
 
 function normalizeHashRecords(records = []) {

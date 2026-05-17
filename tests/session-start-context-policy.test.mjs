@@ -39,6 +39,7 @@ test("session-start policy docs define compact host-neutral bootstrap", async ()
     "fresh-context handoff packet",
     "Session-start bootstrap never creates durable workflow proof",
     "runtime cleanup APIs",
+    "background auto-GC",
   ]) {
     assert.match(policy, new RegExp(escapeRegExp(required), "i"), required);
   }
@@ -85,6 +86,10 @@ test("runtime policy is non-fatal, compact-aware, and receipt-neutral", () => {
   assert.equal(SESSION_START_CONTEXT_POLICY.receipts.hookOutputIsWorkflowProof, false);
   assert.equal(SESSION_START_CONTEXT_POLICY.cleanup.requireRuntimeApi, true);
   assert.equal(SESSION_START_CONTEXT_POLICY.cleanup.sessionStartStalePrune, true);
+  assert.equal(SESSION_START_CONTEXT_POLICY.cleanup.sessionStartAutoGc, true);
+  assert.equal(SESSION_START_CONTEXT_POLICY.cleanup.autoGcBackgroundOnly, true);
+  assert.equal(SESSION_START_CONTEXT_POLICY.cleanup.autoGcAutoSafeOnly, true);
+  assert.equal(SESSION_START_CONTEXT_POLICY.cleanup.autoGcDisableEnv, "SUPERVIBE_AUTO_GC");
   assert.equal(SESSION_START_CONTEXT_POLICY.cleanup.staleOnly, true);
   assert.equal(SESSION_START_CONTEXT_POLICY.cleanup.liveProcessStops, false);
 

@@ -282,7 +282,7 @@ test("loop CLI blocks direct plan execution until a work graph exists", async ()
 
     assert.ok(error, "direct plan execution should fail without graph atomization");
     assert.match(error.stderr, /PLAN_EXECUTION_REQUIRES_WORK_GRAPH/);
-    assert.match(error.stderr, /--atomize-plan/);
+    assert.match(error.stderr, /--from-plan .*--start --fast-session/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

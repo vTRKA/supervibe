@@ -7,10 +7,18 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import {
+  buildGraphExecutabilityScore,
   buildTaskGraphMaturityReport,
   formatTaskGraphMaturityReport,
 } from "../scripts/lib/supervibe-task-graph-maturity.mjs";
-import { issueWorkflowInvocationReceipt } from "../scripts/lib/supervibe-workflow-receipt-runtime.mjs";
+import {
+  atomizePlanToWorkItems,
+  writeWorkItemGraph,
+} from "../scripts/lib/supervibe-plan-to-work-items.mjs";
+import {
+  issueWorkflowInvocationReceipt,
+  reissueWorkflowInvocationReceipt,
+} from "../scripts/lib/supervibe-workflow-receipt-runtime.mjs";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -22,6 +30,47 @@ test("task graph maturity reports 10 of 10 for the repository capability surface
   assert.equal(report.status, "10-of-10-ready");
   assert.ok(report.dimensions.some((dimension) => dimension.id === "routing" && dimension.pass));
   assert.match(formatTaskGraphMaturityReport(report), /SUPERVIBE_TASK_GRAPH_MATURITY/);
+});
+
+test("graph executability passes dispatchability when active graph has no remaining work", () => {
+  const root = mkdtempSync(join(tmpdir(), "supervibe-task-graph-maturity-complete-active-"));
+  writeMinimalSurface(root);
+  writeRuntimeGraph(root, { source: "## Acceptance Criteria\n- Runtime requirement.\n" });
+
+  const report = buildGraphExecutabilityScore(root, { requireActiveGraph: true });
+  const dispatchable = report.checks.find((check) => check.id === "dispatchable-work");
+
+  assert.equal(dispatchable.pass, true);
+  assert.equal(report.blockers.some((blocker) => blocker.code === "dependency-not-ready"), false);
+});
+
+test("fast-session active development defers startup receipt gate until release proof", () => {
+  const root = mkdtempSync(join(tmpdir(), "supervibe-task-graph-fast-session-receipts-"));
+  writeMinimalSurface(root);
+  writeRuntimeGraph(root, {
+    source: "## Acceptance Criteria\n- Runtime requirement.\n",
+    metadata: {
+      workflowEvidenceMode: "fast-session",
+      receiptPolicy: {
+        mode: "fast-session",
+        startupReceiptsRequired: false,
+        releaseProofRequiredAt: "release-handoff",
+      },
+    },
+  });
+
+  const development = buildTaskGraphMaturityReport(root, { requireActiveGraph: true });
+  const developmentReceipts = development.dimensions.find((item) => item.id === "active-graph-receipts");
+  const executability = buildGraphExecutabilityScore(root, { requireActiveGraph: true });
+
+  assert.equal(developmentReceipts.pass, true);
+  assert.match(developmentReceipts.summary, /deferred until release-handoff/);
+  assert.equal(executability.blockers.some((blocker) => blocker.code === "receipt-missing"), false);
+
+  const release = buildTaskGraphMaturityReport(root, { requireActiveGraph: true, requireReleaseProof: true });
+  const releaseReceipts = release.dimensions.find((item) => item.id === "active-graph-receipts");
+  assert.equal(releaseReceipts.pass, false);
+  assert.ok(releaseReceipts.blockers.some((blocker) => blocker.includes("active-graph-receipt-missing")));
 });
 
 test("task graph maturity strict active graph mode blocks missing current graph coverage", () => {
@@ -185,6 +234,66 @@ test("task graph runtime maturity rejects validator and command-only receipts", 
   assert.equal(dimension.summary.includes(commandReceipt.receipt.receiptId), false);
 });
 
+test("task graph runtime maturity accepts reissued graph completion receipts", async () => {
+  const root = mkdtempSync(join(tmpdir(), "supervibe-task-graph-maturity-reissued-graph-receipt-"));
+  writeMinimalSurface(root);
+  const graph = atomizePlanToWorkItems("# Runtime Implementation Plan\n\n## Acceptance Criteria\n- Runtime requirement.\n\n## Task 1: Runtime requirement\n**Files:**\n- Modify: `scripts/runtime.mjs`\n**Acceptance Criteria:**\n- Runtime requirement.\n```bash\nnode --test tests/runtime.test.mjs\n```\n", {
+    planPath: ".supervibe/artifacts/plans/runtime.md",
+    epicId: "epic-runtime",
+    writeSourcePlan: true,
+  });
+  for (const item of graph.items) {
+    if (item.type === "task") {
+      item.status = "complete";
+      item.evidence = [{ status: "pass", command: "node --test tests/runtime.test.mjs", outputSummary: "runtime task completed" }];
+      item.verificationEvidence = item.evidence;
+    }
+  }
+  for (const task of graph.tasks || []) {
+    task.status = "complete";
+    task.evidence = [{ status: "pass", command: "node --test tests/runtime.test.mjs", outputSummary: "runtime task completed" }];
+    task.verificationEvidence = task.evidence;
+  }
+  await writeWorkItemGraph(graph, { rootDir: root, writeSourcePlan: true });
+  const invocationId = "test-supervibe-orchestrator-reissued-graph";
+  writeTestAgentInvocation(root, {
+    agentId: "supervibe-orchestrator",
+    invocationId,
+    taskSummary: "reissued graph completion receipt",
+  });
+  const issued = await issueWorkflowInvocationReceipt({
+    rootDir: root,
+    command: "/supervibe-loop",
+    subjectType: "agent",
+    subjectId: "supervibe-orchestrator",
+    agentId: "supervibe-orchestrator",
+    stage: "release-completion",
+    invocationReason: "graph-level completion evidence",
+    outputArtifacts: [".supervibe/memory/work-items/epic-runtime/graph.json"],
+    startedAt: "2026-05-10T00:00:00.000Z",
+    completedAt: "2026-05-10T00:01:00.000Z",
+    handoffId: "epic-runtime",
+    graphId: "epic-runtime",
+    hostInvocation: {
+      source: "codex-spawn-agent",
+      invocationId,
+      agentId: "supervibe-orchestrator",
+    },
+  });
+  const reissued = await reissueWorkflowInvocationReceipt({
+    rootDir: root,
+    receiptPath: issued.receiptPath,
+    reason: "repair current graph hash drift",
+  });
+
+  const report = buildTaskGraphMaturityReport(root, { requireActiveGraph: true });
+  const dimension = report.dimensions.find((item) => item.id === "active-trusted-completion");
+
+  assert.equal(dimension.pass, true);
+  assert.match(dimension.summary, /strict trusted completion passed/);
+  assert.ok(reissued.receipt.recovery);
+});
+
 test("task graph runtime maturity rejects receipts bound to another graph or task", async () => {
   const root = mkdtempSync(join(tmpdir(), "supervibe-task-graph-maturity-wrong-binding-"));
   writeMinimalSurface(root);
@@ -324,12 +433,14 @@ function writeRuntimeGraph(root, {
   source,
   epicStatus = "open",
   evidence = [{ status: "pass", command: "node --test tests/runtime.test.mjs" }],
+  metadata = {},
 } = {}) {
   const graphDir = join(root, ".supervibe", "memory", "work-items", "epic-runtime");
   mkdirSync(graphDir, { recursive: true });
   writeFileSync(join(graphDir, "source-plan.md"), source, "utf8");
   writeFileSync(join(graphDir, "graph.json"), `${JSON.stringify({
     graph_id: "epic-runtime",
+    metadata,
     source: { snapshotPath: "source-plan.md" },
     items: [
       { itemId: "epic-runtime", type: "epic", status: epicStatus, title: "Runtime" },

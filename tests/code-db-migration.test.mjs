@@ -35,12 +35,19 @@ test("old code.db schema migrates with backup and row counts", async () => {
 
     const report = applyCodeDbMigrations(db, { dbPath });
     const after = detectCodeDbSchema(db);
+    const indexes = db.prepare("PRAGMA index_list(code_chunk_entities)").all().map((row) => row.name);
+    const migration = db.prepare("SELECT id FROM supervibe_schema_migrations WHERE version = ?").get(2);
     db.close();
 
     assert.equal(report.pass, true, formatCodeDbMigrationReport(report));
     assert.equal(report.rowCountsBefore.code_files, 1);
     assert.equal(report.rowCountsAfter.code_files, 1);
-    assert.equal(after.version >= 1, true);
+    assert.equal(after.version, 2);
+    assert.ok(after.tables.includes("code_chunk_entities"));
+    assert.ok(indexes.includes("idx_chunk_entities_path"));
+    assert.ok(indexes.includes("idx_chunk_entities_type_name"));
+    assert.ok(indexes.includes("idx_chunk_entities_entity_id"));
+    assert.equal(migration.id, "code-db-schema-v2");
     assert.equal(existsSync(report.backupPath), true);
   } finally {
     await rm(rootDir, { recursive: true, force: true });

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { validateTaskGraph } from "./autonomous-loop-task-graph.mjs";
 import { LOOP_SCHEMA_VERSION } from "./autonomous-loop-constants.mjs";
 import { materializeEpicAndTasks } from "./supervibe-task-tracker-sync.mjs";
@@ -10,6 +10,7 @@ import {
   bindGraphProducerProofOutput,
   createEpicAgentContract,
   createGraphProducerProof,
+  validateEpicAgentContract,
 } from "./supervibe-epic-agent-contract.mjs";
 import {
   assertTaskBudgetAllowsGraphWrite,
@@ -69,6 +70,15 @@ export const COMPACT_TASK_CARD_SCHEMA = Object.freeze({
 
 export const PLAN_GRAPH_TASK_FINAL_ONLY_VERIFICATION_MODE = "final-only-release-verification";
 export const PLAN_GRAPH_TASK_TESTS_DEFERRED_UNTIL = "release-handoff";
+export const WORKFLOW_EVIDENCE_MODES = Object.freeze({
+  FAST_SESSION: "fast-session",
+  RELEASE_PROOF: "release-proof",
+});
+export const WORKFLOW_EVIDENCE_TRANSITIONS = Object.freeze([
+  "none->fast-session",
+  "fast-session->release-proof",
+  "none->release-proof",
+]);
 const TASK_REF_TOKEN_SOURCE = "(?:T?\\d+[A-Za-z]?|[A-Za-z]\\d+[A-Za-z]?)(?:\\.\\d+[A-Za-z]?)*";
 const TASK_HEADING_PATTERN = new RegExp(`^#{2,4}\\s+(?:Task\\s+)?(${TASK_REF_TOKEN_SOURCE})\\s*[:.-]\\s*(.+)$`, "i");
 const TASK_REF_SCAN_PATTERN = new RegExp(`(?:Task\\s*)?(${TASK_REF_TOKEN_SOURCE})`, "i");
@@ -80,7 +90,9 @@ export async function atomizePlanFile(planPath, options = {}) {
 
 export function atomizePlanToWorkItems(markdown, options = {}) {
   const planPath = normalizePath(options.planPath ?? ".supervibe/artifacts/plans/plan.md");
-  const sourcePlanSnapshot = createSourcePlanSnapshot(markdown, planPath, options);
+  const workflowEvidenceMode = resolveWorkflowEvidenceMode(options);
+  const receiptPolicy = createWorkflowReceiptPolicy({ ...options, workflowEvidenceMode });
+  const sourcePlanSnapshot = createSourcePlanSnapshot(markdown, planPath, { ...options, workflowEvidenceMode });
   const parsed = parsePlanForWorkItems(markdown, planPath, {
     requireTasks: Boolean(options.requireTasks || options.planReviewPassed),
   });
@@ -132,7 +144,7 @@ export function atomizePlanToWorkItems(markdown, options = {}) {
   const proofOptions = options.graphProducerProof || options.producerProof || {};
   const graphProducerProof = createGraphProducerProof({
     ...proofOptions,
-    required: Boolean(options.planReviewPassed && !options.dryRun),
+    required: Boolean(receiptPolicy.graphProducerProof.required),
     command: proofOptions.command || options.producerCommand || options.command || options.workflowCommand || "/supervibe-loop",
     stage: proofOptions.stage || options.producerStage || options.stage || "work-item-atomization",
     subjectType: proofOptions.subjectType || options.producerSubjectType || options.subjectType || "agent",
@@ -160,8 +172,10 @@ export function atomizePlanToWorkItems(markdown, options = {}) {
       planReviewDeferred: Boolean(options.planReviewDeferred),
       dryRun: Boolean(options.dryRun),
       createdFrom: "plan",
+      workflowEvidenceMode,
+      receiptPolicy,
       epicAgentContract: createEpicAgentContract({
-        required: Boolean(options.planReviewPassed && !options.dryRun),
+        required: Boolean(receiptPolicy.graphProducerProof.required),
         agentIds: options.epicAgentIds,
       }),
       graphProducerProof,
@@ -188,6 +202,49 @@ export function atomizePlanToWorkItems(markdown, options = {}) {
     parsed,
     validation,
     preview: createWorkItemPreview(graph, validation),
+  };
+}
+
+export function resolveWorkflowEvidenceMode(options = {}) {
+  const requested = String(options.workflowEvidenceMode || options.evidenceMode || options.receiptMode || "").trim().toLowerCase();
+  if (requested === WORKFLOW_EVIDENCE_MODES.RELEASE_PROOF) return WORKFLOW_EVIDENCE_MODES.RELEASE_PROOF;
+  if (requested === WORKFLOW_EVIDENCE_MODES.FAST_SESSION) return WORKFLOW_EVIDENCE_MODES.FAST_SESSION;
+  if (options.releaseProof === true || options["release-proof"] === true) return WORKFLOW_EVIDENCE_MODES.RELEASE_PROOF;
+  if (options.fastSession === true || options["fast-session"] === true) return WORKFLOW_EVIDENCE_MODES.FAST_SESSION;
+  return WORKFLOW_EVIDENCE_MODES.FAST_SESSION;
+}
+
+export function createWorkflowReceiptPolicy(options = {}) {
+  const mode = resolveWorkflowEvidenceMode(options);
+  const releaseProof = mode === WORKFLOW_EVIDENCE_MODES.RELEASE_PROOF;
+  const dryRun = Boolean(options.dryRun);
+  const graphProducerProofRequired = Boolean(releaseProof && !dryRun);
+  return {
+    schemaVersion: 1,
+    mode,
+    transitions: [...WORKFLOW_EVIDENCE_TRANSITIONS],
+    activeDevelopment: !releaseProof,
+    startupReceiptsRequired: Boolean(releaseProof && !dryRun),
+    releaseProofRequiredAt: releaseProof ? "now" : "release-handoff",
+    graphProducerProof: {
+      required: graphProducerProofRequired,
+      trust: releaseProof ? "runtime-issued-host-agent-receipt" : "diagnostic-only-until-release-proof",
+    },
+    dispatchWaveReceipt: {
+      required: Boolean(releaseProof && !dryRun),
+      mode: releaseProof ? "per-item-release-proof" : "batch-fast-session",
+      requiredAt: releaseProof ? "release-gate" : "dispatch-apply",
+      bindings: ["workItemId", "agentId", "hostId", "invocationId"],
+    },
+    legacyReceipts: {
+      status: "diagnostic-only",
+      requiresReissueForActiveProof: true,
+    },
+    cannotProve: releaseProof ? [] : [
+      "delegated-specialist-completion",
+      "release-readiness",
+      "final-validation",
+    ],
   };
 }
 
@@ -651,16 +708,17 @@ export async function writeWorkItemGraph(graph, options = {}) {
   const graphPath = join(outDir, "graph.json");
   const previewPath = options.writePreview === true ? join(outDir, "preview.txt") : null;
   const sourcePlanSnapshot = graph.metadata?.sourcePlanSnapshot;
-  const sourcePlanStoredPath = options.writeSourcePlan === true && sourcePlanSnapshot
-    ? normalizePath(sourcePlanSnapshot.storedPath || options.sourcePlanSnapshotPath || "source-plan.md")
+  const rawSourcePlanStoredPath = options.writeSourcePlan === true && sourcePlanSnapshot
+    ? sourcePlanSnapshot.storedPath || options.sourcePlanSnapshotPath || "source-plan.md"
     : null;
-  const sourcePlanPath = sourcePlanStoredPath ? join(outDir, sourcePlanStoredPath) : null;
+  const sourcePlanTarget = rawSourcePlanStoredPath
+    ? resolveContainedOutputPath(outDir, rawSourcePlanStoredPath, "sourcePlanSnapshot.storedPath")
+    : null;
+  const sourcePlanStoredPath = sourcePlanTarget?.storedPath || null;
+  const sourcePlanPath = sourcePlanTarget?.absPath || null;
   const sourcePlanContent = sourcePlanPath
     ? await resolveSourcePlanSnapshotContent(sourcePlanSnapshot, graph, rootDir)
     : null;
-  if (sourcePlanPath) {
-    await writeFile(sourcePlanPath, sourcePlanContent, "utf8");
-  }
   const serializableGraph = stripParsedFields(graph);
   if (sourcePlanStoredPath && serializableGraph.source) {
     serializableGraph.source.snapshotPath = sourcePlanStoredPath;
@@ -681,6 +739,16 @@ export async function writeWorkItemGraph(graph, options = {}) {
         graphId: graph.epicId || graph.graph_id || graph.id,
       }),
     };
+  }
+  assertTrustedReleaseProofGraph({
+    graph: serializableGraph,
+    rootDir,
+    graphPath,
+    allowUntrustedProducerProof: Boolean(options.allowUntrustedProducerProof),
+  });
+  if (sourcePlanPath) {
+    await mkdir(dirname(sourcePlanPath), { recursive: true });
+    await writeFile(sourcePlanPath, sourcePlanContent, "utf8");
   }
   await writeFile(graphPath, JSON.stringify(serializableGraph, null, 2) + "\n");
   if (previewPath) await writeFile(previewPath, createWorkItemPreview(graph, validation) + "\n");
@@ -2134,14 +2202,19 @@ function stripParsedFields(graph) {
 function createSourcePlanSnapshot(markdown, planPath, options = {}) {
   const content = String(markdown ?? "");
   const writeSourcePlan = options.writeSourcePlan === true || options.writeSourcePlanSnapshot === true;
-  return {
+  const mode = resolveWorkflowEvidenceMode(options);
+  const includeContent = options.includeSourcePlanContent === true
+    || writeSourcePlan
+    || mode === WORKFLOW_EVIDENCE_MODES.RELEASE_PROOF;
+  const snapshot = {
     path: normalizePath(planPath),
     sha256: createHash("sha256").update(content).digest("hex"),
-    storedPath: writeSourcePlan ? normalizePath(options.sourcePlanSnapshotPath || "source-plan.md") : null,
+    storedPath: writeSourcePlan ? normalizeRelativeStoredPath(options.sourcePlanSnapshotPath || "source-plan.md", "sourcePlanSnapshot.storedPath") : null,
     capturedAt: options.capturedAt || new Date().toISOString(),
-    content,
     contentLength: Buffer.byteLength(content, "utf8"),
   };
+  if (includeContent) snapshot.content = content;
+  return snapshot;
 }
 
 async function resolveSourcePlanSnapshotContent(snapshot = {}, graph = {}, rootDir = process.cwd()) {
@@ -2155,6 +2228,50 @@ async function resolveSourcePlanSnapshotContent(snapshot = {}, graph = {}, rootD
 
 function normalizePath(value) {
   return String(value ?? "").replace(/\\/g, "/");
+}
+
+function normalizeRelativeStoredPath(value, field = "storedPath") {
+  const normalized = normalizePath(value).replace(/^\.\//, "").trim();
+  if (!normalized || normalized.includes("\0")) {
+    throw new Error(`${field} must be a non-empty relative path inside the graph output directory`);
+  }
+  if (/^[A-Za-z]:\//.test(normalized) || normalized.startsWith("/") || normalized.startsWith("\\") || isAbsolute(normalized)) {
+    throw new Error(`${field} must be a relative path inside the graph output directory`);
+  }
+  const segments = normalized.split("/").filter(Boolean);
+  if (segments.length === 0 || segments.some((segment) => segment === "." || segment === "..")) {
+    throw new Error(`${field} cannot contain path traversal segments`);
+  }
+  return segments.join("/");
+}
+
+function resolveContainedOutputPath(baseDir, value, field = "storedPath") {
+  const storedPath = normalizeRelativeStoredPath(value, field);
+  const base = resolve(baseDir);
+  const absPath = resolve(base, storedPath);
+  const rel = relative(base, absPath);
+  if (!rel || rel.startsWith("..") || isAbsolute(rel)) {
+    throw new Error(`${field} must stay inside the graph output directory`);
+  }
+  return { storedPath, absPath };
+}
+
+function assertTrustedReleaseProofGraph({ graph = {}, rootDir = process.cwd(), graphPath = null, allowUntrustedProducerProof = false } = {}) {
+  if (allowUntrustedProducerProof || !releaseProofRequiresTrustedProducerProof(graph)) return;
+  const report = validateEpicAgentContract({ rootDir, graph, graphPath, activeGraphStrict: false });
+  if (report.pass) return;
+  const issues = [...(report.producerProofIssues || []), ...(report.issues || [])]
+    .map((issue) => [issue.code, issue.field].filter(Boolean).join(":"))
+    .filter(Boolean);
+  throw new Error(`untrusted release-proof graph producer proof: ${issues.join(",") || "missing runtime-issued host invocation proof"}`);
+}
+
+function releaseProofRequiresTrustedProducerProof(graph = {}) {
+  const metadata = graph.metadata || {};
+  return metadata.workflowEvidenceMode === WORKFLOW_EVIDENCE_MODES.RELEASE_PROOF
+    || metadata.receiptPolicy?.graphProducerProof?.required === true
+    || metadata.graphProducerProof?.required === true
+    || metadata.epicAgentContract?.required === true;
 }
 
 function splitInlineList(value) {

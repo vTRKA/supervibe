@@ -103,6 +103,32 @@ test("supervibe-genesis apply adds missing Codex provider config defaults withou
   }
 });
 
+test("supervibe-genesis apply continues when Codex provider config needs manual patch", () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-genesis-provider-manual-"));
+  const homeRoot = mkdtempSync(join(tmpdir(), "supervibe-genesis-home-"));
+  try {
+    const lockedCodexHome = join(homeRoot, "locked-codex-home");
+    writeFileSync(lockedCodexHome, "not a directory\n");
+
+    const out = runGenesis(["--apply", "--target", projectRoot, "--host", "codex", "--summary-json", "--no-color"], {
+      env: { HOME: homeRoot, USERPROFILE: homeRoot, CODEX_HOME: lockedCodexHome },
+    });
+    const summary = JSON.parse(out);
+    const state = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "genesis", "state.json"), "utf8"));
+
+    assert.equal(summary.providerConfig.written, false);
+    assert.equal(summary.providerConfig.blocked, false);
+    assert.equal(summary.providerConfig.manualPatchRequired, true);
+    assert.equal(summary.providerConfig.homeConfigAction, "manual-patch-required");
+    assert.match(summary.providerConfig.diffPreview, /approval_policy = "on-request"/);
+    assert.equal(state.providerConfig.apply.manualPatchRequired, true);
+    assert.equal(existsSync(join(projectRoot, ".codex", "config.toml")), false);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+    rmSync(homeRoot, { recursive: true, force: true });
+  }
+});
+
 test("supervibe-genesis blocks duplicate Codex provider config keys before scaffold apply", () => {
   const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-genesis-provider-duplicate-"));
   const homeRoot = mkdtempSync(join(tmpdir(), "supervibe-genesis-home-"));

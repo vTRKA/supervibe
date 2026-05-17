@@ -1,4 +1,4 @@
-﻿# Supervibe Cleanup Lifecycle
+# Supervibe Cleanup Lifecycle
 
 The cleanup lifecycle keeps `.supervibe` useful as current agent context instead of a long-lived dump of old plans, graphs, receipts, logs, and generated outputs.
 
@@ -13,14 +13,14 @@ The cleanup lifecycle keeps `.supervibe` useful as current agent context instead
 ## Lifecycle Classes
 
 - `hot`: active workflow state, active plan pointer, active work graph, or current execution material.
-- `protected`: trusted receipts, receipt-linked outputs, compact manifests, compact archive blobs, ledgers, and runtime keys.
+- `protected`: trusted receipts, trusted receipt-linked outputs, compact manifests, compact archive blobs, ledgers, and runtime keys.
 - `warm`: recent artifacts that are useful for review or handoff.
 - `archivable`: completed workflow graphs and state that can move out of hot context after the configured grace period.
 - `cold`: archive material retained for historical access.
 - `trash` and `deletable`: generated logs, backups, stale runtime files, and safe temporary material.
 - `unclassified`: requires human review and is never auto-safe.
 
-Reachability always wins over age. A trusted receipt target, compact archive blob referenced by a live manifest, or active root cannot become a physical delete candidate because it is old.
+Reachability always wins over age. A trusted receipt target, compact archive blob referenced by a live manifest, or active root cannot become a physical delete candidate because it is old. Untrusted workflow receipts and temporary workflow invocation folders remain recent diagnostics first, then become artifact-GC archive candidates after `workflowArtifactRetentionDays` when no active root protects them.
 
 ## Operator Flow
 
@@ -29,14 +29,20 @@ npm run supervibe:gc -- --lifecycle --mode dry-run
 npm run supervibe:gc -- --lifecycle --mode review
 npm run supervibe:gc -- --lifecycle --mode auto-safe
 npm run supervibe:gc -- --artifacts --dry-run --archive-keep-last 5 --archive-retention-days 90
+npm run supervibe:gc -- --artifacts --scheduled --auto --apply
+npm run supervibe:gc -- --artifacts --dry-run --workflow-artifact-retention-days 90
+npm run supervibe:gc -- --snapshots --dry-run --snapshot-max-bytes 52428800
+npm run supervibe:gc -- --snapshots --apply
 npm run validate:supervibe-cleanup-lifecycle
 ```
 
-Default context excludes cold, trash, and unclassified cleanup lifecycle artifacts. History access remains explicit through history-capable commands and context pack `includeHistory` behavior.
+Default context excludes archivable, cold, trash, and unclassified cleanup lifecycle artifacts. History access remains explicit through history-capable commands and context pack `includeHistory` behavior.
+
+Session start queues a detached auto-GC maintenance run when a retention schedule is due or artifact snapshots exceed their retention budget. The background lane uses `.supervibe/memory/auto-gc.lock`, records status in `.supervibe/memory/auto-gc-state.json`, applies only auto-safe memory/artifact/snapshot cleanup, and stays quiet when nothing is due. Disable it with `SUPERVIBE_AUTO_GC=off`.
 
 ## Archive Budgets
 
-Artifact archive cleanup supports age, byte, and keep-last-N controls. Protected provenance exceptions always win, including compact archive blobs referenced by live compact manifests. Snapshot creation excludes rebuildable `code.db` and `memory.db` caches by default and records rebuild commands instead of copying potentially inconsistent SQLite files.
+Artifact archive cleanup supports age, byte, and keep-last-N controls. Scheduled artifact GC reports `AUTO_SAFE_CANDIDATES` and `--auto` applies only hard-allowlisted stale runtime files, stale receipt archives, stale untrusted workflow receipts, stale workflow temp artifacts, unreferenced agent outputs, and compactable trusted agent outputs. Artifact snapshot retention separately enforces a default `keepLast=1`, `maxBytes=50MiB`, and `maxAgeDays=30` policy over `.supervibe/memory/artifact-snapshots/`; `latest.json` protects the canonical rollback snapshot while legacy/manual snapshot folders can be removed. Protected provenance exceptions always win, including compact archive blobs referenced by live compact manifests. Snapshot creation excludes rebuildable `code.db` and `memory.db` caches by default and records rebuild commands instead of copying potentially inconsistent SQLite files.
 
 ## Restore And Rollback
 

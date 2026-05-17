@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
 
-import { CODE_GRAPH_EXTRACTOR_VERSION, CodeStore } from "../scripts/lib/code-store.mjs";
+import { CODE_GRAPH_EXTRACTOR_VERSION, CODE_RAG_CHUNK_METADATA_VERSION, CODE_RAG_ENTITY_METADATA_VERSION, CodeStore } from "../scripts/lib/code-store.mjs";
 import { hashFile } from "../scripts/lib/file-hash.mjs";
 
 const scriptPath = join(process.cwd(), "scripts", "build-code-index.mjs");
@@ -73,6 +73,7 @@ test("build-code-index --help prints usage and does not start indexing", () => {
   assert.match(out, /--resume/);
   assert.match(out, /--max-seconds/);
   assert.match(out, /--source-only/);
+  assert.match(out, /--embeddings-only/);
   assert.match(out, /--json-progress/);
   assert.match(out, /--large-file-threshold-bytes/);
   assert.match(out, /--known-failed-ttl/);
@@ -178,6 +179,115 @@ test("build-code-index --source-only indexes BM25 chunks without graph work", as
   });
 });
 
+
+test("build-code-index --resume repairs stale chunk metadata rows", async () => {
+  await withFixture(async (rootDir) => {
+    execFileSync(process.execPath, [scriptPath, "--root", rootDir, "--force", "--source-only", "--heartbeat-seconds", "0"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    });
+
+    const before = new CodeStore(rootDir, { useEmbeddings: false });
+    await before.init();
+    try {
+      before.db.prepare("UPDATE code_chunks SET metadata_version = 0 WHERE path = ?").run("src/main.ts");
+    } finally {
+      before.close();
+    }
+
+    const missing = execFileSync(process.execPath, [scriptPath, "--root", rootDir, "--list-missing", "--source-only", "--heartbeat-seconds", "0"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    });
+    assert.match(missing, /src\/main\.ts \(chunk-metadata-stale\)/);
+
+    execFileSync(process.execPath, [scriptPath, "--root", rootDir, "--resume", "--source-only", "--max-files", "1", "--heartbeat-seconds", "0"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    });
+
+    const after = new CodeStore(rootDir, { useEmbeddings: false });
+    await after.init();
+    try {
+      const staleRows = after.db.prepare("SELECT COUNT(*) AS n FROM code_chunks WHERE path = ? AND metadata_version < ?").get("src/main.ts", CODE_RAG_CHUNK_METADATA_VERSION).n;
+      assert.equal(staleRows, 0);
+    } finally {
+      after.close();
+    }
+  });
+});
+
+test("build-code-index --resume repairs partial chunk entity coverage", async () => {
+  await withFixture(async (rootDir) => {
+    const manyFunctions = Array.from({ length: 700 }, (_, index) => [
+      `export function indexedPartialEntityFixture${index}(input: number) {`,
+      `  const next = input + ${index};`,
+      `  return next % 2 === 0 ? next / 2 : next + 1;`,
+      `}`,
+      ``,
+    ].join("\n")).join("\n");
+    await writeFile(join(rootDir, "src", "many.ts"), manyFunctions, "utf8");
+
+    execFileSync(process.execPath, [scriptPath, "--root", rootDir, "--force", "--source-only", "--file", "src/many.ts", "--heartbeat-seconds", "0"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    });
+
+    const before = new CodeStore(rootDir, { useEmbeddings: false });
+    await before.init();
+    try {
+      const totalChunks = Number(before.db.prepare("SELECT COUNT(*) AS n FROM code_chunks WHERE path = ?").get("src/many.ts").n || 0);
+      assert.ok(totalChunks > 1, `expected multi-chunk fixture, got ${totalChunks}`);
+      const lastChunk = Number(before.db.prepare("SELECT MAX(chunk_idx) AS n FROM code_chunks WHERE path = ?").get("src/many.ts").n || 0);
+      before.db.prepare("PRAGMA foreign_keys = OFF").run();
+      before.db.prepare("DELETE FROM code_chunk_entities WHERE path = ? AND chunk_idx = ?").run("src/many.ts", lastChunk);
+      before.db.prepare(`
+        INSERT OR REPLACE INTO code_chunk_entities (
+          chunk_id, path, chunk_idx, entity_type, entity_id, entity_name, source_path,
+          start_line, end_line, heading, confidence, derivation_source, index_fingerprint, metadata_version
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run("orphan-mask", "src/many.ts", lastChunk + 1000, "symbol", "symbol:orphan-mask", "orphan-mask", "src/many.ts", 1, 1, "orphan-mask", 0.1, "test-orphan", "test", CODE_RAG_ENTITY_METADATA_VERSION);
+      const rawEntityLinks = Number(before.db.prepare("SELECT COUNT(DISTINCT path || '#' || chunk_idx) AS n FROM code_chunk_entities WHERE path = ?").get("src/many.ts").n || 0);
+      const linkedChunks = Number(before.db.prepare("SELECT COUNT(DISTINCT cc.path || '#' || cc.chunk_idx) AS n FROM code_chunks cc JOIN code_chunk_entities cce ON cce.path = cc.path AND cce.chunk_idx = cc.chunk_idx WHERE cc.path = ?").get("src/many.ts").n || 0);
+      assert.ok(rawEntityLinks >= totalChunks, `expected orphan row to mask raw count, got ${rawEntityLinks}/${totalChunks}`);
+      assert.ok(linkedChunks > 0 && linkedChunks < totalChunks, `expected partial links, got ${linkedChunks}/${totalChunks}`);
+      const health = before.getChunkEntityHealth();
+      assert.equal(health.status, "partial-links");
+      assert.equal(health.rebuildRequired, true);
+    } finally {
+      before.close();
+    }
+
+    const missing = execFileSync(process.execPath, [scriptPath, "--root", rootDir, "--list-missing", "--source-only", "--file", "src/many.ts", "--heartbeat-seconds", "0"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    });
+    assert.match(missing, /src\/many\.ts \(chunk-entities-partial\)/);
+
+    execFileSync(process.execPath, [scriptPath, "--root", rootDir, "--resume", "--source-only", "--file", "src/many.ts", "--max-files", "1", "--heartbeat-seconds", "0"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    });
+
+    const after = new CodeStore(rootDir, { useEmbeddings: false });
+    await after.init();
+    try {
+      const row = after.db.prepare(`
+        SELECT
+          (SELECT COUNT(*) FROM code_chunks WHERE path = ?) AS totalChunks,
+          (SELECT COUNT(DISTINCT cc.path || '#' || cc.chunk_idx) FROM code_chunks cc JOIN code_chunk_entities cce ON cce.path = cc.path AND cce.chunk_idx = cc.chunk_idx WHERE cc.path = ?) AS linkedChunks,
+          (SELECT COUNT(*) FROM code_chunk_entities WHERE path = ? AND metadata_version < ?) AS staleEntities
+      `).get("src/many.ts", "src/many.ts", "src/many.ts", CODE_RAG_ENTITY_METADATA_VERSION);
+      assert.equal(Number(row.linkedChunks || 0), Number(row.totalChunks || 0));
+      assert.equal(Number(row.staleEntities || 0), 0);
+      const health = after.getChunkEntityHealth();
+      assert.equal(health.rebuildRequired, false);
+    } finally {
+      after.close();
+    }
+  });
+});
+
 test("build-code-index --no-embeddings preserves current graph rows when content is unchanged", async () => {
   await withFixture(async (rootDir) => {
     await writeFile(join(rootDir, "src", "graph.js"), [
@@ -225,6 +335,79 @@ test("build-code-index --no-embeddings preserves current graph rows when content
   });
 });
 
+test("build-code-index --list-missing --embeddings-only reports embedding repair candidates", async () => {
+  await withFixture(async (rootDir) => {
+    execFileSync(process.execPath, [scriptPath, "--root", rootDir, "--source-only", "--heartbeat-seconds", "0"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    });
+
+    const out = execFileSync(process.execPath, [scriptPath, "--root", rootDir, "--list-missing", "--embeddings-only", "--heartbeat-seconds", "0"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    });
+
+    assert.match(out, /SUPERVIBE_INDEX_MISSING/);
+    assert.match(out, /MISSING_OR_STALE: 1/);
+    assert.match(out, /src\/main\.ts \(embedding-missing\)/);
+  });
+});
+
+test("build-code-index --embeddings-only writes embeddings without rebuilding graph rows", async () => {
+  await withFixture(async (rootDir) => {
+    await writeFile(join(rootDir, "src", "graph.js"), [
+      "export function indexedEmbeddingRepairFixture() {",
+      "  return indexedEmbeddingRepairHelper();",
+      "}",
+      "function indexedEmbeddingRepairHelper() {",
+      "  return 1;",
+      "}",
+      "",
+    ].join("\n"), "utf8");
+
+    execFileSync(process.execPath, [scriptPath, "--root", rootDir, "--force", "--graph", "--no-embeddings", "--file", "src/graph.js", "--heartbeat-seconds", "0"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      maxBuffer: 1024 * 1024 * 4,
+    });
+
+    const before = new CodeStore(rootDir, { useEmbeddings: false });
+    await before.init();
+    let initialSymbols = 0;
+    let initialEdges = 0;
+    try {
+      const stats = before.stats();
+      initialSymbols = stats.totalSymbols;
+      initialEdges = stats.totalEdges;
+      assert.ok(initialSymbols > 0, "fixture must produce graph symbols before embeddings-only repair");
+      const embeddedBefore = before.db.prepare("SELECT COUNT(*) AS n FROM code_chunks WHERE path = ? AND embedding IS NOT NULL").get("src/graph.js").n;
+      assert.equal(embeddedBefore, 0);
+    } finally {
+      before.close();
+    }
+
+    const out = execFileSync(process.execPath, [scriptPath, "--root", rootDir, "--resume", "--embeddings-only", "--file", "src/graph.js", "--max-files", "1", "--heartbeat-seconds", "0"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      maxBuffer: 1024 * 1024 * 4,
+    });
+    assert.match(out, /Files indexed: 1/);
+
+    const after = new CodeStore(rootDir, { useEmbeddings: false });
+    await after.init();
+    try {
+      const stats = after.stats();
+      assert.equal(stats.totalSymbols, initialSymbols);
+      assert.equal(stats.totalEdges, initialEdges);
+      const embeddedAfter = after.db.prepare("SELECT COUNT(*) AS n FROM code_chunks WHERE path = ? AND embedding IS NOT NULL").get("src/graph.js").n;
+      assert.ok(embeddedAfter > 0, "embeddings-only repair should persist embeddings");
+      const graphVersion = after.db.prepare("SELECT graph_version AS graphVersion FROM code_files WHERE path = ?").get("src/graph.js").graphVersion;
+      assert.equal(graphVersion, CODE_GRAPH_EXTRACTOR_VERSION);
+    } finally {
+      after.close();
+    }
+  });
+});
 test("build-code-index --maintenance --vacuum runs sqlite maintenance without indexing", async () => {
   await withFixture(async (rootDir) => {
     const out = execFileSync(process.execPath, [scriptPath, "--root", rootDir, "--maintenance", "--vacuum", "--heartbeat-seconds", "0"], {

@@ -68,19 +68,30 @@ export function buildSmallDeltaAutorepairPlan({
   const commonArgs = ["--max-files", String(selected.length || Math.min(total, deltaLimit)), "--health"];
   if (maxSeconds > 0) commonArgs.push("--max-seconds", String(normalizePositiveInt(maxSeconds, DEFAULT_SOURCE_SECONDS)));
   if (jsonProgress) commonArgs.push("--json-progress");
+  const needsEmbeddingRepair = selected.some((file) => /embedding/i.test(file.reason));
+  const needsSourceRepair = selected.some((file) => !/embedding/i.test(file.reason));
 
   const commands = [];
   if (selected.length > 0 && !liveLock && !tooLarge) {
-    commands.push({
-      id: "source-readiness",
-      mode: "explicit-run",
-      command: commandLine([...baseArgs, "--source-only", ...commonArgs]),
-    });
-    if (includeStructure && !sourceOnly) {
+    if (needsSourceRepair) {
+      commands.push({
+        id: "source-readiness",
+        mode: "explicit-run",
+        command: commandLine([...baseArgs, "--source-only", ...commonArgs]),
+      });
+    }
+    if (includeStructure && !sourceOnly && needsSourceRepair) {
       commands.push({
         id: "structure-readiness",
         mode: "explicit-run",
         command: commandLine([...baseArgs, "--graph", "--max-files", String(selected.length), "--health"]),
+      });
+    }
+    if (!sourceOnly && needsEmbeddingRepair) {
+      commands.push({
+        id: "semantic-embeddings",
+        mode: "explicit-run",
+        command: commandLine([...baseArgs, "--embeddings-only", "--max-files", String(selected.length), "--health"]),
       });
     }
   }

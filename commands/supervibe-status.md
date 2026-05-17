@@ -13,7 +13,7 @@ Status outputs are covered by scenario evals for broken RAG/index repair. When
 index health is requested, include the gate result, repair command and explicit
 next action rather than only raw counts.
 
-Shows local index health, preview servers, MCP discovery, task tracker mapping,
+Shows local index health, preview servers, MCP discovery, auto-GC maintenance state, artifact snapshot budget, task tracker mapping,
 read-only work-item watch snapshots, delegated inbox blockers, agent telemetry,
 dashboard output, and external integration readiness.
 It can also filter large work-item graphs with safe structured queries, apply

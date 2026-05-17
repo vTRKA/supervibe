@@ -795,10 +795,15 @@ function classifyUnresolvedEdge(row = {}) {
   if (candidateCount > 1) return "ambiguous-local-symbol";
   if (candidateCount === 1) return "import-or-scope-limitation";
   if (edgeKind.includes("import") || /^\.{1,2}\//.test(toName) || isExternalOrReexportName(toName)) return "external-or-reexport";
+  if (isLanguageBuiltinOrRuntimeApi(toName)) return "language-builtin-or-runtime-api";
   if (/^(?:this|module|exports|default|constructor|prototype|require|import|then|catch|map|filter|reduce|forEach|push|set|get|has|emit|on|off)$/i.test(toName) || /[.[\]?$]/.test(toName)) {
     return "dynamic-language-pattern";
   }
   return "missing-symbol";
+}
+
+function isLanguageBuiltinOrRuntimeApi(value = "") {
+  return /^(?:String|Number|Boolean|Array|Object|Map|Set|WeakMap|WeakSet|Date|RegExp|JSON|Math|Promise|Error|TypeError|Symbol|BigInt|Buffer|URL|URLSearchParams|console|process|globalThis|setTimeout|clearTimeout|setInterval|clearInterval|readFile|readFileSync|writeFile|writeFileSync|mkdir|mkdirSync|stat|statSync)$/i.test(String(value || "").trim());
 }
 
 function isExternalOrReexportName(value) {

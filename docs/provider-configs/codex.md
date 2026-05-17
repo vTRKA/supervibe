@@ -44,7 +44,7 @@ use as the automatic apply candidate after normal path and trust checks.
 
 model = "gpt-5.5"
 model_provider = "openai"
-approval_policy = "never"
+approval_policy = "on-request"
 sandbox_mode = "workspace-write"
 web_search = "live"
 default_permissions = ":workspace"
@@ -240,7 +240,7 @@ Schema-backed sandbox modes are `read-only`, `workspace-write`, and
 `sandbox_workspace_write.network_access = false` unless the task requires
 network access.
 
-Supervibe-managed noninteractive loop defaults use `approval_policy = "never"`
+Supervibe-managed noninteractive loop defaults use `approval_policy = "on-request"`
 so workers do not stall on repeated prompts. The safety tradeoff is that this
 must be paired with `sandbox_mode = "workspace-write"`, scoped
 `default_permissions`, external secret hygiene, and preview-only

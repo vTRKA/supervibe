@@ -1118,10 +1118,14 @@ function buildContextQuality({ retrievalPipeline, graphHealth, semanticAnchors, 
     failures.push("minified symbols appear in top graph symbols");
   }
   if ((graphHealth?.sourceFileSymbolCoverage?.files || 0) >= 5 && (graphHealth?.sourceFileSymbolCoverage?.coverage || 0) < 0.2) {
-    warnings.push("low symbol coverage for indexed files");
+    warnings.push("low symbol coverage for graph-eligible indexed files");
   }
-  if ((graphHealth?.crossResolvedEdges?.total || 0) >= 20 && (graphHealth?.crossResolvedEdges?.rate || 0) < 0.05) {
-    warnings.push("low cross-file edge resolution");
+  const eligibleEdges = graphHealth?.eligibleProjectEdges || null;
+  const edgeTotal = eligibleEdges ? Number(eligibleEdges.deterministic || 0) : Number(graphHealth?.crossResolvedEdges?.total || 0);
+  const edgeRate = eligibleEdges ? Number(eligibleEdges.rate || 0) : Number(graphHealth?.crossResolvedEdges?.rate || 0);
+  const edgeTarget = eligibleEdges ? 0.8 : 0.05;
+  if (edgeTotal >= 20 && edgeRate < edgeTarget) {
+    warnings.push(eligibleEdges ? "low deterministic project edge resolution" : "low cross-file edge resolution");
   }
   if ((semanticAnchors || []).length === 0 && (relatedFiles || []).length > 0) {
     warnings.push("no semantic anchors found for related files");
@@ -1134,7 +1138,8 @@ function buildContextQuality({ retrievalPipeline, graphHealth, semanticAnchors, 
     selectedCount: retrievalPipeline?.selected?.length || 0,
     fallbackReason: retrievalPipeline?.fallback?.reason || "",
     symbolCoverage: graphHealth?.sourceFileSymbolCoverage?.coverage ?? null,
-    edgeResolutionRate: graphHealth?.crossResolvedEdges?.rate ?? null,
+    edgeResolutionRate: graphHealth?.eligibleProjectEdges?.rate ?? graphHealth?.crossResolvedEdges?.rate ?? null,
+    eligibleProjectEdgeResolutionRate: graphHealth?.eligibleProjectEdges?.rate ?? null,
   };
 }
 
@@ -1143,7 +1148,9 @@ function evaluateCodeGraphTaskTypeGate({ taskType = "feature", quality = {}, gra
   const failures = [];
   const warnings = [...(quality.warnings || [])];
   const symbolCoverage = Number(quality.symbolCoverage ?? graphHealth?.sourceFileSymbolCoverage?.coverage ?? 0);
-  const edgeResolution = Number(quality.edgeResolutionRate ?? graphHealth?.crossResolvedEdges?.rate ?? 0);
+  const edgeResolution = Number(quality.edgeResolutionRate ?? graphHealth?.eligibleProjectEdges?.rate ?? graphHealth?.crossResolvedEdges?.rate ?? 0);
+  const edgeTotal = Number(graphHealth?.eligibleProjectEdges?.deterministic ?? graphHealth?.crossResolvedEdges?.total ?? 0);
+  const edgeTarget = graphHealth?.eligibleProjectEdges ? 0.8 : 0.05;
   const hasGraphEvidence = Number(stats.graphNodes || 0) > 0 || Number(stats.impactNodes || 0) > 0;
   const hasSourceEvidence = Number(stats.ragChunks || 0) > 0 || Number(stats.entrySymbols || 0) > 0;
   const usefulness = evaluateCodeGraphUsefulness({
@@ -1156,8 +1163,8 @@ function evaluateCodeGraphTaskTypeGate({ taskType = "feature", quality = {}, gra
   if (["refactor", "rename", "move", "delete", "extract", "public-api"].includes(normalized)) {
     if (!quality.pass) failures.push("base graph context quality failed");
     if (!hasGraphEvidence) failures.push("structural task requires graph neighborhood or impact evidence");
-    if (symbolCoverage < 0.2) failures.push("structural task requires >=20% symbol coverage");
-    if ((graphHealth?.crossResolvedEdges?.total || 0) >= 20 && edgeResolution < 0.05) failures.push("structural task requires >=5% cross-file edge resolution");
+    if (symbolCoverage < 0.2) failures.push("structural task requires >=20% graph-eligible symbol coverage");
+    if (edgeTotal >= 20 && edgeResolution < edgeTarget) failures.push(graphHealth?.eligibleProjectEdges ? "structural task requires >=80% deterministic project edge resolution" : "structural task requires >=5% cross-file edge resolution");
   } else if (["debug", "feature"].includes(normalized)) {
     if (!hasSourceEvidence) failures.push("task requires source RAG or symbol evidence");
     if (!hasGraphEvidence) warnings.push("graph evidence missing; keep changes localized until graph context is available");
@@ -1189,13 +1196,15 @@ function evaluateCodeGraphUsefulness({ taskType = "feature", quality = {}, graph
   const hasSourceEvidence = Boolean(stats.hasSourceEvidence) || Number(stats.ragChunks || 0) > 0 || Number(stats.entrySymbols || 0) > 0;
   const hasGraphEvidence = Boolean(stats.hasGraphEvidence) || Number(stats.graphNodes || 0) > 0 || Number(stats.impactNodes || 0) > 0;
   const symbolCoverage = Number(quality.symbolCoverage ?? graphHealth?.sourceFileSymbolCoverage?.coverage ?? 0);
-  const edgeResolution = Number(quality.edgeResolutionRate ?? graphHealth?.crossResolvedEdges?.rate ?? 0);
+  const edgeResolution = Number(quality.edgeResolutionRate ?? graphHealth?.eligibleProjectEdges?.rate ?? graphHealth?.crossResolvedEdges?.rate ?? 0);
+  const edgeTotal = Number(graphHealth?.eligibleProjectEdges?.deterministic ?? graphHealth?.crossResolvedEdges?.total ?? 0);
+  const edgeTarget = graphHealth?.eligibleProjectEdges ? 0.8 : 0.05;
   const warnings = [];
   let score = 0;
   if (hasSourceEvidence) score += 0.35;
   if (hasGraphEvidence) score += 0.35;
   if (symbolCoverage >= 0.2) score += 0.15;
-  if ((graphHealth?.crossResolvedEdges?.total || 0) < 20 || edgeResolution >= 0.05) score += 0.15;
+  if (edgeTotal < 20 || edgeResolution >= edgeTarget) score += 0.15;
   if (!hasSourceEvidence) warnings.push("CodeGraph context has no source RAG or symbol evidence for agent handoff");
   if (!hasGraphEvidence && ["refactor", "rename", "move", "delete", "extract", "public-api"].includes(normalized)) {
     warnings.push("structural agent handoff lacks graph neighborhood or impact evidence");
@@ -1291,7 +1300,7 @@ function formatRetrievalQuality(pipeline = {}) {
   return formatList([
     `pass=${pipeline.pass === true}`,
     `rewrittenQuery=${pipeline.rewrittenQuery || "none"}`,
-    `stages=${(pipeline.stages || []).map((stage) => `${stage.name}:${stage.count ?? 0}`).join(", ") || "none"}`,
+    `stages=${(pipeline.stages || []).map((stage) => `${stage.name}:${stage.count ?? stage.candidateCount ?? stage.selectedCount ?? 0}`).join(", ") || "none"}`,
     `selected=${pipeline.selected?.length || 0}`,
     `fallback=${pipeline.fallback?.reason || "none"}`,
   ]);
@@ -1304,6 +1313,7 @@ function formatGraphQuality(quality = {}) {
     `warnings=${(quality.warnings || []).join("; ") || "none"}`,
     `symbolCoverage=${quality.symbolCoverage ?? "unknown"}`,
     `edgeResolution=${quality.edgeResolutionRate ?? "unknown"}`,
+    `eligibleProjectEdgeResolution=${quality.eligibleProjectEdgeResolutionRate ?? "unknown"}`,
   ]);
 }
 

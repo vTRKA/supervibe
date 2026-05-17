@@ -39,9 +39,6 @@ import {
   listCommandAgentProfiles,
 } from "./lib/command-agent-orchestration-contract.mjs";
 import {
-  writeWorkflowTransactionAndReceipt,
-} from "./lib/supervibe-workflow-transaction.mjs";
-import {
   readWorkflowReceipts,
   validateWorkflowReceiptTrust,
 } from "./lib/supervibe-workflow-receipt-runtime.mjs";
@@ -74,14 +71,10 @@ try {
   }
 
   if (args["verify-agents"]) {
-    const result = await attachAdaptWorkflowTransaction(await verifyAdaptAgentRuntime(projectRoot, {
+    const result = await verifyAdaptAgentRuntime(projectRoot, {
       pluginRoot,
       host: args.host || process.env.SUPERVIBE_HOST || "codex",
       options: args,
-    }), {
-      stage: "adapt-agent-runtime-verification",
-      kind: "adapt-agent-runtime-verification",
-      reason: "Adapt agent runtime verification wrote stable transaction evidence.",
     });
     if (args.json || args["summary-json"]) console.log(JSON.stringify(result, null, 2));
     else console.log(formatAdaptAgentRuntimeVerification(result));
@@ -106,13 +99,9 @@ try {
       deployCounts: true,
     });
     if (args.apply) {
-      const result = await attachAdaptWorkflowTransaction(await applyDokployDeployPlan(deployPlan, {
+      const result = await applyDokployDeployPlan(deployPlan, {
         include: args.include ? String(args.include).split(",").filter(Boolean) : [],
         applyAll: Boolean(args.all),
-      }), {
-        stage: "adapt-deploy-apply",
-        kind: "adapt-deploy-apply",
-        reason: "Adapt deploy apply generated deploy artifacts and verification evidence.",
       });
       printAdaptValue(result, {
         summary: summarizeDokployDeployApply,
@@ -168,15 +157,11 @@ try {
     if (result.blocked.length > 0) process.exitCode = 2;
   } else if (args.apply) {
     const applyFn = args["fixed-point"] || args.all ? applyAdaptPlanFixedPoint : applyAdaptPlan;
-    const result = await attachAdaptWorkflowTransaction(await applyFn(plan, {
+    const result = await applyFn(plan, {
       include: args.include ? String(args.include).split(",").filter(Boolean) : [],
       applyAll: Boolean(args.all),
       refreshMemoryIndex: resolveMemoryRefresh(args),
       maxRounds: Number(args["max-rounds"] || 5),
-    }), {
-      stage: "adapt-apply",
-      kind: "adapt-apply",
-      reason: "Adapt apply wrote approved artifact and lifecycle evidence.",
     });
     printAdaptValue(result, {
       summary: summarizeAdaptApply,
@@ -209,53 +194,6 @@ function printAdaptValue(value, { summary, formatter }) {
   else console.log(formatter(value));
 }
 
-async function attachAdaptWorkflowTransaction(result, { stage, kind, reason } = {}) {
-  if (Array.isArray(result.blocked) && result.blocked.length > 0) return result;
-  const summary = buildAdaptTransactionSummary(result);
-  const transaction = await writeWorkflowTransactionAndReceipt({
-    rootDir: projectRoot,
-    command: "/supervibe-adapt",
-    stage,
-    subjectId: "supervibe-adapt-runner",
-    kind,
-    reason,
-    summary,
-  });
-  return {
-    ...result,
-    workflowTransaction: transaction,
-    mutatedPaths: [
-      ...(result.mutatedPaths || []),
-      transaction.path,
-      transaction.receiptPath,
-      transaction.artifactLinksPath,
-      ".supervibe/memory/workflow-invocation-ledger.jsonl",
-    ].filter(Boolean),
-  };
-}
-
-function buildAdaptTransactionSummary(result = {}) {
-  return {
-    kind: result.kind || "adapt-result",
-    scope: result.scope || "artifacts",
-    target: result.target || null,
-    host: result.host?.adapterId || null,
-    deployProfile: result.deployProfile?.id || null,
-    counts: {
-      applied: result.applied?.length || 0,
-      created: result.created?.length || 0,
-      updated: result.updated?.length || 0,
-      skipped: result.skipped?.length || 0,
-      blocked: result.blocked?.length || 0,
-    },
-    verification: result.lifecycleState?.verification || {
-      agentRuntimeVerified: result.agentRuntime?.verified === true,
-    },
-    mutatedPaths: result.mutatedPaths || [],
-    nextAction: nextActionForAdaptResult(result),
-  };
-}
-
 function nextActionForAdaptResult(result = {}) {
   const verification = result.lifecycleState?.verification || {};
   if (result.kind === "adapt-deploy-apply") {
@@ -266,7 +204,7 @@ function nextActionForAdaptResult(result = {}) {
   if (result.kind === "adapt-agent-runtime-verification") {
     return result.agentRuntime?.verified === true
       ? null
-      : "Run real host-agent smoke, log invocation id, and rerun --verify-agents.";
+      : "Run an optional host-agent smoke check only if this workflow needs runtime agent telemetry.";
   }
   if (result.postApply?.clean === false) {
     return "Rerun supervibe-adapt --dry-run and apply remaining approved artifacts.";
@@ -357,11 +295,8 @@ function nextSafeRecoveryCommand({ dirtyReceipts = [], state = {}, lastTrustedAd
   if (dirtyReceipts.length) {
     return "node <resolved-supervibe-plugin-root>/scripts/workflow-receipt.mjs rebuild-ledger --prune-stale --root <project-root>";
   }
-  if (!state.present || !lastTrustedAdapt) {
+  if (!state.present) {
     return "node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --dry-run";
-  }
-  if (state.verification?.agentReceiptsRequired !== false && state.verification?.agentRuntimeVerified !== true) {
-    return "node <resolved-supervibe-plugin-root>/scripts/supervibe-adapt.mjs --verify-agents";
   }
   if (state.appVerification?.required === true && state.appVerification?.verified !== true && state.appVerification?.nextCommand) {
     return state.appVerification.nextCommand;
@@ -525,7 +460,7 @@ function buildCommandAgentReadiness({
 }
 
 function shouldInspectAdaptReceiptTrust(values = {}) {
-  return values.apply === true || values["verify-agents"] === true || values["record-smoke"] === true;
+  return values["verify-agents"] === true || values["record-smoke"] === true;
 }
 
 function dryRunReceiptTrustOmitted() {
@@ -542,7 +477,7 @@ function dryRunReceiptTrustOmitted() {
     scope: null,
     issues: [{
       code: "dry-run-receipt-trust-scan-skipped",
-      message: "Read-only Adapt planning skips expensive receipt corpus scan; apply and verify-agents run the full receipt gate.",
+      message: "Adapt planning omits optional runtime-agent telemetry scans; --verify-agents runs the explicit smoke check.",
     }],
   };
 }
@@ -658,9 +593,9 @@ Usage:
 Options:
   --dry-run                 Inspect artifact and metadata drift (default)
   --apply                   Apply approved artifact updates or metadata-only drift
-  --verify-agents           Verify receipt-bound real host-agent telemetry and update Adapt state
-  --record-smoke            With --verify-agents, record a real host-agent smoke receipt using --host-invocation-id
-  --recovery-status         Report last trusted stage, dirty receipts, Adapt state, and one next safe command
+  --verify-agents           Advanced runtime smoke check for host-agent telemetry
+  --record-smoke            With --verify-agents, record a real host-agent smoke using --host-invocation-id
+  --recovery-status         Advanced recovery report for Adapt state and one next safe command
   --resolve <paths>         Mark manually merged files resolved when they match upstream, ignoring CRLF/LF
   --all                     Apply all planned artifact updates
   --include <paths>         Comma-separated project-relative artifact paths to update

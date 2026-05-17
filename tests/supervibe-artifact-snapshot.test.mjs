@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -6,9 +7,11 @@ import test from "node:test";
 
 import {
   ARTIFACT_SNAPSHOT_CONFIRM,
+  applyArtifactSnapshotRetention,
   buildArtifactSnapshotStatus,
   createArtifactSnapshot,
   restoreArtifactSnapshot,
+  scanArtifactSnapshotRetention,
 } from "../scripts/supervibe-artifact-snapshot.mjs";
 
 test("artifact snapshot captures workflow graph ledgers indexes locks and heartbeat without secrets", async () => {
@@ -83,6 +86,53 @@ test("artifact snapshot restore is explicit and non-default", async () => {
     assert.ok(restored.restored.includes(".supervibe/memory/active-workflow.json"));
     const current = JSON.parse(await readFile(activeWorkflow, "utf8"));
     assert.equal(current.stage, "before");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("artifact snapshot retention keeps latest and removes unreferenced heavy snapshots", async () => {
+  const root = await makeTempRoot("supervibe-artifact-retention-");
+  try {
+    const snapshotRoot = join(root, ".supervibe", "memory", "artifact-snapshots");
+    await writeJson(join(snapshotRoot, "latest-keep", "snapshot.json"), {
+      snapshotId: "latest-keep",
+      createdAt: "2026-05-17T00:00:00.000Z",
+      entries: [],
+    });
+    await writeJson(join(snapshotRoot, "latest.json"), {
+      schemaVersion: 1,
+      snapshotId: "latest-keep",
+      snapshotPath: ".supervibe/memory/artifact-snapshots/latest-keep/snapshot.json",
+      createdAt: "2026-05-17T00:00:00.000Z",
+    });
+    await mkdir(join(snapshotRoot, "old-heavy"), { recursive: true });
+    await writeFile(join(snapshotRoot, "old-heavy", "code.db.snapshot"), "x".repeat(64), "utf8");
+
+    const scan = await scanArtifactSnapshotRetention({
+      rootDir: root,
+      now: "2026-05-18T00:00:00.000Z",
+      maxBytes: 32,
+      keepLast: 1,
+    });
+    assert.equal(scan.summary.snapshots, 2);
+    assert.equal(scan.summary.candidates, 1);
+    assert.equal(scan.candidates[0].snapshotId, "old-heavy");
+    assert.equal(scan.protectedSnapshots[0].snapshotId, "latest-keep");
+
+    const preview = await applyArtifactSnapshotRetention(scan, { rootDir: root, dryRun: true });
+    assert.equal(preview.previewed, 1);
+    assert.equal(existsSync(join(snapshotRoot, "old-heavy")), true);
+
+    const applied = await applyArtifactSnapshotRetention(scan, {
+      rootDir: root,
+      dryRun: false,
+      now: "2026-05-18T00:00:00.000Z",
+    });
+    assert.equal(applied.removed, 1);
+    assert.equal(existsSync(join(snapshotRoot, "old-heavy")), false);
+    assert.equal(existsSync(join(snapshotRoot, "latest-keep")), true);
+    assert.equal(existsSync(join(root, ".supervibe", "memory", "artifact-snapshot-retention-log.jsonl")), true);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

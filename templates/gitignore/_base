@@ -10,17 +10,34 @@ Thumbs.db
 *.swp
 
 # SUPERVIBE:BEGIN managed-gitignore
+.supervibe/
+.codex/
+.cursor/
+.gemini/
+.opencode/
+.worktrees/
+worktrees/
 .supervibe/memory/code.db*
 .supervibe/memory/code-index-checkpoint.json
 .supervibe/memory/code-index.lock
 .supervibe/memory/agent-invocations.jsonl
+.supervibe/memory/effectiveness.jsonl
 .supervibe/memory/workflow-invocation-ledger.jsonl
 .supervibe/memory/workflow-receipt-runtime.key
+.supervibe/memory/workflow-receipts-stale/
+.supervibe/memory/preview-servers.json
+.supervibe/.archive/
+.supervibe/servers/
+.supervibe/tmp/
+.supervibe/confidence-log.jsonl
 .supervibe/memory/genesis/state.json
 .supervibe/memory/genesis/normalized-generated-host-files/
 .supervibe/memory/adapt/state.json
 .supervibe/research-cache/
 *.supervibe.bak
+.claude-plugin/.auto-update.json
+.claude-plugin/.auto-update.lock
+.claude-plugin/.upgrade-check.json
 docker-compose.override.yml
 postgres-data/
 .docker/volumes/

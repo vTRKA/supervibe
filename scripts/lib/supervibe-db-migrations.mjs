@@ -1,7 +1,7 @@
 import { copyFileSync, existsSync, mkdirSync, renameSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-const CODE_DB_SCHEMA_VERSION = 1;
+const CODE_DB_SCHEMA_VERSION = 2;
 
 export function detectCodeDbSchema(db) {
   const tables = new Set(db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map((row) => row.name));
@@ -13,7 +13,9 @@ export function detectCodeDbSchema(db) {
     version,
     tables: [...tables],
     codeFileColumns,
-    needsMigration: version < CODE_DB_SCHEMA_VERSION || (tables.has("code_files") && !codeFileColumns.includes("graph_version")),
+    needsMigration: version < CODE_DB_SCHEMA_VERSION
+      || (tables.has("code_files") && !codeFileColumns.includes("graph_version"))
+      || !tables.has("code_chunk_entities"),
   };
 }
 
@@ -49,9 +51,35 @@ export function applyCodeDbMigrations(db, { dbPath = null } = {}) {
     applied.push("001-add-code-files-graph-version");
   }
 
+  if (!before.tables.includes("code_chunk_entities")) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS code_chunk_entities (
+        chunk_id TEXT NOT NULL,
+        path TEXT NOT NULL,
+        chunk_idx INTEGER NOT NULL,
+        entity_type TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        entity_name TEXT NOT NULL,
+        source_path TEXT NOT NULL,
+        start_line INTEGER NOT NULL,
+        end_line INTEGER NOT NULL,
+        heading TEXT,
+        confidence REAL NOT NULL,
+        derivation_source TEXT NOT NULL,
+        index_fingerprint TEXT NOT NULL,
+        metadata_version INTEGER NOT NULL DEFAULT 1,
+        PRIMARY KEY(chunk_id, entity_type, entity_id, derivation_source)
+      );
+      CREATE INDEX IF NOT EXISTS idx_chunk_entities_path ON code_chunk_entities(path);
+      CREATE INDEX IF NOT EXISTS idx_chunk_entities_type_name ON code_chunk_entities(entity_type, entity_name);
+      CREATE INDEX IF NOT EXISTS idx_chunk_entities_entity_id ON code_chunk_entities(entity_id);
+    `);
+    applied.push("002-add-code-chunk-entities");
+  }
+
   db.exec(`PRAGMA user_version = ${CODE_DB_SCHEMA_VERSION};`);
   db.prepare("INSERT OR IGNORE INTO supervibe_schema_migrations (version, id, applied_at) VALUES (?, ?, datetime('now'))")
-    .run(CODE_DB_SCHEMA_VERSION, "code-db-schema-v1");
+    .run(CODE_DB_SCHEMA_VERSION, "code-db-schema-v2");
 
   const after = detectCodeDbSchema(db);
   const rowCountsAfter = collectRowCounts(db);
@@ -106,7 +134,7 @@ function backupCodeDb(dbPath) {
 function collectRowCounts(db) {
   const counts = {};
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map((row) => row.name);
-  for (const table of ["code_files", "code_chunks", "code_symbols", "code_edges"]) {
+  for (const table of ["code_files", "code_chunks", "code_chunk_entities", "code_symbols", "code_edges"]) {
     if (!tables.includes(table)) {
       counts[table] = 0;
       continue;

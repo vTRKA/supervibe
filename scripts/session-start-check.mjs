@@ -35,6 +35,10 @@ export const SESSION_START_CONTEXT_POLICY = Object.freeze({
     allowedScope: ".supervibe runtime state",
     requireRuntimeApi: true,
     sessionStartStalePrune: true,
+    sessionStartAutoGc: true,
+    autoGcBackgroundOnly: true,
+    autoGcAutoSafeOnly: true,
+    autoGcDisableEnv: "SUPERVIBE_AUTO_GC",
     staleOnly: true,
     liveProcessStops: false,
   }),
@@ -423,6 +427,26 @@ export async function main({ env = process.env } = {}) {
     }
   }
   await reportInstallerHealth();
+
+  async function queueAutoGcMaintenance() {
+    try {
+      const { spawnDetachedAutoGcMaintenance } = await import("./lib/supervibe-auto-gc-maintenance.mjs");
+      const result = await spawnDetachedAutoGcMaintenance({
+        rootDir: PROJECT_ROOT,
+        pluginRoot: resolveExplicitSupervibePluginRoot({ env }) || PROJECT_ROOT,
+        env,
+      });
+      if (result.status === "queued") {
+        const artifacts = result.artifacts?.autoSafeCandidates || 0;
+        const memory = result.memory?.autoSafeCandidates || 0;
+        const snapshots = result.snapshots?.candidates || 0;
+        console.log("[supervibe] auto-gc queued in background (artifacts=" + artifacts + ", memory=" + memory + ", snapshots=" + snapshots + ")");
+      }
+    } catch {
+      // Non-fatal auto-GC diagnostic.
+    }
+  }
+  await queueAutoGcMaintenance();
 
   // Phase D: code index health (last so user sees stale-artifact warnings first)
   await reportCodeIndexHealth();

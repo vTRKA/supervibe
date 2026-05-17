@@ -98,7 +98,7 @@ function usage() {
     "  Inline requests are normalized to real-agents for durable command plans; controller-authored inline drafts never satisfy specialist output.",
     "  /supervibe-genesis may use --bootstrap-pre-agent to install only base scaffold/state before project agents exist.",
     "  /supervibe-genesis --dry-run/--apply/--generate-apps are bootstrap-pre-agent phases; --verify-agents is the separate runtime smoke gate.",
-    "  /supervibe-adapt --dry-run is agentless/read-only planning; --apply needs approval and --verify-agents is the separate runtime receipt gate.",
+    "  /supervibe-adapt --dry-run is agentless/read-only planning; --apply needs approval and optional --verify-agents is a separate runtime smoke diagnostic.",
   ].join("\n");
 }
 

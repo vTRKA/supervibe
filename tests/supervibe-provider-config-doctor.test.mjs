@@ -81,7 +81,7 @@ test("Codex provider config template includes documented goals and excludes unsa
   const template = extractSchemaBackedTemplate(doc);
 
   assert.match(template, /\[features\][\s\S]*multi_agent = true/);
-  assert.match(template, /approval_policy = "never"/);
+  assert.match(template, /approval_policy = "on-request"/);
   assert.match(template, /web_search = "live"/);
   assert.match(template, /\[features\][\s\S]*apps = true/);
   assert.match(template, /\[features\][\s\S]*memories = true/);
@@ -402,7 +402,7 @@ test("provider power presets cover hidden capabilities with sourced risk labels"
   assert.equal(codex.providerLimits.defaultMaxThreads, 8);
   assert.ok(codex.powerPresets.some((preset) => /\[agents\]\.max_threads=8/.test(preset.preview || "")));
   assert.ok(codex.powerPresets.some((preset) => preset.setting === "web_search" && /web_search="live"/.test(preset.preview || "")));
-  assert.ok(codex.powerPresets.some((preset) => /approval_policy/.test(preset.setting || "") && /approval_policy="never"/.test(preset.preview || "")));
+  assert.ok(codex.powerPresets.some((preset) => /approval_policy/.test(preset.setting || "") && /approval_policy="on-request"/.test(preset.preview || "")));
   assert.ok(codex.powerPresets.some((preset) => /features\.apps/.test(preset.setting || "") && /tool_suggest\.discoverables/.test(preset.setting || "")));
   assert.ok(codex.powerPresets.some((preset) => preset.setting === "features.goals" && preset.tier === "experimental" && preset.schemaStatus === "documented-experimental"));
   assert.match(doc, /spawn_agents_on_csv/);
@@ -433,14 +433,14 @@ test("provider config doctor labels power recommendations with tier and source",
       "threads at " + "6",
     ].join("|"));
     const stalePromptDefaultPattern = new RegExp([
-      "approval_policy" + "=on-request",
-      "approval_policy" + " = \"on-request\"",
+      "approval_policy" + "=never",
+      "approval_policy" + " = \"never\"",
       "web_search" + "=cached",
       "web_search" + " = \"cached\"",
     ].join("|"));
     assert.match(output, /create-project-config-preview/);
     assert.match(output, /\[agents\]\.max_threads=8/);
-    assert.match(output, /approval_policy=never/);
+    assert.match(output, /approval_policy=on-request/);
     assert.match(output, /sandbox_mode=workspace-write/);
     assert.match(output, /default_permissions=:workspace/);
     assert.match(output, /web_search=live/);

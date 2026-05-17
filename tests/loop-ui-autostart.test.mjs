@@ -30,16 +30,15 @@ node --test tests/loop-ui-autostart.test.mjs
 \`\`\`
 `;
 
-test("atomization asks for loop UI sidecar when no auto-ui choice is supplied", async () => {
+test("fast-session atomization skips loop UI prompt unless auto-ui is requested", async () => {
   const temp = await mkdtemp(join(tmpdir(), "loop-ui-ask-"));
   try {
     const stdout = await runAtomize(temp, []);
 
     assert.match(stdout, /SUPERVIBE_WORK_ITEMS/);
-    assert.match(stdout, /SUPERVIBE_AUTO_UI/);
-    assert.match(stdout, /STATUS: action-required/);
-    assert.match(stdout, /NEXT_QUESTION: Start the loop UI sidecar now/);
-    assert.match(stdout, /COMMAND: npm run supervibe:ui -- --daemon --port 3057 --file/);
+    assert.match(stdout, /EVIDENCE_MODE: fast-session/);
+    assert.match(stdout, /AUTO_UI: skipped-fast-session/);
+    assert.doesNotMatch(stdout, /SUPERVIBE_AUTO_UI/);
   } finally {
     await rm(temp, { recursive: true, force: true });
   }

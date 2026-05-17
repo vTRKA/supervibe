@@ -152,7 +152,7 @@
           "setting": "approval_policy + sandbox_mode + default_permissions + mcp scopes/timeouts",
           "tier": "safe-default",
           "previewOnly": true,
-          "preview": "approval_policy=\"never\"; sandbox_mode=\"workspace-write\"; default_permissions=\":workspace\"; mcp timeouts",
+          "preview": "approval_policy=\"on-request\"; sandbox_mode=\"workspace-write\"; default_permissions=\":workspace\"; mcp timeouts",
           "sourceUrl": "https://developers.openai.com/codex/config-reference",
           "checkedAt": "2026-05-13"
         },
@@ -221,6 +221,7 @@
         "configFile": "config.toml",
         "format": "toml",
         "mergeStrategy": "add-missing-only",
+        "defaultApprovalPolicy": "on-request",
         "writable": true
       }
     },

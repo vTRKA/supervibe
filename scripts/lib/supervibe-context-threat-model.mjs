@@ -21,6 +21,7 @@ const APPROVAL_PATTERNS = [
   /network|https?:\/\//i,
   /screenshot|browser window|private window/i,
   /secret|token|api[_-]?key|private key|id_rsa/i,
+  /skip approval|without .*receipt|fake.*receipt|reviewer approved/i,
   /\.\.\//,
 ];
 

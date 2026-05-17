@@ -20,6 +20,7 @@ import {
   graphIdentity,
   isTrustedGraphCompletionReceiptForGraph,
   isTrustedTaskCompletionReceiptForGraph,
+  isReceiptSuppressedForCompletion,
   trustedReceiptScopeFromReceipt,
 } from "./lib/supervibe-receipt-completion-trust.mjs";
 
@@ -91,7 +92,12 @@ export async function validateEpicCompletionFiles({
         message: "Active epic is allowed to remain open during final release pre-close because a trusted graph-level completion receipt exists.",
       });
     }
-    results.push({ file, report });
+    results.push({
+      file,
+      report,
+      trustedReceiptIds: scopedTrustedReceiptIds,
+      trustedGraphReceiptIds,
+    });
   }
   return {
     pass: results.every((result) => result.report.pass),
@@ -216,7 +222,7 @@ function trustedGraphReceiptIdsForGraphValidation(rootDir, graph = {}, { graphPa
   const trusted = [];
   for (const receipt of readWorkflowReceipts(rootDir)) {
     if (!receipt?.receiptId) continue;
-    if (receipt.recovery) continue;
+    if (isReceiptSuppressedForCompletion(receipt)) continue;
     if (explicit.size > 0 && !explicit.has(String(receipt.receiptId))) continue;
     if (!isTrustedGraphCompletionReceiptForGraph(receipt, graph, { rootDir, graphPath })) continue;
     const trust = validateWorkflowReceiptTrust(rootDir, receipt, { requireHostInvocationProof: true });
@@ -230,7 +236,7 @@ function trustedReceiptScopesForValidation(rootDir, graph = {}, { explicitReceip
   const trusted = {};
   for (const receipt of readWorkflowReceipts(rootDir)) {
     if (!receipt?.receiptId) continue;
-    if (receipt.recovery) continue;
+    if (isReceiptSuppressedForCompletion(receipt)) continue;
     if (explicit.size > 0 && !explicit.has(String(receipt.receiptId))) continue;
     if (!isTrustedTaskCompletionReceiptForGraph(receipt, graph)) continue;
     const trust = validateWorkflowReceiptTrust(rootDir, receipt, { requireHostInvocationProof: true });

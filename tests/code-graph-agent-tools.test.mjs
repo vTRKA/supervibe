@@ -82,6 +82,66 @@ export const IdeasPage = () => {
   }
 });
 
+test("search-code keeps semantic auto-repair bounded before stale-file refresh", async () => {
+  const root = await makeFixture();
+  const cli = join(process.cwd(), "scripts", "search-code.mjs");
+  const target = join(root, "src", "IdeasPage.tsx");
+  try {
+    await writeFile(target, `
+import { useUserVPNConfigQuery } from './hooks/vpn';
+
+export const IdeasPage = () => {
+  const config = useUserVPNConfigQuery();
+  const boundedSemanticSentinel = 'bounded-semantic-before-agent-query';
+  return config.enabled ? boundedSemanticSentinel : null;
+};
+`);
+    const future = new Date(Date.now() + 5000);
+    await utimes(target, future, future);
+
+    const result = await execFileAsync(
+      process.execPath,
+      [cli, "--query", "bounded-semantic-before-agent-query"],
+      {
+        cwd: root,
+        env: {
+          ...process.env,
+          SUPERVIBE_INDEX_AUTOREPAIR: "1",
+          SUPERVIBE_SEARCH_AUTO_REPAIR_MAX_FILES: "1",
+        },
+      },
+    );
+
+    assert.match(result.stdout, /INDEX_PREFLIGHT_WARNING/);
+    assert.match(result.stdout, /src\/IdeasPage\.tsx/);
+
+    const jsonResult = await execFileAsync(
+      process.execPath,
+      [cli, "--query", "bounded-semantic-before-agent-query", "--json"],
+      {
+        cwd: root,
+        env: {
+          ...process.env,
+          SUPERVIBE_INDEX_AUTOREPAIR: "1",
+          SUPERVIBE_SEARCH_AUTO_REPAIR_MAX_FILES: "1",
+        },
+      },
+    );
+    const payload = JSON.parse(jsonResult.stdout);
+    assert.match(payload.indexPreflight.repair.skippedReason, /exceeds-auto-repair-limit-1/);
+
+    const refreshed = new CodeStore(root, { useEmbeddings: false });
+    await refreshed.init();
+    try {
+      const row = refreshed.db.prepare("SELECT COUNT(*) AS n FROM code_chunks WHERE embedding IS NOT NULL").get();
+      assert.equal(Number(row?.n || 0), 0);
+    } finally {
+      refreshed.close();
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
 test("search-code exposes context, impact, files, and symbol-search modes for agents", async () => {
   const root = await makeFixture();
   const cli = join(process.cwd(), "scripts", "search-code.mjs");

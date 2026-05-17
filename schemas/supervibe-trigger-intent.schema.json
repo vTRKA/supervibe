@@ -46,6 +46,7 @@
         "plan_review",
         "atomize_plan",
         "create_epic",
+        "task_graph_create_from_plan",
         "task_graph_resume",
         "autonomous_epic_run",
         "worktree_autonomous_run",

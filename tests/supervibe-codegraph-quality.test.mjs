@@ -27,6 +27,9 @@ test("unresolved edge diagnostics classify limitations and top affected files", 
   ]);
 
   assert.equal(classifyUnresolvedEdge({ toName: "sharedName", candidateCount: 2 }), "ambiguous-local-symbol");
+  assert.equal(classifyUnresolvedEdge({ toName: "String", candidateCount: 0 }), "language-builtin-or-runtime-api");
+  assert.equal(classifyUnresolvedEdge({ toName: "readFileSync", candidateCount: 0 }), "language-builtin-or-runtime-api");
+  assert.equal(classifyUnresolvedEdge({ toName: "run", candidateCount: 0 }), "missing-symbol");
   assert.equal(diagnostics.total, 25);
   assert.deepEqual(diagnostics.classBreakdown.map((item) => item.name), [
     "ambiguous-local-symbol",
@@ -63,6 +66,15 @@ test("codegraph readiness uses stale freshness and actionable hotspots, not raw 
   assert.equal(ui.actionableHotspots.length, 1);
   assert.match(formatCodeGraphReadinessUi(ui), /STALE: true/);
   assert.match(formatCodeGraphReadinessUi(ui), /scripts\/hot\.mjs/);
+
+  const runtimeOnly = buildCodeGraphReadinessUi({
+    indexGate: { ready: true, failedGates: [], warnings: [] },
+    unresolvedDiagnostics: {
+      topAffectedFiles: [{ path: "scripts/runtime-api.mjs", count: 22, classes: "language-builtin-or-runtime-api:22" }],
+    },
+    graphStats: { edgeResolutionRate: 0.2 },
+  });
+  assert.equal(runtimeOnly.actionableHotspots.length, 0);
 });
 
 test("query-centered CodeGraph map selects relevant neighborhood over arbitrary top symbols", () => {

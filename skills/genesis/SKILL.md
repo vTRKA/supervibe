@@ -31,7 +31,7 @@ WHEN target project has no host-specific Supervibe scaffold OR no managed routin
 
 ## Shared Dialogue Contract
 
-Lifecycle: `detected -> profile-review -> dry-run -> approved -> applied -> artifact/app/deploy verification`. Persist state in `.supervibe/memory/genesis/state.json` before every lifecycle transition. State must use layered fields: `artifactVerified`, `agentReceiptsVerified`, `appVerified`, and `deployVerified`.
+Lifecycle: `detected -> profile-review -> dry-run -> approved -> applied -> artifact/app/deploy verification`. Persist state in `.supervibe/memory/genesis/state.json` before every lifecycle transition. State must use layered fields: `artifactVerified`, `agentRuntimeVerified`, `appVerified`, and `deployVerified`.
 
 Every interactive step asks one question at a time using `Step N/M` or `Step N/M`. Each question lists the recommended/default option first, gives a one-line tradeoff summary for every option, allows a free-form answer, and names the stop condition.
 
@@ -65,7 +65,7 @@ actions above and must not fall back to generic apply/revise wording.
 
 ## Expert Operating Standard
 
-Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
+Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime evidence for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
 
 ## Step 0 — Read source of truth (required)
 
@@ -142,7 +142,7 @@ Match exact pack?
 13a. If full CodeGraph bootstrap is too slow or blocked, use the bounded source-readiness fallback: `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress`. Treat a graph warning as separate from source RAG readiness when `SUPERVIBE_CODE_INDEX_FRESHNESS` is ready, and record graph repair as follow-up instead of blocking scaffold success.
 13b. Keep app builds separate from genesis success. Only run `npm run build` or equivalent when the user explicitly asks or the stack-pack marks it as a required post-genesis check. If it fails in existing project code, report `Project verification failed after genesis` with command, exit code, and repo-relative error paths only; do not include absolute local paths, project names, or call it unrelated without a captured pre-genesis baseline.
 13c. For Next.js app generation, use `create-next-app --disable-git` whenever the target is already a Supervibe root or workspace. Record `bundler=turbopack` for `next-app`. After any approved framework scaffolder succeeds from an empty placeholder, remove nested app `.git`, archive generated app-local host files under `.supervibe/memory/genesis/`, and update genesis state with `appGenerated=true`. Set `appVerified=true` only after explicit app lint/build verification passes.
-13d. Keep `agentReceiptsVerified` and the agent smoke test as a separate `--verify-agents` gate. Bootstrap dry-run/apply/generate-apps may succeed without claiming real-agent runtime completion.
+13d. Keep optional host-agent smoke diagnostics separate from Genesis bootstrap. Bootstrap dry-run/apply/generate-apps may succeed without claiming real-agent runtime completion.
 14. If <9 → list gaps, ask user to confirm or remediate
 
 ## When not to use
@@ -154,12 +154,12 @@ Match exact pack?
 ## Common rationalizations
 
 - "This is small, so no source check is needed" - reject when the skill changes code, config, or durable artifacts.
-- "The user asked for speed, so skip receipts" - reject when durable work, delegation, or review is claimed.
+- "The user asked for speed, so skip evidence" - reject when durable work, delegation, or review is claimed.
 - "Existing prose is enough evidence" - reject when validators or command output are required.
 
 ## Red flags
 
-- A durable artifact changes without a command, receipt, or verification path.
+- A durable artifact changes without a command, approval, or verification path.
 - The skill is used outside its phase without an explicit handoff.
 - Claims of completion appear before evidence and confidence scoring.
 

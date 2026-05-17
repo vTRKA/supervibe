@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { access, copyFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
-import { join, relative, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   forkAutonomousLoopCheckpoint,
@@ -18,7 +19,13 @@ import { exportGraph, loadStateForGraphExport } from "./lib/autonomous-loop-grap
 import { formatDoctorReport, primeLoopRun, repairLoopRun } from "./lib/autonomous-loop-doctor.mjs";
 import { archiveLoopRun, exportLoopBundle, importLoopBundle } from "./lib/autonomous-loop-archive.mjs";
 import { archiveWorkItemGraph, classifyWorkItemGraphForGc } from "./lib/supervibe-work-item-gc.mjs";
-import { atomizePlanFile, createWorkItemPreview, writeWorkItemGraph } from "./lib/supervibe-plan-to-work-items.mjs";
+import {
+  WORKFLOW_EVIDENCE_MODES,
+  atomizePlanFile,
+  createWorkflowReceiptPolicy,
+  createWorkItemPreview,
+  writeWorkItemGraph,
+} from "./lib/supervibe-plan-to-work-items.mjs";
 import { createCliTaskTrackerAdapter, createMemoryTaskTrackerAdapter, createUnavailableTaskTrackerAdapter } from "./lib/supervibe-durable-task-tracker-adapter.mjs";
 import { createTaskTrackerMcpAdapter } from "./lib/supervibe-task-tracker-mcp-bridge.mjs";
 import { formatTaskTrackerDoctorReport, repairTaskTracker } from "./lib/supervibe-task-tracker-doctor.mjs";
@@ -54,6 +61,7 @@ import {
   graphIdentity as trustedGraphIdentity,
   isTrustedGraphCompletionReceiptForGraph,
   isTrustedTaskCompletionReceiptForGraph,
+  isReceiptSuppressedForCompletion,
   trustedReceiptScopeFromReceipt,
 } from "./lib/supervibe-receipt-completion-trust.mjs";
 import { buildLoopCompletionDecision } from "./lib/supervibe-release-path.mjs";
@@ -63,6 +71,7 @@ import {
   readWorkflowReceipts,
   validateWorkflowReceiptTrust,
 } from "./lib/supervibe-workflow-receipt-runtime.mjs";
+import { createEpicAgentContract, createGraphProducerProof } from "./lib/supervibe-epic-agent-contract.mjs";
 import {
   buildEvidencePacket,
   formatEvidencePacketSummary,
@@ -98,6 +107,12 @@ import { readProviderRuntimeConfigLimits } from "./lib/supervibe-provider-runtim
 import { startBackgroundNodeScript } from "./lib/supervibe-process-manager.mjs";
 import { selectHostAdapter } from "./lib/supervibe-host-detector.mjs";
 import { validatePlanReviewGateForPlan } from "./validate-plan-review-artifacts.mjs";
+import { parseLoopCliArgs, resolveWorkflowEvidenceModeFromArgs } from "./lib/supervibe-loop-cli-args.mjs";
+import {
+  formatMcpAgentHandoffForMessage,
+  loadMcpAgentHandoffForDispatch,
+  writeFastSessionDispatchWaveReceipt,
+} from "./lib/supervibe-dispatch-wave-session.mjs";
 
 const PLUGIN_ROOT = resolve(fileURLToPath(new URL("../", import.meta.url)));
 import {
@@ -161,143 +176,6 @@ const SEMANTIC_EPIC_BUCKETS = Object.freeze([
     keywords: ["test", "tests", "verification", "smoke", "golden", "fixture", "validate", "npm run", "node --test"],
   },
 ]);
-
-function parseArgs(argv) {
-  const args = { _: [] };
-  const booleanArgs = new Set([
-    "dry-run",
-    "guided",
-    "manual",
-    "fresh-context",
-    "status",
-    "epic-status",
-    "details",
-    "release-details",
-    "final-details",
-    "verify-details",
-    "readiness",
-    "ready-list",
-    "json",
-    "commit-per-task",
-    "graph",
-    "doctor",
-    "prime",
-    "archive",
-    "export",
-    "import",
-    "fix",
-    "help",
-    "atomize",
-    "create-epic",
-    "plan-review-passed",
-    "user-approved-plan",
-    "approved-plan",
-    "approved",
-    "reviewed",
-    "worktree",
-    "worktree-status",
-    "watch",
-    "quickstart",
-    "onboard",
-    "priority",
-    "inbox",
-    "tracker-sync-push",
-    "tracker-sync-pull",
-    "tracker-doctor",
-    "tracker-prime",
-    "interactive",
-    "preview",
-    "write-preview",
-    "write-source-plan",
-    "write-backup",
-    "backup",
-    "discover",
-    "yes",
-    "force",
-    "create-work-item",
-    "claim-ready",
-    "dispatch-wave",
-    "resume-dispatch",
-    "status-only-fallback",
-    "eval",
-    "eval-live",
-    "approval-receipts",
-    "policy-doctor",
-    "fix-derived",
-    "approve-mcp-tracker",
-    "anchors",
-    "anchor-doctor",
-    "summarize-changes",
-    "speculative",
-    "assign-ready",
-    "explain",
-    "setup-worker-presets",
-    "allow-session-conflict",
-    "happy-path",
-    "checkpoint-status",
-    "repair-checkpoints",
-    "provider-matrix",
-    "require-user-acceptance",
-    "accept-goals",
-    "reject-goals",
-    "fork-checkpoint",
-    "allow-spawn",
-    "permission-prompt-bridge",
-    "network-approved",
-    "mcp-approved",
-    "allow-flat-plan",
-    "no-tracker-sync",
-    "validate-completion",
-    "completion-status",
-    "close-eligible",
-    "adopt-completed",
-    "reconcile-receipts",
-    "allow-unbound-receipts",
-    "require-release-full-check",
-    "allow-missing-release-full-check",
-    "allow-dry-run-evidence",
-    "require-trusted-evidence",
-    "disallow-legacy-evidence",
-    "allow-legacy-evidence",
-    "allow-open-epic",
-    "no-evidence-required",
-    "stall-check",
-    "non-production",
-    "indefinite",
-    "auto-ui",
-    "auto-ui-dry-run",
-    "no-auto-ui",
-    "allow-unverified-plan-review",
-    "pre-loop-summary",
-    "final-review-sweep",
-    "final-review-status",
-    "write-final-review-sweep",
-    "allow-untrusted-final-review",
-    "apply",
-  ]);
-  for (let i = 0; i < argv.length; i += 1) {
-    const arg = argv[i];
-    if (!arg.startsWith("--")) {
-      args._.push(arg);
-      continue;
-    }
-    const key = arg.slice(2);
-    if (key === "from-plan") {
-      if (argv[i + 1] && !argv[i + 1].startsWith("--")) {
-        args[key] = argv[i + 1];
-        i += 1;
-      } else {
-        args[key] = true;
-      }
-    } else if (booleanArgs.has(key)) {
-      args[key] = true;
-    } else {
-      args[key] = argv[i + 1];
-      i += 1;
-    }
-  }
-  return args;
-}
 
 function isTenOfTenWaveRequest({ tasks = [], source = {}, planPath = "" } = {}) {
   const text = [
@@ -603,6 +481,9 @@ function buildReadyAssignmentDispatches(tasks = [], {
       "You are not alone in the codebase; do not revert edits made by others and keep to your assigned write set.",
       `Owned write set: ${writeSet.join(", ")}`,
       "Do not run tests or validators during development for plan/graph/task work; they are release-gate only.",
+      `Workflow evidence mode: ${args.workflowEvidenceMode || "fast-session"}; fast-session receipts coordinate active work only, release-proof receipts are required at final gate.`,
+      `Evidence packet: sources=${evidencePacket.sourceCount || 0}; omitted=${evidencePacket.omittedEvidenceReason || "none"}; agents must use memory/RAG/CodeGraph citations when present.`,
+      formatMcpAgentHandoffForMessage(args.mcpAgentHandoff),
       `Non-test/non-validator evidence allowed now: ${verificationPolicy.targetedCommands.join(" && ") || "none; collect implementation evidence and defer test/validator execution"}.`,
       `Deferred test/validator/full verification: ${verificationPolicy.deferredFullCommands.join(" && ") || "none"}.`,
       "Final response must list changed file paths, non-test/non-validator evidence, deferred tests/validators, and any blockers.",
@@ -617,6 +498,9 @@ function buildReadyAssignmentDispatches(tasks = [], {
       verificationPolicy,
       verificationCommands: verificationPolicy.targetedCommands,
       deferredFullVerificationCommands: verificationPolicy.deferredFullCommands,
+      workflowEvidenceMode: args.workflowEvidenceMode || "fast-session",
+      receiptPolicy: args.receiptPolicy || null,
+      mcpAgentHandoff: args.mcpAgentHandoff || null,
     };
     return {
       ...dispatch,
@@ -639,6 +523,9 @@ function buildReadyAssignmentDispatches(tasks = [], {
         verificationPolicy,
         verificationCommands: verificationPolicy.targetedCommands,
         deferredFullVerificationCommands: verificationPolicy.deferredFullCommands,
+        workflowEvidenceMode: args.workflowEvidenceMode || "fast-session",
+        receiptPolicy: args.receiptPolicy || null,
+        mcpAgentHandoff: args.mcpAgentHandoff || null,
       },
       codexSpawnKnowledgeContext,
       codexSpawnMetadata: {
@@ -915,7 +802,7 @@ function allowUnverifiedPlanReview(args) {
 }
 
 async function main() {
-  const args = parseArgs(process.argv.slice(2));
+  const args = parseLoopCliArgs(process.argv.slice(2));
   const rootDir = process.cwd();
   let precomputedCompletionGraph = null;
   let precomputedCompletionGraphPath = null;
@@ -926,6 +813,18 @@ async function main() {
     return;
   }
 
+  if (args["upgrade-release-proof"]) {
+    const result = await upgradeWorkGraphToReleaseProof({ rootDir, args });
+    console.log("SUPERVIBE_RELEASE_PROOF_UPGRADE");
+    console.log(`GRAPH: ${result.graphPath}`);
+    console.log(`DRY_RUN: ${result.dryRun}`);
+    console.log(`EVIDENCE_MODE: ${result.workflowEvidenceMode}`);
+    console.log(`RECEIPTS_NOW: ${result.startupReceiptsRequired ? "required" : "not-required"}`);
+    console.log(`SOURCE_PLAN: ${result.sourcePlanPath || "skipped"}`);
+    console.log(`PREVIEW: ${result.previewPath || "skipped"}`);
+    console.log(`NEXT_ACTION: ${result.nextAction}`);
+    return;
+  }
   if (args["checkpoint-status"] || args["repair-checkpoints"]) {
     const report = await checkpointDiagnostics({ rootDir });
     console.log(formatCheckpointDiagnostics(report));
@@ -1153,15 +1052,16 @@ async function main() {
         console.log("SUPERVIBE_RESUME_DISPATCH");
         console.log("STATUS: no-active-work-graph");
         console.log("ASSIGNED: none");
-        console.log("NEXT_ACTION: create or atomize a reviewed work-item graph before dispatching the next ready task");
+        console.log("NEXT_ACTION: run /supervibe-loop --from-plan <plan-path> --start --fast-session, or atomize a reviewed work-item graph before dispatching the next ready task");
         return;
       }
       throw new Error("dispatch-wave requires --file <graph.json> or an active work graph");
     }
-    const graph = JSON.parse(await readFile(graphPath, "utf8"));
+    const graph = JSON.parse(String(await readFile(graphPath, "utf8")).replace(/^\uFEFF/, ""));
     const schedulerPolicy = resolveSchedulerPolicy({ args, rootDir, activeGraph: graph });
+    const mcpAgentHandoff = await loadMcpAgentHandoffForDispatch(args);
     const dispatches = buildReadyAssignmentDispatches(tasksReadyForAssignment(graph), {
-      args,
+      args: { ...args, workflowEvidenceMode: graph.metadata?.workflowEvidenceMode, receiptPolicy: graph.metadata?.receiptPolicy, mcpAgentHandoff },
       rootDir,
       maxConcurrency: schedulerPolicy.effectiveMaxConcurrency,
       commandId: "supervibe-loop-dispatch-wave",
@@ -1174,6 +1074,7 @@ async function main() {
     });
     const assigned = fanoutCheckedDispatches.filter((dispatch) => dispatch.status === "assigned");
     const claimResults = [];
+    let fastSessionReceipt = null;
     if (args.apply && !args["dry-run"] && !args.preview) {
       if (assigned.length > 0) {
         const waveId = args["wave-id"] || `wave-${Date.now()}`;
@@ -1199,6 +1100,16 @@ async function main() {
           action: result.action,
           waveId,
         })));
+        fastSessionReceipt = await writeFastSessionDispatchWaveReceipt({
+          rootDir,
+          graphPath,
+          graph,
+          waveId,
+          assigned,
+          claimResults,
+          args,
+          sourceCommand: "supervibe-loop-dispatch-wave",
+        });
       }
     }
     const report = {
@@ -1206,6 +1117,8 @@ async function main() {
       command: "supervibe-loop-dispatch-wave",
       graphPath,
       applied: Boolean(args.apply && !args["dry-run"] && !args.preview),
+      fastSessionReceipt,
+      receiptPolicy: graph.metadata?.receiptPolicy || null,
       schedulerPolicy,
       minimumParallelAgents,
       parallelDispatchRequired: minimumParallelAgents > 1,
@@ -1224,6 +1137,8 @@ async function main() {
       console.log(`APPLIED: ${report.applied}`);
       console.log(formatSchedulerPolicy(schedulerPolicy));
       console.log(`ASSIGNED: ${report.assignedTaskIds.join(", ") || "none"}`);
+      console.log(`FAST_SESSION_RECEIPT: ${fastSessionReceipt?.relativePath || fastSessionReceipt?.path || "skipped"}`);
+      if (fastSessionReceipt) console.log("FAST_SESSION_RECEIPT_TRUST: diagnostic-only-until-release-proof");
       console.log(formatSubsystemGroupingSummary(report.subsystemGroups));
       for (const dispatch of fanoutCheckedDispatches) {
         if (dispatch.assignmentBlocked) console.log(`${dispatch.taskId}: ${dispatch.status} -> ${dispatch.blockedReason}`);
@@ -1803,7 +1718,7 @@ async function main() {
         console.log("SUPERVIBE_EPIC_STATUS");
         console.log(`EPIC: ${args.epic}`);
         console.log("STATUS: missing graph");
-        console.log(`NEXT_ACTION: run /supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --user-approved-plan`);
+        console.log(`NEXT_ACTION: run /supervibe-loop --from-plan .supervibe/artifacts/plans/example.md --start --fast-session`);
         return;
       }
     }
@@ -2053,6 +1968,8 @@ async function main() {
     const dryRunAtomization = Boolean(args["dry-run"] || args.preview);
     const planReviewPassed = Boolean(args["plan-review-passed"]);
     const userApprovedPlan = Boolean(args["user-approved-plan"] || args["approved-plan"] || args.approved || args.yes);
+    const workflowEvidenceMode = resolveWorkflowEvidenceModeFromArgs(args, { planReviewPassed });
+    const releaseProofMode = workflowEvidenceMode === WORKFLOW_EVIDENCE_MODES.RELEASE_PROOF;
     const reviewed = Boolean(planReviewPassed || dryRunAtomization || userApprovedPlan);
     if (!reviewed) {
       throw new Error("Atomization writes require --plan-review-passed or --user-approved-plan. Use --dry-run for a preview before graph creation.");
@@ -2074,8 +1991,14 @@ async function main() {
       dryRun: dryRunAtomization,
       planReviewPassed,
       planReviewDeferred: Boolean(userApprovedPlan && !planReviewPassed),
-      writePreview: Boolean(args["write-preview"]),
-      writeSourcePlan: Boolean(args["write-source-plan"]),
+      workflowEvidenceMode,
+      releaseProof: releaseProofMode,
+      fastSession: workflowEvidenceMode === WORKFLOW_EVIDENCE_MODES.FAST_SESSION,
+      writePreview: Boolean(args["write-preview"] || releaseProofMode),
+      writeSourcePlan: Boolean(args["write-source-plan"] || releaseProofMode),
+      hostInvocationSource: args["host-invocation-source"] || null,
+      hostInvocationId: runtimeInvocationIdFromArgs(args) || null,
+      hostInvocationEvidence: args["host-invocation-evidence"] || null,
     });
     applySemanticEpicGroupingToGraph(graph, {
       maxTasksPerEpic: args["semantic-epic-max-tasks"] || DEFAULT_SEMANTIC_EPIC_MAX_TASKS,
@@ -2086,19 +2009,26 @@ async function main() {
     }
     if (args["dry-run"] || args.preview) {
       console.log(createWorkItemPreview(graph, graph.validation));
+      console.log(`EVIDENCE_MODE: ${graph.metadata?.workflowEvidenceMode || workflowEvidenceMode}`);
+      console.log(`RECEIPTS_NOW: ${graph.metadata?.receiptPolicy?.startupReceiptsRequired ? "required" : "not-required"}`);
+      console.log(`RELEASE_PROOF_REQUIRED_AT: ${graph.metadata?.receiptPolicy?.releaseProofRequiredAt || "release-handoff"}`);
+      if (args.start) printFastStartReadyQueueSummary({ graph, graphPath: "<graph.json>" });
       if (args.preview) console.log("PREVIEW: true");
       console.log("DRY_RUN: true");
       return;
     }
-    const writeResult = await writeWorkItemGraph(graph, { rootDir, outDir: args.out, writePreview: Boolean(args["write-preview"]), writeSourcePlan: Boolean(args["write-source-plan"]) });
+    const writePreview = Boolean(args["write-preview"] || releaseProofMode);
+    const writeSourcePlan = Boolean(args["write-source-plan"] || releaseProofMode);
+    const writeResult = await writeWorkItemGraph(graph, { rootDir, outDir: args.out, writePreview, writeSourcePlan });
     const mappingPath = args["mapping-file"] ? resolve(rootDir, args["mapping-file"]) : defaultTrackerMappingPath(rootDir);
-    const trackerAdapter = args["no-tracker-sync"]
-      ? null
-      : args.tracker
+    const shouldSyncTracker = !args["no-tracker-sync"] && (Boolean(args.tracker) || releaseProofMode);
+    const trackerAdapter = shouldSyncTracker
+      ? args.tracker
         ? createTaskTrackerAdapterFromArgs(args, {
           fallbackReason: "no external tracker selected; using native graph only",
         })
-        : createMemoryTaskTrackerAdapter();
+        : createMemoryTaskTrackerAdapter()
+      : null;
     const trackerResult = trackerAdapter
       ? await materializeEpicAndTasks(graph, trackerAdapter, { rootDir, mappingPath })
       : null;
@@ -2109,13 +2039,24 @@ async function main() {
     console.log(`SOURCE_PLAN: ${writeResult.sourcePlanPath || "skipped"}`);
     console.log(`VALID: ${graph.validation.valid}`);
     console.log(`PLAN_REVIEW_STATUS: ${graph.metadata?.planReviewPassed ? "passed" : graph.metadata?.planReviewDeferred ? "deferred-to-final-gate" : "not-provided"}`);
+    console.log(`EVIDENCE_MODE: ${graph.metadata?.workflowEvidenceMode || workflowEvidenceMode}`);
+    console.log(`RECEIPTS_NOW: ${graph.metadata?.receiptPolicy?.startupReceiptsRequired ? "required" : "not-required"}`);
+    console.log(`RELEASE_PROOF_REQUIRED_AT: ${graph.metadata?.receiptPolicy?.releaseProofRequiredAt || "release-handoff"}`);
+    printFastStartReadyQueueSummary({ graph, graphPath: writeResult.graphPath });
+    if (args.dispatch) await printFastStartDispatchSummary({ rootDir, args, graph, graphPath: writeResult.graphPath });
     if (trackerResult) {
       console.log(`TRACKER_MAPPING: ${mappingPath}`);
       console.log(`TRACKER_STATUS: ${trackerResult.status}`);
       const mapped = Object.keys(trackerResult.mapping?.items || {}).length;
       console.log(`TRACKER_MAPPED_ITEMS: ${mapped}`);
+    } else {
+      console.log(`TRACKER_STATUS: skipped-${workflowEvidenceMode}`);
     }
-    printAtomizationAutoUiHandoff({ rootDir, args, graphPath: writeResult.graphPath });
+    if (workflowEvidenceMode === WORKFLOW_EVIDENCE_MODES.FAST_SESSION && !shouldEmitAutoUi(args) && !args["no-auto-ui"]) {
+      console.log("AUTO_UI: skipped-fast-session");
+    } else {
+      printAtomizationAutoUiHandoff({ rootDir, args, graphPath: writeResult.graphPath });
+    }
     return;
   }
 
@@ -2344,7 +2285,7 @@ async function resolveLoopExecutionSource({ rootDir, args, sourcePlan = null, po
           "PLAN_EXECUTION_REQUIRES_WORK_GRAPH",
           `EPIC: ${args.epic}`,
           `PLAN: ${sourcePlan}`,
-          `NEXT_ACTION: run /supervibe-loop --atomize-plan ${sourcePlan} --user-approved-plan`,
+          `NEXT_ACTION: run /supervibe-loop --from-plan ${sourcePlan} --start --fast-session`,
         ].join("\n"));
       }
       return {
@@ -2361,7 +2302,7 @@ async function resolveLoopExecutionSource({ rootDir, args, sourcePlan = null, po
   }
 
   if (sourcePlan && !args["allow-flat-plan"]) {
-    const atomizeCommand = `/supervibe-loop --atomize-plan ${sourcePlan} --user-approved-plan`;
+    const atomizeCommand = `/supervibe-loop --from-plan ${sourcePlan} --start --fast-session`;
     throw new Error([
       "PLAN_EXECUTION_REQUIRES_WORK_GRAPH",
       `PLAN: ${sourcePlan}`,
@@ -2927,6 +2868,96 @@ function printAutoUiStatus({ rootDir, args, graphPath }) {
   console.log(`GRAPH: ${graphPath || "active"}`);
 }
 
+function createFastStartReadyQueueSummary(graph = {}, limit = 5) {
+  const index = createWorkItemIndex({ graph });
+  const grouped = groupWorkItemsByStatus(index);
+  const ready = orderReadyWorkItems(index.filter((item) => item.type !== "epic" && item.effectiveStatus === "ready"), { graph });
+  const blocked = (grouped.blocked || []).filter((item) => item.type !== "epic");
+  return {
+    counts: {
+      ready: ready.length,
+      blocked: blocked.length,
+      total: index.filter((item) => item.type !== "epic").length,
+    },
+    readyTaskIds: ready.slice(0, limit).map((item) => item.itemId || item.id).filter(Boolean),
+    blockedTaskIds: blocked.slice(0, limit).map((item) => item.itemId || item.id).filter(Boolean),
+  };
+}
+
+function printFastStartReadyQueueSummary({ graph = {}, graphPath = null } = {}) {
+  const summary = createFastStartReadyQueueSummary(graph);
+  console.log("SUPERVIBE_FAST_START_READY_QUEUE");
+  console.log(`COUNTS: ready=${summary.counts.ready} blocked=${summary.counts.blocked} total=${summary.counts.total}`);
+  console.log(`READY: ${summary.readyTaskIds.join(", ") || "none"}`);
+  console.log(`BLOCKED: ${summary.blockedTaskIds.join(", ") || "none"}`);
+  console.log(`NEXT_ACTION: /supervibe-loop --dispatch-wave --file ${graphPath || "<graph.json>"} --max-concurrency 4`);
+}
+
+async function printFastStartDispatchSummary({ rootDir, args = {}, graph = {}, graphPath = null } = {}) {
+  const schedulerPolicy = resolveSchedulerPolicy({ args, rootDir, activeGraph: graph });
+  const mcpAgentHandoff = await loadMcpAgentHandoffForDispatch(args);
+  const dispatches = buildReadyAssignmentDispatches(tasksReadyForAssignment(graph), {
+    args: { ...args, workflowEvidenceMode: graph.metadata?.workflowEvidenceMode, receiptPolicy: graph.metadata?.receiptPolicy, mcpAgentHandoff },
+    rootDir,
+    maxConcurrency: schedulerPolicy.effectiveMaxConcurrency,
+    commandId: "supervibe-loop-fast-start-dispatch",
+    writeSetLocks: loadWriteSetLocksForState(graph, args),
+  });
+  const minimumParallelAgents = resolveMinimumParallelAgentsForDispatch(args);
+  const fanoutCheckedDispatches = enforceMinimumParallelDispatchWave(dispatches, {
+    minimumParallelAgents,
+    reason: "fast-start dispatch policy requires enough ready assignments for this wave",
+  });
+  const assigned = fanoutCheckedDispatches.filter((dispatch) => dispatch.status === "assigned");
+  const applyClaims = Boolean(args.apply && !args["dry-run"] && !args.preview);
+  const claimResults = [];
+  let fastSessionReceipt = null;
+  if (applyClaims && assigned.length > 0) {
+    const waveId = args["wave-id"] || `wave-${Date.now()}`;
+    const result = await mutateWorkItemGraphFile(graphPath, {
+      type: "claim-wave",
+      waveId,
+      claims: assigned.map((dispatch) => ({
+        itemId: dispatch.taskId,
+        writeSet: dispatch.writeSet,
+        writeSetLock: dispatch.writeSetLock,
+      })),
+      actor: args.actor || args.owner || "codex-fast-start",
+      reason: args.reason || "claimed by /supervibe-loop --from-plan --start --dispatch",
+      force: Boolean(args.force),
+      operationId: args["operation-id"] || args.operationId || args.requestId,
+      writeBackup: Boolean(args["write-backup"] || args.backup),
+      rootDir,
+    });
+    claimResults.push(...(result.claimResults || []));
+    fastSessionReceipt = await writeFastSessionDispatchWaveReceipt({
+      rootDir,
+      graphPath,
+      graph,
+      waveId,
+      assigned,
+      claimResults,
+      args,
+      sourceCommand: "supervibe-loop-fast-start-dispatch",
+    });
+  }
+  console.log("SUPERVIBE_FAST_START_DISPATCH");
+  console.log(`APPLIED: ${applyClaims}`);
+  console.log(`ASSIGNED: ${assigned.map((dispatch) => dispatch.taskId).join(", ") || "none"}`);
+  console.log(`CLAIMED: ${claimResults.map((item) => item.itemId).join(", ") || "none"}`);
+  console.log(`FAST_SESSION_RECEIPT: ${fastSessionReceipt?.relativePath || fastSessionReceipt?.path || "skipped"}`);
+  if (fastSessionReceipt) console.log("FAST_SESSION_RECEIPT_TRUST: diagnostic-only-until-release-proof");
+  console.log(formatSubsystemGroupingSummary(buildSubsystemGroupsForDispatches(fanoutCheckedDispatches)));
+  const nextAction = applyClaims
+    ? assigned.length > 0
+      ? "start assigned agents; fast-session receipt is coordination-only until release-proof"
+      : "inspect blocked dispatch details; no agent was assigned in this wave"
+    : assigned.length > 0
+      ? `run /supervibe-loop --dispatch-wave --apply --file ${graphPath || "<graph.json>"}`
+      : "inspect blocked dispatch details; no ready task is assignable in this wave";
+  console.log(`NEXT_ACTION: ${nextAction}`);
+}
+
 function printAtomizationAutoUiHandoff({ rootDir, args, graphPath }) {
   if (args["no-auto-ui"]) {
     console.log("SUPERVIBE_AUTO_UI");
@@ -3286,7 +3317,7 @@ function trustedReceiptScopesForValidation(rootDir, graph = null, { explicitRece
   const trusted = {};
   for (const receipt of readWorkflowReceipts(rootDir)) {
     if (!receipt?.receiptId) continue;
-    if (receipt.recovery) continue;
+    if (isReceiptSuppressedForCompletion(receipt)) continue;
     if (explicit.size > 0 && !explicit.has(String(receipt.receiptId))) continue;
     if (!isTrustedTaskCompletionReceiptForGraph(receipt, graph)) continue;
     const trust = validateWorkflowReceiptTrust(rootDir, receipt, { requireHostInvocationProof: true });
@@ -3301,7 +3332,7 @@ function trustedFinalReviewerReceiptIdsForValidation(rootDir, graph = {}, { expl
   const trusted = [];
   for (const receipt of readWorkflowReceipts(rootDir)) {
     if (!receipt?.receiptId) continue;
-    if (receipt.recovery) continue;
+    if (isReceiptSuppressedForCompletion(receipt)) continue;
     if (explicit.size > 0 && !explicit.has(String(receipt.receiptId))) continue;
     const subjectType = String(receipt.subjectType || "").toLowerCase();
     if (subjectType !== "reviewer") continue;
@@ -3335,7 +3366,7 @@ function trustedGraphReceiptIdsForValidation(rootDir, graph = {}, { explicitRece
   ]);
   for (const receipt of readWorkflowReceipts(rootDir)) {
     if (!receipt?.receiptId) continue;
-    if (receipt.recovery) continue;
+    if (isReceiptSuppressedForCompletion(receipt)) continue;
     if (explicit.size > 0 && !explicit.has(String(receipt.receiptId))) continue;
     if (!isTrustedGraphCompletionReceiptForGraph(receipt, graph, { allowedStages })) continue;
     const trust = validateWorkflowReceiptTrust(rootDir, receipt, { requireHostInvocationProof: true });
@@ -4312,6 +4343,148 @@ function deriveExecutionMode(args, { tool = null, providerCapabilities = null } 
   });
 }
 
+
+async function upgradeWorkGraphToReleaseProof({ rootDir = process.cwd(), args = {} } = {}) {
+  const graphPath = args.file
+    ? resolve(rootDir, args.file)
+    : await resolveActiveWorkItemGraphPath({ rootDir });
+  if (!graphPath) throw new Error("--upgrade-release-proof requires --file <graph.json> or an active work graph");
+  const graph = JSON.parse(await readFile(graphPath, "utf8"));
+  const graphDir = dirname(graphPath);
+  const sourcePlanContent = await resolveReleaseProofSourcePlanContent({ rootDir, graph, graphDir });
+  const sourcePlanStoredPath = normalizeGraphStoredPath(args["source-plan-path"] || graph.metadata?.sourcePlanSnapshot?.storedPath || "source-plan.md");
+  const now = new Date().toISOString();
+  const sourcePlanHash = createHash("sha256").update(sourcePlanContent).digest("hex");
+  const graphId = graph.epicId || graph.graph_id || graph.id;
+  const existingProof = graph.metadata?.graphProducerProof || {};
+  const hostInvocationId = runtimeInvocationIdFromArgs(args) || existingProof.hostInvocation?.invocationId || null;
+  const hostInvocationSource = args["host-invocation-source"] || existingProof.hostInvocation?.source || null;
+  const hostInvocationEvidence = args["host-invocation-evidence"] || existingProof.hostInvocation?.evidencePath || null;
+  const upgraded = {
+    ...graph,
+    source: {
+      ...(graph.source || {}),
+      type: graph.source?.type || "plan",
+      sha256: sourcePlanHash,
+      snapshotPath: sourcePlanStoredPath,
+    },
+    metadata: {
+      ...(graph.metadata || {}),
+      workflowEvidenceMode: WORKFLOW_EVIDENCE_MODES.RELEASE_PROOF,
+      receiptPolicy: createWorkflowReceiptPolicy({ workflowEvidenceMode: WORKFLOW_EVIDENCE_MODES.RELEASE_PROOF, releaseProof: true }),
+      epicAgentContract: createEpicAgentContract({ required: true }),
+      graphProducerProof: createGraphProducerProof({
+        ...existingProof,
+        required: true,
+        command: existingProof.command || "/supervibe-loop",
+        stage: existingProof.stage || "work-item-atomization",
+        subjectType: existingProof.subjectType || "agent",
+        subjectId: existingProof.subjectId || existingProof.agentId || "work-item-graph-builder",
+        agentId: existingProof.agentId || existingProof.subjectId || "work-item-graph-builder",
+        graphId,
+        handoffId: existingProof.handoffId || graphId,
+        hostInvocationSource,
+        hostInvocationId,
+        hostInvocationEvidence,
+        outputArtifact: "graph.json",
+      }),
+      sourcePlanSnapshot: {
+        path: normalizeGraphPathDisplay(graph.metadata?.sourcePlanSnapshot?.path || graph.source?.path || args.plan || "unknown-plan.md"),
+        sha256: sourcePlanHash,
+        storedPath: sourcePlanStoredPath,
+        capturedAt: now,
+        contentLength: Buffer.byteLength(sourcePlanContent, "utf8"),
+        content: sourcePlanContent,
+      },
+      releaseProofUpgradedAt: now,
+    },
+  };
+  if (args["plan-review-passed"]) {
+    upgraded.metadata.planReviewPassed = true;
+    upgraded.metadata.planReviewDeferred = false;
+  }
+  if (args.preview || args["dry-run"]) {
+    return {
+      graphPath,
+      dryRun: true,
+      workflowEvidenceMode: WORKFLOW_EVIDENCE_MODES.RELEASE_PROOF,
+      startupReceiptsRequired: true,
+      sourcePlanPath: join(graphDir, sourcePlanStoredPath),
+      previewPath: join(graphDir, "preview.txt"),
+      nextAction: "run /supervibe-loop --upgrade-release-proof --file " + graphPath,
+    };
+  }
+  const writeResult = await writeWorkItemGraph(upgraded, {
+    rootDir,
+    outDir: graphDir,
+    writePreview: true,
+    writeSourcePlan: true,
+    sourcePlanSnapshotPath: sourcePlanStoredPath,
+    registryReason: "release-proof-upgrade",
+  });
+  return {
+    graphPath: writeResult.graphPath,
+    dryRun: false,
+    workflowEvidenceMode: WORKFLOW_EVIDENCE_MODES.RELEASE_PROOF,
+    startupReceiptsRequired: true,
+    sourcePlanPath: writeResult.sourcePlanPath,
+    previewPath: writeResult.previewPath,
+    nextAction: "issue required release-proof receipts, then run final validators",
+  };
+}
+
+async function resolveReleaseProofSourcePlanContent({ rootDir, graph, graphDir }) {
+  const snapshot = graph.metadata?.sourcePlanSnapshot || {};
+  if (snapshot.content != null) return String(snapshot.content);
+  const storedPath = snapshot.storedPath || graph.source?.snapshotPath;
+  if (storedPath) {
+    try {
+      return await readFile(resolve(graphDir, normalizeGraphStoredPath(storedPath)), "utf8");
+    } catch {}
+  }
+  const sourcePath = snapshot.path || graph.source?.path;
+  if (!sourcePath) throw new Error("release-proof upgrade cannot find source plan path or stored snapshot content");
+  const sourceText = String(sourcePath);
+  return readFile(resolveProjectContainedPath(rootDir, sourceText, "sourcePlanSnapshot.path"), "utf8");
+}
+
+function normalizeGraphStoredPath(value = "", field = "source-plan-path") {
+  const normalized = normalizeGraphPathDisplay(value).replace(/^\.\//, "").trim();
+  if (!normalized || normalized.includes("\0")) {
+    throw new Error(`${field} must be a non-empty relative path inside the graph output directory`);
+  }
+  if (/^[A-Za-z]:\//.test(normalized) || normalized.startsWith("/") || normalized.startsWith("\\") || isAbsolute(normalized)) {
+    throw new Error(`${field} must be a relative path inside the graph output directory`);
+  }
+  const segments = normalized.split("/").filter(Boolean);
+  if (segments.length === 0 || segments.some((segment) => segment === "." || segment === "..")) {
+    throw new Error(`${field} cannot contain path traversal segments`);
+  }
+  return segments.join("/");
+}
+
+function normalizeGraphPathDisplay(value = "") {
+  return String(value || "").replace(/\\/g, "/");
+}
+
+function resolveProjectContainedPath(rootDir, value = "", field = "path") {
+  const normalized = normalizeGraphPathDisplay(value).trim();
+  if (!normalized || normalized.includes("\0")) {
+    throw new Error(`${field} must be a non-empty path inside the project root`);
+  }
+  const segments = normalized.split("/").filter(Boolean);
+  if (segments.some((segment) => segment === "..")) {
+    throw new Error(`${field} cannot contain path traversal segments`);
+  }
+  const absolute = /^[A-Za-z]:\//.test(normalized) || normalized.startsWith("/") || normalized.startsWith("\\") || isAbsolute(normalized);
+  const root = resolve(rootDir);
+  const absPath = absolute ? resolve(normalized) : resolve(root, normalized);
+  const rel = relative(root, absPath);
+  if (!rel || rel.startsWith("..") || isAbsolute(rel)) {
+    throw new Error(`${field} must stay inside the project root`);
+  }
+  return absPath;
+}
 function printHelp() {
   console.log(`SUPERVIBE_LOOP_HELP
 Primary:
@@ -4319,6 +4492,7 @@ Primary:
   supervibe-loop --happy-path --plan .supervibe/artifacts/plans/example.md
   supervibe-loop --plan .supervibe/artifacts/plans/example.md
   supervibe-loop --from-prd .supervibe/artifacts/specs/example.md
+  supervibe-loop --from-plan .supervibe/artifacts/plans/example.md --start --fast-session [--dispatch]
   supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --user-approved-plan
   supervibe-loop --status --file .supervibe/memory/loops/<run-id>/state.json
   supervibe-loop --status --epic <epic-id>
@@ -4409,7 +4583,15 @@ Execution modes:
   --worktree --epic <epic-id> --assigned-task T1 --assigned-write-set src/file.ts
   --worktree-existing .worktrees/<session>
   --resume-session <session-id>
-  --allow-flat-plan (legacy diagnostic only; loop-ready plans should be atomized first)`);
+  --allow-flat-plan (legacy diagnostic only; loop-ready plans should be atomized first)
+
+Safety and rollback:
+  command routing: revert catalog/router/corpus changes and rerun command matcher regression tests at release gate
+  fast graph writes: default writes graph.json only; preview/source-plan/tracker sync stay opt-in unless --release-proof
+  dispatch apply: use --dry-run first; fast-session wave receipts are diagnostic-only and cannot prove release readiness
+  receipt policy: --fast-session starts development without startup receipts; --release-proof restores full receipt/snapshot requirements
+  MCP handoff: agents receive host-neutral capability states only; raw provider config stays out of handoff payloads
+  cleanup: dry-run first; protect code.db, memory.db, receipt ledgers, runtime keys, receipt-linked outputs, and artifact snapshots`);
 }
 
 main().catch((err) => {

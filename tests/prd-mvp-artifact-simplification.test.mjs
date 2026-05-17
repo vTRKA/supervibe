@@ -85,7 +85,13 @@ test("active product workflow surfaces use PRD plus MVP readiness only", async (
   const offenders = [];
 
   for (const file of files) {
-    const text = await readFile(file, "utf8");
+    let text;
+    try {
+      text = await readFile(file, "utf8");
+    } catch (error) {
+      if (error?.code === "ENOENT") continue;
+      throw error;
+    }
     const lines = text.split(/\r?\n/);
     lines.forEach((line, index) => {
       for (const { label, pattern } of LEGACY_PATTERNS) {

@@ -208,7 +208,7 @@ const ROUTES = {
   },
   task_graph_create_from_plan: {
     phase: "execution",
-    command: "/supervibe-loop --atomize-plan <plan-path> --user-approved-plan",
+    command: "/supervibe-loop --from-plan <plan-path> --start --fast-session",
     skill: "supervibe:autonomous-agent-loop",
     nextQuestionRu: "Step 1/1: create epic, tasks, and subtasks from the user-approved loop-ready plan?",
     nextQuestionEn: "Step 1/1: create epic, tasks, and subtasks from the user-approved loop-ready plan?",
@@ -1354,7 +1354,7 @@ function mutationRiskFor(intent) {
   if (intent === "code_index_build") return "writes-generated-index";
   if (["autonomous_epic_run", "execute_plan"].includes(intent)) return "executes-code";
   if (intent === "worktree_autonomous_run") return "creates-worktree";
-  if (["atomize_plan", "create_epic"].includes(intent)) return "writes-tracker";
+  if (["atomize_plan", "create_epic", "task_graph_create_from_plan"].includes(intent)) return "writes-tracker";
   if (intent === "plugin_update_repair") return "explicit-user-command";
   if (["brainstorm_to_plan", "documentation_summary_gate", "pre_spec_summary_gate", "post_spec_summary_gate", "pre_plan_summary_gate", "post_plan_summary_gate", "readme_update", "design_new", "design_continue", "design_system_extension", "mobile_ui", "chart_ux", "brand_collateral", "stack_ui_guidance", "agent_strengthen", "agent_provisioning", "prompt_ai_engineering", "figma_source_of_truth"].includes(intent)) return "writes-docs";
   return "none";

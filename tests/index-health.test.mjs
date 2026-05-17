@@ -62,6 +62,25 @@ test('index health gate does not mark unhealthy index as ready', async () => {
   assert.match(gate.repairCommand, /<resolved-supervibe-plugin-root>/);
 });
 
+test('index health allows root bin command shims while still flagging nested generated output', () => {
+  const health = buildIndexHealthSnapshot({
+    manifest: {
+      eligibleSourceFiles: 3,
+      indexedSourceFiles: 3,
+      indexedPaths: ['bin/supervibe.mjs', 'scripts/bin/generated.mjs', 'scripts/source.mjs'],
+      staleRows: [],
+      contentChangedRows: [],
+      languageCoverage: {
+        javascript: { eligible: 3, indexed: 3, filesWithSymbols: 2 },
+      },
+      crossResolvedEdges: { resolved: 1, total: 1 },
+    },
+  });
+
+  assert.deepEqual(health.generatedIndexedFiles, ['scripts/bin/generated.mjs']);
+  assert.ok(health.issues.some((issue) => issue.code === 'generated-output-indexed-as-source'));
+});
+
 test('index health gate fails when indexed source content changed after indexing', () => {
   const health = buildIndexHealthSnapshot({
     manifest: {

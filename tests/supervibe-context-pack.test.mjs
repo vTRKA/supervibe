@@ -11,6 +11,7 @@ import {
   formatContextPackMarkdown,
   selectActiveItem,
 } from "../scripts/lib/supervibe-context-pack.mjs";
+import { CodeStore } from "../scripts/lib/code-store.mjs";
 
 test("context pack selects active work, evidence, dependencies, and relevant memory", async () => {
   const root = await makeTempRoot("supervibe-context-pack-");
@@ -95,6 +96,51 @@ test("context pack selects active work, evidence, dependencies, and relevant mem
   }
 });
 
+test("context pack reuses indexed CodeGraph semantic anchors for write scope", async () => {
+  const root = await makeTempRoot("supervibe-context-pack-indexed-anchors-");
+  const store = new CodeStore(root, { useEmbeddings: false, useGraph: true });
+  try {
+    await mkdir(join(root, "src"), { recursive: true });
+    await writeFile(join(root, "src", "indexed-anchor.ts"), [
+      "export function indexedContextAnchor() {",
+      "  return true;",
+      "}",
+      "",
+    ].join("\n"), "utf8");
+    await store.init();
+    await store.indexFile(join(root, "src", "indexed-anchor.ts"), { force: true });
+    store.close();
+
+    const graphPath = await writeGraph(root, {
+      graph_id: "epic-context",
+      title: "Indexed Anchor Context Epic",
+      items: [
+        { itemId: "epic-context", type: "epic", status: "open", title: "Indexed Anchor Context Epic" },
+        {
+          itemId: "T1",
+          type: "task",
+          status: "open",
+          title: "Use indexed semantic anchors",
+          writeScope: [{ path: "src/indexed-anchor.ts" }],
+        },
+      ],
+      tasks: [{ id: "T1", status: "open" }],
+      evidence: [],
+    });
+
+    const pack = await buildContextPack({
+      rootDir: root,
+      graphPath,
+      itemId: "T1",
+      now: "2026-05-02T00:00:00.000Z",
+    });
+
+    assert.ok(pack.semanticAnchors.some((anchor) => anchor.symbolName === "indexedContextAnchor" && anchor.source === "derived-entity"));
+  } finally {
+    store.close?.();
+    await rm(root, { recursive: true, force: true });
+  }
+});
 test("context pack token SLO reports warning and over-budget states", () => {
   assert.equal(evaluateContextPackTokenSlo({
     estimatedTokens: 80,

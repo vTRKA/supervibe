@@ -30,7 +30,7 @@ stack named by the user instead of relying only on manifests.
 
 ## Shared Dialogue Contract
 
-Lifecycle: `detected -> profile-review -> dry-run -> approved -> applied -> artifact/app/deploy verification`. Persist state in `.supervibe/memory/genesis/state.json` before every lifecycle transition; dry-run diffs are state artifacts, not throwaway console text. State uses layered verification fields: `artifactVerified`, `agentReceiptsVerified`, `appVerified`, and `deployVerified`.
+Lifecycle: `detected -> profile-review -> dry-run -> approved -> applied -> artifact/app/deploy verification`. Persist state in `.supervibe/memory/genesis/state.json` before every lifecycle transition; dry-run diffs are state artifacts, not throwaway console text. State uses layered verification fields: `artifactVerified`, `agentRuntimeVerified`, `appVerified`, and `deployVerified`.
 
 Every interactive step asks one question at a time using `Step N/M` or `Step N/M`. Each question lists the recommended/default option first, gives a one-line tradeoff summary for every option, allows a free-form answer, and names the stop condition.
 
@@ -137,10 +137,9 @@ Scenario evals assert this post-delivery menu and persisted command state via
    verification such as `--verify-apps`.
 
 6b. **Keep agent runtime proof separate.** `--dry-run`, `--apply`, and
-   `--generate-apps` are bootstrap-pre-agent phases. They may write dry-run
-   state, scaffold files, or approved framework apps, but they must not claim
-   real-agent completion. Use the separate `--verify-agents` smoke gate for
-   `agentReceiptsVerified=true`.
+   `--generate-apps` are bootstrap phases. They may write dry-run state,
+   scaffold files, or approved framework apps, but they must not claim optional
+   host-agent smoke diagnostics as part of Genesis completion.
 
 7. **Score the result.** Run `supervibe:confidence-scoring` against the scaffold using `confidence-rubrics/scaffold.yaml`. Required: ≥9 to declare done.
 
@@ -159,7 +158,7 @@ Agent roles:       <agent id -> responsibility list or docs/agent-roster.md refe
 Files written:     <count>
 Confidence:        <N>/10  Rubric: scaffold
 Next:              open the project, restart your AI CLI, watch for [supervibe] welcome banner; after plugin updates use /supervibe-update then /supervibe-adapt
-Verification:      artifactVerified=<bool> agentReceiptsVerified=<bool> appVerified=<bool> deployVerified=<bool>
+Verification:      artifactVerified=<bool> agentRuntimeVerified=<bool> appVerified=<bool> deployVerified=<bool>
 ```
 
 ## When NOT to invoke
@@ -179,9 +178,6 @@ Verification:      artifactVerified=<bool> agentReceiptsVerified=<bool> appVerif
 
 This command must load its executable profile from `scripts/lib/command-agent-orchestration-contract.mjs` and follow `rules/command-agent-orchestration.md`. The profile is the source of truth for `ownerAgentId`, `agentPlan`, `requiredAgentIds`, dynamic specialist selection, default `real-agents` mode, and `agent-required-blocked` behavior.
 
-Before durable work or completion claims, run `node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /supervibe-genesis` and follow the printed `SUPERVIBE_COMMAND_AGENT_PLAN`. The plan must show host dispatch support, proof source, `AGENT_SELECTION_MODE`, required agents, `REQUIRED_AGENT_SOURCES`, `CALLABLE_AGENT_SOURCES`, `CALLABLE_AGENTS_READY`, `SCOPED_RECEIPT_GATE`, `MISSING_CALLABLE_AGENTS`, and durable-write permission before any agent-owned artifact is produced. Role sources must distinguish definition availability from host-callable availability: `REQUIRED_AGENT_SOURCES` may include `plugin-only`, but `CALLABLE_AGENT_SOURCES`, `CALLABLE_AGENTS_READY`, and `MISSING_CALLABLE_AGENTS` decide whether the selected host can actually invoke the role. Plugin-only definitions are not enough for a real-agent completion claim. For a first install into an empty project, the executable runner may use `node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /supervibe-genesis --dry-run|--apply|--generate-apps --installed-only` or `--bootstrap-pre-agent` to allow base scaffold/state/app-generation phases before project agents exist. This exception does not allow specialist-owned output or completion claims; rebuild the real-agent plan or run `--verify-agents` after the scaffold installs agents.
+Before durable scaffold writes, run `node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /supervibe-genesis` and follow the printed `SUPERVIBE_COMMAND_AGENT_PLAN`. The plan must show `AGENT_SELECTION_MODE`, required agents, `REQUIRED_AGENT_SOURCES`, `CALLABLE_AGENT_SOURCES`, `CALLABLE_AGENTS_READY`, `MISSING_CALLABLE_AGENTS`, and durable-write permission before any optional agent-owned follow-up is produced. Role sources must distinguish definition availability from host-callable availability: `REQUIRED_AGENT_SOURCES` may include `plugin-only`, but `CALLABLE_AGENT_SOURCES`, `CALLABLE_AGENTS_READY`, and `MISSING_CALLABLE_AGENTS` decide whether the selected host can actually invoke the role. For a first install into an empty project, the executable runner may use `node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /supervibe-genesis --dry-run|--apply|--generate-apps --installed-only` or `--bootstrap-pre-agent` to allow base scaffold/state/app-generation phases before project agents exist.
 
-Invoke the real host agents named by the plan and issue runtime receipts with `hostInvocation.source` and `hostInvocation.invocationId`. For active workflows, build the plan with `--active --slug <slug> --handoff-id <handoff-id>`; `SCOPED_RECEIPT_GATE` must be trusted for the current run before durable agent-owned outputs are allowed. Old global receipts are diagnostic only and do not unlock a new command/handoff. In Codex, invoke with `spawn_agent` using the `CODEX_SPAWN_PAYLOAD_RULES` and `CODEX_SPAWN_PAYLOADS` printed by `command-agent-plan.mjs`: forked payloads must set `fork_context=true`, must omit `agent_type`, `model`, and `reasoning_effort`, and must encode the Supervibe logical role in `message` instead of Codex `agent_type`. Record each returned Codex agent id with `node <resolved-supervibe-plugin-root>/scripts/agent-invocation.mjs log ...` before receipts are issued. `inline` is diagnostic/dry-run only. Do not emulate specialist agents, and do not let command or skill receipts substitute for agent, worker, or reviewer output.
-## Workflow Invocation Receipts
-
-Any claim that this command invoked another Supervibe command, skill, agent, reviewer, worker, validator, or external tool must be backed by a runtime-issued workflow receipt created with `node <resolved-supervibe-plugin-root>/scripts/workflow-receipt.mjs issue ...`. Hand-written receipts are untrusted. Agent, worker, and reviewer receipts must include `hostInvocation.source` and `hostInvocation.invocationId` from a real host dispatch; command or skill receipts must not substitute for specialist output. Scoped current-run receipts are required for active command/handoff claims; old global receipts are diagnostic only and cannot authorize a new agent-owned output. Durable artifacts produced by this command must stay linked through `.supervibe/memory/workflow-invocation-ledger.jsonl` and `artifact-links.json`; run `npm run validate:workflow-receipts` and `npm run validate:agent-producer-receipts` before claiming the command, delegated stage, or produced artifact is complete.
+Genesis dry-run/apply/generate-apps are deterministic bootstrap phases and may complete without a host-agent proof workflow. Optional agent-produced reviews or follow-up assessments must use the normal host-agent invocation path for that separate delegated work; they are not part of the Genesis bootstrap completion contract.

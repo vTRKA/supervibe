@@ -42,6 +42,8 @@ const REQUIRED_SECTIONS = Object.freeze([
   },
 ]);
 
+const RECEIPT_NEUTRAL_BOOTSTRAP_COMMANDS = new Set(["supervibe-adapt.md", "supervibe-genesis.md"]);
+
 const WORKFLOW_RECEIPT_COMMAND_PATTERNS = Object.freeze([
   /workflow-receipt\.mjs issue/i,
   /Hand-written receipts are untrusted/i,
@@ -82,6 +84,21 @@ const AGENT_ORCHESTRATION_COMMAND_PATTERNS = Object.freeze([
   /inline[\s\S]{0,80}diagnostic\/dry-run|diagnostic\/dry-run[\s\S]{0,80}inline/i,
   /Do not emulate|must not emulate|never emulate/i,
   /command or skill receipts must not substitute/i,
+]);
+
+const RECEIPT_NEUTRAL_AGENT_ORCHESTRATION_PATTERNS = Object.freeze([
+  /command-agent-orchestration-contract\.mjs/i,
+  /command-agent-plan\.mjs/i,
+  /SUPERVIBE_COMMAND_AGENT_PLAN/i,
+  /rules\/command-agent-orchestration\.md/i,
+  /ownerAgentId/i,
+  /agentPlan/i,
+  /requiredAgentIds/i,
+  /CALLABLE_AGENT_SOURCES/i,
+  /CALLABLE_AGENTS_READY/i,
+  /MISSING_CALLABLE_AGENTS/i,
+  /real-agents/i,
+  /agent-required-blocked/i,
 ]);
 
 const CONTINUATION_COMMAND_RULES = Object.freeze([
@@ -306,7 +323,9 @@ export function validateCommandOperationalContracts(rootDir = process.cwd(), opt
   for (const file of files) {
     const relPath = `commands/${file}`;
     const text = readFileSync(join(commandsDir, file), "utf8");
+    const receiptNeutralBootstrap = RECEIPT_NEUTRAL_BOOTSTRAP_COMMANDS.has(file);
     for (const section of REQUIRED_SECTIONS) {
+      if (receiptNeutralBootstrap && section.code === "workflow-invocation-receipts") continue;
       if (!section.pattern.test(text)) {
         issues.push({
           file: relPath,
@@ -315,16 +334,21 @@ export function validateCommandOperationalContracts(rootDir = process.cwd(), opt
         });
       }
     }
-    for (const pattern of WORKFLOW_RECEIPT_COMMAND_PATTERNS) {
-      if (!pattern.test(text)) {
-        issues.push({
-          file: relPath,
-          code: "missing-workflow-receipt-contract",
-          message: `${relPath}: command must require runtime workflow receipts via ${pattern}`,
-        });
+    if (!receiptNeutralBootstrap) {
+      for (const pattern of WORKFLOW_RECEIPT_COMMAND_PATTERNS) {
+        if (!pattern.test(text)) {
+          issues.push({
+            file: relPath,
+            code: "missing-workflow-receipt-contract",
+            message: `${relPath}: command must require runtime workflow receipts via ${pattern}`,
+          });
+        }
       }
     }
-    for (const pattern of AGENT_ORCHESTRATION_COMMAND_PATTERNS) {
+    const agentPatterns = receiptNeutralBootstrap
+      ? RECEIPT_NEUTRAL_AGENT_ORCHESTRATION_PATTERNS
+      : AGENT_ORCHESTRATION_COMMAND_PATTERNS;
+    for (const pattern of agentPatterns) {
       if (!pattern.test(text)) {
         issues.push({
           file: relPath,

@@ -62,9 +62,6 @@ export function collectCleanupRoots({ rootDir = process.cwd(), now = new Date().
   }
 
   for (const item of listFiles(rootDir, ".supervibe/artifacts/_workflow-invocations")) {
-    if (item.relPath.endsWith(".json") || item.relPath.endsWith(".jsonl")) {
-      setReason(protectedRoots, normalizeRelPath(item.relPath), "workflow-invocation-artifact");
-    }
     if (item.relPath.endsWith("artifact-links.json")) {
       for (const linked of readArtifactLinks(rootDir, item.relPath)) {
         if (!isArchivePath(linked)) setReason(receiptLinked, linked, "artifact-link");
@@ -117,6 +114,10 @@ export function classifyCleanupPath({
   if (activeReason) return classification(normalized, "hot", namespace, activeReason, ageDays);
   if (compactReason) return classification(normalized, "compactable", namespace, compactReason, ageDays);
   if (namespace === "archives") return classification(normalized, "cold", namespace, reason || "archive", ageDays);
+  if (namespace === "workflow-invocations") {
+    const lifecycleClass = ageDays >= 90 ? "archivable" : ageDays > 0 ? "warm" : "hot";
+    return classification(normalized, lifecycleClass, namespace, reason || "workflow-invocation-retention", ageDays);
+  }
   if (namespace === "logs" || /\.bak$/i.test(normalized)) return classification(normalized, "trash", namespace, reason || "generated-runtime-noise", ageDays);
   if (namespace === "runtime") return classification(normalized, "deletable", namespace, reason || "runtime-temp", ageDays);
   if (namespace === "graphs" && normalized.endsWith("/graph.json") && isTerminalWorkGraphPath(rootDir, normalized)) {

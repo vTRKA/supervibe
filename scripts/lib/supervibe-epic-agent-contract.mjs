@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
-import { relative, sep } from "node:path";
+import { relative, resolve, sep } from "node:path";
 
 import {
   readWorkflowReceipts,
@@ -57,11 +57,12 @@ export function createGraphProducerProof({
   createdAt = null,
 } = {}) {
   const normalizedSubjectId = normalizeOptional(subjectId || agentId);
-  const normalizedHostInvocation = normalizeProofHostInvocation(hostInvocation || {
-    source: hostInvocationSource,
-    invocationId: hostInvocationId,
-    evidencePath: hostInvocationEvidence,
-    agentId: agentId || normalizedSubjectId,
+  const normalizedHostInvocation = normalizeProofHostInvocation({
+    ...(hostInvocation || {}),
+    source: hostInvocationSource || hostInvocation?.source,
+    invocationId: hostInvocationId || hostInvocation?.invocationId || hostInvocation?.invocation_id || hostInvocation?.id,
+    evidencePath: hostInvocationEvidence || hostInvocation?.evidencePath || hostInvocation?.evidence_path,
+    agentId: agentId || hostInvocation?.agentId || normalizedSubjectId,
   });
   const proof = {
     schemaVersion: GRAPH_PRODUCER_PROOF_SCHEMA_VERSION,
@@ -113,9 +114,14 @@ export function bindGraphProducerProofOutput(proof = null, { rootDir = process.c
 export function validateEpicAgentContract({ rootDir = process.cwd(), graph = {}, graphPath = null, activeGraphStrict = false } = {}) {
   const issues = [];
   const contract = graph.metadata?.epicAgentContract || null;
+  const releaseProofRequired = graph.metadata?.workflowEvidenceMode === "release-proof"
+    || graph.metadata?.receiptPolicy?.graphProducerProof?.required === true
+    || graph.metadata?.graphProducerProof?.required === true
+    || graph.metadata?.epicAgentContract?.required === true;
   const requiresContract = graph.metadata?.createdFrom === "plan"
     && graph.metadata?.planReviewPassed === true
-    && graph.metadata?.dryRun !== true;
+    && graph.metadata?.dryRun !== true
+    && releaseProofRequired;
 
   if (requiresContract && contract?.required !== true) {
     issues.push(issue("missing-epic-agent-contract", graph.epicId, "Plan-created durable work-item graph is missing a required epic-agent receipt contract."));
@@ -418,6 +424,8 @@ function validateGraphProducerProof({
       actualOutputArtifacts: proof.outputBinding?.artifacts || [],
     }));
   }
+  const hostInvocationProof = validateGraphProducerHostInvocationProof(proof, { rootDir, contract, graphPath, graphId });
+  if (!hostInvocationProof.pass) issues.push(...hostInvocationProof.issues);
 
   return {
     pass: issues.length === 0,
@@ -459,6 +467,210 @@ function missingProducerProofIssue({ graph = {}, graphPath = null, rootDir = pro
       producerProofIssues: producerProof.issues || [],
     },
   );
+}
+
+function validateGraphProducerHostInvocationProof(proof = {}, { rootDir = process.cwd(), contract = {}, graphPath = null, graphId = null } = {}) {
+  const issues = [];
+  const hostInvocation = proof.hostInvocation || null;
+  if (!hostInvocation?.source || !hostInvocation?.invocationId) {
+    return { pass: false, issues: [proofIssue("graph-producer-host-invocation-missing", "Graph producer proof hostInvocation must reference a runtime-issued host invocation.", { field: "hostInvocation" })] };
+  }
+
+  let record = null;
+  const source = normalizeOptional(hostInvocation.source);
+  if (source === "host-trace-file") {
+    const traceResult = readHostTraceInvocationRecord(rootDir, hostInvocation.evidencePath, hostInvocation.invocationId);
+    if (!traceResult.pass) issues.push(...traceResult.issues);
+    record = traceResult.record || null;
+  } else {
+    record = readAgentInvocationByRuntimeId(rootDir, hostInvocation.invocationId);
+    if (!record) {
+      issues.push(proofIssue("graph-producer-host-invocation-not-found", "Graph producer proof hostInvocation was not found in .supervibe/memory/agent-invocations.jsonl.", { field: "hostInvocation.invocationId", invocationId: hostInvocation.invocationId }));
+      return { pass: false, issues };
+    }
+  }
+
+  if (record) {
+    const binding = validateGraphProducerInvocationRecordBinding(record, proof, {
+      rootDir,
+      contract,
+      graphPath,
+      graphId,
+      requireSource: source !== "host-trace-file",
+    });
+    if (!binding.pass) issues.push(...binding.issues);
+  }
+
+  return { pass: issues.length === 0, issues, record };
+}
+
+function readHostTraceInvocationRecord(rootDir = process.cwd(), evidencePath = "", invocationId = "") {
+  const issues = [];
+  const resolved = resolveContainedProjectPath(rootDir, evidencePath, "hostInvocation.evidencePath");
+  if (!resolved.pass) return { pass: false, issues: resolved.issues, record: null };
+  if (!existsSync(resolved.absPath)) {
+    return {
+      pass: false,
+      issues: [proofIssue("graph-producer-host-trace-missing", "Graph producer proof host trace evidence file is missing.", { field: "hostInvocation.evidencePath", evidencePath: resolved.relPath })],
+      record: null,
+    };
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(readFileSync(resolved.absPath, "utf8"));
+  } catch {
+    return {
+      pass: false,
+      issues: [proofIssue("graph-producer-host-trace-invalid-json", "Graph producer proof host trace evidence file must be valid JSON.", { field: "hostInvocation.evidencePath", evidencePath: resolved.relPath })],
+      record: null,
+    };
+  }
+  const wanted = normalizeOptional(invocationId);
+  const candidates = collectHostTraceRecords(parsed);
+  const record = candidates.find((candidate) => invocationRecordIds(candidate).includes(wanted)) || null;
+  if (!record) {
+    issues.push(proofIssue("graph-producer-host-trace-invocation-mismatch", "Graph producer proof host trace evidence does not contain the referenced invocationId.", { field: "hostInvocation.invocationId", invocationId: wanted, evidencePath: resolved.relPath }));
+  }
+  return { pass: issues.length === 0, issues, record };
+}
+
+function validateGraphProducerInvocationRecordBinding(record = {}, proof = {}, { rootDir = process.cwd(), graphPath = null, graphId = null, requireSource = true } = {}) {
+  const issues = [];
+  const hostInvocation = proof.hostInvocation || {};
+  const expectedInvocationId = normalizeOptional(hostInvocation.invocationId);
+  const recordIds = invocationRecordIds(record);
+  if (expectedInvocationId && !recordIds.includes(expectedInvocationId)) {
+    issues.push(proofIssue("graph-producer-host-invocation-id-mismatch", "Graph producer proof hostInvocation invocationId does not match the runtime invocation record.", { field: "hostInvocation.invocationId", expected: expectedInvocationId, actualIds: recordIds }));
+  }
+
+  const recordSource = normalizeOptional(record.host_invocation_source || record.hostInvocationSource || record.hostInvocation?.source || record.source);
+  if (requireSource) {
+    if (!recordSource) {
+      issues.push(proofIssue("graph-producer-host-invocation-source-missing", "Runtime invocation record is missing host invocation source.", { field: "hostInvocation.source" }));
+    } else if (recordSource !== hostInvocation.source) {
+      issues.push(proofIssue("graph-producer-host-invocation-source-mismatch", "Graph producer proof hostInvocation source does not match the runtime invocation record.", { field: "hostInvocation.source", expected: recordSource, actual: hostInvocation.source }));
+    }
+  }
+
+  const proofAgentIds = new Set(uniqueStrings([proof.agentId, proof.subjectId]).map((id) => id.toLowerCase()));
+  const recordAgentIds = uniqueStrings([record.agent_id, record.agentId, record.subject_id, record.subjectId, record.subagent_type]).map((id) => id.toLowerCase());
+  if (proofAgentIds.size > 0 && !recordAgentIds.some((id) => proofAgentIds.has(id))) {
+    issues.push(proofIssue("graph-producer-host-invocation-agent-mismatch", "Graph producer proof hostInvocation agent does not match the runtime invocation record.", { field: "hostInvocation.agentId", expectedAgentIds: [...proofAgentIds], actualAgentIds: recordAgentIds }));
+  }
+
+  const status = normalizeOptional(record.status || record.outcome || record.result);
+  if (!isCompletedRuntimeStatus(status)) {
+    issues.push(proofIssue("graph-producer-host-invocation-not-completed", "Graph producer proof hostInvocation is not completed.", { field: "hostInvocation.status", status: status || "missing" }));
+  }
+
+  const expectedCommand = normalizeCommand(proof.command);
+  const recordCommand = normalizeCommand(record.command || record.workflow || record.workflow_command);
+  if (expectedCommand && recordCommand !== expectedCommand) {
+    issues.push(proofIssue("graph-producer-host-invocation-command-mismatch", "Runtime invocation record command does not match graph producer proof command.", { field: "command", expected: expectedCommand, actual: recordCommand || "missing" }));
+  }
+
+  const expectedStage = normalizeOptional(proof.stage);
+  const recordStage = normalizeOptional(record.stage || record.stage_id || record.workflow_stage);
+  if (expectedStage && recordStage !== expectedStage) {
+    issues.push(proofIssue("graph-producer-host-invocation-stage-mismatch", "Runtime invocation record stage does not match graph producer proof stage.", { field: "stage", expected: expectedStage, actual: recordStage || "missing" }));
+  }
+
+  const expectedHandoff = normalizeOptional(proof.handoffId || graphId);
+  const recordHandoff = normalizeOptional(record.handoff_id || record.handoffId || record.workflow_handoff_id || record.workflowHandoffId);
+  if (expectedHandoff && recordHandoff !== expectedHandoff) {
+    issues.push(proofIssue("graph-producer-host-invocation-handoff-mismatch", "Runtime invocation record handoff id does not match graph producer proof handoff id.", { field: "handoffId", expected: expectedHandoff, actual: recordHandoff || "missing" }));
+  }
+
+  const expectedSubjectType = normalizeOptional(proof.subjectType);
+  const recordSubjectType = normalizeOptional(record.subject_type || record.subjectType);
+  if (expectedSubjectType && recordSubjectType && recordSubjectType !== expectedSubjectType) {
+    issues.push(proofIssue("graph-producer-host-invocation-subject-type-mismatch", "Runtime invocation record subject type does not match graph producer proof subject type.", { field: "subjectType", expected: expectedSubjectType, actual: recordSubjectType }));
+  }
+
+  const graphRel = graphPath ? normalizeRel(rootDir, graphPath) : "";
+  const recordOutputArtifacts = invocationRecordOutputArtifacts(record);
+  if (graphRel && !recordOutputArtifacts.includes(graphRel)) {
+    issues.push(proofIssue("graph-producer-host-invocation-output-mismatch", "Runtime invocation record output_artifacts must include this graph artifact.", { field: "output_artifacts", expectedOutputArtifact: graphRel, actualOutputArtifacts: recordOutputArtifacts }));
+  }
+
+  return { pass: issues.length === 0, issues };
+}
+
+function collectHostTraceRecords(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.flatMap(collectHostTraceRecords);
+  if (typeof value !== "object") return [];
+  const records = [value];
+  for (const key of ["record", "invocation", "hostInvocation"]) {
+    if (value[key] && typeof value[key] === "object") records.push(...collectHostTraceRecords(value[key]));
+  }
+  for (const key of ["records", "invocations", "entries", "agents", "events", "spans"]) {
+    if (Array.isArray(value[key])) records.push(...value[key].flatMap(collectHostTraceRecords));
+  }
+  return records;
+}
+
+function invocationRecordIds(record = {}) {
+  return uniqueStrings([
+    record.invocation_id,
+    record.invocationId,
+    record.host_invocation_id,
+    record.hostInvocationId,
+    record.hostInvocation?.invocationId,
+    record.hostInvocation?.invocation_id,
+    record.id,
+  ]).map(normalizeOptional).filter(Boolean);
+}
+
+function invocationRecordOutputArtifacts(record = {}) {
+  const outputs = [
+    ...(Array.isArray(record.output_artifacts) ? record.output_artifacts : []),
+    ...(Array.isArray(record.outputArtifacts) ? record.outputArtifacts : []),
+    ...(Array.isArray(record.outputs) ? record.outputs : []),
+    ...(Array.isArray(record.artifacts) ? record.artifacts : []),
+    record.output_artifact,
+    record.outputArtifact,
+  ];
+  return uniqueStrings(outputs).map(normalizePath).filter(Boolean);
+}
+
+function isCompletedRuntimeStatus(status = "") {
+  return ["completed", "complete", "success", "succeeded", "ok", "passed"].includes(normalizeOptional(status));
+}
+
+function resolveContainedProjectPath(rootDir = process.cwd(), relPath = "", field = "path") {
+  const raw = String(relPath || "").trim();
+  const normalized = normalizePath(raw);
+  if (!normalized || normalized.includes(String.fromCharCode(0))) {
+    return { pass: false, issues: [proofIssue("graph-producer-host-trace-path-invalid", "Graph producer proof host trace path is invalid.", { field, path: normalized })] };
+  }
+  const parts = normalized.split("/").filter(Boolean);
+  if (parts.includes("..")) {
+    return { pass: false, issues: [proofIssue("graph-producer-host-trace-path-traversal", "Graph producer proof host trace path cannot contain path traversal segments.", { field, path: normalized })] };
+  }
+  const absPath = /^(?:[A-Za-z]:\/|\/)/.test(normalized)
+    ? resolve(normalized)
+    : resolve(rootDir, ...parts);
+  const rel = relative(rootDir, absPath);
+  if (rel && (rel.startsWith("..") || /^(?:[A-Za-z]:|\/)/.test(rel))) {
+    return { pass: false, issues: [proofIssue("graph-producer-host-trace-path-outside-root", "Graph producer proof host trace path must stay inside the project root.", { field, path: normalized })] };
+  }
+  return { pass: true, absPath, relPath: normalizePath(rel || normalized) };
+}
+function readAgentInvocationByRuntimeId(rootDir = process.cwd(), invocationId = "") {
+  const wanted = normalizeOptional(invocationId);
+  if (!wanted) return null;
+  const logPath = joinPath(rootDir, ".supervibe/memory/agent-invocations.jsonl");
+  if (!existsSync(logPath)) return null;
+  const lines = readFileSync(logPath, "utf8").split(/\r?\n/).filter(Boolean);
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    try {
+      const record = JSON.parse(lines[index]);
+      const ids = [record.invocation_id, record.invocationId, record.host_invocation_id, record.hostInvocationId, record.id].map((id) => String(id || "").trim());
+      if (ids.includes(wanted)) return record;
+    } catch {}
+  }
+  return null;
 }
 
 function producerProofBindsGraph(proof = {}, { rootDir = process.cwd(), graphPath = null, graphId = null } = {}) {

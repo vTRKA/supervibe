@@ -24,6 +24,18 @@ const COMPACT_MANIFEST_TYPE = "supervibe-agent-output-compact-manifest";
 const DEFAULT_RETENTION_DAYS = 14;
 const DEFAULT_WORKFLOW_ARTIFACT_RETENTION_DAYS = 90;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const WORKFLOW_INVOCATIONS_ROOT = ".supervibe/artifacts/_workflow-invocations";
+
+const AUTO_SAFE_ARTIFACT_CANDIDATE_REASONS = Object.freeze(new Set([
+  "runtime-state",
+  "stale-receipt-archive",
+  "preview-log",
+  "backup-file",
+  "stale-telemetry-log",
+  "unreferenced-agent-output",
+  "stale-untrusted-workflow-receipt",
+  "stale-workflow-temp-artifact",
+]));
 
 const RUNTIME_FILES = Object.freeze([
   { path: ".supervibe/memory/preview-servers.json", tier: RETENTION_TIERS.DIAGNOSTIC_LATEST },
@@ -46,6 +58,7 @@ export async function scanSupervibeArtifactGc({
   rootDir = process.cwd(),
   now = new Date().toISOString(),
   retentionDays = DEFAULT_RETENTION_DAYS,
+  workflowArtifactRetentionDays = DEFAULT_WORKFLOW_ARTIFACT_RETENTION_DAYS,
   compactAgentOutputDays = retentionDays,
   archiveRetentionDays = 90,
   maxArchiveBytes = 0,
@@ -63,6 +76,7 @@ export async function scanSupervibeArtifactGc({
   const reachability = buildCleanupReachability({ rootDir, now });
   const protectedArchivePaths = buildArchiveCleanupProtectedPathSet({ referenced, reachability });
   const cutoffMs = Date.parse(now) - Number(retentionDays) * DAY_MS;
+  const workflowArtifactCutoffMs = Date.parse(now) - Number(workflowArtifactRetentionDays) * DAY_MS;
   const compactCutoffMs = Date.parse(now) - Number(compactAgentOutputDays) * DAY_MS;
 
   for (const file of RUNTIME_FILES) {
@@ -135,16 +149,78 @@ export async function scanSupervibeArtifactGc({
     const absPath = join(rootDir, ...normalized.split("/"));
     if (!existsSync(absPath)) continue;
     const itemStat = statSync(absPath);
+    const itemAgeDays = ageDays(itemStat, now);
+    const protectedByReachability = isCleanupProtectedPath(normalized, reachability, {
+      ignoreReason: "workflow-invocation-artifact",
+    });
+    if (
+      receipt.trusted !== true
+      && Number.isFinite(workflowArtifactCutoffMs)
+      && itemStat.mtimeMs <= workflowArtifactCutoffMs
+      && protectedByReachability !== true
+    ) {
+      addCandidate({
+        rootDir,
+        relPath: normalized,
+        scanned,
+        candidates,
+        reason: "stale-untrusted-workflow-receipt",
+        ageDays: itemAgeDays,
+        tier: RETENTION_TIERS.ARCHIVE,
+      });
+      continue;
+    }
     activeNoise.push({
       relPath: normalized,
       reason: receipt.trusted ? "trusted-workflow-receipt" : "untrusted-workflow-receipt",
       tier: receipt.trusted ? RETENTION_TIERS.REQUIRED : RETENTION_TIERS.DIAGNOSTIC_LATEST,
-      ageDays: ageDays(itemStat, now),
+      ageDays: itemAgeDays,
       trustedReceipt: receipt.trusted,
       issueCount: receipt.issues.length,
-      retentionDays: DEFAULT_WORKFLOW_ARTIFACT_RETENTION_DAYS,
+      retentionDays: Number(workflowArtifactRetentionDays),
     });
     scanned.add(normalized);
+  }
+
+  for (const item of collectWorkflowInvocationArtifactRoots(rootDir)) {
+    const normalized = normalizeRelPath(item.relPath);
+    if (!normalized || scanned.has(normalized)) continue;
+    const itemAgeDays = ageDays(item.stat, now);
+    const protectedByTrustedReceipt = trustedWorkflowReceiptInside(normalized, workflowReceipts);
+    const protectedByReachability = isCleanupProtectedPath(normalized, reachability, {
+      ignoreReason: "workflow-invocation-artifact",
+    });
+    if (protectedByTrustedReceipt || protectedByReachability) {
+      activeNoise.push({
+        relPath: normalized,
+        reason: protectedByTrustedReceipt ? "trusted-workflow-artifact" : "protected-workflow-artifact",
+        tier: RETENTION_TIERS.REQUIRED,
+        ageDays: itemAgeDays,
+        retentionDays: Number(workflowArtifactRetentionDays),
+      });
+      scanned.add(normalized);
+      continue;
+    }
+    if (Number.isFinite(workflowArtifactCutoffMs) && item.stat.mtimeMs <= workflowArtifactCutoffMs) {
+      addCandidate({
+        rootDir,
+        relPath: normalized,
+        scanned,
+        candidates,
+        reason: "stale-workflow-temp-artifact",
+        ageDays: itemAgeDays,
+        tier: RETENTION_TIERS.ARCHIVE,
+      });
+    } else {
+      activeNoise.push({
+        relPath: normalized,
+        reason: "recent-workflow-temp-artifact",
+        tier: RETENTION_TIERS.DIAGNOSTIC_LATEST,
+        ageDays: itemAgeDays,
+        retentionDays: Number(workflowArtifactRetentionDays),
+      });
+      scanned.add(normalized);
+    }
   }
 
   for (const item of listFiles(rootDir, ".supervibe")) {
@@ -262,10 +338,12 @@ export async function scanSupervibeArtifactGc({
   activeNoise.sort((left, right) => left.relPath.localeCompare(right.relPath));
   compactable.sort((left, right) => left.relPath.localeCompare(right.relPath));
   archiveCleanup.sort((left, right) => left.relPath.localeCompare(right.relPath) || left.reason.localeCompare(right.reason));
+  const autoSafeCandidateCount = candidates.filter((item) => AUTO_SAFE_ARTIFACT_CANDIDATE_REASONS.has(item.reason)).length;
   return {
     schemaVersion: 1,
     generatedAt: now,
     retentionDays: Number(retentionDays),
+    workflowArtifactRetentionDays: Number(workflowArtifactRetentionDays),
     compactAgentOutputDays: Number(compactAgentOutputDays),
     archiveRetentionDays: Number(archiveRetentionDays),
     maxArchiveBytes: Number(maxArchiveBytes || 0),
@@ -278,12 +356,30 @@ export async function scanSupervibeArtifactGc({
     summary: {
       scanned: scanned.size,
       candidates: candidates.length,
+      autoSafeCandidates: autoSafeCandidateCount,
       activeNoise: activeNoise.length,
       compactable: compactable.length,
       archiveCleanup: archiveCleanup.length,
     },
     reachability: {
       summary: reachability.summary,
+    },
+  };
+}
+
+export function filterArtifactGcAutoCandidates(scan = {}, { maxCandidates = Infinity } = {}) {
+  const limit = Number(maxCandidates);
+  const candidates = (scan.candidates || [])
+    .filter((item) => AUTO_SAFE_ARTIFACT_CANDIDATE_REASONS.has(item.reason))
+    .slice(0, Number.isFinite(limit) && limit >= 0 ? limit : Infinity);
+  return {
+    ...scan,
+    autoSafe: true,
+    candidates,
+    summary: {
+      ...(scan.summary || {}),
+      candidates: candidates.length,
+      autoSafeCandidates: candidates.length,
     },
   };
 }
@@ -493,6 +589,9 @@ export async function evaluateArtifactGcSchedule({
     : now;
   const due = !lastRunAt || Date.parse(now) >= Date.parse(nextRunAt);
   const resolvedScan = scan || await scanSupervibeArtifactGc({ rootDir, now });
+  const autoSafeScan = filterArtifactGcAutoCandidates(resolvedScan);
+  const candidateCount = resolvedScan.summary?.candidates || 0;
+  const autoCandidateCount = autoSafeScan.summary?.autoSafeCandidates || 0;
   return {
     schemaVersion: 1,
     due,
@@ -500,12 +599,15 @@ export async function evaluateArtifactGcSchedule({
     intervalDays: resolvedIntervalDays,
     lastRunAt,
     nextRunAt,
-    candidates: resolvedScan.summary?.candidates || 0,
-    nextAction: due && (resolvedScan.summary?.candidates || 0) > 0
-      ? "run npm run supervibe:gc -- --artifacts --scheduled --apply"
-      : due
+    candidates: candidateCount,
+    autoSafeCandidates: autoCandidateCount,
+    nextAction: due && autoCandidateCount > 0
+      ? "run npm run supervibe:gc -- --artifacts --scheduled --auto --apply"
+      : due && candidateCount > 0
         ? "run npm run supervibe:gc -- --artifacts --scheduled --dry-run"
-        : "artifact GC schedule not due",
+        : due
+          ? "run npm run supervibe:gc -- --artifacts --scheduled --dry-run"
+          : "artifact GC schedule not due",
   };
 }
 
@@ -532,6 +634,7 @@ export function formatArtifactGcSchedule(schedule = {}) {
     `LAST_RUN_AT: ${schedule.lastRunAt || "never"}`,
     `NEXT_RUN_AT: ${schedule.nextRunAt || "unknown"}`,
     `CANDIDATES: ${schedule.candidates || 0}`,
+    `AUTO_SAFE_CANDIDATES: ${schedule.autoSafeCandidates || 0}`,
     `NEXT_ACTION: ${schedule.nextAction || "inspect artifact GC"}`,
   ].join("\n");
 }
@@ -541,6 +644,7 @@ export async function validateSupervibeGcStrict({
   now = new Date().toISOString(),
   scan = null,
   retentionDays = DEFAULT_RETENTION_DAYS,
+  workflowArtifactRetentionDays = DEFAULT_WORKFLOW_ARTIFACT_RETENTION_DAYS,
   compactAgentOutputDays = retentionDays,
   archiveRetentionDays = 90,
   maxArchiveBytes = 0,
@@ -551,6 +655,7 @@ export async function validateSupervibeGcStrict({
     rootDir,
     now,
     retentionDays,
+    workflowArtifactRetentionDays,
     compactAgentOutputDays,
     archiveRetentionDays,
     maxArchiveBytes,
@@ -588,6 +693,7 @@ export async function validateSupervibeGcStrict({
     referenced,
     receiptTrustByPath,
     retentionDays,
+    workflowArtifactRetentionDays,
   }));
   const coverage = summarizeStrictCoverage(classified);
   const unclassified = classified.filter((item) => item.category === "unclassified");
@@ -629,7 +735,7 @@ export async function validateSupervibeGcStrict({
     retentionPolicy: {
       artifactRetentionDays: Number(retentionDays),
       compactAgentOutputDays: Number(compactAgentOutputDays),
-      workflowArtifactRetentionDays: DEFAULT_WORKFLOW_ARTIFACT_RETENTION_DAYS,
+      workflowArtifactRetentionDays: Number(workflowArtifactRetentionDays),
       archiveRetentionDays: Number(archiveRetentionDays),
       archiveKeepLast: Number(archiveKeepLast || 0),
       trustedWorkflowReceipts: "retain",
@@ -708,6 +814,8 @@ export function formatSupervibeArtifactGcReport(scan = {}, archiveResult = {}) {
     "SUPERVIBE_ARTIFACT_GC",
     `SCANNED: ${scan.summary?.scanned || 0}`,
     `CANDIDATES: ${scan.summary?.candidates || 0}`,
+    `AUTO_SAFE: ${scan.autoSafe === true}`,
+    `AUTO_SAFE_CANDIDATES: ${scan.summary?.autoSafeCandidates || 0}`,
     `ACTIVE_NOISE: ${scan.summary?.activeNoise || 0}`,
     `COMPACTABLE: ${scan.summary?.compactable || 0}`,
     `ARCHIVE_CLEANUP: ${scan.summary?.archiveCleanup || 0}`,
@@ -759,6 +867,46 @@ function addCandidate({ relPath, scanned, candidates, reason, ageDays, tier }) {
   });
 }
 
+function collectWorkflowInvocationArtifactRoots(rootDir) {
+  const roots = [];
+  for (const commandDir of listChildren(rootDir, WORKFLOW_INVOCATIONS_ROOT)) {
+    if (!commandDir.dirent.isDirectory()) {
+      roots.push(commandDir);
+      continue;
+    }
+    const children = listChildren(rootDir, commandDir.relPath);
+    if (children.length === 0) {
+      roots.push(commandDir);
+      continue;
+    }
+    roots.push(...children);
+  }
+  return roots;
+}
+
+function trustedWorkflowReceiptInside(relPath, workflowReceipts = []) {
+  const normalized = normalizeRelPath(relPath);
+  return workflowReceipts.some((item) => {
+    if (item.trusted !== true) return false;
+    const receiptPath = normalizeRelPath(item.receipt?.__file || "");
+    return receiptPath === normalized || receiptPath.startsWith(normalized + "/");
+  });
+}
+
+function isCleanupProtectedPath(relPath, reachability = {}, { ignoreReason = "" } = {}) {
+  const normalized = normalizeRelPath(relPath);
+  const protectedClasses = new Set(["protected", "hot", "blocked"]);
+  const ignored = String(ignoreReason || "");
+  const items = reachability.inventory || [];
+  for (const item of items) {
+    const itemPath = normalizeRelPath(item.relPath);
+    if (!itemPath) continue;
+    if (!(itemPath === normalized || itemPath.startsWith(normalized + "/") || normalized.startsWith(itemPath + "/"))) continue;
+    if (ignored && String(item.reason || "") === ignored) continue;
+    if (protectedClasses.has(item.lifecycleClass)) return true;
+  }
+  return false;
+}
 function listChildren(rootDir, relDir) {
   const absDir = join(rootDir, ...normalizeRelPath(relDir).split("/"));
   if (!existsSync(absDir)) return [];
@@ -1051,6 +1199,7 @@ function classifyStrictInventoryItem(item, {
   receiptTrustByPath,
   referenced,
   retentionDays,
+  workflowArtifactRetentionDays = DEFAULT_WORKFLOW_ARTIFACT_RETENTION_DAYS,
 }) {
   const relPath = normalizeRelPath(item.relPath);
   const receiptRefs = referenced.get(relPath) || [];
@@ -1077,6 +1226,8 @@ function classifyStrictInventoryItem(item, {
     const staleArchive = relPath.includes("/workflow-receipts-stale/");
     const artifactLink = relPath.endsWith("/artifact-links.json");
     const receiptTrust = receiptTrustByPath?.get(relPath) || null;
+    const trustedWorkflowReceipt = receipt ? receiptTrust?.trusted === true : base.trustedReceipt;
+    const staleUntrustedReceipt = receipt && trustedWorkflowReceipt !== true && item.ageDays >= Number(workflowArtifactRetentionDays);
     return {
       ...base,
       category: staleArchive
@@ -1088,13 +1239,15 @@ function classifyStrictInventoryItem(item, {
         ? "stale-workflow-receipt-archive"
         : artifactLink
           ? "workflow-artifact-link"
-          : "workflow-receipt-retention",
-      tier: staleArchive ? RETENTION_TIERS.ARCHIVE : RETENTION_TIERS.REQUIRED,
-      retentionDays: staleArchive ? Number(archiveRetentionDays) : DEFAULT_WORKFLOW_ARTIFACT_RETENTION_DAYS,
-      trustedReceipt: receipt ? receiptTrust?.trusted === true : base.trustedReceipt,
+          : staleUntrustedReceipt
+            ? "stale-untrusted-workflow-receipt"
+            : "workflow-receipt-retention",
+      tier: staleArchive || staleUntrustedReceipt ? RETENTION_TIERS.ARCHIVE : RETENTION_TIERS.REQUIRED,
+      retentionDays: staleArchive ? Number(archiveRetentionDays) : Number(workflowArtifactRetentionDays),
+      trustedReceipt: trustedWorkflowReceipt,
       trustIssues: receipt ? receiptTrust?.issues || [] : [],
-      nextAction: staleArchive
-        ? "run npm run supervibe:gc -- --artifacts --dry-run, then --apply after review"
+      nextAction: staleArchive || staleUntrustedReceipt
+        ? "run npm run supervibe:gc -- --artifacts --scheduled --auto --apply after dry-run review"
         : "retain trusted receipts; repair or prune stale receipts with workflow-receipt.mjs",
     };
   }

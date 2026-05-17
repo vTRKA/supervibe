@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.44] - 2026-05-17
+
+### Fixed
+
+- Removed remaining workflow false blockers by keeping fast-session receipt proof out of development paths while strict release still requires trusted graph/task evidence.
+- Scoped strict release completion trust to the current work graph so receipts from another graph/task cannot satisfy terminal graph proof.
+- Moved session-start auto-GC maintenance fully off the foreground path and made `--status` a cheap state read.
+- Optimized Code RAG entity/anchor lookup and memory miss diagnostics so agents get usable retrieval context with fewer broad scans.
+
+### Validation
+
+- Rechecked final reviewer receipts, strict release gate, Code RAG/CodeGraph index health, targeted workflow/RAG tests, and the full release check for the 2.1.44 package bump.
+
 ## [2.1.43] - 2026-05-17
 
 ### Fixed

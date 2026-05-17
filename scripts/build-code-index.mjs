@@ -7,11 +7,12 @@
 //   --since=<git-rev>    lazy mode - only files changed since given git rev (e.g. HEAD~50)
 //   --resume             index only missing/stale files from the current policy inventory
 //   --no-embeddings      BM25/source-readiness mode; embeddings and graph work are skipped unless --graph is passed
+//   --embeddings-only    repair missing embeddings for already indexed files; graph work is skipped
 //   --source-only        plain text/BM25 readiness mode; embeddings and graph are skipped
 // Runtime:
 //   unbounded by default; --max-seconds enables graceful bounded batches
 
-import { CodeStore, CODE_GRAPH_EXTRACTOR_VERSION, CODE_RAG_CHUNK_METADATA_VERSION } from './lib/code-store.mjs';
+import { CodeStore, CODE_GRAPH_EXTRACTOR_VERSION, CODE_RAG_CHUNK_METADATA_VERSION, CODE_RAG_ENTITY_METADATA_VERSION } from './lib/code-store.mjs';
 import { collectIndexHealthFromStore, evaluateIndexHealthGate, formatIndexHealth } from './lib/supervibe-index-health.mjs';
 import { buildCodeIndexFreshnessStatus, formatCodeIndexFreshnessStatus } from './lib/code-index-health-status.mjs';
 import { discoverSourceFiles } from './lib/supervibe-index-policy.mjs';
@@ -44,6 +45,7 @@ Core options:
   --health                  Print source coverage, graph, stale-row, and language health after indexing
   --source-only             Plain text/BM25 readiness mode: skip embeddings and graph
   --no-embeddings           BM25/source-readiness mode: skip embeddings and graph unless --graph is also passed
+  --embeddings-only         Repair missing chunk embeddings for indexed files; skip graph extraction
   --graph                   Keep graph extraction enabled with --no-embeddings
   --no-graph                Skip graph extraction and cross-file edge resolution
   --maintenance             Run code.db maintenance only, without indexing
@@ -92,6 +94,7 @@ Observability:
 Examples:
   node scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --health
   node scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health
+  node scripts/build-code-index.mjs --root . --resume --embeddings-only --max-files 100 --health
   node scripts/build-code-index.mjs --root . --resume --source-only --max-files 50 --max-seconds 30 --json-progress
   node scripts/build-code-index.mjs --root . --list-missing
 `.trim();
@@ -484,6 +487,7 @@ function acquireIndexLock({ rootDir, owner = null } = {}) {
 
 async function collectMissingOrStaleFiles(store, rootDir, {
   includeGraph = true,
+  includeEmbeddings = false,
   selectionLimit = 0,
   prioritizeMissing = false,
   onProgress = null,
@@ -493,7 +497,25 @@ async function collectMissingOrStaleFiles(store, rootDir, {
 } = {}) {
   const inventory = applyRepairFilterToInventory(await discoverSourceFiles(rootDir), filter);
   onProgress?.({ phase: 'discovery', total: inventory.files.length });
-  const rows = store.db.prepare('SELECT path, content_hash AS contentHash, graph_version AS graphVersion FROM code_files').all();
+  const rows = store.db.prepare(`
+    SELECT cf.path,
+           cf.content_hash AS contentHash,
+           cf.graph_version AS graphVersion,
+           (SELECT COUNT(*) FROM code_chunks cc WHERE cc.path = cf.path) AS totalChunks,
+           (SELECT COUNT(*) FROM code_chunks cc WHERE cc.path = cf.path AND cc.embedding IS NOT NULL) AS embeddedChunks,
+           (SELECT COUNT(*)
+            FROM code_chunks cc
+            WHERE cc.path = cf.path
+              AND (cc.metadata_version < ?
+                OR cc.file_role IS NULL OR cc.file_role = ''
+                OR cc.artifact_type IS NULL OR cc.artifact_type = ''
+                OR cc.freshness IS NULL OR cc.freshness = ''
+                OR cc.heading IS NULL OR cc.heading = '')) AS staleMetadataChunks,
+           (SELECT COUNT(*) FROM code_chunk_entities cce WHERE cce.path = cf.path) AS totalEntities,
+           (SELECT COUNT(DISTINCT cc.path || '#' || cc.chunk_idx) FROM code_chunks cc JOIN code_chunk_entities cce ON cce.path = cc.path AND cce.chunk_idx = cc.chunk_idx WHERE cc.path = cf.path) AS linkedEntityChunks,
+           (SELECT COUNT(*) FROM code_chunk_entities cce WHERE cce.path = cf.path AND cce.metadata_version < ?) AS staleEntities
+    FROM code_files cf
+  `).all(CODE_RAG_CHUNK_METADATA_VERSION, CODE_RAG_ENTITY_METADATA_VERSION);
   const byPath = new Map(rows.map((row) => [row.path, row]));
   const knownFailedByPath = skipKnownFailed
     ? buildKnownFailedMap(await store.readFailedFilesReport(), { ttlSeconds: knownFailedTtlSeconds })
@@ -542,6 +564,17 @@ async function collectMissingOrStaleFiles(store, rootDir, {
     try { fileHash = await hashFile(file.absPath); } catch {}
     if (fileHash && fileHash !== row.contentHash) {
       stale.push({ ...file, reason: 'content-changed' });
+    } else if (includeEmbeddings && Number(row.totalChunks || 0) > 0 && Number(row.embeddedChunks || 0) < Number(row.totalChunks || 0)) {
+      stale.push({ ...file, reason: 'embedding-missing' });
+    } else if (Number(row.staleMetadataChunks || 0) > 0) {
+      stale.push({ ...file, reason: 'chunk-metadata-stale' });
+    } else if (Number(row.totalChunks || 0) > 0 && (Number(row.linkedEntityChunks || 0) < Number(row.totalChunks || 0) || Number(row.staleEntities || 0) > 0)) {
+      const reason = Number(row.staleEntities || 0) > 0
+        ? 'chunk-entities-stale'
+        : Number(row.linkedEntityChunks || 0) === 0
+          ? 'chunk-entities-missing'
+          : 'chunk-entities-partial';
+      stale.push({ ...file, reason });
     } else if (includeGraph && Number(row.graphVersion || 0) !== CODE_GRAPH_EXTRACTOR_VERSION) {
       const knownFailed = knownFailedByPath.get(file.relPath);
       if (knownFailed) {
@@ -610,6 +643,7 @@ async function main() {
   const { values } = parseArgs({
     options: {
       'no-embeddings': { type: 'boolean', default: false },
+      'embeddings-only': { type: 'boolean', default: false },
       'source-only': { type: 'boolean', default: false },
       'no-graph': { type: 'boolean', default: false },
       graph: { type: 'boolean', default: false },
@@ -652,7 +686,11 @@ async function main() {
   });
 
   const sourceOnly = values['source-only'];
-  const noEmbeddings = sourceOnly || values['no-embeddings'];
+  if (values['embeddings-only'] && (sourceOnly || values['no-embeddings'])) {
+    throw new Error('--embeddings-only cannot be combined with --source-only or --no-embeddings');
+  }
+  const embeddingsOnly = values['embeddings-only'];
+  const noEmbeddings = !embeddingsOnly && (sourceOnly || values['no-embeddings']);
   const rootDir = values.root ? resolve(PROJECT_ROOT, values.root) : PROJECT_ROOT;
   const progressEvery = positiveInt(values['progress-every'] || process.env.SUPERVIBE_INDEX_PROGRESS_EVERY, DEFAULT_INDEX_PROGRESS_EVERY);
   const heartbeatSeconds = nonNegativeInt(values['heartbeat-seconds'] || process.env.SUPERVIBE_INDEX_HEARTBEAT_SECONDS, DEFAULT_HEARTBEAT_SECONDS);
@@ -672,7 +710,7 @@ async function main() {
   const chunkTimeoutMs = process.env.SUPERVIBE_INDEX_CHUNK_TIMEOUT_MS
     ? undefined
     : (maxSeconds > 0 ? Math.max(100, Math.floor(maxSeconds * 1000 * 0.8)) : undefined);
-  const graphEnabled = sourceOnly ? false : (values['no-graph'] ? false : (noEmbeddings && !values.graph ? false : true));
+  const graphEnabled = embeddingsOnly ? false : (sourceOnly ? false : (values['no-graph'] ? false : (noEmbeddings && !values.graph ? false : true)));
   const repairFilter = buildRepairFilter({
     language: values.language,
     path: values.path,
@@ -733,6 +771,7 @@ async function main() {
       await diagnosticStore.init();
       const report = await collectMissingOrStaleFiles(diagnosticStore, rootDir, {
         includeGraph: graphEnabled,
+        includeEmbeddings: !noEmbeddings || embeddingsOnly,
         selectionLimit: Math.max(maxFiles || smallDeltaLimit, smallDeltaLimit) + 1,
         prioritizeMissing: true,
         filter: repairFilter,
@@ -768,6 +807,7 @@ async function main() {
       await diagnosticStore.init();
       const report = await collectMissingOrStaleFiles(diagnosticStore, rootDir, {
         includeGraph: graphEnabled,
+        includeEmbeddings: !noEmbeddings || embeddingsOnly,
         filter: repairFilter,
         onProgress: null,
       });
@@ -867,6 +907,7 @@ async function main() {
     if (values.resume) {
       const report = await collectMissingOrStaleFiles(store, rootDir, {
         includeGraph: graphEnabled,
+        includeEmbeddings: !noEmbeddings || embeddingsOnly,
         selectionLimit: maxFiles,
         prioritizeMissing: maxFiles > 0,
         filter: repairFilter,
@@ -912,6 +953,7 @@ async function main() {
 
     const modeParts = [];
     if (sourceOnly) modeParts.push('source-only plain text/BM25');
+    if (embeddingsOnly) modeParts.push('embedding repair only');
     if (noEmbeddings) modeParts.push('BM25/source-readiness, embeddings disabled');
     if (!graphEnabled) modeParts.push('graph disabled');
     if (values.force) modeParts.push('force refresh');

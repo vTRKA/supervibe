@@ -8,6 +8,8 @@ import { loadRubrics } from './lib/load-rubrics.mjs';
 
 const ROOT_PATH = fileURLToPath(new URL('../', import.meta.url));
 const OUT_PATH = join(ROOT_PATH, 'registry.yaml');
+const DEFAULT_GENERATED_AT = 'deterministic-local';
+const args = parseArgs(process.argv.slice(2));
 
 function toRepoRelative(absPath) {
   return relative(ROOT_PATH, absPath).split(sep).join('/');
@@ -16,7 +18,8 @@ function toRepoRelative(absPath) {
 async function* walk(dirPath) {
   let entries;
   try {
-    entries = await readdir(dirPath, { withFileTypes: true });
+    entries = (await readdir(dirPath, { withFileTypes: true }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   } catch (err) {
     if (err.code === 'ENOENT') return;
     throw err;
@@ -97,7 +100,8 @@ async function loadStackPacks() {
   const packsDir = join(ROOT_PATH, 'stack-packs');
   let entries;
   try {
-    entries = await readdir(packsDir, { withFileTypes: true });
+    entries = (await readdir(packsDir, { withFileTypes: true }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   } catch (err) {
     if (err.code === 'ENOENT') return packs;
     throw err;
@@ -143,7 +147,7 @@ async function main() {
 
   const registry = {
     version: '1.0.0',
-    'generated-at': new Date().toISOString(),
+    'generated-at': args.generatedAt || process.env.SUPERVIBE_REGISTRY_GENERATED_AT || DEFAULT_GENERATED_AT,
     agents: await loadAgents(),
     skills: await loadSkills(),
     rules: await loadRules(),
@@ -151,7 +155,10 @@ async function main() {
     'confidence-rubrics': await loadRubrics(rubricsDirPath, toRepoRelative)
   };
 
-  await writeFile(OUT_PATH, stringifyYaml(registry));
+  const output = stringifyYaml(registry);
+  const previous = await readOptional(OUT_PATH);
+  const changed = previous !== output;
+  if (changed) await writeFile(OUT_PATH, output, 'utf8');
   const counts = {
     agents: Object.keys(registry.agents).length,
     skills: Object.keys(registry.skills).length,
@@ -159,8 +166,34 @@ async function main() {
     'stack-packs': Object.keys(registry['stack-packs']).length,
     'confidence-rubrics': Object.keys(registry['confidence-rubrics']).length
   };
-  console.log(`Registry written to ${OUT_PATH}`);
+  console.log(changed ? `Registry written to ${OUT_PATH}` : `Registry already up to date at ${OUT_PATH}`);
   console.log(JSON.stringify(counts, null, 2));
 }
 
 main().catch(err => { console.error(err); process.exit(1); });
+
+async function readOptional(path) {
+  try {
+    return await readFile(path, 'utf8');
+  } catch (error) {
+    if (error.code === 'ENOENT') return null;
+    throw error;
+  }
+}
+
+function parseArgs(argv = []) {
+  const parsed = {};
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    if (arg === '--generated-at') parsed.generatedAt = readOptionValue(argv, ++index, arg);
+    else if (arg.startsWith('--generated-at=')) parsed.generatedAt = arg.slice('--generated-at='.length);
+    else if (arg === '--now-generated-at') parsed.generatedAt = new Date().toISOString();
+  }
+  return parsed;
+}
+
+function readOptionValue(argv, index, option) {
+  const value = argv[index];
+  if (!value || value.startsWith('--')) throw new Error(`${option} requires a value`);
+  return value;
+}

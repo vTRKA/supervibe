@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { access, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFile } from "node:child_process";
@@ -11,10 +11,12 @@ import {
   applyWorkItemAdapter,
   atomizePlanToWorkItems,
   createWorkItemGraph,
+  createWorkflowReceiptPolicy,
   createNativeWorkItemAdapter,
   createWorkItemPreview,
   parsePlanForWorkItems,
   validateWorkItemGraph,
+  WORKFLOW_EVIDENCE_MODES,
   WORK_ITEM_REQUIRED_FIELDS,
   WORK_ITEM_TYPES,
   workItemsToLoopTasks,
@@ -22,6 +24,48 @@ import {
 } from "../scripts/lib/supervibe-plan-to-work-items.mjs";
 
 const execFileAsync = promisify(execFile);
+const TRUSTED_PRODUCER_PROOF = Object.freeze({
+  hostInvocationSource: "codex-spawn-agent",
+  hostInvocationId: "codex-graph-builder-test",
+});
+
+async function writeTestHostInvocation(rootDir, invocationId = TRUSTED_PRODUCER_PROOF.hostInvocationId, agentId = "work-item-graph-builder", options = {}) {
+  if (agentId && typeof agentId === "object") {
+    options = agentId;
+    agentId = options.agentId || "work-item-graph-builder";
+  }
+  const graph = options.graph || null;
+  const graphId = options.graphId || graph?.epicId || "epic-payment";
+  const outputArtifacts = options.outputArtifacts || [options.outputArtifact || `.supervibe/memory/work-items/${graphId}/graph.json`];
+  const memoryDir = join(rootDir, ".supervibe", "memory");
+  await mkdir(memoryDir, { recursive: true });
+  const record = {
+    schemaVersion: 1,
+    ts: "2026-05-17T00:00:00.000Z",
+    invocation_id: invocationId,
+    host_invocation_id: invocationId,
+    host_invocation_source: options.hostInvocationSource || "codex-spawn-agent",
+    agent_id: agentId,
+    subject_id: agentId,
+    subject_type: options.subjectType || "agent",
+    host: "codex",
+    status: options.status || "completed",
+    task_summary: "test graph producer proof",
+    confidence_score: 9,
+    command: options.command || "/supervibe-loop",
+    stage: options.stage || "work-item-atomization",
+    handoff_id: options.handoffId || graph?.metadata?.graphProducerProof?.handoffId || graphId,
+    output_artifacts: outputArtifacts,
+  };
+  await writeFile(join(memoryDir, "agent-invocations.jsonl"), JSON.stringify(record) + "\n", "utf8");
+}
+
+function expectedPlanEpicId(planPath) {
+  const titleSlug = "payment-flow-implementation-plan";
+  const hash = createHash("sha1").update(String(planPath).replace(/\\/g, "/")).digest("hex").slice(0, 6);
+  return `epic-${titleSlug}-${hash}`;
+}
+
 
 const PLAN = `# Payment Flow Implementation Plan
 
@@ -626,7 +670,9 @@ test("native write and external adapter failure preserve native graph", async ()
       planPath: ".supervibe/artifacts/plans/payment.md",
       epicId: "epic-payment",
       planReviewPassed: true,
+      ...TRUSTED_PRODUCER_PROOF,
     });
+    await writeTestHostInvocation(temp, TRUSTED_PRODUCER_PROOF.hostInvocationId, "work-item-graph-builder", { graph, outputArtifacts: [".supervibe/memory/work-items/epic-payment/graph.json", "native/graph.json"] });
     const writeResult = await writeWorkItemGraph(graph, { rootDir: temp });
     const saved = JSON.parse(await readFile(writeResult.graphPath, "utf8"));
     assert.equal(saved.kind, "supervibe-work-item-graph");
@@ -656,6 +702,7 @@ test("atomization records source plan hash without writing snapshot files by def
       planPath: ".supervibe/artifacts/plans/payment.md",
       epicId: "epic-payment",
       planReviewPassed: true,
+      ...TRUSTED_PRODUCER_PROOF,
     });
     const expectedHash = createHash("sha256").update(PLAN).digest("hex");
 
@@ -663,8 +710,9 @@ test("atomization records source plan hash without writing snapshot files by def
     assert.equal(graph.source.snapshotPath, null);
     assert.equal(graph.metadata.sourcePlanSnapshot.sha256, expectedHash);
     assert.equal(graph.metadata.sourcePlanSnapshot.storedPath, null);
-    assert.equal(graph.metadata.sourcePlanSnapshot.content, PLAN);
+    assert.equal("content" in graph.metadata.sourcePlanSnapshot, false);
 
+    await writeTestHostInvocation(temp, TRUSTED_PRODUCER_PROOF.hostInvocationId, "work-item-graph-builder", { graph });
     const writeResult = await writeWorkItemGraph(graph, { rootDir: temp });
     const saved = JSON.parse(await readFile(writeResult.graphPath, "utf8"));
 
@@ -679,6 +727,107 @@ test("atomization records source plan hash without writing snapshot files by def
   }
 });
 
+test("plan-review-passed alone keeps fast-session receipts deferred", () => {
+  const graph = atomizePlanToWorkItems(PLAN, {
+    planPath: ".supervibe/artifacts/plans/payment.md",
+    epicId: "epic-payment-reviewed-fast",
+    planReviewPassed: true,
+  });
+
+  assert.equal(graph.metadata.planReviewPassed, true);
+  assert.equal(graph.metadata.workflowEvidenceMode, "fast-session");
+  assert.equal(graph.metadata.receiptPolicy.graphProducerProof.required, false);
+  assert.equal(graph.metadata.receiptPolicy.releaseProofRequiredAt, "release-handoff");
+  assert.equal(graph.metadata.graphProducerProof.required, false);
+  assert.equal(graph.metadata.epicAgentContract.required, false);
+});
+
+test("fast-session atomization keeps source snapshots hash-only and receipts deferred", () => {
+  const graph = atomizePlanToWorkItems(PLAN, {
+    planPath: ".supervibe/artifacts/plans/payment.md",
+    epicId: "epic-payment-fast",
+    workflowEvidenceMode: WORKFLOW_EVIDENCE_MODES.FAST_SESSION,
+  });
+
+  const expectedHash = createHash("sha256").update(PLAN).digest("hex");
+  assert.equal(graph.metadata.workflowEvidenceMode, "fast-session");
+  assert.equal(graph.metadata.receiptPolicy.startupReceiptsRequired, false);
+  assert.equal(graph.metadata.receiptPolicy.releaseProofRequiredAt, "release-handoff");
+  assert.equal(graph.metadata.graphProducerProof.required, false);
+  assert.equal(graph.metadata.epicAgentContract.required, false);
+  assert.equal(graph.metadata.sourcePlanSnapshot.sha256, expectedHash);
+  assert.equal(graph.metadata.sourcePlanSnapshot.storedPath, null);
+  assert.equal(graph.metadata.sourcePlanSnapshot.contentLength, Buffer.byteLength(PLAN, "utf8"));
+  assert.equal("content" in graph.metadata.sourcePlanSnapshot, false);
+});
+
+test("release-proof receipt policy requires startup and graph proof immediately", () => {
+  const policy = createWorkflowReceiptPolicy({
+    workflowEvidenceMode: WORKFLOW_EVIDENCE_MODES.RELEASE_PROOF,
+  });
+
+  assert.equal(policy.mode, "release-proof");
+  assert.equal(policy.activeDevelopment, false);
+  assert.equal(policy.startupReceiptsRequired, true);
+  assert.equal(policy.releaseProofRequiredAt, "now");
+  assert.equal(policy.graphProducerProof.required, true);
+  assert.equal(policy.dispatchWaveReceipt.required, true);
+  assert.equal(policy.graphProducerProof.trust, "runtime-issued-host-agent-receipt");
+});
+
+
+test("release-proof graph writes require trusted host invocation proof", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-release-proof-host-proof-"));
+  try {
+    const untrustedGraph = atomizePlanToWorkItems(PLAN, {
+      planPath: ".supervibe/artifacts/plans/payment.md",
+      epicId: "epic-payment-untrusted",
+      workflowEvidenceMode: WORKFLOW_EVIDENCE_MODES.RELEASE_PROOF,
+      writeSourcePlan: true,
+    });
+
+    await assert.rejects(
+      () => writeWorkItemGraph(untrustedGraph, { rootDir: temp, writeSourcePlan: true }),
+      /untrusted release-proof graph producer proof: .*hostInvocation/,
+    );
+
+    const traceEvidencePath = ".supervibe/memory/fake-host-trace.json";
+    await mkdir(join(temp, ".supervibe", "memory"), { recursive: true });
+    await writeFile(join(temp, ".supervibe", "memory", "fake-host-trace.json"), JSON.stringify({
+      invocation_id: "codex-trace-only",
+      agent_id: "work-item-graph-builder",
+      status: "completed",
+    }) + "\n", "utf8");
+    const traceOnlyGraph = atomizePlanToWorkItems(PLAN, {
+      planPath: ".supervibe/artifacts/plans/payment.md",
+      epicId: "epic-payment-trace-only",
+      workflowEvidenceMode: WORKFLOW_EVIDENCE_MODES.RELEASE_PROOF,
+      hostInvocationSource: "host-trace-file",
+      hostInvocationId: "codex-trace-only",
+      hostInvocationEvidence: traceEvidencePath,
+    });
+    await assert.rejects(
+      () => writeWorkItemGraph(traceOnlyGraph, { rootDir: temp, writeSourcePlan: true }),
+      /untrusted release-proof graph producer proof: .*host-invocation-(?:command|stage|handoff|output)-mismatch/,
+    );
+
+    const trustedGraph = atomizePlanToWorkItems(PLAN, {
+      planPath: ".supervibe/artifacts/plans/payment.md",
+      epicId: "epic-payment-trusted",
+      workflowEvidenceMode: WORKFLOW_EVIDENCE_MODES.RELEASE_PROOF,
+      writeSourcePlan: true,
+      ...TRUSTED_PRODUCER_PROOF,
+    });
+    await writeTestHostInvocation(temp, TRUSTED_PRODUCER_PROOF.hostInvocationId, "work-item-graph-builder", { graph: trustedGraph });
+    const writeResult = await writeWorkItemGraph(trustedGraph, { rootDir: temp, writeSourcePlan: true });
+    const saved = JSON.parse(await readFile(writeResult.graphPath, "utf8"));
+    assert.equal(saved.metadata.graphProducerProof.hostInvocation.source, "codex-spawn-agent");
+    assert.equal(saved.metadata.graphProducerProof.hostInvocation.invocationId, "codex-graph-builder-test");
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
 test("source plan and preview snapshots are opt-in write artifacts", async () => {
   const temp = await mkdtemp(join(tmpdir(), "supervibe-work-items-source-plan-write-"));
   try {
@@ -686,9 +835,12 @@ test("source plan and preview snapshots are opt-in write artifacts", async () =>
       planPath: ".supervibe/artifacts/plans/payment.md",
       epicId: "epic-payment",
       planReviewPassed: true,
+      writeSourcePlan: true,
+      ...TRUSTED_PRODUCER_PROOF,
     });
     const expectedHash = createHash("sha256").update(PLAN).digest("hex");
 
+    await writeTestHostInvocation(temp, TRUSTED_PRODUCER_PROOF.hostInvocationId, "work-item-graph-builder", { graph });
     const writeResult = await writeWorkItemGraph(graph, {
       rootDir: temp,
       writePreview: true,
@@ -705,6 +857,32 @@ test("source plan and preview snapshots are opt-in write artifacts", async () =>
     assert.equal(saved.metadata.sourcePlanSnapshot.storedPath, "source-plan.md");
     assert.equal(saved.metadata.sourcePlanSnapshot.contentLength, Buffer.byteLength(PLAN, "utf8"));
     assert.equal("content" in saved.metadata.sourcePlanSnapshot, false);
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+
+test("source plan snapshot path cannot escape graph output directory", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-source-plan-traversal-"));
+  try {
+    const graph = atomizePlanToWorkItems(PLAN, {
+      planPath: ".supervibe/artifacts/plans/payment.md",
+      epicId: "epic-payment-traversal",
+      planReviewPassed: true,
+      writeSourcePlan: true,
+      ...TRUSTED_PRODUCER_PROOF,
+    });
+    graph.metadata.sourcePlanSnapshot.storedPath = "../outside.md";
+
+    await assert.rejects(
+      () => writeWorkItemGraph(graph, { rootDir: temp, writeSourcePlan: true }),
+      /sourcePlanSnapshot\.storedPath cannot contain path traversal segments/,
+    );
+    await assert.rejects(
+      () => access(join(temp, ".supervibe", "memory", "work-items", "outside.md")),
+      /ENOENT/,
+    );
   } finally {
     await rm(temp, { recursive: true, force: true });
   }
@@ -753,11 +931,13 @@ test("loop CLI atomizes a reviewed plan into graph artifacts", async () => {
 
     assert.match(stdout, /SUPERVIBE_WORK_ITEMS/);
     assert.match(stdout, /VALID: true/);
-    assert.match(stdout, /TRACKER_STATUS: synced/);
+    assert.match(stdout, /EVIDENCE_MODE: fast-session/);
+    assert.match(stdout, /TRACKER_STATUS: skipped-fast-session/);
     const saved = JSON.parse(await readFile(join(temp, "out", "graph.json"), "utf8"));
-    const mapping = JSON.parse(await readFile(join(temp, ".supervibe", "memory", "loops", "task-tracker-map.json"), "utf8"));
     assert.equal(saved.kind, "supervibe-work-item-graph");
-    assert.equal(Object.keys(mapping.items).length, saved.items.length);
+    assert.equal(saved.metadata.workflowEvidenceMode, "fast-session");
+    assert.equal(saved.metadata.receiptPolicy.graphProducerProof.required, false);
+    await assert.rejects(() => access(join(temp, ".supervibe", "memory", "loops", "task-tracker-map.json")), /ENOENT/);
   } finally {
     await rm(temp, { recursive: true, force: true });
   }
@@ -783,6 +963,223 @@ test("loop CLI atomizes a user-approved plan with review deferred to final gate"
     const saved = JSON.parse(await readFile(join(temp, "out", "graph.json"), "utf8"));
     assert.equal(saved.metadata.planReviewPassed, false);
     assert.equal(saved.metadata.planReviewDeferred, true);
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+test("loop CLI fast-start writes graph without tracker sync or startup receipts", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-fast-start-cli-"));
+  try {
+    const planPath = join(temp, "plan.md");
+    const outDir = join(temp, "out");
+    const scriptPath = join(process.cwd(), "scripts", "supervibe-loop.mjs");
+    await writeFile(planPath, PLAN);
+    const { stdout } = await execFileAsync(process.execPath, [
+      scriptPath,
+      "--from-plan",
+      planPath,
+      "--start",
+      "--out",
+      outDir,
+    ], { cwd: temp });
+
+    assert.match(stdout, /SUPERVIBE_WORK_ITEMS/);
+    assert.match(stdout, /EVIDENCE_MODE: fast-session/);
+    assert.match(stdout, /RECEIPTS_NOW: not-required/);
+    assert.match(stdout, /RELEASE_PROOF_REQUIRED_AT: release-handoff/);
+    assert.match(stdout, /SUPERVIBE_FAST_START_READY_QUEUE/);
+    assert.match(stdout, /TRACKER_STATUS: skipped-fast-session/);
+    const saved = JSON.parse(await readFile(join(outDir, "graph.json"), "utf8"));
+    assert.equal(saved.metadata.workflowEvidenceMode, "fast-session");
+    assert.equal(saved.metadata.receiptPolicy.graphProducerProof.required, false);
+    assert.equal("content" in saved.metadata.sourcePlanSnapshot, false);
+    await assert.rejects(() => access(join(outDir, "source-plan.md")), /ENOENT/);
+    await assert.rejects(() => access(join(temp, ".supervibe", "memory", "loops", "task-tracker-map.json")), /ENOENT/);
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+test("loop CLI release-proof start emits required receipts and durable proof artifacts", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-release-proof-cli-"));
+  try {
+    const planPath = join(temp, "plan.md");
+    const outDir = join(temp, "out");
+    const scriptPath = join(process.cwd(), "scripts", "supervibe-loop.mjs");
+    await writeFile(planPath, PLAN);
+    const graphId = expectedPlanEpicId(planPath);
+    await writeTestHostInvocation(temp, "codex-graph-builder-cli", "work-item-graph-builder", { graphId, outputArtifact: "out/graph.json" });
+    const { stdout } = await execFileAsync(process.execPath, [
+      scriptPath,
+      "--from-plan", planPath,
+      "--start",
+      "--release-proof",
+      "--host-invocation-source", "codex-spawn-agent",
+      "--host-invocation-id", "codex-graph-builder-cli",
+      "--out", outDir,
+      "--no-auto-ui",
+    ], { cwd: temp });
+
+    assert.match(stdout, /SUPERVIBE_WORK_ITEMS/);
+    assert.match(stdout, /EVIDENCE_MODE: release-proof/);
+    assert.match(stdout, /RECEIPTS_NOW: required/);
+    assert.match(stdout, /RELEASE_PROOF_REQUIRED_AT: now/);
+    assert.match(stdout, /PREVIEW: .*preview\.txt/);
+    assert.match(stdout, /SOURCE_PLAN: .*source-plan\.md/);
+    assert.match(stdout, /TRACKER_STATUS: synced/);
+    const saved = JSON.parse(await readFile(join(outDir, "graph.json"), "utf8"));
+    assert.equal(saved.metadata.workflowEvidenceMode, "release-proof");
+    assert.equal(saved.metadata.receiptPolicy.startupReceiptsRequired, true);
+    assert.equal(saved.metadata.receiptPolicy.graphProducerProof.required, true);
+    assert.equal(saved.metadata.epicAgentContract.required, true);
+    assert.equal(saved.metadata.sourcePlanSnapshot.storedPath, "source-plan.md");
+    assert.equal(saved.metadata.sourcePlanSnapshot.contentLength, Buffer.byteLength(PLAN, "utf8"));
+    assert.equal(saved.metadata.graphProducerProof.hostInvocation.invocationId, "codex-graph-builder-cli");
+    await stat(join(outDir, "preview.txt"));
+    await stat(join(outDir, "source-plan.md"));
+    await stat(join(temp, ".supervibe", "memory", "loops", "task-tracker-map.json"));
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+test("loop CLI upgrades fast-session graph to release-proof artifacts", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-release-upgrade-cli-"));
+  try {
+    const planPath = join(temp, "plan.md");
+    const outDir = join(temp, "out");
+    const scriptPath = join(process.cwd(), "scripts", "supervibe-loop.mjs");
+    await writeFile(planPath, PLAN);
+    await execFileAsync(process.execPath, [
+      scriptPath,
+      "--from-plan", planPath,
+      "--start",
+      "--fast-session",
+      "--out", outDir,
+      "--no-auto-ui",
+    ], { cwd: temp });
+
+    const graphId = expectedPlanEpicId(planPath);
+    await writeTestHostInvocation(temp, "codex-graph-upgrade-cli", "work-item-graph-builder", { graphId, outputArtifact: "out/graph.json" });
+    const { stdout } = await execFileAsync(process.execPath, [
+      scriptPath,
+      "--upgrade-release-proof",
+      "--file", join(outDir, "graph.json"),
+      "--host-invocation-source", "codex-spawn-agent",
+      "--host-invocation-id", "codex-graph-upgrade-cli",
+    ], { cwd: temp });
+
+    assert.match(stdout, /SUPERVIBE_RELEASE_PROOF_UPGRADE/);
+    assert.match(stdout, /EVIDENCE_MODE: release-proof/);
+    assert.match(stdout, /RECEIPTS_NOW: required/);
+    assert.match(stdout, /SOURCE_PLAN: .*source-plan\.md/);
+    assert.match(stdout, /PREVIEW: .*preview\.txt/);
+    const saved = JSON.parse(await readFile(join(outDir, "graph.json"), "utf8"));
+    assert.equal(saved.metadata.workflowEvidenceMode, "release-proof");
+    assert.equal(saved.metadata.receiptPolicy.startupReceiptsRequired, true);
+    assert.equal(saved.metadata.epicAgentContract.required, true);
+    assert.equal(saved.metadata.sourcePlanSnapshot.storedPath, "source-plan.md");
+    assert.equal(saved.metadata.graphProducerProof.hostInvocation.invocationId, "codex-graph-upgrade-cli");
+    await stat(join(outDir, "source-plan.md"));
+    await stat(join(outDir, "preview.txt"));
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+
+test("release-proof upgrade refuses source plan paths outside project root", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-release-upgrade-source-traversal-"));
+  try {
+    const planPath = join(temp, "plan.md");
+    const outDir = join(temp, "out");
+    const scriptPath = join(process.cwd(), "scripts", "supervibe-loop.mjs");
+    await writeFile(planPath, PLAN);
+    await execFileAsync(process.execPath, [
+      scriptPath,
+      "--from-plan", planPath,
+      "--start",
+      "--fast-session",
+      "--out", outDir,
+      "--no-auto-ui",
+    ], { cwd: temp });
+    const graphPath = join(outDir, "graph.json");
+    const graph = JSON.parse(await readFile(graphPath, "utf8"));
+    graph.metadata.sourcePlanSnapshot = { ...(graph.metadata.sourcePlanSnapshot || {}), path: "../outside.md", storedPath: null };
+    graph.source = { ...(graph.source || {}), path: "../outside.md", snapshotPath: null };
+    await writeFile(graphPath, JSON.stringify(graph, null, 2) + "\n", "utf8");
+    const graphId = expectedPlanEpicId(planPath);
+    await writeTestHostInvocation(temp, "codex-graph-upgrade-traversal", "work-item-graph-builder", { graphId, outputArtifact: "out/graph.json" });
+
+    await assert.rejects(
+      () => execFileAsync(process.execPath, [
+        scriptPath,
+        "--upgrade-release-proof",
+        "--file", graphPath,
+        "--host-invocation-source", "codex-spawn-agent",
+        "--host-invocation-id", "codex-graph-upgrade-traversal",
+      ], { cwd: temp }),
+      /sourcePlanSnapshot\.path cannot contain path traversal segments/,
+    );
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+test("loop CLI dispatch apply writes fast-session wave receipt as diagnostic-only", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-dispatch-receipt-"));
+  try {
+    const graphPath = join(temp, "graph.json");
+    const scriptPath = join(process.cwd(), "scripts", "supervibe-loop.mjs");
+    await writeFile(graphPath, JSON.stringify({
+      kind: "supervibe-work-item-graph",
+      graph_id: "epic-dispatch-receipt",
+      epicId: "epic-dispatch-receipt",
+      title: "Dispatch Receipt",
+      metadata: {
+        workflowEvidenceMode: "fast-session",
+        receiptPolicy: {
+          startupReceiptsRequired: false,
+          releaseProofRequiredAt: "release-handoff",
+          legacyReceipts: { status: "diagnostic-only" },
+        },
+      },
+      items: [
+        { itemId: "epic-dispatch-receipt", type: "epic", status: "open", title: "Dispatch Receipt" },
+        { itemId: "T-ready", type: "task", status: "open", title: "Ready task", writeScope: ["scripts/smoke.mjs"], acceptanceCriteria: ["done"] },
+      ],
+      tasks: [
+        { id: "T-ready", type: "task", status: "open", title: "Ready task", writeScope: ["scripts/smoke.mjs"] },
+      ],
+    }, null, 2));
+
+    const { stdout } = await execFileAsync(process.execPath, [
+      scriptPath,
+      "--dispatch-wave",
+      "--apply",
+      "--file",
+      graphPath,
+      "--max-concurrency",
+      "1",
+      "--wave-id",
+      "test-wave",
+    ], { cwd: temp, env: { ...process.env, SUPERVIBE_PLUGIN_ROOT: process.cwd() } });
+
+    assert.match(stdout, /SUPERVIBE_DISPATCH_WAVE/);
+    assert.match(stdout, /ASSIGNED: T-ready/);
+    assert.match(stdout, /FAST_SESSION_RECEIPT: .*test-wave.fast-session.json/);
+    assert.match(stdout, /FAST_SESSION_RECEIPT_TRUST: diagnostic-only-until-release-proof/);
+
+    const receipt = JSON.parse(await readFile(join(temp, "dispatch-waves", "test-wave.fast-session.json"), "utf8"));
+    assert.equal(receipt.kind, "supervibe-fast-session-dispatch-wave-receipt");
+    assert.equal(receipt.mode, "fast-session");
+    assert.equal(receipt.trust, "diagnostic-only-until-release-proof");
+    assert.deepEqual(receipt.cannotProve, ["delegated-specialist-completion", "release-readiness", "final-validation"]);
+    assert.equal(receipt.bindings[0].workItemId, "T-ready");
+    assert.equal(receipt.bindings[0].hostId, "codex");
+    assert.ok(receipt.bindings[0].agentId);
+    assert.ok(receipt.bindings[0].invocationId);
   } finally {
     await rm(temp, { recursive: true, force: true });
   }

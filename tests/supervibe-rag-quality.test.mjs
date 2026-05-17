@@ -4,7 +4,8 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-import { CodeStore } from "../scripts/lib/code-store.mjs";
+import { CodeStore, CODE_RAG_CHUNK_METADATA_VERSION } from "../scripts/lib/code-store.mjs";
+import { vectorToBuffer } from "../scripts/lib/embeddings.mjs";
 import {
   formatHybridRetrievalEvidence,
   rankHybridCodeSearchResults,
@@ -49,7 +50,7 @@ test("RAG chunks carry metadata contract and old index initialization remains se
     assert.equal(chunk.file_role, "source");
     assert.equal(chunk.artifact_type, "source-code");
     assert.equal(chunk.freshness, "current");
-    assert.equal(chunk.metadata_version, 1);
+    assert.equal(chunk.metadata_version, CODE_RAG_CHUNK_METADATA_VERSION);
     assert.match(chunk.heading, /reconcileWorkflowReceipt/);
     assert.ok(JSON.parse(chunk.symbol_hints_json).includes("reconcileWorkflowReceipt"));
 
@@ -73,7 +74,7 @@ test("RAG chunks carry metadata contract and old index initialization remains se
       limit: 1,
     });
     assert.equal(reopenedResults.length, 1);
-    assert.equal(reopenedResults[0].metadata.metadataVersion, 1);
+    assert.equal(reopenedResults[0].metadata.metadataVersion, CODE_RAG_CHUNK_METADATA_VERSION);
     reopened.close();
     reopened = null;
   } finally {
@@ -81,6 +82,142 @@ test("RAG chunks carry metadata contract and old index initialization remains se
     reopened?.close();
     await rm(rootDir, { recursive: true, force: true });
   }
+});
+
+test("artifact RAG indexes Supervibe docs with roles, entity links, and derived anchors", async () => {
+  const rootDir = await mkdtemp(join(tmpdir(), "supervibe-rag-artifacts-"));
+  const store = new CodeStore(rootDir, { useEmbeddings: false, useGraph: true });
+  try {
+    await writeFixture(rootDir, "AGENTS.md", "# AGENTS\n\nUse workflow receipts for every reviewer.");
+    await writeFixture(rootDir, "commands/supervibe-demo.md", "# /supervibe-demo\n\nDemo command routes workflow receipts.");
+    await writeFixture(rootDir, "skills/demo/SKILL.md", "---\nname: demo\n---\n# Demo Skill\n\nHandles receipt routing.");
+    await writeFixture(rootDir, "registry.yaml", "plugins:\n  - name: supervibe\n");
+    await writeFixture(rootDir, "references/internal-commands/supervibe-loop.md", "# Loop\n\nRuntime command reference.");
+    await writeFixture(rootDir, "templates/approval-markers/prototype-approval.json.tpl", "{\n  \"approved\": true\n}\n");
+    await writeFixture(rootDir, "questionnaires/01-stack-foundation.yaml", "name: stack-foundation\n");
+    await writeFixture(rootDir, "confidence-rubrics/plan.yaml", "name: plan\n");
+    await writeFixture(rootDir, "hooks/hooks.json", "{\n  \"hooks\": {}\n}\n");
+    await store.init();
+    await store.indexAll(rootDir);
+
+    const rows = store.db.prepare(`
+      SELECT path, file_role AS fileRole, artifact_type AS artifactType
+      FROM code_chunks
+      WHERE path IN (?, ?, ?, ?)
+      ORDER BY path
+    `).all("AGENTS.md", "commands/supervibe-demo.md", "registry.yaml", "skills/demo/SKILL.md");
+    const byPath = new Map(rows.map((row) => [row.path, row]));
+    assert.equal(byPath.get("AGENTS.md")?.fileRole, "docs");
+    assert.equal(byPath.get("commands/supervibe-demo.md")?.fileRole, "command");
+    assert.equal(byPath.get("commands/supervibe-demo.md")?.artifactType, "supervibe-command");
+    assert.equal(byPath.get("skills/demo/SKILL.md")?.fileRole, "skill");
+    assert.equal(byPath.get("registry.yaml")?.fileRole, "registry");
+
+    const laneRows = store.db.prepare(`
+      SELECT path, file_role AS fileRole, artifact_type AS artifactType
+      FROM code_chunks
+      WHERE path IN (?, ?, ?, ?, ?)
+      ORDER BY path
+    `).all(
+      "confidence-rubrics/plan.yaml",
+      "hooks/hooks.json",
+      "questionnaires/01-stack-foundation.yaml",
+      "references/internal-commands/supervibe-loop.md",
+      "templates/approval-markers/prototype-approval.json.tpl",
+    );
+    const lanesByPath = new Map(laneRows.map((row) => [row.path, row]));
+    assert.equal(lanesByPath.get("confidence-rubrics/plan.yaml")?.fileRole, "rubric");
+    assert.equal(lanesByPath.get("hooks/hooks.json")?.fileRole, "hook");
+    assert.equal(lanesByPath.get("questionnaires/01-stack-foundation.yaml")?.fileRole, "questionnaire");
+    assert.equal(lanesByPath.get("references/internal-commands/supervibe-loop.md")?.artifactType, "supervibe-reference");
+    assert.equal(lanesByPath.get("templates/approval-markers/prototype-approval.json.tpl")?.artifactType, "supervibe-template");
+
+    const entityHealth = store.getChunkEntityHealth();
+    assert.equal(entityHealth.rebuildRequired, false);
+    assert.ok(entityHealth.linkedChunks >= rows.length);
+    const commandEntity = store.db.prepare(`
+      SELECT entity_type AS entityType, entity_name AS entityName
+      FROM code_chunk_entities
+      WHERE path = ? AND entity_type = 'command'
+      LIMIT 1
+    `).get("commands/supervibe-demo.md");
+    assert.deepEqual({ ...commandEntity }, { entityType: "command", entityName: "supervibe-demo" });
+
+    const anchorHealth = store.getSemanticAnchorHealth();
+    assert.ok(anchorHealth.derivedAnchors > 0, `expected derived anchors, got ${JSON.stringify(anchorHealth)}`);
+  } finally {
+    store.close();
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("semantic search scores the full embedded corpus instead of the first chunk window", async () => {
+  const rootDir = await mkdtemp(join(tmpdir(), "supervibe-rag-full-corpus-"));
+  const store = new CodeStore(rootDir, { useEmbeddings: false, useGraph: false });
+  try {
+    for (let index = 0; index < 260; index += 1) {
+      const name = String(index).padStart(3, "0");
+      await writeFixture(rootDir, `src/item-${name}.ts`, `export const item${name} = "filler ${name}";`);
+    }
+    await store.init();
+    await store.indexAll(rootDir);
+
+    const fillerVector = new Float32Array([0, 1, 0]);
+    const targetVector = new Float32Array([1, 0, 0]);
+    store.db.prepare("UPDATE code_chunks SET embedding = ?").run(vectorToBuffer(fillerVector));
+    store.db.prepare("UPDATE code_chunks SET embedding = ? WHERE path = ?").run(vectorToBuffer(targetVector), "src/item-259.ts");
+    store.useEmbeddings = true;
+
+    const results = await store.search({
+      query: "vector only corpus reachability",
+      semantic: true,
+      queryVector: targetVector,
+      limit: 1,
+    });
+    assert.equal(results[0]?.file, "src/item-259.ts");
+    assert.equal(results[0]?.retrievalMode, "semantic");
+  } finally {
+    store.close();
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("entity and semantic-anchor candidates participate in non-semantic retrieval", async () => {
+  const rootDir = await mkdtemp(join(tmpdir(), "supervibe-rag-entity-anchor-"));
+  const store = new CodeStore(rootDir, { useEmbeddings: false, useGraph: true });
+  try {
+    const relPath = "commands/supervibe-hidden.md";
+    await writeFixture(rootDir, relPath, "# /supervibe-hidden\n\nRuntime command routing without external alias text.");
+    await store.init();
+    await store.indexFile(join(rootDir, relPath), { force: true });
+
+    const entity = store.db.prepare(`
+      SELECT chunk_id AS chunkId, entity_type AS entityType, entity_id AS entityId, derivation_source AS derivationSource
+      FROM code_chunk_entities
+      WHERE path = ?
+      LIMIT 1
+    `).get(relPath);
+    assert.ok(entity, "fixture should have at least one derived chunk entity");
+    store.db.prepare(`
+      UPDATE code_chunk_entities
+      SET entity_type = 'alias', entity_id = 'alias:external-only', entity_name = 'ExternalAliasOnly', confidence = 0.99
+      WHERE chunk_id = ? AND entity_type = ? AND entity_id = ? AND derivation_source = ?
+    `).run(entity.chunkId, entity.entityType, entity.entityId, entity.derivationSource);
+
+    const results = await store.search({ query: "ExternalAliasOnly", semantic: false, limit: 1 });
+    assert.equal(results[0]?.file, relPath);
+    assert.equal(results[0]?.retrievalMode, "entity-anchor");
+  } finally {
+    store.close();
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
+test("entity-anchor retrieval avoids chunk-wide left join scans", async () => {
+  const source = await readFile(join(process.cwd(), "scripts", "lib", "code-store.mjs"), "utf8");
+  assert.doesNotMatch(source, /LEFT JOIN code_chunk_entities[\s\S]+LEFT JOIN code_semantic_anchors/);
+  assert.match(source, /idx_chunk_entities_chunk/);
+  assert.match(source, /idx_anchor_path_range/);
+  assert.match(source, /SUPERVIBE_ENTITY_ANCHOR_CANDIDATE_LIMIT/);
 });
 
 test("hybrid code search exposes lexical, semantic, and merged scoring evidence", async () => {
@@ -118,10 +255,12 @@ test("hybrid code search exposes lexical, semantic, and merged scoring evidence"
   assert.deepEqual(store.calls.map((call) => call.semantic), [false, true]);
   assert.deepEqual(output.retrieval.usedModes, ["lexical", "semantic", "merged-scoring"]);
   assert.equal(output.retrieval.fallback.used, false);
+  assert.equal(output.retrieval.routing.intent, "source");
   assert.equal(output.results[0].file, "scripts/lib/supervibe-code-search.mjs");
   assert.equal(output.results[0].sourceBacked, true);
   assert.equal(output.results[0].ownerMatch, true);
   assert.match(formatHybridRetrievalEvidence(output.retrieval), /Retrieval modes used: lexical, semantic, merged-scoring/);
+  assert.match(formatHybridRetrievalEvidence(output.retrieval), /routing=source\/source/);
 });
 
 test("shared evidence packet validates memory RAG CodeGraph citation redaction and budget contracts", () => {
@@ -260,6 +399,38 @@ test("golden queries prefer source-backed owner modules over noisy matches", () 
   assert.equal(ranked[0].ownerMatch, true);
 });
 
+test("artifact queries prefer Supervibe artifact lanes over source-only matches", () => {
+  const ranked = rankHybridCodeSearchResults([
+    result({
+      file: "scripts/lib/workflow-receipts.mjs",
+      retrievalMode: "hybrid",
+      bm25: 8,
+      semantic: 0.9,
+      score: 0.06,
+      snippet: "workflow receipt command routing implementation",
+    }),
+    result({
+      file: "commands/supervibe-receipts.md",
+      language: "markdown",
+      kind: "section",
+      name: "supervibe-receipts",
+      retrievalMode: "hybrid",
+      bm25: 5,
+      semantic: 0.83,
+      score: 0.03,
+      snippet: "receipt command workflow docs",
+      metadata: { fileRole: "command", artifactType: "supervibe-command", heading: "/supervibe-receipts", symbolHints: [] },
+    }),
+  ], {
+    query: "receipt command workflow",
+    limit: 2,
+  });
+
+  assert.equal(ranked[0].file, "commands/supervibe-receipts.md");
+  assert.equal(ranked[0].artifactBacked, true);
+  assert.equal(ranked[0].retrievalLane, "artifact");
+});
+
 test("retrieval golden dataset covers critical Supervibe surfaces and passes aggregate eval", async () => {
   const fixturePath = "tests/fixtures/rag/golden-queries.json";
   const fixture = JSON.parse(await readFile(fixturePath, "utf8"));
@@ -333,6 +504,7 @@ test("compact code search context pack includes cited memory, RAG, CodeGraph, co
       policy: "hybrid-lexical-embedding-v1",
       usedModes: ["lexical", "semantic", "merged-scoring"],
       fallback: { used: false, reason: "merged-lexical-semantic" },
+      routing: { intent: "source", lane: "source" },
     },
     maxTokens: 1000,
   });
@@ -344,6 +516,7 @@ test("compact code search context pack includes cited memory, RAG, CodeGraph, co
   assert.match(pack.markdown, /\[R1\].*scripts\/lib\/supervibe-code-search\.mjs:1-12/);
   assert.match(pack.markdown, /\[G1\].*runHybridCodeSearch/);
   assert.match(pack.markdown, /low cross-file edge resolution/);
+  assert.match(pack.markdown, /routing=source\/source/);
   assert.equal(pack.omittedEvidence.length, 0);
   assert.equal(pack.tokenBudget.pass, true);
   assert.equal(pack.evidencePacket.kind, "supervibe-shared-evidence-packet");

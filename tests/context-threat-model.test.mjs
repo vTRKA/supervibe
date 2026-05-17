@@ -15,4 +15,5 @@ test("context threat model blocks injection and exfiltration fixtures", async ()
   assert.ok(report.results.some((result) => result.vector === "source-comment" && result.actual.blockedInstruction));
   assert.ok(report.results.some((result) => result.vector === "secret" && result.actual.redacted));
   assert.ok(report.results.some((result) => result.vector === "path-traversal" && result.actual.requiresApproval));
+  assert.ok(report.results.some((result) => result.vector === "receipt-emulation" && result.actual.requiresApproval));
 });

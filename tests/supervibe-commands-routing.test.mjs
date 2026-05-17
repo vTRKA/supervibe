@@ -77,7 +77,7 @@ test("routes approved ready plan directly to loop atomization", async () => {
   const output = await matchCommand("\u043f\u043b\u0430\u043d \u0433\u043e\u0442\u043e\u0432, \u043d\u0430\u0447\u043d\u0438 \u0440\u0430\u0431\u043e\u0442\u0443");
 
   assert.match(output, /INTENT: task_graph_create_from_plan/);
-  assert.match(output, /COMMAND: \/supervibe-loop --atomize-plan <plan-path> --user-approved-plan/);
+  assert.match(output, /COMMAND: \/supervibe-loop --from-plan <plan-path> --start --fast-session/);
   assert.doesNotMatch(output, /COMMAND: \/supervibe-execute-plan/);
   assert.doesNotMatch(output, /NEXT: .*command-agent-plan\.mjs/);
   assert.doesNotMatch(output, /AGENT_PLAN_COMMAND|PARALLEL_AGENT_|AGENT_FANOUT|command-agent-plan\.mjs/);
@@ -208,7 +208,7 @@ test("routes ready claim and epic completion validation requests", async () => {
 test("routes task graph creation, split, reparent, skip, defer, and block controls", async () => {
   const createOutput = await matchCommand("create epic tasks from plan");
   assert.match(createOutput, /INTENT: task_graph_create_from_plan/);
-  assert.match(createOutput, /COMMAND: \/supervibe-loop --atomize-plan <plan-path> --user-approved-plan/);
+  assert.match(createOutput, /COMMAND: \/supervibe-loop --from-plan <plan-path> --start --fast-session/);
 
   const splitOutput = await matchCommand("split task into subtasks");
   assert.match(splitOutput, /INTENT: task_graph_split/);
@@ -234,7 +234,7 @@ test("routes task graph creation, split, reparent, skip, defer, and block contro
 test("routes real Russian task graph complaint phrases", async () => {
   const createOutput = await matchCommand("создай задачи и эпик из плана");
   assert.match(createOutput, /INTENT: task_graph_create_from_plan/);
-  assert.match(createOutput, /COMMAND: \/supervibe-loop --atomize-plan <plan-path> --user-approved-plan/);
+  assert.match(createOutput, /COMMAND: \/supervibe-loop --from-plan <plan-path> --start --fast-session/);
 
   const atomizeOutput = await matchCommand("атомизируй план");
   assert.match(atomizeOutput, /INTENT: atomize_plan/);

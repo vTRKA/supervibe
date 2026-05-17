@@ -9,10 +9,31 @@ import test from "node:test";
 const ROOT = process.cwd();
 const GENESIS_SCRIPT = join(ROOT, "scripts", "supervibe-genesis.mjs");
 
+const REQUIRED_SUPERVIBE_GITIGNORE_ENTRIES = [
+  ".supervibe/",
+  ".claude/",
+  ".codex/",
+  ".cursor/",
+  ".gemini/",
+  ".opencode/",
+  ".worktrees/",
+  "worktrees/",
+  "*.supervibe.bak",
+  ".claude-plugin/.auto-update.json",
+  ".claude-plugin/.auto-update.lock",
+  ".claude-plugin/.upgrade-check.json",
+];
+
+function assertRequiredSupervibeGitignoreEntries(content) {
+  for (const entry of REQUIRED_SUPERVIBE_GITIGNORE_ENTRIES) {
+    assert.equal(content.includes(entry), true, "missing managed .gitignore entry: " + entry);
+  }
+}
+
 function createIsolatedCodexHome(prefix = "supervibe-genesis-codex-home-") {
   const codexHome = mkdtempSync(join(tmpdir(), prefix));
   writeFileSync(join(codexHome, "config.toml"), [
-    'approval_policy = "never"',
+    'approval_policy = "on-request"',
     'sandbox_mode = "workspace-write"',
     'default_permissions = ":workspace"',
     'web_search = "live"',
@@ -140,7 +161,7 @@ test("supervibe-genesis verify-agents keeps runtime proof as a separate state ga
   }
 });
 
-test("supervibe-genesis verify-agents can record a receipt-bound smoke invocation", async () => {
+test("supervibe-genesis verify-agents can record a host-agent smoke invocation", async () => {
   const projectRoot = await mkdtemp(join(tmpdir(), "supervibe-genesis-agent-smoke-"));
   try {
     runGenesis([
@@ -174,7 +195,6 @@ test("supervibe-genesis verify-agents can record a receipt-bound smoke invocatio
 
     const state = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "genesis", "state.json"), "utf8"));
     assert.equal(state.verification.agentRuntimeVerified, true);
-    assert.equal(state.verification.agentReceiptsVerified, true);
     assert.equal(state.confidence.score, 8);
     assert.equal(state.confidence.gaps.some((gap) => gap.code === "agent-runtime-pending"), false);
     assert.equal(state.bootstrap.agentSmokeTest.smokeRecord.status, "recorded");
@@ -234,7 +254,7 @@ test("supervibe-genesis summary-json returns compact operator state", async () =
     assert.match(summary.deploy.nextCommand, /supervibe-adapt\.mjs --scope deploy --target dokploy --dry-run/);
     assert.equal(summary.nodeRuntimePreflight.expected, "22.x");
     assert.equal(summary.app.appChoice.id, "next-app");
-    assert.match(summary.nextAgentGate, /supervibe-genesis\.mjs --verify-agents --host codex/);
+    assert.equal(Object.hasOwn(summary, "nextAgentGate"), false);
     assert.equal(Object.hasOwn(summary, "report"), false);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
@@ -271,6 +291,7 @@ test("supervibe-genesis apply is non-destructive with existing AGENTS, .codex, a
     const gitignore = readFileSync(join(projectRoot, ".gitignore"), "utf8");
     assert.equal(gitignore.includes("custom.local"), true, "user-owned .gitignore entries must be preserved");
     assert.equal(gitignore.includes("SUPERVIBE:BEGIN managed-gitignore"), true, "Supervibe .gitignore block must be managed");
+    assertRequiredSupervibeGitignoreEntries(gitignore);
     assert.equal(gitignore.includes(".supervibe/memory/agent-invocations.jsonl"), true);
     assert.equal(gitignore.includes(".supervibe/memory/workflow-receipt-runtime.key"), true);
     assert.equal(gitignore.includes(".supervibe/memory/workflow-receipts-stale/"), true);
@@ -289,14 +310,15 @@ test("supervibe-genesis apply is non-destructive with existing AGENTS, .codex, a
     assert.equal(existsSync(join(projectRoot, ".husky", "pre-commit")), true);
     assert.equal(existsSync(join(projectRoot, ".husky", "commit-msg")), true);
     assert.equal(existsSync(join(projectRoot, ".github", "workflows")), false, "base scaffold must not create empty GitHub Actions directory");
-    assert.match(out, /NEXT_AGENT_GATE: node <resolved-supervibe-plugin-root>\/scripts\/supervibe-genesis\.mjs --verify-agents --host codex/);
+    assert.doesNotMatch(out, /NEXT_AGENT_GATE/);
 
     const state = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "genesis", "state.json"), "utf8"));
     assert.equal(state.lifecycle, "applied");
     assert.equal(state.applied, true);
     assert.equal(state.targetRoot, "<project-root>");
     assert.equal(state.verification.artifactVerified, true);
-    assert.equal(state.verification.agentReceiptsVerified, false);
+    assert.equal(state.verification.agentRuntimeRequired, false);
+    assert.equal(state.verification.agentRuntimeVerified, false);
     assert.equal(state.verification.appVerified, false);
     assert.equal(state.verification.deployVerified, false);
     assert.equal(state.nodeRuntimePreflight.expected, "22.x");
@@ -304,15 +326,40 @@ test("supervibe-genesis apply is non-destructive with existing AGENTS, .codex, a
     assert.equal(state.confidence.status, "WARN");
     assert.equal(state.confidence.label, "7/10");
     assert.ok(state.confidence.gaps.some((gap) => gap.code === "app-generation-pending"));
-    assert.ok(state.confidence.gaps.some((gap) => gap.code === "agent-runtime-pending"));
+    assert.equal(state.confidence.gaps.some((gap) => gap.code === "agent-runtime-pending"), false);
     assert.equal(state.bootstrap.memoryIndex.status, "present");
     assert.equal(state.bootstrap.effectivenessLog.status, "present");
     assert.equal(state.bootstrap.confidenceLog.status, "present");
-    assert.equal(state.bootstrap.agentRuntime.status, "awaiting-real-host-agent");
-    assert.equal(state.bootstrap.agentRuntime.loggedAgentInvocations, 0);
-    assert.equal(state.bootstrap.agentSmokeTest.status, "pending-real-host-agent");
+    assert.equal(state.bootstrap.agentRuntime.status, "not-required");
+    assert.equal(state.bootstrap.agentRuntime.loggedAgentInvocations ?? 0, 0);
+    assert.equal(Object.hasOwn(state.bootstrap, "agentSmokeTest"), false);
     assert.ok(state.history.some((entry) => entry.lifecycle === "dry-run"));
     assert.ok(state.history.some((entry) => entry.lifecycle === "applied"));
+  } finally {
+    await rm(projectRoot, { recursive: true, force: true });
+  }
+});
+
+
+test("supervibe-genesis apply creates broad Supervibe runtime ignores", async () => {
+  const projectRoot = await mkdtemp(join(tmpdir(), "supervibe-genesis-gitignore-"));
+  try {
+    const out = runGenesis([
+      "--apply",
+      "--target",
+      projectRoot,
+      "--host",
+      "codex",
+      "--stack-tags",
+      "nextjs",
+    ], projectRoot);
+
+    assert.match(out, /MODE: apply/);
+    const gitignore = readFileSync(join(projectRoot, ".gitignore"), "utf8");
+    assert.equal(gitignore.includes("SUPERVIBE:BEGIN managed-gitignore"), true);
+    assertRequiredSupervibeGitignoreEntries(gitignore);
+    assert.equal(existsSync(join(projectRoot, ".supervibe", "memory", "index.json")), true);
+    assert.equal(existsSync(join(projectRoot, ".codex", "agents")), true);
   } finally {
     await rm(projectRoot, { recursive: true, force: true });
   }

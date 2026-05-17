@@ -18,6 +18,20 @@ test("prepare-loop defaults to safe dry-run and respects explicit apply", () => 
   assert.match(formatWorkFacadeHelp(), /prepare-loop/);
 });
 
+test("start and quickstart route to fast-session from-plan flow", () => {
+  const routed = routeWorkFacadeArgs(["start", "plan.md", "--dispatch"]);
+
+  assert.equal(routed.action, "start");
+  assert.deepEqual(routed.commandArgs, ["--from-plan", "plan.md", "--start", "--fast-session", "--dispatch"]);
+
+  const quickstart = routeWorkFacadeArgs(["quickstart", "plan.md"]);
+  assert.deepEqual(quickstart.commandArgs, ["--from-plan", "plan.md", "--start", "--fast-session"]);
+
+  const flagsFirst = routeWorkFacadeArgs(["start", "--dispatch", "plan.md"]);
+  assert.deepEqual(flagsFirst.commandArgs, ["--from-plan", "plan.md", "--start", "--fast-session", "--dispatch"]);
+  assert.match(formatWorkFacadeHelp(), /sv work start <plan.md>/);
+});
+
 test("work facade json envelope parses line-oriented loop output", () => {
   const result = createWorkFacadeJsonResult({
     action: "prepare-loop",

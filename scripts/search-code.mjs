@@ -24,6 +24,7 @@ import { formatHybridRetrievalEvidence, runHybridCodeSearch } from './lib/superv
 import { buildSharedEvidencePacket } from './lib/supervibe-evidence-packet.mjs';
 import { buildRepoMap, formatRepoMapContext, selectRepoMapContext } from './lib/supervibe-repo-map.mjs';
 import { buildCodeGraphContextFromReadSnapshot, openCodeIndexReadSnapshot } from './lib/code-index-health-status.mjs';
+import { resolveSupervibeKillSwitches } from './lib/supervibe-work-state.mjs';
 import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
 import { existsSync } from 'node:fs';
@@ -38,11 +39,16 @@ export async function buildLiveCompactContextPack({
   maxTokens = 1200,
   useEmbeddings = true,
   taskType = undefined,
+  indexPreflight = null,
 } = {}) {
   const normalizedQuery = String(query || "").trim();
   const evidenceLimit = Math.max(1, Math.trunc(Number(limit) || 8));
-  await ensureSearchIndexFresh({ rootDir, useEmbeddings });
+  const resolvedIndexPreflight = indexPreflight ?? await ensureSearchIndexFresh({ rootDir, useEmbeddings });
   const omittedEvidence = [];
+  const indexPreflightWarning = formatSearchIndexPreflightWarning(resolvedIndexPreflight);
+  if (indexPreflightWarning) {
+    omittedEvidence.push({ source: "index-preflight", reason: indexPreflightWarning });
+  }
 
   let memoryResults = [];
   try {
@@ -110,6 +116,7 @@ export async function buildLiveCompactContextPack({
     retrieval,
     omittedEvidence,
     maxTokens,
+    indexPreflight: resolvedIndexPreflight,
   });
 }
 
@@ -121,6 +128,7 @@ export function buildCompactContextPack({
   retrieval = null,
   omittedEvidence = [],
   maxTokens = 1200,
+  indexPreflight = null,
 } = {}) {
   const tokenBudget = normalizeTokenBudget(maxTokens);
   const memoryEvidence = normalizeMemoryEvidence(memoryResults).slice(0, 4);
@@ -157,6 +165,7 @@ export function buildCompactContextPack({
       codeGraph: graphEvidence,
     },
     retrieval,
+    indexPreflight: summarizeSearchIndexPreflight(indexPreflight),
     graphWarnings,
     omittedEvidence: omissions,
     confidence,
@@ -235,6 +244,7 @@ export function formatCompactContextPack(pack = {}) {
     formatList([
       `policy=${pack.retrieval?.policy || "unknown"}`,
       `modes=${pack.retrieval?.usedModes?.join(",") || "none"}`,
+      `routing=${pack.retrieval?.routing?.intent || "unknown"}/${pack.retrieval?.routing?.lane || "unknown"}`,
       `fallback=${pack.retrieval?.fallback?.reason || "none"}`,
     ]),
     "",
@@ -248,21 +258,108 @@ async function ensureSearchIndexFresh({ rootDir = PROJECT_ROOT, useEmbeddings = 
   if (process.env.SUPERVIBE_SEARCH_AUTO_REFRESH === '0') return null;
   const dbPath = join(rootDir, '.supervibe', 'memory', 'code.db');
   const bootstrapping = !existsSync(dbPath);
-  let store;
+  const autoRepairEnabled = isSearchIndexAutorepairEnabled();
+  const semanticRepairEnabled = autoRepairEnabled || process.env.SUPERVIBE_SEARCH_AUTO_EMBED === '1';
+  let scanStore;
+  let repairStore;
   try {
     const { CodeStore } = await import('./lib/code-store.mjs');
     const { scanCodeChanges } = await import('./lib/mtime-scan.mjs');
-    const embed = process.env.SUPERVIBE_SEARCH_AUTO_EMBED === '1' && useEmbeddings;
-    store = new CodeStore(rootDir, { useEmbeddings: embed, useGraph: true });
-    await store.init();
-    const counts = await scanCodeChanges(store, rootDir);
-    return { bootstrapping, counts, stats: store.stats() };
+    scanStore = new CodeStore(rootDir, { useEmbeddings: false, useGraph: true });
+    await scanStore.init();
+    const counts = await scanCodeChanges(scanStore, rootDir);
+    let stats = scanStore.stats();
+    let repair = createSearchIndexRepairResult({ useEmbeddings, autoRepairEnabled: semanticRepairEnabled });
+    if (useEmbeddings && semanticRepairEnabled && bootstrapping) {
+      repair.skippedReason = 'bootstrapping-index';
+    } else if (useEmbeddings && semanticRepairEnabled) {
+      scanStore.close();
+      scanStore = null;
+      repairStore = new CodeStore(rootDir, { useEmbeddings: true, useGraph: true });
+      await repairStore.init();
+      repair = await repairSearchIndexGaps(repairStore, rootDir, {
+        useEmbeddings,
+        autoRepairEnabled: semanticRepairEnabled,
+      });
+      stats = repairStore.stats();
+    }
+    return { bootstrapping, counts, repair, stats };
   } catch (err) {
     if (bootstrapping) throw new Error(`code RAG auto-refresh failed before search: ${err.message}`);
     return { bootstrapping, error: err.message };
   } finally {
-    try { store?.close?.(); } catch {}
+    try { scanStore?.close?.(); } catch {}
+    try { repairStore?.close?.(); } catch {}
   }
+}
+
+function isSearchIndexAutorepairEnabled() {
+  if (process.env.SUPERVIBE_SEARCH_AUTO_REPAIR === '0') return false;
+  try {
+    return resolveSupervibeKillSwitches({ argv: process.argv.slice(2) })
+      .switches.SUPERVIBE_INDEX_AUTOREPAIR.enabled === true;
+  } catch {
+    return process.env.SUPERVIBE_INDEX_AUTOREPAIR === '1';
+  }
+}
+
+async function repairSearchIndexGaps(store, rootDir, { useEmbeddings = false, autoRepairEnabled = false } = {}) {
+  const result = createSearchIndexRepairResult({ useEmbeddings, autoRepairEnabled });
+  if (!autoRepairEnabled || !useEmbeddings) return result;
+
+  const maxFiles = positiveInt(process.env.SUPERVIBE_SEARCH_AUTO_REPAIR_MAX_FILES, 25);
+  const totalRow = store.db.prepare("SELECT COUNT(DISTINCT path) AS n FROM code_chunks WHERE embedding IS NULL").get();
+  const totalMissing = Number(totalRow?.n || 0);
+  result.missingEmbeddingFiles = totalMissing;
+  if (totalMissing === 0) return result;
+  if (totalMissing > maxFiles) {
+    result.skippedReason = `missing-embedding-files-${totalMissing}-exceeds-auto-repair-limit-${maxFiles}`;
+    return result;
+  }
+
+  const rows = store.db.prepare("SELECT DISTINCT path FROM code_chunks WHERE embedding IS NULL ORDER BY path LIMIT ?").all(maxFiles);
+  const absPaths = rows.map((row) => join(rootDir, ...String(row.path || '').split('/')));
+  const counts = await store.indexFiles(absPaths, { force: false });
+  result.repairedEmbeddingFiles = Number(counts.indexed || 0);
+  result.counts = counts;
+  return result;
+}
+
+function createSearchIndexRepairResult({ useEmbeddings = false, autoRepairEnabled = false } = {}) {
+  return {
+    autoRepairEnabled: autoRepairEnabled === true,
+    semanticRepairRequested: useEmbeddings === true,
+    missingEmbeddingFiles: 0,
+    repairedEmbeddingFiles: 0,
+    skippedReason: null,
+  };
+}
+
+function summarizeSearchIndexPreflight(preflight) {
+  if (!preflight) return null;
+  return {
+    bootstrapping: preflight.bootstrapping === true,
+    counts: preflight.counts || null,
+    repair: preflight.repair || null,
+    error: preflight.error || null,
+  };
+}
+
+function formatSearchIndexPreflightWarning(preflight) {
+  if (!preflight) return "";
+  if (preflight.error) return `INDEX_PREFLIGHT_WARNING: code index auto-refresh failed (${preflight.error}); results may be stale.`;
+  const repair = preflight.repair || {};
+  const reason = repair.skippedReason || "";
+  if (!reason || reason === 'bootstrapping-index') return "";
+  const repairCommand = 'node scripts/build-code-index.mjs --root . --resume --embeddings-only --max-files 100 --health';
+  const missing = Number(repair.missingEmbeddingFiles || 0);
+  const detail = missing > 0 ? `${missing} files need embeddings` : reason;
+  return `INDEX_PREFLIGHT_WARNING: semantic auto-repair skipped (${detail}; ${reason}). Search may fall back to lexical/graph until this runs: ${repairCommand}`;
+}
+
+function positiveInt(value, fallback) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : fallback;
 }
 
 async function main() {
@@ -318,12 +415,11 @@ if (!values.query && !values.callers && !values.callees && !values.neighbors && 
 
 const limit = parseInt(values.limit, 10);
 const needsCodeIndex = values.query || values.callers || values.callees || values.neighbors || values['top-symbols'] || values['symbol-search'] || values.impact || values.files || values.context;
-if (needsCodeIndex) {
-  await ensureSearchIndexFresh({
-    rootDir: PROJECT_ROOT,
-    useEmbeddings: !values['no-semantic'],
-  });
-}
+const indexPreflight = needsCodeIndex ? await ensureSearchIndexFresh({
+  rootDir: PROJECT_ROOT,
+  useEmbeddings: !values['no-semantic'],
+}) : null;
+const indexPreflightWarning = formatSearchIndexPreflightWarning(indexPreflight);
 
 if (values['context-pack'] || values.format === 'context-pack') {
   const pack = await buildLiveCompactContextPack({
@@ -333,9 +429,13 @@ if (values['context-pack'] || values.format === 'context-pack') {
     maxTokens: values['max-tokens'],
     useEmbeddings: !values['no-semantic'],
     taskType: values['task-type'] || undefined,
+    indexPreflight,
   });
   if (values.json) console.log(JSON.stringify(pack, null, 2));
-  else console.log(pack.markdown);
+  else {
+    if (indexPreflightWarning) console.log(`${indexPreflightWarning}\n`);
+    console.log(pack.markdown);
+  }
   process.exit(0);
 }
 
@@ -348,8 +448,11 @@ if (values.context) {
     useEmbeddings: !values['no-semantic'],
     taskType: values['task-type'] || undefined,
   });
-  if (values.json) console.log(JSON.stringify(context, null, 2));
-  else console.log(context.markdown);
+  if (values.json) console.log(JSON.stringify({ ...context, indexPreflight: summarizeSearchIndexPreflight(indexPreflight) }, null, 2));
+  else {
+    if (indexPreflightWarning) console.log(`${indexPreflightWarning}\n`);
+    console.log(context.markdown);
+  }
   process.exit(0);
 }
 const readSnapshot = await openCodeIndexReadSnapshot({
@@ -438,9 +541,11 @@ if (mode === 'repo-map') {
 }
 
 if (values.json) {
-  console.log(JSON.stringify({ mode, retrieval, results }, null, 2));
+  console.log(JSON.stringify({ mode, retrieval, indexPreflight: summarizeSearchIndexPreflight(indexPreflight), results }, null, 2));
   process.exit(0);
 }
+
+if (indexPreflightWarning) console.log(`${indexPreflightWarning}\n`);
 
 if (results.length === 0) {
   console.log(`No matches (mode: ${mode}).`);
@@ -452,10 +557,12 @@ console.log(`Found ${results.length} ${mode} matches:\n`);
 if (retrieval) console.log(`${formatHybridRetrievalEvidence(retrieval)}\n`);
 for (const [i, r] of results.entries()) {
   if (mode === 'semantic') {
-    console.log(`${i + 1}. ${r.file}:${r.startLine}-${r.endLine}  [${r.kind}${r.name ? ': ' + r.name : ''}, ${r.language}]`);
+    const meta = r.metadata || {};
+    const roleLabel = meta.fileRole || r.retrievalLane || 'source';
+    console.log(`${i + 1}. ${r.file}:${r.startLine}-${r.endLine}  [${r.kind}${r.name ? ': ' + r.name : ''}, ${r.language}, ${roleLabel}]`);
     console.log(`   score=${r.score.toFixed(3)} bm25=${r.bm25.toFixed(2)} semantic=${r.semantic.toFixed(3)}`);
     if (values['debug-ranking']) {
-      console.log(`   mode=${r.retrievalMode} generated=${r.generatedSource} components=${JSON.stringify(r.scoreComponents)}`);
+      console.log(`   mode=${r.retrievalMode} lane=${r.retrievalLane || roleLabel} artifact=${meta.artifactType || 'source-code'} generated=${r.generatedSource} components=${JSON.stringify(r.scoreComponents)}`);
     }
     console.log(`   ${r.snippet.split('\n').slice(0, 4).join('\n   ')}\n`);
   } else if (mode === 'callers') {
@@ -503,7 +610,10 @@ function normalizeRagEvidence(rows = []) {
     semantic: finiteNumber(row.semantic, 0),
     bm25: finiteNumber(row.bm25, 0),
     sourceBacked: Boolean(row.sourceBacked),
+    artifactBacked: Boolean(row.artifactBacked),
     ownerMatch: Boolean(row.ownerMatch),
+    retrievalLane: row.retrievalLane || row.metadata?.fileRole || "source",
+    metadata: row.metadata || {},
     snippet: truncate(String(row.snippet || "").split(/\r?\n/).slice(0, 4).join("\n"), 360),
     summary: `${normalizePath(row.file || row.path || "")}:${row.startLine || 1}`,
   })).sort((a, b) => b.score - a.score || a.path.localeCompare(b.path) || a.startLine - b.startLine);

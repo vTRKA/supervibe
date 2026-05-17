@@ -4,7 +4,7 @@ description: >-
   memory, low-confidence old learnings, stale receipt archives, runtime logs, or
   .supervibe clutter TO run the reversible Supervibe garbage-collection preview
   or apply flow.
-last-verified: "2026-05-08"
+last-verified: "2026-05-17"
 ---
 
 # /supervibe-gc
@@ -12,6 +12,11 @@ last-verified: "2026-05-08"
 Runs local, reversible cleanup for Supervibe work items, project memory, and
 runtime/artifact noise under `.supervibe`.
 Default mode is dry-run. Applying cleanup requires an explicit `--apply`.
+Session start also has a detached auto-GC lane: when retention is due, it queues
+`node scripts/supervibe-auto-gc-maintenance.mjs --run-once` in the background,
+applies only auto-safe memory/artifact/snapshot cleanup, uses lock/throttle state,
+and never archives active work graphs or the latest artifact snapshot. Disable with
+`SUPERVIBE_AUTO_GC=off`.
 
 ## Invocation
 
@@ -22,7 +27,10 @@ Default mode is dry-run. Applying cleanup requires an explicit `--apply`.
 /supervibe-gc --all
 /supervibe-gc --work-items --apply
 /supervibe-gc --memory --category learnings --apply
-/supervibe-gc --artifacts --scheduled --apply
+/supervibe-gc --artifacts --scheduled --auto --apply
+/supervibe-gc --artifacts --workflow-artifact-retention-days 90
+/supervibe-gc --snapshots --dry-run
+/supervibe-gc --snapshots --apply
 /supervibe-gc --lifecycle --mode dry-run
 /supervibe-gc --lifecycle --mode review
 /supervibe-gc --lifecycle --mode auto-safe
@@ -35,6 +43,10 @@ Equivalent local commands:
 ```bash
 npm run supervibe:gc -- --all --dry-run
 npm run supervibe:gc -- --artifacts --scheduled --dry-run
+npm run supervibe:gc -- --artifacts --scheduled --auto --apply
+npm run supervibe:gc -- --artifacts --dry-run --workflow-artifact-retention-days 90
+npm run supervibe:gc -- --snapshots --dry-run --snapshot-max-bytes 52428800
+npm run supervibe:gc -- --snapshots --apply
 npm run supervibe:gc -- --lifecycle --mode dry-run
 npm run supervibe:gc -- --artifacts --dry-run --archive-keep-last 5
 npm run supervibe:gc -- --memory --restore <memory-id>
@@ -42,6 +54,8 @@ npm run supervibe:gc -- --work-items --restore <graph-id>
 npm run supervibe:work-items-gc -- --dry-run
 npm run supervibe:memory-gc -- --dry-run
 npm run supervibe:memory-gc -- --restore <memory-id>
+node scripts/supervibe-auto-gc-maintenance.mjs --status
+node scripts/supervibe-auto-gc-maintenance.mjs --run-once --dry-run
 ```
 
 ## Policy
@@ -64,10 +78,17 @@ agent context:
 - preview/server logs and preview runtime state
 - backup files such as `.bak`
 - old unreferenced `.supervibe/artifacts/_agent-outputs/*` folders
+- old untrusted `.supervibe/artifacts/_workflow-invocations/**` receipt files after workflow-artifact retention
+- old temporary workflow invocation folders that are not active roots and do not contain trusted receipts
 
-Receipt-linked agent outputs, code DBs, memory DBs, ledgers, invocation logs, and
+Trusted receipt-linked agent outputs, code DBs, memory DBs, ledgers, invocation logs, and
 the receipt runtime key are reported as active runtime/cache noise and are not
-auto-archived by artifact GC.
+auto-archived by artifact GC. Untrusted workflow receipts are retained while recent, then become
+auto-safe archive candidates after `--workflow-artifact-retention-days` unless an active root still protects them.
+
+Artifact snapshot retention removes old manual/safety snapshot directories under
+`.supervibe/memory/artifact-snapshots/` when count, age, or byte budgets are
+exceeded. The canonical latest snapshot from `latest.json` is protected.
 
 Archives are moved under `.supervibe/memory/**/.archive/` and recorded in JSONL
 archive logs for memory/work-items, or under `.supervibe/.archive/` for artifact
@@ -80,7 +101,7 @@ Cleanup lifecycle adds a reachability-first layer above low-level GC:
 - active roots stay hot and remain in current workflow context
 - trusted receipts, receipt-linked outputs, compact manifests, compact blobs, ledgers, and runtime keys are protected
 - completed work graphs can leave hot context after a configurable 0-24 hour grace period
-- cold, trash, and unclassified lifecycle classes are excluded from default context unless history mode is explicit
+- archivable, cold, trash, and unclassified lifecycle classes are excluded from default context unless history mode is explicit
 - archive budgets support retention age, max bytes, keep-last-N, and protected provenance exceptions
 - manual apply is two-phase only: dry-run evidence first, then an exact action manifest and explicit apply approval
 ## Output Contract
@@ -99,12 +120,21 @@ ACTIVE: <n>
 SUPERVIBE_ARTIFACT_GC
 SCANNED: <n>
 CANDIDATES: <n>
+AUTO_SAFE: <true|false>
+AUTO_SAFE_CANDIDATES: <n>
 ACTIVE_NOISE: <n>
 
 SUPERVIBE_ARTIFACT_GC_POLICY
 DUE: <true|false>
 INTERVAL_DAYS: <n>
 CANDIDATES: <n>
+AUTO_SAFE_CANDIDATES: <n>
+
+SUPERVIBE_ARTIFACT_SNAPSHOT_RETENTION
+SNAPSHOTS: <n>
+BYTES: <n>
+CANDIDATES: <n>
+PROJECTED_BYTES: <n>
 ```
 
 Confidence: N/A    Rubric: read-only-research

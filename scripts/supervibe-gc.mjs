@@ -21,6 +21,7 @@ import {
 import {
   archiveSupervibeArtifactGcCandidates,
   evaluateArtifactGcSchedule,
+  filterArtifactGcAutoCandidates,
   formatArtifactGcSchedule,
   formatSupervibeArtifactGcReport,
   formatSupervibeGcStrictReport,
@@ -32,6 +33,11 @@ import {
   formatCleanupOrchestratorReport,
   runCleanupOrchestrator,
 } from "./lib/supervibe-cleanup-orchestrator.mjs";
+import {
+  applyArtifactSnapshotRetention,
+  formatArtifactSnapshotRetentionReport,
+  scanArtifactSnapshotRetention,
+} from "./supervibe-artifact-snapshot.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 
@@ -45,6 +51,10 @@ try {
       "  npm run supervibe:gc -- --memory --category learnings --dry-run",
       "  npm run supervibe:gc -- --artifacts --dry-run",
       "  npm run supervibe:gc -- --artifacts --dry-run --compact-agent-output-days 14",
+      "  npm run supervibe:gc -- --artifacts --scheduled --auto --apply",
+      "  npm run supervibe:gc -- --artifacts --dry-run --workflow-artifact-retention-days 90",
+      "  npm run supervibe:gc -- --snapshots --dry-run --snapshot-max-bytes 52428800",
+      "  npm run supervibe:gc -- --snapshots --apply",
       "  npm run supervibe:gc -- --artifacts --dry-run --archive-retention-days 90 --max-archive-bytes 104857600",
       "  npm run supervibe:gc -- --artifacts --strict --dry-run",
       "  npm run supervibe:gc -- --lifecycle --mode dry-run",
@@ -74,10 +84,11 @@ try {
     }
     process.exit(0);
   }
-  const explicitMode = args.memory || args["work-items"] || args.artifacts || args.lifecycle || args["code-db-maintenance"];
+  const explicitMode = args.memory || args["work-items"] || args.artifacts || args.snapshots || args.lifecycle || args["code-db-maintenance"];
   const runWorkItems = args.all || args["work-items"] || !explicitMode;
   const runMemory = args.all || args.memory || !explicitMode;
   const runArtifacts = args.all || args.artifacts || !explicitMode;
+  const runSnapshots = args.all || args.snapshots || !explicitMode;
   const runLifecycle = args.all || args.lifecycle;
   const runCodeDbMaintenance = args.all || args["code-db-maintenance"];
   const blocks = [];
@@ -114,6 +125,16 @@ try {
     if (args.apply && args.scheduled) await writeMemoryGcScheduleRun({ rootDir });
     blocks.push(formatMemoryGcReport(scan, archiveResult));
   }
+  if (runSnapshots) {
+    const scan = await scanArtifactSnapshotRetention({
+      rootDir,
+      keepLast: args["snapshot-keep-last"] ?? args["keep-last"] ?? undefined,
+      maxBytes: args["snapshot-max-bytes"] ?? args["max-bytes"] ?? undefined,
+      maxAgeDays: args["snapshot-max-age-days"] ?? args["max-age-days"] ?? undefined,
+    });
+    const retentionResult = await applyArtifactSnapshotRetention(scan, { rootDir, dryRun: !args.apply });
+    blocks.push(formatArtifactSnapshotRetentionReport(scan, retentionResult));
+  }
   if (runLifecycle) {
     const mode = args.mode || (args.disabled ? "disabled" : args.review ? "review" : args["auto-safe"] ? "auto-safe" : args["manual-apply"] || args.apply ? "manual-apply" : "dry-run");
     const lifecycle = await runCleanupOrchestrator({
@@ -127,15 +148,17 @@ try {
     blocks.push(formatCleanupOrchestratorReport(lifecycle));
   }
   if (runArtifacts) {
-    const scan = await scanSupervibeArtifactGc({
+    let scan = await scanSupervibeArtifactGc({
       rootDir,
       retentionDays: args["retention-days"] || 14,
+      workflowArtifactRetentionDays: args["workflow-artifact-retention-days"] || 90,
       compactAgentOutputDays: args["compact-agent-output-days"] || args["retention-days"] || 14,
       archiveRetentionDays: args["archive-retention-days"] || 90,
       maxArchiveBytes: args["max-archive-bytes"] || 0,
       archiveKeepLast: args["archive-keep-last"] || 0,
       purgeArchives: Boolean(args["purge-archives"] || args.purge),
     });
+    if (args.auto) scan = filterArtifactGcAutoCandidates(scan, { maxCandidates: args["max-auto-archive"] || Infinity });
     const schedule = await evaluateArtifactGcSchedule({ rootDir, scan });
     blocks.push(formatArtifactGcSchedule(schedule));
     if (args.scheduled && !schedule.due && !args.force) {
@@ -155,6 +178,7 @@ try {
         rootDir,
         scan,
         retentionDays: args["retention-days"] || 14,
+        workflowArtifactRetentionDays: args["workflow-artifact-retention-days"] || 90,
         compactAgentOutputDays: args["compact-agent-output-days"] || args["retention-days"] || 14,
         archiveRetentionDays: args["archive-retention-days"] || 90,
         maxArchiveBytes: args["max-archive-bytes"] || 0,
@@ -201,6 +225,7 @@ function parseArgs(argv) {
     else if (arg === "--memory") parsed.memory = true;
     else if (arg === "--work-items") parsed["work-items"] = true;
     else if (arg === "--artifacts") parsed.artifacts = true;
+    else if (arg === "--snapshots") parsed.snapshots = true;
     else if (arg === "--lifecycle") parsed.lifecycle = true;
     else if (arg === "--review") parsed.review = true;
     else if (arg === "--auto-safe") parsed["auto-safe"] = true;

@@ -45,7 +45,7 @@ function createUpToDateCodexProjectWithVersionDrift() {
 function writeUpToDateCodexProviderConfig(projectRoot) {
   mkdirSync(join(projectRoot, ".codex"), { recursive: true });
   writeFileSync(join(projectRoot, ".codex", "config.toml"), [
-    'approval_policy = "never"',
+    'approval_policy = "on-request"',
     'sandbox_mode = "workspace-write"',
     'default_permissions = ":workspace"',
     'web_search = "live"',
@@ -261,6 +261,35 @@ test("supervibe-adapt apply adds missing Codex user provider config defaults wit
     assert.equal(state.providerConfig.written, true);
     assert.equal(state.providerConfig.homeConfigAction, "apply-add-missing-only");
     assert.equal(readFileSync(join(projectRoot, ".codex", "config.toml"), "utf8"), projectConfigBefore);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+    rmSync(homeRoot, { recursive: true, force: true });
+  }
+});
+
+test("supervibe-adapt apply continues when Codex provider config needs manual patch", () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-adapt-provider-manual-"));
+  const homeRoot = mkdtempSync(join(tmpdir(), "supervibe-adapt-home-"));
+  try {
+    writeFileSync(join(projectRoot, "AGENTS.md"), "# Project instructions\n");
+    const lockedCodexHome = join(homeRoot, "locked-codex-home");
+    writeFileSync(lockedCodexHome, "not a directory\n");
+
+    const out = runAdapt(projectRoot, ["--apply", "--no-refresh-memory-index", "--summary-json", "--no-color"], {
+      env: { HOME: homeRoot, USERPROFILE: homeRoot, CODEX_HOME: lockedCodexHome },
+    });
+    const summary = JSON.parse(out);
+    const state = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "adapt", "state.json"), "utf8"));
+
+    assert.equal(summary.providerConfig.written, false);
+    assert.equal(summary.providerConfig.blocked, false);
+    assert.equal(summary.providerConfig.manualPatchRequired, true);
+    assert.equal(summary.providerConfig.homeConfigAction, "manual-patch-required");
+    assert.match(summary.providerConfig.diffPreview, /approval_policy = "on-request"/);
+    assert.equal(summary.postApply.providerConfigManualPatchRequired, true);
+    assert.equal(summary.postApply.clean, true);
+    assert.equal(state.providerConfig.manualPatchRequired, true);
+    assert.equal(existsSync(join(projectRoot, ".codex", "config.toml")), false);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
     rmSync(homeRoot, { recursive: true, force: true });
@@ -550,7 +579,7 @@ test("supervibe-adapt metadata-only apply closes version and baseline drift", ()
     assert.match(out, /APPLIED: 0/);
     assert.match(out, /METADATA_UPDATED: true/);
     assert.match(out, /ADAPT_BASELINE_COMPLETE: true/);
-    assert.match(out, /AGENT_RECEIPTS_REQUIRED: false/);
+    assert.doesNotMatch(out, /AGENT_RECEIPTS_/);
     assert.match(out, /APP_VERIFICATION_STATUS: not-applicable/);
     assert.match(out, /DEPLOY_VERIFICATION_STATUS: not-applicable/);
     assert.match(out, /VERSION_MARKER: updated/);
@@ -564,7 +593,7 @@ test("supervibe-adapt metadata-only apply closes version and baseline drift", ()
     const state = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "adapt", "state.json"), "utf8"));
     assert.equal(state.lifecycle, "baseline_verified");
     assert.equal(state.verification.adaptBaselineComplete, true);
-    assert.equal(state.verification.agentReceiptsRequired, false);
+    assert.equal(state.verification.agentRuntimeRequired, false);
     assert.equal(state.verification.completionClaimAllowed, true);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
@@ -593,7 +622,7 @@ test("supervibe-adapt applies only explicitly approved files and updates version
     assert.deepEqual(state.updatedArtifacts, [approvedPath]);
     assert.equal(state.validators.artifactAdaptClean, true);
     assert.equal(state.verification.artifactVerified, true);
-    assert.equal(state.verification.agentReceiptsVerified, false);
+    assert.equal(state.verification.agentRuntimeVerified, false);
     assert.equal(state.verification.appVerified, false);
     assert.equal(state.verification.deployVerified, false);
     assert.equal(state.recovery.appliedFiles.includes(approvedPath), true);
@@ -614,7 +643,8 @@ test("supervibe-adapt verify-agents updates runtime proof gate without blocking 
     assert.match(result.stdout, /SUPERVIBE_ADAPT_VERIFY_AGENTS/);
     assert.match(result.stdout, /AGENT_RUNTIME_VERIFIED: false/);
     assert.match(result.stdout, /STATE_UPDATED: \.supervibe\/memory\/adapt\/state\.json/);
-    assert.match(result.stdout, /NEXT_ACTION: node <resolved-supervibe-plugin-root>\/scripts\/supervibe-adapt\.mjs --verify-agents --record-smoke/);
+    assert.match(result.stdout, /NEXT_ACTION: .*--record-smoke/);
+    assert.doesNotMatch(result.stdout, /receipt/i);
 
     const state = JSON.parse(readFileSync(join(projectRoot, ".supervibe", "memory", "adapt", "state.json"), "utf8"));
     assert.equal(state.verification.artifactVerified, true);
@@ -636,12 +666,12 @@ test("supervibe-adapt recovery-status reports last trusted stage and one next sa
     const out = runAdapt(projectRoot, ["--recovery-status", "--no-color"]);
 
     assert.match(out, /SUPERVIBE_ADAPT_RECOVERY_STATUS/);
-    assert.match(out, /TRUSTED_RECEIPTS: 1/);
+    assert.match(out, /TRUSTED_RECEIPTS: 0/);
     assert.match(out, /DIRTY_RECEIPTS: 0/);
-    assert.match(out, /LAST_TRUSTED_ADAPT_STAGE: \/supervibe-adapt:command:supervibe-adapt-runner@adapt-apply/);
+    assert.match(out, /LAST_TRUSTED_ADAPT_STAGE: none/);
     assert.match(out, /ADAPT_STATE: \.supervibe\/memory\/adapt\/state\.json/);
     assert.match(out, /ADAPT_CURRENT_STAGE: artifact_verified/);
-    assert.match(out, /NEXT_SAFE_COMMAND: node <resolved-supervibe-plugin-root>\/scripts\/supervibe-adapt\.mjs --verify-agents/);
+    assert.match(out, /NEXT_SAFE_COMMAND: node <resolved-supervibe-plugin-root>\/scripts\/supervibe-adapt\.mjs --dry-run/);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }
@@ -881,20 +911,9 @@ test("supervibe-adapt fixed-point apply closes related-rule additions discovered
     assert.match(apply, /FIXED_POINT_STATUS: clean/);
     assert.match(apply, /FIXED_POINT_ROUNDS: 2/);
     assert.match(apply, /NEXT_APPLY: null/);
-    assert.match(apply, /TRANSACTION_ARTIFACT: \.supervibe\/artifacts\/_workflow-transactions\/supervibe-adapt\//);
-    assert.match(apply, /WORKFLOW_RECEIPT: \.supervibe\/artifacts\/_workflow-invocations\/supervibe-adapt\//);
+    assert.doesNotMatch(apply, /TRANSACTION_ARTIFACT|WORKFLOW_RECEIPT/);
     assert.equal(existsSync(join(projectRoot, ".codex", "rules", "optional-rule.md")), true);
 
-    const validation = execFileSync(process.execPath, [
-      join(ROOT, "scripts", "validate-workflow-receipts.mjs"),
-      "--root",
-      projectRoot,
-    ], {
-      cwd: ROOT,
-      encoding: "utf8",
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-    assert.match(validation, /PASS: true/);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
     rmSync(pluginRoot, { recursive: true, force: true });

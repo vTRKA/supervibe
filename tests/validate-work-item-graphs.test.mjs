@@ -51,6 +51,7 @@ test("strict work item graph validation requires adjacent source plan snapshot",
       epicId: "epic-graph-validation",
       planReviewPassed: true,
       dryRun: true,
+      writeSourcePlan: true,
     });
     const { graphPath } = await writeWorkItemGraph(graph, { rootDir: temp, writeSourcePlan: true });
 

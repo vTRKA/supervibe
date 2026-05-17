@@ -26,19 +26,19 @@ function registryRace(audit) {
 
 test("plugin package audit rejects OpenCode legacy session keys and metadata exports", () => {
   const audit = auditPluginPackageData({
-    packageJson: { version: "2.1.43", main: ".opencode/plugins/supervibe.js", exports: { ".": "./.opencode/plugins/supervibe.js" } },
+    packageJson: { version: "2.1.44", main: ".opencode/plugins/supervibe.js", exports: { ".": "./.opencode/plugins/supervibe.js" } },
     manifests: {},
     marketplace: { name: "supervibe-marketplace", plugins: [] },
-    geminiExtension: { version: "2.1.43" },
+    geminiExtension: { version: "2.1.44" },
     opencodeSource: `
       export const SupervibePlugin = async () => ({
         "session.created": async () => {},
         "session.compacted": async () => {},
       });
-      export const version = "2.1.43";
+      export const version = "2.1.44";
     `,
-    readme: "Supervibe v2.1.43",
-    changelog: "## [2.1.43]",
+    readme: "Supervibe v2.1.44",
+    changelog: "## [2.1.44]",
     registryYaml: "agents:\nskills:\ngenerated-at:",
     commandFiles: [],
     trackedFiles: [],

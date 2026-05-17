@@ -9,6 +9,7 @@ import test from "node:test";
 import {
   archiveSupervibeArtifactGcCandidates,
   evaluateArtifactGcSchedule,
+  filterArtifactGcAutoCandidates,
   scanSupervibeArtifactGc,
   writeArtifactGcScheduleRun,
 } from "../scripts/lib/supervibe-artifact-gc.mjs";
@@ -320,6 +321,82 @@ test("artifact GC purgeArchives removes unprotected and snapshot-backed archive 
   }
 });
 
+test("artifact GC classifies old untrusted workflow receipts and temp invocation folders as auto-safe candidates", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-artifact-gc-workflow-temp-"));
+  try {
+    const receiptRel = ".supervibe/artifacts/_workflow-invocations/supervibe-loop/old-run/untrusted.json";
+    const scratchRel = ".supervibe/artifacts/_workflow-invocations/supervibe-loop/temp-run/scratch.json";
+    await writeUtf8(root, receiptRel, JSON.stringify({
+      schemaVersion: 1,
+      receiptId: "old-untrusted",
+      command: "/supervibe-loop",
+      subjectType: "command",
+      subjectId: "supervibe-loop",
+      stage: "temp",
+      outputArtifacts: [],
+    }, null, 2) + "\n");
+    await writeUtf8(root, scratchRel, "{\"temporary\":true}\n");
+    const old = new Date("2026-01-01T00:00:00.000Z");
+    await utimes(join(root, ...receiptRel.split("/")), old, old);
+    await utimes(join(root, ...scratchRel.split("/")), old, old);
+    await utimes(join(root, ".supervibe", "artifacts", "_workflow-invocations", "supervibe-loop", "old-run"), old, old);
+    await utimes(join(root, ".supervibe", "artifacts", "_workflow-invocations", "supervibe-loop", "temp-run"), old, old);
+
+    const scan = await scanSupervibeArtifactGc({
+      rootDir: root,
+      now: "2026-05-06T00:00:00.000Z",
+      retentionDays: 14,
+      workflowArtifactRetentionDays: 30,
+    });
+    const candidates = scan.candidates.map((item) => `${item.relPath}:${item.reason}`);
+    assert.ok(candidates.includes(`${receiptRel}:stale-untrusted-workflow-receipt`));
+    assert.ok(candidates.some((item) => item.includes(".supervibe/artifacts/_workflow-invocations/supervibe-loop/temp-run:stale-workflow-temp-artifact")));
+
+    const auto = filterArtifactGcAutoCandidates({
+      ...scan,
+      candidates: [...scan.candidates, { relPath: ".supervibe/artifacts/manual-review.json", reason: "manual-review-required" }],
+      summary: { ...scan.summary, candidates: scan.candidates.length + 1 },
+    });
+    assert.equal(auto.candidates.some((item) => item.reason === "manual-review-required"), false);
+    assert.ok(auto.candidates.some((item) => item.reason === "stale-untrusted-workflow-receipt"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("artifact GC keeps old trusted workflow receipts out of auto archive candidates", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-artifact-gc-trusted-receipt-"));
+  try {
+    const outputRel = ".supervibe/artifacts/_agent-outputs/trusted-run/agent-output.json";
+    await writeUtf8(root, outputRel, "{\"ok\":true}\n");
+    const issued = await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/codex-task",
+      subjectType: "skill",
+      subjectId: "supervibe:verification",
+      stage: "verification",
+      invocationReason: "trusted receipt remains provenance",
+      outputArtifacts: [outputRel],
+      startedAt: "2026-01-01T00:00:00.000Z",
+      completedAt: "2026-01-01T00:01:00.000Z",
+      handoffId: "trusted-old-receipt",
+    });
+    const old = new Date("2026-01-01T00:00:00.000Z");
+    await utimes(join(root, ...issued.receiptPath.split("/")), old, old);
+    await utimes(join(root, ".supervibe", "artifacts", "_workflow-invocations", "codex-task", "trusted-old-receipt"), old, old);
+
+    const scan = await scanSupervibeArtifactGc({
+      rootDir: root,
+      now: "2026-05-06T00:00:00.000Z",
+      workflowArtifactRetentionDays: 30,
+    });
+
+    assert.equal(scan.candidates.some((item) => item.relPath === issued.receiptPath), false);
+    assert.ok(scan.activeNoise.some((item) => item.relPath === issued.receiptPath && item.reason === "trusted-workflow-receipt"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
 test("artifact GC schedule records last run and suppresses not-due runs", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-artifact-gc-schedule-"));
   try {

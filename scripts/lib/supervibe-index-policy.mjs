@@ -2,7 +2,7 @@ import { readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { isAbsolute, join, relative, sep } from 'node:path';
 
-import { detectLanguage } from './code-chunker.mjs';
+import { detectLanguage, isRetrievalOnlyLanguage } from './code-chunker.mjs';
 import { loadIndexConfig, shouldExcludeFromIndex } from './supervibe-index-config.mjs';
 import { classifyPrivacyPath } from './supervibe-privacy-policy.mjs';
 
@@ -74,7 +74,30 @@ const SKIP_FILE_PATTERNS = [
   /\.test\./i,
   /\.spec\./i,
   /\.d\.ts$/i,
+  /(?:^|\/)(?:package-lock|npm-shrinkwrap)\.json$/i,
+  /(?:^|\/)(?:pnpm-lock|yarn)\.ya?ml$/i,
+  /(?:^|\/)bun\.lockb?$/i,
 ];
+
+const ROOT_MARKDOWN_ARTIFACTS = new Set([
+  'agents.md',
+  'readme.md',
+  'readme.ru.md',
+  'claude.md',
+  'gemini.md',
+  'codex.md',
+  'opencode.md',
+  'contributing.md',
+  'changelog.md',
+  'security.md',
+  'license.md',
+]);
+
+const ROOT_JSON_ARTIFACTS = new Set([
+  'gemini-extension.json',
+  'knip.json',
+  'package.json',
+]);
 
 export function normalizeRelPath(path = '') {
   return String(path).replace(/\\/g, '/').replace(/^\.\//, '');
@@ -82,7 +105,47 @@ export function normalizeRelPath(path = '') {
 
 export function isGeneratedPath(path = '') {
   const segments = normalizeRelPath(path).split('/').filter(Boolean);
-  return segments.some((segment) => GENERATED_DIRS.has(segment));
+  return segments.some((segment, index) => GENERATED_DIRS.has(segment) && !(index === 0 && segment === 'bin'));
+}
+
+function isAllowedRetrievalArtifactPath(path = '', language = '') {
+  const normalized = normalizeRelPath(path).toLowerCase();
+  const segments = normalized.split('/').filter(Boolean);
+  const name = segments.at(-1) || '';
+  if (!isRetrievalOnlyLanguage(language)) return true;
+  if (/^(package-lock|npm-shrinkwrap)\.json$/.test(name)) return false;
+  if (/^(pnpm-lock|yarn)\.ya?ml$/.test(name)) return false;
+  if (name === 'bun.lock' || name === 'bun.lockb') return false;
+  if (language === 'markdown') {
+    return ROOT_MARKDOWN_ARTIFACTS.has(name)
+      || normalized.startsWith('docs/')
+      || normalized.startsWith('templates/')
+      || normalized.startsWith('references/')
+      || normalized.startsWith('commands/')
+      || normalized.startsWith('agents/')
+      || normalized.startsWith('skills/')
+      || normalized.startsWith('rules/');
+  }
+  if (language === 'json') {
+    return ROOT_JSON_ARTIFACTS.has(name)
+      || normalized.startsWith('confidence-rubrics/')
+      || normalized.startsWith('hooks/')
+      || normalized.startsWith('templates/')
+      || normalized.startsWith('schemas/')
+      || normalized.startsWith('tests/fixtures/scenario-evals/');
+  }
+  if (language === 'yaml') {
+    return name === 'registry.yaml'
+      || normalized.startsWith('confidence-rubrics/')
+      || normalized.startsWith('questionnaires/')
+      || normalized.startsWith('templates/')
+      || normalized.startsWith('schemas/')
+      || normalized.startsWith('stack-packs/');
+  }
+  if (language === 'template') {
+    return normalized.startsWith('templates/');
+  }
+  return false;
 }
 
 export function looksMinifiedSymbolName(name = '') {
@@ -110,7 +173,7 @@ export function classifyIndexPath(path, { rootDir = process.cwd(), indexConfig =
   if (userExclude) {
     return { included: false, relPath, language: null, reason: `user-exclude:${userExclude}` };
   }
-  const generatedSegment = segments.find((segment) => GENERATED_DIRS.has(segment));
+  const generatedSegment = segments.find((segment, index) => GENERATED_DIRS.has(segment) && !(index === 0 && segment === 'bin'));
   if (generatedSegment) {
     return { included: false, relPath, language: null, reason: `generated-dir:${generatedSegment}` };
   }
@@ -122,11 +185,19 @@ export function classifyIndexPath(path, { rootDir = process.cwd(), indexConfig =
   if (skippedPattern) {
     return { included: false, relPath, language: null, reason: `skip-file:${skippedPattern.source}` };
   }
-  const language = detectLanguage(fileName);
+  const language = detectLanguage(relPath);
   if (!language) {
     return { included: false, relPath, language: null, reason: 'unsupported-language' };
   }
-  return { included: true, relPath, language, reason: 'source' };
+  if (isRetrievalOnlyLanguage(language) && !isAllowedRetrievalArtifactPath(relPath, language)) {
+    return { included: false, relPath, language, reason: 'unsupported-artifact-path' };
+  }
+  return {
+    included: true,
+    relPath,
+    language,
+    reason: isRetrievalOnlyLanguage(language) ? 'artifact' : 'source',
+  };
 }
 
 export async function discoverSourceFiles(rootDir = process.cwd(), { explain = false } = {}) {
@@ -180,8 +251,6 @@ export async function pruneCodeIndex(codeStore, inventory, rootDir = codeStore.p
   const rows = codeStore.db.prepare('SELECT path FROM code_files').all();
   const pruned = [];
   let removed = 0;
-  const deleteFts = codeStore.db.prepare('DELETE FROM code_chunks_fts WHERE path = ?');
-  const deleteFile = codeStore.db.prepare('DELETE FROM code_files WHERE path = ?');
 
   for (const row of rows) {
     const relPath = normalizeRelPath(row.path);
@@ -189,8 +258,7 @@ export async function pruneCodeIndex(codeStore, inventory, rootDir = codeStore.p
     const policy = classifyIndexPath(absPath, { rootDir });
     const shouldRemove = !existsSync(absPath) || !policy.included || !allowed.has(relPath);
     if (!shouldRemove) continue;
-    deleteFts.run(relPath);
-    deleteFile.run(relPath);
+    await codeStore.removeFile(absPath);
     removed++;
     pruned.push({
       path: relPath,
@@ -205,7 +273,7 @@ function classifyDirectory(name, relPath, indexConfig = loadIndexConfig({ rootDi
   const userExclude = shouldExcludeFromIndex(`${normalizeRelPath(relPath)}/`, indexConfig)
     || shouldExcludeFromIndex(`${normalizeRelPath(relPath)}/__dir__`, indexConfig);
   if (userExclude) return { included: false, reason: `user-exclude:${userExclude}` };
-  if (GENERATED_DIRS.has(name)) return { included: false, reason: `generated-dir:${name}` };
+  if (GENERATED_DIRS.has(name) && normalizeRelPath(relPath) !== 'bin') return { included: false, reason: `generated-dir:${name}` };
   if (SKIP_DIRS.has(name) || name.startsWith('.')) return { included: false, reason: `skip-dir:${name}` };
   return { included: true, reason: 'walk' };
 }

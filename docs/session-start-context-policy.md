@@ -64,8 +64,12 @@ OpenCode, and future adapters:
 
 Allowed bootstrap effects are limited to diagnostics, stale-state notices,
 runtime cleanup of stale transient records, cached upgrade checks, mtime scans
-for existing indexes, and compact task-tracker context. These effects do not
-complete work items and do not replace verification.
+for existing indexes, background auto-GC queueing, and compact task-tracker
+context. Background auto-GC is detached, lock/throttle guarded, applies only
+auto-safe memory, artifact, and artifact-snapshot retention, never archives
+active work graphs or the latest rollback snapshot, and can be disabled with
+`SUPERVIBE_AUTO_GC=off`. These effects do not complete
+work items and do not replace verification.
 
 ## Receipt Compatibility
 

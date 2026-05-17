@@ -77,7 +77,7 @@ test("TOML apply accepts quoted plugin table without treating enabled as previou
   const input = String.raw`model = "gpt-5.5"
 model_reasoning_effort = "xhigh"
 model_provider = "openai"
-approval_policy = "never"
+approval_policy = "on-request"
 sandbox_mode = "workspace-write"
 web_search = "live"
 default_permissions = ":workspace"

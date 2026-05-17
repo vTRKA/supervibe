@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import test from "node:test";
 
+import {
+  atomizePlanToWorkItems,
+  writeWorkItemGraph,
+} from "../scripts/lib/supervibe-plan-to-work-items.mjs";
 import { classifyAdaptDirtyEntries } from "../scripts/lib/supervibe-adapt.mjs";
 import {
   scanSupervibeArtifactGc,
@@ -76,7 +80,7 @@ function createIsolatedCodexHome(prefix = "supervibe-strict-codex-home-") {
   const codexHome = mkdtempSync(join(tmpdir(), prefix));
   mkdirSync(codexHome, { recursive: true });
   writeFileSync(join(codexHome, "config.toml"), [
-    'approval_policy = "never"',
+    'approval_policy = "on-request"',
     'sandbox_mode = "workspace-write"',
     'default_permissions = ":workspace"',
     'web_search = "live"',
@@ -103,6 +107,80 @@ function createIsolatedCodexHome(prefix = "supervibe-strict-codex-home-") {
     "",
   ].join("\n"));
   return codexHome;
+}
+
+function writeTestAgentInvocation(root, { agentId, invocationId, taskSummary }) {
+  const outputJson = `.supervibe/artifacts/_agent-outputs/${invocationId}/agent-output.json`;
+  const outputPath = join(root, ...outputJson.split("/"));
+  mkdirSync(dirname(outputPath), { recursive: true });
+  writeFileSync(outputPath, JSON.stringify({
+    schemaVersion: 1,
+    invocationId,
+    agentId,
+    taskSummary,
+  }, null, 2) + "\n", "utf8");
+  mkdirSync(join(root, ".supervibe", "memory"), { recursive: true });
+  appendFileSync(join(root, ".supervibe", "memory", "agent-invocations.jsonl"), JSON.stringify({
+    schemaVersion: 1,
+    ts: "2026-05-10T00:00:00.000Z",
+    invocation_id: invocationId,
+    agent_id: agentId,
+    task_summary: taskSummary,
+    confidence_score: 10,
+    structured_output: { json: outputJson },
+  }) + "\n", "utf8");
+}
+
+function writeJsonArtifact(root, relativePath, value) {
+  const path = join(root, ...String(relativePath).split("/"));
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, JSON.stringify(value, null, 2) + "\n", "utf8");
+}
+
+async function writeCompletedRuntimeGraph(root, { receiptId, outputSummary }) {
+  const graph = atomizePlanToWorkItems([
+    "# Runtime Implementation Plan",
+    "",
+    "## Acceptance Criteria",
+    "- Completed runtime requirement.",
+    "",
+    "## Task 1: Completed runtime requirement",
+    "**Files:**",
+    "- Modify: scripts/runtime.mjs",
+    "**Acceptance Criteria:**",
+    "- Completed runtime requirement.",
+    "```bash",
+    "node --test tests/runtime.test.mjs",
+    "```",
+  ].join("\n"), {
+    planPath: ".supervibe/artifacts/plans/completed-runtime.md",
+    epicId: "completed-runtime",
+    writeSourcePlan: true,
+    planReviewPassed: true,
+  });
+  for (const item of graph.items || []) {
+    item.status = "complete";
+    if (item.type !== "epic") {
+      item.evidence = [{
+        status: "pass",
+        command: "node --test tests/runtime.test.mjs",
+        outputSummary,
+        receiptId,
+      }];
+      item.verificationEvidence = item.evidence;
+    }
+  }
+  for (const task of graph.tasks || []) {
+    task.status = "complete";
+    task.evidence = [{
+      status: "pass",
+      command: "node --test tests/runtime.test.mjs",
+      outputSummary,
+      receiptId,
+    }];
+    task.verificationEvidence = task.evidence;
+  }
+  await writeWorkItemGraph(graph, { rootDir: root, writeSourcePlan: true });
 }
 
 function runAdapt(projectRoot, args = []) {
@@ -199,7 +277,7 @@ test("adapt recovery-status prints verification next commands from state", () =>
     assert.match(out, /DEPLOY_VERIFICATION_STATUS: not-run-deploy-adapt/);
     assert.match(out, /NEXT_APP_VERIFICATION: node <resolved-supervibe-plugin-root>\/scripts\/supervibe-genesis\.mjs --verify-apps/);
     assert.match(out, /NEXT_DEPLOY_VERIFICATION: node <resolved-supervibe-plugin-root>\/scripts\/supervibe-adapt\.mjs --scope deploy --target dokploy --dry-run/);
-    assert.match(out, /NEXT_SAFE_COMMAND: node <resolved-supervibe-plugin-root>\/scripts\/supervibe-adapt\.mjs --verify-agents/);
+    assert.match(out, /NEXT_SAFE_COMMAND: node <resolved-supervibe-plugin-root>\/scripts\/supervibe-genesis\.mjs --verify-apps/);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }
@@ -337,7 +415,7 @@ test("strict release gate lists active proof gates, repair commands, and package
   ]) {
     assert.match(result.stdout, new RegExp(`- ${gate}:`));
   }
-  assert.match(result.stdout, /REPAIR: npm run validate:active-workflows -- --strict/);
+  assert.match(result.stdout, /REPAIR: npm run (validate:active-workflows -- --strict|supervibe:task-graph-runtime-maturity)/);
   assert.match(result.stdout, /REPAIR: npm run validate:epic-completion:trusted/);
 
   const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
@@ -346,6 +424,37 @@ test("strict release gate lists active proof gates, repair commands, and package
   assert.match(pkg.scripts["check:release-strict"], /validate:strict-release-gate/);
 });
 
+test("strict release gate accepts runtime work graph proof when legacy active workflow state is absent", async () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-strict-runtime-graph-proof-"));
+  try {
+    const runtimeGraphPath = ".supervibe/memory/work-items/current/graph.json";
+    const report = await buildStrictReleaseGateReport(projectRoot, {
+      requireActiveProof: true,
+      taskGraphMaturityResult: {
+        pass: true,
+        score: 10,
+        status: "10-of-10-ready",
+        maturityScope: "active-workflow-readiness",
+        dimensions: [
+          { id: "current-active-graph", pass: true, evidence: [runtimeGraphPath] },
+          { id: "active-graph-receipts", pass: true, evidence: [runtimeGraphPath] },
+          { id: "active-trusted-completion", pass: true, evidence: [runtimeGraphPath] },
+        ],
+      },
+    });
+
+    const activeGate = report.gates.find((gate) => gate.id === "active-workflows");
+    const taskGraphGate = report.gates.find((gate) => gate.id === "task-graph-runtime-maturity");
+    assert.equal(activeGate.pass, true);
+    assert.match(activeGate.summary, /runtimeGraphProof=accepted/);
+    assert.match(activeGate.summary, /status=passed-via-runtime-work-graph/);
+    assert.deepEqual(activeGate.blockers, []);
+    assert.ok(activeGate.evidence.includes(runtimeGraphPath));
+    assert.equal(taskGraphGate.pass, true);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
 test("strict release gate blocks active workflow before release-ready stage", async () => {
   const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-strict-release-stage-"));
   try {
@@ -418,6 +527,172 @@ test("strict release gate CLI auto-uses global mode for archived workflow unless
     assert.equal(explicitReport.maturityScope, "active-workflow-readiness");
     assert.equal(explicitActiveGate.pass, false);
     assert.equal(explicitActiveGate.scope, "active-workflow-readiness");
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("strict release gate ignores archived work-item graphs for active proof blockers", async () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-strict-release-archive-ignore-"));
+  try {
+    mkdirSync(join(projectRoot, ".supervibe", "memory", "work-items", ".archive", "old-active-looking"), { recursive: true });
+    writeFileSync(join(projectRoot, ".supervibe", "memory", "work-items", ".archive", "old-active-looking", "graph.json"), JSON.stringify({
+      epicId: "old-active-looking",
+      items: [
+        { itemId: "old-active-looking", type: "epic", status: "open" },
+        { itemId: "old-active-looking-t1", type: "task", status: "complete" },
+      ],
+    }, null, 2) + "\n");
+
+    const report = await buildStrictReleaseGateReport(projectRoot, { requireActiveProof: true });
+    const trustedGate = report.gates.find((gate) => gate.id === "trusted-epic-completion");
+
+    assert.ok(trustedGate, "trusted epic completion gate should be present");
+    assert.equal(trustedGate.evidence.some((item) => item.includes(".archive/old-active-looking")), false);
+    assert.equal(trustedGate.blockers.some((item) => item.includes(".archive/old-active-looking")), false);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("strict release gate considers newest terminal runtime graph for trusted completion proof", async () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-strict-terminal-graph-proof-"));
+  try {
+    const graphDir = join(projectRoot, ".supervibe", "memory", "work-items", "completed-runtime");
+    mkdirSync(graphDir, { recursive: true });
+    writeFileSync(join(graphDir, "source-plan.md"), "## Acceptance Criteria\n- Completed runtime requirement.\n", "utf8");
+    const outputArtifact = ".supervibe/artifacts/completed-runtime/worker.json";
+    const invocationId = "test-strict-release-completed-runtime-worker";
+    writeJsonArtifact(projectRoot, outputArtifact, { status: "pass", source: "completed-runtime" });
+    writeTestAgentInvocation(projectRoot, {
+      agentId: "stack-developer",
+      invocationId,
+      taskSummary: "completed runtime proof",
+    });
+    const { receipt } = await issueWorkflowInvocationReceipt({
+      rootDir: projectRoot,
+      command: "/supervibe-loop",
+      subjectType: "worker",
+      subjectId: "stack-developer",
+      agentId: "stack-developer",
+      stage: "completed-runtime-t1",
+      invocationReason: "completed runtime task evidence",
+      outputArtifacts: [outputArtifact],
+      startedAt: "2026-05-10T00:00:00.000Z",
+      completedAt: "2026-05-10T00:01:00.000Z",
+      handoffId: "completed-runtime",
+      graphId: "completed-runtime",
+      taskId: "completed-runtime-t1",
+      hostInvocation: {
+        source: "codex-spawn-agent",
+        invocationId,
+        agentId: "stack-developer",
+      },
+    });
+    writeFileSync(join(graphDir, "graph.json"), JSON.stringify({
+      graph_id: "completed-runtime",
+      source: { snapshotPath: "source-plan.md" },
+      items: [
+        { itemId: "completed-runtime", type: "epic", status: "complete", title: "Completed Runtime" },
+        {
+          itemId: "completed-runtime-t1",
+          type: "task",
+          status: "complete",
+          title: "Completed runtime requirement",
+          evidence: [{
+            status: "pass",
+            command: "node --test tests/runtime.test.mjs",
+            outputSummary: "completed runtime proof passed",
+            receiptId: receipt.receiptId,
+          }],
+        },
+      ],
+    }, null, 2) + "\n");
+
+    await writeCompletedRuntimeGraph(projectRoot, {
+      receiptId: receipt.receiptId,
+      outputSummary: "completed runtime proof passed",
+    });
+
+    const report = await buildStrictReleaseGateReport(projectRoot, { requireActiveProof: true });
+    const trustedGate = report.gates.find((gate) => gate.id === "trusted-epic-completion");
+
+    assert.ok(trustedGate, "trusted epic completion gate should be present");
+    assert.match(trustedGate.summary, /graphs=1/);
+    assert.ok(trustedGate.evidence.some((item) => item.includes("completed-runtime/graph.json")));
+    assert.notEqual(trustedGate.summary, "no work-item graph files found");
+    assert.equal(trustedGate.pass, true);
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
+});
+
+test("strict release gate rejects terminal graph evidence bound to another graph", async () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-strict-terminal-wrong-receipt-"));
+  try {
+    const graphDir = join(projectRoot, ".supervibe", "memory", "work-items", "completed-runtime");
+    mkdirSync(graphDir, { recursive: true });
+    const outputArtifact = ".supervibe/artifacts/completed-runtime/wrong-worker.json";
+    const invocationId = "test-strict-release-wrong-graph-worker";
+    writeJsonArtifact(projectRoot, outputArtifact, { status: "pass", source: "wrong-graph" });
+    writeTestAgentInvocation(projectRoot, {
+      agentId: "stack-developer",
+      invocationId,
+      taskSummary: "wrong graph proof",
+    });
+    const { receipt } = await issueWorkflowInvocationReceipt({
+      rootDir: projectRoot,
+      command: "/supervibe-loop",
+      subjectType: "worker",
+      subjectId: "stack-developer",
+      agentId: "stack-developer",
+      stage: "other-runtime-t1",
+      invocationReason: "wrong graph receipt must not satisfy terminal graph completion",
+      outputArtifacts: [outputArtifact],
+      startedAt: "2026-05-10T00:00:00.000Z",
+      completedAt: "2026-05-10T00:01:00.000Z",
+      handoffId: "other-runtime",
+      graphId: "other-runtime",
+      taskId: "other-runtime-t1",
+      hostInvocation: {
+        source: "codex-spawn-agent",
+        invocationId,
+        agentId: "stack-developer",
+      },
+    });
+
+    writeFileSync(join(graphDir, "source-plan.md"), "## Acceptance Criteria\n- Completed runtime requirement.\n", "utf8");
+    writeFileSync(join(graphDir, "graph.json"), JSON.stringify({
+      graph_id: "completed-runtime",
+      source: { snapshotPath: "source-plan.md" },
+      items: [
+        { itemId: "completed-runtime", type: "epic", status: "complete", title: "Completed Runtime" },
+        {
+          itemId: "completed-runtime-t1",
+          type: "task",
+          status: "complete",
+          title: "Completed runtime requirement",
+          evidence: [{
+            status: "pass",
+            command: "node --test tests/runtime.test.mjs",
+            outputSummary: "copied wrong graph receipt must not count",
+            receiptId: receipt.receiptId,
+          }],
+        },
+      ],
+    }, null, 2) + "\n", "utf8");
+
+    await writeCompletedRuntimeGraph(projectRoot, {
+      receiptId: receipt.receiptId,
+      outputSummary: "copied wrong graph receipt must not count",
+    });
+
+    const report = await buildStrictReleaseGateReport(projectRoot, { requireActiveProof: true });
+    const trustedGate = report.gates.find((gate) => gate.id === "trusted-epic-completion");
+
+    assert.ok(trustedGate, "trusted epic completion gate should be present");
+    assert.equal(trustedGate.pass, false);
+    assert.ok(trustedGate.blockers.some((blocker) => blocker.includes("untrusted-evidence")));
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }

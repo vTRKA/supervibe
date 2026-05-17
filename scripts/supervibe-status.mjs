@@ -131,7 +131,7 @@ async function printActiveWorkGraphSummary() {
   if (resolution.status === 'none') {
     console.log(color('Work graph: none active', 'dim'));
     console.log(color(`  NEXT_ACTION: ${resolution.nextAction}`, 'dim'));
-    console.log(color('  ATOMIZE_COMMAND: /supervibe-loop --atomize-plan <plan-path> --user-approved-plan', 'dim'));
+    console.log(color('  FAST_START_COMMAND: /supervibe-loop --from-plan <plan-path> --start --fast-session', 'dim'));
     console.log(color('  RUNTIME_GATE: node scripts/supervibe-task-graph-maturity.mjs --require-active-graph', 'dim'));
     console.log(color('  UI_COMMAND: /supervibe-ui', 'dim'));
     return;
@@ -169,6 +169,11 @@ async function printActiveWorkGraphSummary() {
   const stalled = collectStalledItemsFromGraph(graph);
   const stalledSummary = summarizeStalledItems(stalled);
   const epicId = graph.epicId || graph.graph_id || graph.graphId || resolution.epicId || 'unknown';
+  const workflowEvidenceMode = graph.metadata?.workflowEvidenceMode || 'legacy';
+  const receiptPolicy = graph.metadata?.receiptPolicy || {};
+  const startupReceiptsRequired = receiptPolicy.startupReceiptsRequired === true;
+  const releaseProofRequiredAt = receiptPolicy.releaseProofRequiredAt || (workflowEvidenceMode === 'fast-session' ? 'release-handoff' : 'now');
+  const legacyReceiptStatus = receiptPolicy.legacyReceipts?.status || 'unknown';
   const nextReady = grouped.ready[0]?.itemId || grouped.ready[0]?.id || 'none';
   const terminalCount = (grouped.done?.length || 0) + (grouped.skipped?.length || 0) + (grouped.cancelled?.length || 0);
   const total = index.length;
@@ -192,6 +197,10 @@ async function printActiveWorkGraphSummary() {
   console.log(color('SUPERVIBE_ACTIVE_WORK_GRAPH', driftCount > 0 ? 'yellow' : 'green'));
   console.log(color(`  EPIC: ${epicId}`, 'dim'));
   console.log(color(`  PATH: ${resolution.graphPath}`, 'dim'));
+  console.log(color(`  EVIDENCE_MODE: ${workflowEvidenceMode}`, workflowEvidenceMode === 'fast-session' ? 'green' : 'dim'));
+  console.log(color(`  RECEIPTS_NOW: ${startupReceiptsRequired ? 'required' : 'not-required'}`, startupReceiptsRequired ? 'yellow' : 'green'));
+  console.log(color(`  RELEASE_PROOF_REQUIRED_AT: ${releaseProofRequiredAt}`, releaseProofRequiredAt === 'now' ? 'yellow' : 'dim'));
+  console.log(color(`  LEGACY_RECEIPTS: ${legacyReceiptStatus}`, legacyReceiptStatus === 'diagnostic-only' ? 'dim' : 'yellow'));
   console.log(color(`  TOTAL: ${total}`, 'dim'));
   console.log(color(`  READY: ${grouped.ready.length}`, grouped.ready.length > 0 ? 'green' : 'dim'));
   const inProgress = grouped.in_progress || grouped.claimed || [];
@@ -813,7 +822,24 @@ async function main() {
       console.log(color(`${codeRagHealthy ? '\u2713' : '!'} Code RAG: ${codeRagStatusLabel}${s.totalFiles} files, ${s.totalChunks} chunks`, codeRagHealthy ? 'green' : 'yellow'));
       console.log(color(`  Source coverage: ${coverageSummary}`, codeRagHealthy ? 'dim' : 'yellow'));
       console.log(color(`  Read snapshot: ${readSnapshot.snapshot.mode}, age ${ageStr(readSnapshot.snapshot.dbAgeMs || 0)}, retries ${readSnapshot.snapshot.retryCount || 0}`, 'dim'));
+      const embeddingHealth = indexHealth.embeddingHealth || {};
+      const chunkEntityHealth = indexHealth.chunkEntityHealth || {};
+      const semanticAnchorHealth = indexHealth.semanticAnchorHealth || {};
+      const retrievalLaneSummary = (indexHealth.retrievalLanes || [])
+        .slice(0, 4)
+        .map((lane) => `${lane.fileRole}/${lane.language}:${lane.chunks}`)
+        .join(' ') || 'none';
+      console.log(color(`  Semantic embeddings: ${embeddingHealth.status || 'unknown'} (${embeddingHealth.embeddedChunks || 0}/${embeddingHealth.totalChunks || 0} chunks)`, embeddingHealth.semanticActive ? 'dim' : 'yellow'));
+      console.log(color(`  Chunk entities: ${chunkEntityHealth.status || 'unknown'} (${chunkEntityHealth.linkedChunks || 0}/${chunkEntityHealth.totalChunks || 0} chunks, entities=${chunkEntityHealth.totalEntities || 0})`, chunkEntityHealth.rebuildRequired ? 'yellow' : 'dim'));
+      console.log(color(`  Semantic anchors: ${semanticAnchorHealth.status || 'unknown'} (${semanticAnchorHealth.totalAnchors || 0} total, derived=${semanticAnchorHealth.derivedAnchors || 0})`, semanticAnchorHealth.totalAnchors > 0 ? 'dim' : 'yellow'));
+      console.log(color(`  Retrieval lanes: ${retrievalLaneSummary}`, 'dim'));
       console.log(color(`${graphPrefix} Code Graph: ${graphNotBuilt ? 'not built in current source-readiness index' : `${s.totalSymbols} symbols, ${s.totalEdges} edges (${(s.edgeResolutionRate * 100).toFixed(0)}% cross-resolved)`}`, graphTone));
+      const eligibleEdges = indexHealth.eligibleProjectEdges || {};
+      console.log(color(`  Eligible project edges: ${eligibleEdges.resolved || 0}/${eligibleEdges.deterministic || 0} deterministic resolved (${((Number(eligibleEdges.rate || 0)) * 100).toFixed(0)}%); ignored=${eligibleEdges.ignored || 0}, ambiguous=${eligibleEdges.ambiguous || 0}`, 'dim'));
+      const codeGraphReleaseBlocking = Boolean(graphNotBuilt || graphWarnings.has('cross-resolution') || graphWarnings.has('symbol-coverage') || !indexFreshness.strictReady);
+      console.log(color(`  DEV_START_BLOCKING: false`, 'dim'));
+      console.log(color(`  RELEASE_BLOCKING: ${codeGraphReleaseBlocking}`, codeGraphReleaseBlocking ? 'yellow' : 'dim'));
+      console.log(color(`  RELEASE_REPAIR_COMMAND: ${codeGraphReleaseBlocking ? CODEGRAPH_INDEX_COMMAND : 'none'}`, codeGraphReleaseBlocking ? 'yellow' : 'dim'));
       if (graphNotBuilt) {
         console.log(color(`  Graph note: run \`${CODEGRAPH_INDEX_COMMAND}\` when graph data is needed.`, 'yellow'));
       }
@@ -978,6 +1004,12 @@ async function main() {
     console.log(color(`✓ MCPs: ${mcpReg.mcps.length} available`, 'green'));
     for (const m of mcpReg.mcps) {
       console.log(color(`  ${m.name}  (${m.tools.length} tools)`, 'dim'));
+    }
+  }
+  if (mcpReg.agentHandoff) {
+    console.log(color(`  Runtime palette: ${mcpReg.agentHandoff.runtimePaletteProvided ? 'provided' : 'not-provided'} (${mcpReg.agentHandoff.runtimeToolCount || 0} tools)`, 'dim'));
+    for (const capability of (mcpReg.agentHandoff.capabilities || []).slice(0, 6)) {
+      console.log(color(`  CAPABILITY: ${capability.capabilityId} state=${capability.state} confidenceCap=${capability.confidenceCap} fallback=${capability.fallback || 'none'}`, 'dim'));
     }
   }
 

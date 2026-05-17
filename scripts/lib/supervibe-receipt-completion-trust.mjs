@@ -10,6 +10,11 @@ export const TRUSTED_GRAPH_COMPLETION_STAGES = Object.freeze([
   "work-item-graph-release",
 ]);
 
+export function isReceiptSuppressedForCompletion(receipt = {}) {
+  if (!receipt?.recovery) return false;
+  return String(receipt.recovery.operation || "").toLowerCase() !== "reissue";
+}
+
 export function graphIdentity(graph = {}) {
   return graph.epicId || graph.graph_id || graph.graphId || (graph.items || []).find((item) => item.type === "epic")?.itemId || null;
 }

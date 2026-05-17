@@ -203,9 +203,9 @@ export const SUPERVIBE_KILL_SWITCH_REGISTRY = deepFreeze({
     },
     SUPERVIBE_INDEX_AUTOREPAIR: {
       owner: "code-index",
-      defaultEnabled: false,
+      defaultEnabled: true,
       ciDefaultEnabled: false,
-      description: "Allows automatic Code RAG or CodeGraph index repair when health gates detect stale or missing rows.",
+      description: "Allows bounded automatic Code RAG or CodeGraph index repair when health gates detect stale or missing rows.",
     },
     SUPERVIBE_MEMORY_AUTONOMY: {
       owner: "project-memory",

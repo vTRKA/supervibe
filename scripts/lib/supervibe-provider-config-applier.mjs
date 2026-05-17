@@ -122,8 +122,9 @@ export function formatProviderConfigApplyReport(report = {}) {
 export function buildProviderDefaultEntries(provider = {}) {
   if (provider.id !== "codex") return [];
   const limits = provider.providerLimits || {};
+  const approvalPolicy = provider.runtimeConfig?.defaultApprovalPolicy || "on-request";
   return [
-    keyEntry(["approval_policy"], "never", "approval_policy"),
+    keyEntry(["approval_policy"], approvalPolicy, "approval_policy"),
     keyEntry(["sandbox_mode"], "workspace-write", "sandbox_mode"),
     keyEntry(["default_permissions"], ":workspace", "default_permissions"),
     keyEntry(["web_search"], "live", "web_search"),
@@ -493,14 +494,24 @@ export async function applyUserProviderConfigDefaults({
     };
   }
 
-  await mkdir(dirname(absolutePath), { recursive: true });
   let backupPath = null;
-  if (existing) {
-    const stamp = toBackupStamp(now);
-    backupPath = `${absolutePath}.supervibe-backup-${stamp}`;
-    await copyFile(absolutePath, backupPath);
+  try {
+    await mkdir(dirname(absolutePath), { recursive: true });
+    if (existing) {
+      const stamp = toBackupStamp(now);
+      backupPath = `${absolutePath}.supervibe-backup-${stamp}`;
+      await copyFile(absolutePath, backupPath);
+    }
+    await writeFile(absolutePath, rawApply.output, "utf8");
+  } catch (error) {
+    return buildProviderConfigWriteUnavailableResult({
+      result,
+      report,
+      rawApply,
+      error,
+      targetPath: target.targetPath,
+    });
   }
-  await writeFile(absolutePath, rawApply.output, "utf8");
   return {
     ...result,
     written: true,
@@ -508,6 +519,36 @@ export async function applyUserProviderConfigDefaults({
     updated: existing,
     changed: true,
     backupPath: backupPath ? normalizePathForReport(backupPath) : null,
+  };
+}
+
+function buildProviderConfigWriteUnavailableResult({ result, report, rawApply, error, targetPath } = {}) {
+  const code = error?.code || error?.name || "provider-config-write-failed";
+  const writeIssue = issue(
+    "provider-config-write-unavailable",
+    targetPath || result?.targetPath || "provider-config",
+    `Could not write provider config from the current process (${code}). Apply the add-missing patch from a session with provider-home write access.`,
+  );
+  return {
+    ...result,
+    blocked: false,
+    skipped: true,
+    skipReason: "provider-config-write-unavailable",
+    homeConfigAction: "manual-patch-required",
+    manualPatchRequired: true,
+    writeError: {
+      code,
+      message: error?.message || "Provider config write failed.",
+      path: targetPath || result?.targetPath || null,
+    },
+    report: {
+      ...report,
+      blocked: false,
+      status: "manual-patch-required",
+      issues: [...(report?.issues || []), writeIssue],
+      diff: rawApply?.diff || report?.diff || null,
+      outputPreview: redactSensitiveText(rawApply?.output || report?.outputPreview || ""),
+    },
   };
 }
 

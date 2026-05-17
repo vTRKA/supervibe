@@ -2,6 +2,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { discoverSourceFiles } from "./supervibe-index-policy.mjs";
+import { CodeStore } from "./code-store.mjs";
+import { searchMemory } from "./memory-store.mjs";
 import { getHostAdapterMatrix } from "./supervibe-host-adapters.mjs";
 import { buildRepoMap, selectRepoMapContext } from "./supervibe-repo-map.mjs";
 import { runRetrievalPipeline } from "./supervibe-retrieval-pipeline.mjs";
@@ -102,17 +104,32 @@ export async function buildOrchestratedContextPackFromProject({
   const repoMapSelection = selectRepoMapContext(repoMap, { tier: "standard", query });
   const knowledgeGraph = await buildProjectKnowledgeGraph({ rootDir });
   const knowledgeGraphMatches = queryProjectKnowledgeGraph(knowledgeGraph, { query, includeHistory: false });
-  const ragResults = inventory.files.slice(0, 5).map((file) => ({
-    path: file.relPath,
-    startLine: 1,
-    text: `source file ${file.relPath}`,
-    score: 0.5,
-  }));
+  const memoryResults = await searchMemoryForContext({ rootDir, query, limit: 5 });
+  const indexedRagResults = await searchIndexedCodeForContext({ rootDir, query, limit: 5 });
+  const ragResults = indexedRagResults.length > 0
+    ? indexedRagResults
+    : inventory.files.slice(0, 5).map((file) => ({
+      path: file.relPath,
+      startLine: 1,
+      text: `source file ${file.relPath}`,
+      score: 0.1,
+      sourceKind: "inventory-fallback",
+    }));
+  const indexedGraphNeighborhood = await loadIndexedGraphNeighborhood({ rootDir, ragResults, limit: 5 });
+  const graphNeighborhood = indexedGraphNeighborhood.length > 0
+    ? indexedGraphNeighborhood
+    : knowledgeGraphMatches.nodes.slice(0, 3).map((item) => ({
+      symbol: item.label || item.name || item.id,
+      path: item.path || item.file || null,
+      relationships: [],
+      sourceKind: "project-knowledge-graph",
+    }));
   const pack = buildOrchestratedContextPack({
     rootDir,
     query,
+    memoryResults,
     ragResults,
-    graphNeighborhood: ragResults.slice(0, 3).map((item) => ({ symbol: item.path.split("/").pop(), path: item.path, relationships: [] })),
+    graphNeighborhood,
     hostFiles: collectHostInstructions(rootDir),
     repoMapSelection,
     maxTokens,
@@ -125,7 +142,6 @@ export async function buildOrchestratedContextPackFromProject({
   };
   return pack;
 }
-
 export function formatContextSourceDiagnostics(pack) {
   return [
     "SUPERVIBE_CONTEXT_SOURCE_DIAGNOSTICS",
@@ -137,6 +153,96 @@ export function formatContextSourceDiagnostics(pack) {
   ].join("\n");
 }
 
+async function searchMemoryForContext({ rootDir, query, limit = 5 } = {}) {
+  if (!String(query || "").trim()) return [];
+  try {
+    const rows = await searchMemory(rootDir, { query, limit, semantic: true });
+    return rows.map((row) => ({
+      id: row.id,
+      path: row.file,
+      file: row.file,
+      summary: row.summary,
+      score: row.score,
+      semantic: row.semantic,
+      sourceKind: "memory-store",
+    }));
+  } catch {
+    return [];
+  }
+}
+
+async function searchIndexedCodeForContext({ rootDir, query, limit = 5 } = {}) {
+  if (!String(query || "").trim()) return [];
+  const store = new CodeStore(rootDir, { useEmbeddings: true, useGraph: true });
+  try {
+    await store.init();
+    const embeddingHealth = store.getEmbeddingHealth?.() || {};
+    const semantic = Boolean(embeddingHealth.semanticActive && Number(embeddingHealth.embeddedChunks || 0) > 0);
+    const rows = await store.search({ query, limit, semantic });
+    return rows.map((row) => ({
+      path: row.file,
+      startLine: row.startLine,
+      endLine: row.endLine,
+      text: row.snippet,
+      score: row.score,
+      retrievalMode: row.retrievalMode,
+      semantic: row.semantic,
+      metadata: row.metadata,
+      sourceKind: semantic ? "code-rag-hybrid" : "code-rag-lexical",
+    }));
+  } catch {
+    return [];
+  } finally {
+    store.close?.();
+  }
+}
+
+async function loadIndexedGraphNeighborhood({ rootDir, ragResults = [], limit = 5 } = {}) {
+  const paths = [...new Set(ragResults.map((item) => item.path).filter(Boolean))];
+  if (paths.length === 0) return [];
+  const store = new CodeStore(rootDir, { useEmbeddings: false, useGraph: true });
+  try {
+    await store.init();
+    const placeholders = paths.map(() => "?").join(",");
+    const symbolRows = store.db.prepare(`
+      SELECT path, kind, name, start_line AS startLine, end_line AS endLine
+      FROM code_symbols
+      WHERE path IN (${placeholders})
+      ORDER BY path, start_line, name
+      LIMIT ?
+    `).all(...paths, limit);
+    if (symbolRows.length > 0) {
+      return symbolRows.map((row) => ({
+        symbol: row.name,
+        kind: row.kind,
+        path: row.path,
+        startLine: Number(row.startLine || 1),
+        endLine: Number(row.endLine || row.startLine || 1),
+        relationships: [],
+        sourceKind: "codegraph-symbol-index",
+      }));
+    }
+    const anchorRows = store.db.prepare(`
+      SELECT path, symbol_name AS symbolName, responsibility, start_line AS startLine, end_line AS endLine, source
+      FROM code_semantic_anchors
+      WHERE path IN (${placeholders})
+      ORDER BY path, start_line, anchor_id
+      LIMIT ?
+    `).all(...paths, limit);
+    return anchorRows.map((row) => ({
+      symbol: row.symbolName || row.responsibility,
+      path: row.path,
+      startLine: Number(row.startLine || 1),
+      endLine: Number(row.endLine || row.startLine || 1),
+      relationships: [],
+      sourceKind: row.source === "derived-entity" ? "codegraph-derived-anchor" : "codegraph-semantic-anchor",
+    }));
+  } catch {
+    return [];
+  } finally {
+    store.close?.();
+  }
+}
 function source(name, items, includedReason) {
   return {
     name,

@@ -4,6 +4,8 @@ import { basename, join } from "node:path";
 import matter from "gray-matter";
 import { createWorkItemIndex } from "./supervibe-work-item-query.mjs";
 import { curateProjectMemory } from "./supervibe-memory-curator.mjs";
+import { searchMemory } from "./memory-store.mjs";
+import { CodeStore } from "./code-store.mjs";
 import { parseSemanticAnchors } from "./supervibe-semantic-anchor-index.mjs";
 import { extractFileLocalContracts } from "./supervibe-file-local-contracts.mjs";
 import { buildWorkflowSignal } from "./autonomous-loop-context-planner.mjs";
@@ -23,6 +25,13 @@ const DEFAULT_CONTEXT_PACK_SECTION_RATIOS = Object.freeze({
   metrics: 0.1,
 });
 const TERMINAL_WORK_ITEM_STATUSES = new Set(["done", "closed", "complete", "completed", "verified", "skipped", "cancelled", "canceled"]);
+const DEFAULT_CONTEXT_LIFECYCLE_EXCLUDES = Object.freeze(["archivable", "cold", "trash", "unclassified"]);
+const HOT_SUPERVIBE_CONTEXT_PREFIXES = Object.freeze([
+  ".supervibe/memory/work-items/",
+  ".supervibe/memory/loops/active",
+  ".supervibe/memory/code.db",
+  ".supervibe/memory/memory.db",
+]);
 
 export async function buildContextPack({
   rootDir = process.cwd(),
@@ -127,7 +136,7 @@ export async function buildContextPack({
       "closed sibling task bodies",
       "raw provider prompts",
       "archived memory entries",
-      includeHistory ? null : "cold/trash/unclassified cleanup lifecycle artifacts",
+      includeHistory ? null : "archivable/cold/trash/unclassified cleanup lifecycle artifacts",
       "full graph JSON when summarized fields are sufficient",
     ],
   };
@@ -395,7 +404,7 @@ export function filterCleanupContextItems(items = [], { includeHistory = false, 
     const relPath = normalizeContextPath(item?.path || item?.file || item?.relPath || item?.sourcePath || "");
     if (!relPath) return true;
     const lifecycleClass = byPath.get(relPath)?.lifecycleClass || inferContextLifecycleClass(relPath);
-    return !["cold", "trash", "unclassified"].includes(lifecycleClass);
+    return !DEFAULT_CONTEXT_LIFECYCLE_EXCLUDES.includes(lifecycleClass);
   });
 }
 
@@ -405,6 +414,10 @@ function inferContextLifecycleClass(relPath) {
   if (normalized.includes("/.archive/") || normalized.includes("/_archive/")) return "cold";
   if (/\.(?:bak|tmp|log)$/i.test(normalized)) return "trash";
   if (normalized.includes("workflow-receipts-stale")) return "trash";
+  if (normalized.startsWith(".supervibe/memory/artifact-snapshots/")) return "cold";
+  if (normalized.startsWith(".supervibe/artifacts/")) return "unclassified";
+  if (normalized.startsWith(".supervibe/") && HOT_SUPERVIBE_CONTEXT_PREFIXES.some((prefix) => normalized.startsWith(prefix))) return "hot";
+  if (normalized.startsWith(".supervibe/")) return "unclassified";
   return "hot";
 }
 
@@ -446,6 +459,47 @@ async function findRelevantMemory({
 }) {
   const memoryDir = join(rootDir, ".supervibe", "memory");
   const lifecycleById = curation?.lifecycle?.byId || {};
+  const semanticQuery = (terms || []).join(" ").trim();
+  if (semanticQuery) {
+    try {
+      const semanticEntries = await searchMemory(rootDir, {
+        query: semanticQuery,
+        limit: Math.max(limit * 3, limit),
+        semantic: true,
+      });
+      const mapped = semanticEntries
+        .map((entry) => {
+          const id = String(entry.id || "");
+          const lifecycle = lifecycleById[id] || {};
+          if (!id) return null;
+          if (!includeHistory && (lifecycle.stale || lifecycle.contradictionIds?.length)) return null;
+          const ageDays = lifecycle.ageDays ?? ageInDays(entry.date, now);
+          const freshness = lifecycle.freshness || (ageDays > 365 ? "stale" : ageDays > 90 ? "aging" : "fresh");
+          return {
+            id,
+            category: entry.type || "memory",
+            file: entry.file,
+            score: Number(entry.score || 0),
+            semantic: Number(entry.semantic || 0),
+            effectiveScore: Number(entry.score || 0),
+            ageDays,
+            freshness,
+            stale: Boolean(lifecycle.stale),
+            contradictionIds: lifecycle.contradictionIds || [],
+            confidence: Number(entry.confidence || 0),
+            updatedAt: entry.date || now,
+            summary: String(entry.summary || "").slice(0, 220),
+          };
+        })
+        .filter(Boolean)
+        .sort((a, b) => b.effectiveScore - a.effectiveScore || b.semantic - a.semantic || b.confidence - a.confidence)
+        .slice(0, limit);
+      if (mapped.length > 0) return mapped;
+    } catch {
+      // Fall back to markdown scan when memory.db is absent, stale, or unavailable.
+    }
+  }
+
   const entries = [];
   for (const category of MEMORY_CATEGORIES) {
     const dir = join(memoryDir, category);
@@ -510,7 +564,10 @@ function collectEvidence(graph, item, limit) {
 }
 
 async function collectSemanticAnchors({ rootDir, activeItem, limit }) {
-  const paths = [...new Set((activeItem?.writeScope || []).map((scope) => scope.path || scope).filter(Boolean))];
+  const paths = [...new Set((activeItem?.writeScope || []).map((scope) => normalizeContextPath(scope.path || scope)).filter(Boolean))];
+  const indexedAnchors = await collectIndexedSemanticAnchors({ rootDir, paths, limit });
+  if (indexedAnchors.length > 0) return indexedAnchors;
+
   const anchors = [];
   for (const relPath of paths) {
     const fullPath = join(rootDir, relPath);
@@ -525,8 +582,52 @@ async function collectSemanticAnchors({ rootDir, activeItem, limit }) {
   return anchors.slice(0, limit);
 }
 
+async function collectIndexedSemanticAnchors({ rootDir, paths = [], limit = 8 } = {}) {
+  if (paths.length === 0) return [];
+  const store = new CodeStore(rootDir, { useEmbeddings: false, useGraph: false });
+  try {
+    await store.init();
+    const placeholders = paths.map(() => "?").join(",");
+    const rows = store.db.prepare(`
+      SELECT anchor_id AS anchorId, path AS filePath, symbol_name AS symbolName,
+             visibility, responsibility, invariants_json AS invariantsJson,
+             verification_refs_json AS verificationRefsJson, start_line AS startLine,
+             end_line AS endLine, source
+      FROM code_semantic_anchors
+      WHERE path IN (${placeholders})
+      ORDER BY path, start_line, anchor_id
+      LIMIT ?
+    `).all(...paths, limit);
+    return rows.map((row) => ({
+      anchorId: row.anchorId,
+      filePath: row.filePath,
+      symbolName: row.symbolName,
+      visibility: row.visibility,
+      responsibility: row.responsibility,
+      invariants: parseJsonArray(row.invariantsJson),
+      verificationRefs: parseJsonArray(row.verificationRefsJson),
+      startLine: Number(row.startLine || 1),
+      endLine: Number(row.endLine || row.startLine || 1),
+      source: row.source,
+    }));
+  } catch {
+    return [];
+  } finally {
+    store.close?.();
+  }
+}
+
+function parseJsonArray(value = "[]") {
+  try {
+    const parsed = JSON.parse(String(value || "[]"));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 async function collectFileLocalContracts({ rootDir, activeItem, semanticAnchors = [], limit }) {
-  const paths = [...new Set((activeItem?.writeScope || []).map((scope) => scope.path || scope).filter(Boolean))];
+  const paths = [...new Set((activeItem?.writeScope || []).map((scope) => normalizeContextPath(scope.path || scope)).filter(Boolean))];
   const contracts = [];
   for (const relPath of paths) {
     const fullPath = join(rootDir, relPath);

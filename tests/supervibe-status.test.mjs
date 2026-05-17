@@ -5,6 +5,7 @@ import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { buildGcHints } from '../scripts/lib/supervibe-gc-hints.mjs';
 
 const ROOT = process.cwd();
 const STATUS_SCRIPT = join(ROOT, 'scripts', 'supervibe-status.mjs');
@@ -60,6 +61,11 @@ test('supervibe-status: reports Code Graph state', () => {
     /Code Graph: \d+ symbols, \d+ edges/.test(out) || /Code Graph: not built/.test(out) || /not-built/.test(out) || /NOT INITIALIZED/.test(out),
     'should show symbol/edge counts or not-built'
   );
+  if (!/NOT INITIALIZED|not-built/.test(out)) {
+    assert.match(out, /DEV_START_BLOCKING: false/);
+    assert.match(out, /RELEASE_BLOCKING: (true|false)/);
+    assert.match(out, /RELEASE_REPAIR_COMMAND:/);
+  }
 });
 
 test('supervibe-status: reports grammar / language coverage', () => {
@@ -155,6 +161,14 @@ test('supervibe-status reports active work graph ready, blocked, stale, orphan, 
       graph_id: 'epic-status',
       epicId: 'epic-status',
       title: 'Status Epic',
+      metadata: {
+        workflowEvidenceMode: 'fast-session',
+        receiptPolicy: {
+          startupReceiptsRequired: false,
+          releaseProofRequiredAt: 'release-handoff',
+          legacyReceipts: { status: 'diagnostic-only' },
+        },
+      },
       items: [
         { itemId: 'epic-status', type: 'epic', status: 'open', title: 'Status Epic' },
         { itemId: 'T-ready', type: 'task', status: 'open', title: 'Ready status task' },
@@ -195,6 +209,10 @@ test('supervibe-status reports active work graph ready, blocked, stale, orphan, 
 
     assert.match(out, /SUPERVIBE_ACTIVE_WORK_GRAPH/);
     assert.match(out, /EPIC: epic-status/);
+    assert.match(out, /EVIDENCE_MODE: fast-session/);
+    assert.match(out, /RECEIPTS_NOW: not-required/);
+    assert.match(out, /RELEASE_PROOF_REQUIRED_AT: release-handoff/);
+    assert.match(out, /LEGACY_RECEIPTS: diagnostic-only/);
     assert.match(out, /NEXT_READY: T-ready/);
     assert.match(out, /READY_ITEM: T-ready/);
     assert.match(out, /BLOCKED_ITEM: T-blocked/);
@@ -277,7 +295,7 @@ test('supervibe-status reports atomize and runtime gate guidance with no active 
     });
 
     assert.match(out, /Work graph: none active/);
-    assert.match(out, /ATOMIZE_COMMAND: \/supervibe-loop --atomize-plan <plan-path> --user-approved-plan/);
+    assert.match(out, /FAST_START_COMMAND: \/supervibe-loop --from-plan <plan-path> --start --fast-session/);
     assert.match(out, /RUNTIME_GATE: node scripts\/supervibe-task-graph-maturity\.mjs --require-active-graph/);
     assert.match(out, /UI_COMMAND: \/supervibe-ui/);
   } finally {
@@ -327,6 +345,28 @@ test('supervibe-status: reports GC hints when requested', () => {
     stdio: ['pipe', 'pipe', 'pipe']
   });
   assert.ok(/SUPERVIBE_GC_HINTS/.test(out), 'should mention GC hints');
+  assert.match(out, /CLEANUP_MODE: dry-run-first/);
+  assert.match(out, /CLEANUP_PROTECTED: .*code.db.*receipt-linked-outputs/);
+  assert.ok(out.includes("RESTORE_PATH: .supervibe/memory/work-items/.archive"));
+});
+
+
+test('GC hints exclude live code.db sidecars from snapshot retention', async () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), 'supervibe-gc-sidecars-'));
+  try {
+    const memoryDir = join(projectRoot, '.supervibe', 'memory');
+    mkdirSync(memoryDir, { recursive: true });
+    writeFileSync(join(memoryDir, 'code.db-wal'), 'live wal');
+    writeFileSync(join(memoryDir, 'code.db-shm'), 'live shm');
+    writeFileSync(join(memoryDir, 'code.db.schema-1.bak'), 'backup');
+
+    const hints = await buildGcHints({ rootDir: projectRoot, now: '2026-05-17T00:00:00.000Z' });
+
+    assert.equal(hints.codeDbSnapshots.count, 1);
+    assert.equal(hints.codeDbSnapshots.bytes, Buffer.byteLength('backup'));
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
+  }
 });
 
 test('supervibe-status --capabilities resolves plugin root when launched from a project', () => {

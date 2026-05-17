@@ -362,7 +362,7 @@ function validateReferenceTemplates(rootDir) {
     }
 
     const ownerPattern = new RegExp(`(?:^|[^A-Za-z0-9_-])(?:\\.\\.?/)*references/templates/${escapeRegex(file)}(?:$|[^A-Za-z0-9_-])`);
-    const hasOwner = ownerFiles.some((ownerFile) => ownerPattern.test(readFileSync(ownerFile, "utf8")));
+    const hasOwner = ownerFiles.some((ownerFile) => ownerPattern.test(readOptionalTextFile(ownerFile)));
     if (!hasOwner) {
       issues.push("template has no live owner link outside references/templates");
     }
@@ -374,6 +374,15 @@ function validateReferenceTemplates(rootDir) {
       issues,
     };
   });
+}
+
+function readOptionalTextFile(file) {
+  try {
+    return readFileSync(file, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") return "";
+    throw error;
+  }
 }
 
 function walkTextFiles(dir, out = []) {

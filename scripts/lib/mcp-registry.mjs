@@ -405,6 +405,8 @@ function buildMcpEntry({ definition, rawName = null, def = {}, tools = [], host 
     canonicalTools,
     adapterTools,
     tools: availableTools,
+    source,
+    freshness: source,
   };
   return {
     name: definition.name,
@@ -428,6 +430,7 @@ function buildMcpEntry({ definition, rawName = null, def = {}, tools = [], host 
     adapterBindings: [adapterBinding],
     fallback: definition.fallback,
     freshness: source,
+    source,
     lastDiscoveredAt: now,
     discoveredAt: now,
   };
@@ -435,6 +438,7 @@ function buildMcpEntry({ definition, rawName = null, def = {}, tools = [], host 
 
 function buildRegistry({ mcps, configuredMcps, desiredCapabilities, hasRuntimeDiscovery, runtimeToolCount, host, now, configFallbackUsed = false }) {
   const availableMcps = mergeMcpEntries(mcps || []).filter((mcp) => mcp.available && mcp.availableTools?.length);
+  const capabilityStates = buildCapabilityStates({ desiredCapabilities, availableMcps, configuredMcps, host, hasRuntimeDiscovery });
   return {
     schemaVersion: 3,
     generatedBy: 'scripts/lib/mcp-registry.mjs',
@@ -443,6 +447,8 @@ function buildRegistry({ mcps, configuredMcps, desiredCapabilities, hasRuntimeDi
     capabilities: groupCapabilities(availableMcps),
     desiredCapabilities,
     missingCapabilities: buildMissingCapabilities(desiredCapabilities, availableMcps, hasRuntimeDiscovery),
+    capabilityStates,
+    agentHandoff: buildMcpAgentHandoffPacket({ capabilityStates, host, hasRuntimeDiscovery, runtimeToolCount }),
     availableToolsByHost: buildAvailableToolsByHost(availableMcps),
     toolNamespacesByHost: buildToolNamespacesByHost(availableMcps),
     adapterBinding: availableMcps.flatMap((mcp) => mcp.adapterBindings || [mcp.adapterBinding].filter(Boolean)),
@@ -451,6 +457,72 @@ function buildRegistry({ mcps, configuredMcps, desiredCapabilities, hasRuntimeDi
     lastDiscoveredAt: now,
     updatedAt: now,
   };
+}
+
+function buildCapabilityStates({ desiredCapabilities = [], availableMcps = [], configuredMcps = [], host = "unknown", hasRuntimeDiscovery = false } = {}) {
+  const hostId = normalizeHost(host);
+  return (desiredCapabilities || []).map((desired) => {
+    const capabilityId = desired.capabilityId;
+    const available = (availableMcps || []).find((mcp) => mcp.capabilityId === capabilityId) || null;
+    const configured = (configuredMcps || []).filter((entry) => entry.capabilityId === capabilityId);
+    const bindings = available?.adapterBindings || [available?.adapterBinding].filter(Boolean);
+    const runtimeBinding = bindings.find((binding) => normalizeHost(binding.host) === hostId && binding.source === "runtime-discovery") || null;
+    const sameHostBinding = bindings.find((binding) => normalizeHost(binding.host) === hostId) || null;
+    const state = runtimeBinding
+      ? "runtime-available"
+      : sameHostBinding && configured.length > 0
+        ? "configured-only"
+        : available && !sameHostBinding
+          ? "host-mismatch"
+          : configured.length > 0
+            ? "configured-only"
+            : "unavailable";
+    const toolCount = runtimeBinding?.availableTools?.length || sameHostBinding?.availableTools?.length || available?.availableTools?.length || 0;
+    return {
+      capabilityId,
+      state,
+      host: hostId,
+      toolCount,
+      mcp: available?.name || desired.preferredMcp || capabilityId,
+      freshness: runtimeBinding ? "runtime-current" : sameHostBinding ? "configured-current" : hasRuntimeDiscovery ? "runtime-missing" : "not-observed",
+      confidenceCap: confidenceCapForCapabilityState(state, hasRuntimeDiscovery),
+      fallback: desired.fallback || available?.fallback || null,
+      limitations: limitationsForCapabilityState(state, { hasRuntimeDiscovery, configured: configured.length > 0 }),
+    };
+  });
+}
+
+function buildMcpAgentHandoffPacket({ capabilityStates = [], host = "unknown", hasRuntimeDiscovery = false, runtimeToolCount = 0 } = {}) {
+  return {
+    schemaVersion: 1,
+    host: normalizeHost(host),
+    runtimePaletteProvided: Boolean(hasRuntimeDiscovery),
+    runtimeToolCount: Number(runtimeToolCount || 0),
+    capabilities: (capabilityStates || []).map((item) => ({
+      capabilityId: item.capabilityId,
+      host: item.host,
+      state: item.state,
+      toolCount: item.toolCount,
+      freshness: item.freshness,
+      confidenceCap: item.confidenceCap,
+      fallback: item.fallback,
+      limitations: item.limitations,
+    })),
+  };
+}
+
+function confidenceCapForCapabilityState(state, hasRuntimeDiscovery = false) {
+  if (state === "runtime-available") return 10;
+  if (state === "configured-only") return hasRuntimeDiscovery ? 7 : 8;
+  if (state === "host-mismatch") return 6;
+  return hasRuntimeDiscovery ? 5 : 7;
+}
+
+function limitationsForCapabilityState(state, { hasRuntimeDiscovery = false, configured = false } = {}) {
+  if (state === "runtime-available") return [];
+  if (state === "configured-only") return ["configured but not confirmed in the live runtime palette"];
+  if (state === "host-mismatch") return ["available in another host or namespace; do not expose raw provider config in agent handoff"];
+  return [hasRuntimeDiscovery ? "not observed in the live runtime palette" : configured ? "configured but runtime palette absent" : "not configured or unavailable"];
 }
 
 function buildDesiredCapabilities(configuredNames = []) {

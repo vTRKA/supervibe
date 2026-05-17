@@ -259,7 +259,7 @@ export async function inspectActivePlanReviewSource({ rootDir = process.cwd(), p
   if (!reviews.length) {
     return { status: "no-review-artifacts", active, issues: ["no plan review artifacts found"], warnings: [] };
   }
-  const desiredPlanPath = targetPlan || (() => null);
+  const desiredPlanPath = targetPlan || null;
   let matched = [];
   for (const reviewFile of reviews) {
     const markdown = await readFile(reviewFile, "utf8");

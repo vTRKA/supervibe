@@ -15,10 +15,6 @@ import {
 import { buildDesignWorkflowReport } from "./design-workflow-report.mjs";
 import { validateSupervibeGcStrict } from "./supervibe-artifact-gc.mjs";
 import { buildTaskGraphMaturityReport } from "./supervibe-task-graph-maturity.mjs";
-import {
-  readWorkflowReceipts,
-  validateWorkflowReceiptTrust,
-} from "./supervibe-workflow-receipt-runtime.mjs";
 
 const ACTIVE_PROOF_GATE_IDS = Object.freeze([
   "active-workflows",
@@ -39,13 +35,21 @@ export async function buildStrictReleaseGateReport(rootDir = process.cwd(), opti
   });
   const requireActiveProof = resolveActiveProofRequirement(options.requireActiveProof, activeWorkflowResult);
   const maturityScope = requireActiveProof ? "active-workflow-readiness" : "global-capability";
+  const taskGraphMaturityResult = options.taskGraphMaturityResult || buildTaskGraphMaturityReport(resolvedRoot, {
+    requireActiveGraph: requireActiveProof,
+    requireReleaseProof: requireActiveProof,
+  });
   const gates = [];
 
-  gates.push(activeWorkflowGate(resolvedRoot, { requireActiveProof, result: activeWorkflowResult }));
+  gates.push(activeWorkflowGate(resolvedRoot, {
+    requireActiveProof,
+    result: activeWorkflowResult,
+    taskGraphMaturityResult,
+  }));
   gates.push(await strictPlanGate(resolvedRoot, { requireActiveProof }));
   gates.push(await strictPlanReviewGate(resolvedRoot, { requireActiveProof }));
   gates.push(await trustedEpicCompletionGate(resolvedRoot, { requireActiveProof }));
-  gates.push(taskGraphRuntimeMaturityGate(resolvedRoot, { requireActiveProof }));
+  gates.push(taskGraphRuntimeMaturityGate(resolvedRoot, { requireActiveProof, result: taskGraphMaturityResult }));
   gates.push(designWorkflowReportGate(resolvedRoot, { requireActiveProof, maturityScope }));
   gates.push(await tokenStrictGate(resolvedRoot, { workflowRunId: options.workflowRunId }));
   gates.push(await supervibeGcStrictGate(resolvedRoot));
@@ -106,29 +110,67 @@ export function formatStrictReleaseGateReport(report = {}) {
   return lines.join("\n");
 }
 
-function activeWorkflowGate(rootDir, { requireActiveProof, result } = {}) {
+function activeWorkflowGate(rootDir, { requireActiveProof, result, taskGraphMaturityResult } = {}) {
   result ||= validateActiveWorkflows(rootDir, { strict: true });
-  const stage = result.resume?.stage || "none";
+  const runtimeGraphProofAccepted = requireActiveProof
+    && isLegacyActiveWorkflowStateMissingOnly(result)
+    && isRuntimeWorkGraphActiveProofReady(taskGraphMaturityResult);
+  const stage = runtimeGraphProofAccepted ? "release-ready" : result.resume?.stage || "none";
   const releaseReady = !requireActiveProof || stage === "release-ready";
   const pass = requireActiveProof
-    ? result.pass === true && result.status === "passed" && releaseReady
+    ? runtimeGraphProofAccepted || (result.pass === true && result.status === "passed" && releaseReady)
     : result.pass === true;
+  const blockers = runtimeGraphProofAccepted ? [] : [
+    ...(result.issues || []).map((issue) => `${issue.code || "issue"}: ${issue.message || issue}`),
+    ...(requireActiveProof && result.status !== "passed" ? ["active workflow proof is required for a 10/10 release claim"] : []),
+    ...(requireActiveProof && !releaseReady ? [`active workflow stage must be release-ready before strict release; current stage=${stage}, nextAction=${result.resume?.nextAction || "none"}`] : []),
+  ];
+  const runtimeEvidence = runtimeWorkGraphProofEvidence(taskGraphMaturityResult);
+  const summaryStatus = runtimeGraphProofAccepted ? "passed-via-runtime-work-graph" : result.status || "unknown";
   return {
     id: "active-workflows",
     title: "Active workflow strict proof",
     pass,
     required: true,
     scope: requireActiveProof ? "active-workflow-readiness" : "global-capability",
-    summary: `status=${result.status || "unknown"}, activeWorkflows=${result.activeWorkflows || 0}, checks=${result.checked || 0}`,
-    blockers: [
-      ...(result.issues || []).map((issue) => `${issue.code || "issue"}: ${issue.message || issue}`),
-      ...(requireActiveProof && result.status !== "passed" ? ["active workflow proof is required for a 10/10 release claim"] : []),
-      ...(requireActiveProof && !releaseReady ? [`active workflow stage must be release-ready before strict release; current stage=${stage}, nextAction=${result.resume?.nextAction || "none"}`] : []),
-    ],
-    evidence: [".supervibe/memory/active-workflow.json", ".supervibe/memory/active-workflows"],
-    repairCommand: "npm run validate:active-workflows -- --strict",
-    result,
+    summary: `status=${summaryStatus}, activeWorkflows=${result.activeWorkflows || 0}, checks=${result.checked || 0}, runtimeGraphProof=${runtimeGraphProofAccepted ? "accepted" : "not-used"}`,
+    blockers,
+    evidence: [".supervibe/memory/active-workflow.json", ".supervibe/memory/active-workflows", ...runtimeEvidence],
+    repairCommand: runtimeGraphProofAccepted ? "npm run supervibe:task-graph-runtime-maturity" : "npm run validate:active-workflows -- --strict",
+    result: {
+      ...result,
+      runtimeGraphProofAccepted,
+      runtimeGraphProofEvidence: runtimeEvidence,
+    },
   };
+}
+
+function isLegacyActiveWorkflowStateMissingOnly(result = {}) {
+  const issues = result.issues || [];
+  return Number(result.activeWorkflows || 0) === 0
+    && Number(result.state?.checked || 0) === 0
+    && issues.length === 1
+    && issues.every((issue) => issue?.code === "active-workflow-state-missing");
+}
+
+function isRuntimeWorkGraphActiveProofReady(result = {}) {
+  if (result.pass !== true) return false;
+  if (result.maturityScope !== "active-workflow-readiness") return false;
+  const dimensions = new Map((result.dimensions || []).map((dimension) => [dimension.id, dimension]));
+  return ["current-active-graph", "active-graph-receipts", "active-trusted-completion"]
+    .every((id) => dimensions.get(id)?.pass === true);
+}
+
+function runtimeWorkGraphProofEvidence(result = {}) {
+  const wanted = new Set(["current-active-graph", "active-graph-receipts", "active-trusted-completion"]);
+  const evidence = [];
+  for (const dimension of result.dimensions || []) {
+    if (!wanted.has(dimension.id)) continue;
+    for (const item of dimension.evidence || []) {
+      if (item && !evidence.includes(item)) evidence.push(item);
+    }
+  }
+  return evidence;
 }
 
 async function strictPlanGate(rootDir, { requireActiveProof } = {}) {
@@ -200,8 +242,6 @@ async function trustedEpicCompletionGate(rootDir, { requireActiveProof } = {}) {
     };
   }
   const files = discoverActiveWorkItemGraphFiles(rootDir);
-  const trustedReceiptIds = trustedReceiptIdsForStrictGate(rootDir);
-  const trustedGraphReceiptIdsByGraphId = trustedGraphReceiptIdsByGraphForStrictGate(rootDir);
   if (files.length === 0) {
     return {
       id: "trusted-epic-completion",
@@ -224,11 +264,10 @@ async function trustedEpicCompletionGate(rootDir, { requireActiveProof } = {}) {
     allowSkipped: true,
     allowDryRunEvidence: false,
     requireTrustedEvidence: true,
-    trustedReceiptIds,
-    trustedGraphReceiptIdsByGraphId,
     disallowLegacyEvidence: true,
     requireEpicClosed: false,
   });
+  const trustedReceiptCount = countTrustedReceiptsUsedByCompletionResult(result);
   const failing = result.results.filter((item) => item.report.pass !== true);
   return {
     id: "trusted-epic-completion",
@@ -236,7 +275,7 @@ async function trustedEpicCompletionGate(rootDir, { requireActiveProof } = {}) {
     pass: result.pass === true,
     required: true,
     scope: "active-workflow-readiness",
-    summary: `graphs=${files.length}, trustedReceipts=${trustedReceiptIds.length}, failing=${failing.length}`,
+    summary: `graphs=${files.length}, trustedReceipts=${trustedReceiptCount}, failing=${failing.length}`,
     blockers: failing.flatMap((item) => (item.report.issues || []).slice(0, 8)
       .map((issue) => `${toRel(rootDir, item.file)}: ${issue.code || "issue"}: ${issue.message || issue.itemId || "failed"}`)).slice(0, 20),
     evidence: files.slice(0, 6).map((file) => toRel(rootDir, file)),
@@ -246,9 +285,44 @@ async function trustedEpicCompletionGate(rootDir, { requireActiveProof } = {}) {
 }
 
 function discoverActiveWorkItemGraphFiles(rootDir) {
-  return walkFiles(join(rootDir, ".supervibe", "memory", "work-items"))
+  const files = walkFiles(join(rootDir, ".supervibe", "memory", "work-items"))
     .filter((file) => file.endsWith("graph.json") || file.endsWith(".work-item-graph.json"))
-    .filter((file) => isActiveWorkItemGraphFile(file));
+    .filter((file) => !isArchivedWorkItemGraphPath(file));
+  const active = files.filter((file) => isActiveWorkItemGraphFile(file));
+  if (active.length > 0) return active;
+  return files
+    .filter((file) => isTerminalWorkItemGraphFile(file))
+    .sort(compareNewestFileFirst)
+    .slice(0, 1);
+}
+
+function isArchivedWorkItemGraphPath(file) {
+  return String(file || "").split(/[\\/]+/).includes(".archive");
+}
+
+function isTerminalWorkItemGraphFile(file) {
+  let graph = null;
+  try {
+    graph = JSON.parse(readFileSync(file, "utf8"));
+  } catch {
+    return false;
+  }
+  const epic = (graph.items || []).find((item) => item.type === "epic")
+    || (graph.items || []).find((item) => item.itemId === graph.epicId || item.itemId === graph.graph_id);
+  const status = String(epic?.status || graph.status || "").toLowerCase();
+  return TERMINAL_GRAPH_EPIC_STATUSES.has(status);
+}
+
+function compareNewestFileFirst(left, right) {
+  return statMtimeMs(right) - statMtimeMs(left) || String(left).localeCompare(String(right));
+}
+
+function statMtimeMs(file) {
+  try {
+    return statSync(file).mtimeMs;
+  } catch {
+    return 0;
+  }
 }
 
 function isActiveWorkItemGraphFile(file) {
@@ -269,9 +343,10 @@ function isActiveWorkItemGraphFile(file) {
   });
 }
 
-function taskGraphRuntimeMaturityGate(rootDir, { requireActiveProof } = {}) {
-  const result = buildTaskGraphMaturityReport(rootDir, {
+function taskGraphRuntimeMaturityGate(rootDir, { requireActiveProof, result } = {}) {
+  result ||= buildTaskGraphMaturityReport(rootDir, {
     requireActiveGraph: requireActiveProof,
+    requireReleaseProof: requireActiveProof,
   });
   return {
     id: "task-graph-runtime-maturity",
@@ -373,31 +448,6 @@ async function legacyEvidenceGraphGate(rootDir) {
   };
 }
 
-function trustedReceiptIdsForStrictGate(rootDir) {
-  const trusted = [];
-  for (const receipt of readWorkflowReceipts(rootDir)) {
-    if (!receipt?.receiptId) continue;
-    const trust = validateWorkflowReceiptTrust(rootDir, receipt);
-    if (trust.pass) trusted.push(String(receipt.receiptId));
-  }
-  return trusted;
-}
-
-function trustedGraphReceiptIdsByGraphForStrictGate(rootDir) {
-  const out = {};
-  for (const receipt of readWorkflowReceipts(rootDir)) {
-    if (!receipt?.receiptId) continue;
-    const graphId = receipt.graphId || receipt.workItemBinding?.graphId || null;
-    if (!graphId) continue;
-    const taskId = receipt.taskId || receipt.workItemId || receipt.graphTaskId || receipt.workItemBinding?.taskId || null;
-    if (taskId) continue;
-    const trust = validateWorkflowReceiptTrust(rootDir, receipt);
-    if (!trust.pass) continue;
-    if (!out[graphId]) out[graphId] = [];
-    out[graphId].push(String(receipt.receiptId));
-  }
-  return out;
-}
 
 function walkFiles(dir) {
   if (!existsSync(dir)) return [];
@@ -409,6 +459,15 @@ function walkFiles(dir) {
     else out.push(path);
   }
   return out;
+}
+
+function countTrustedReceiptsUsedByCompletionResult(result = {}) {
+  const receiptIds = new Set();
+  for (const item of result.results || []) {
+    for (const receiptId of item.trustedReceiptIds || []) receiptIds.add(String(receiptId));
+    for (const receiptId of item.trustedGraphReceiptIds || []) receiptIds.add(String(receiptId));
+  }
+  return receiptIds.size;
 }
 
 function toRel(rootDir, path) {

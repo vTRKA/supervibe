@@ -71,6 +71,20 @@ test('plan lifecycle report exposes canonical active plan and stale closed archi
   assert.match(formatPlanLifecycleReport(report), /SUPERVIBE_PLAN_LIFECYCLE/);
 });
 
+test('plan lifecycle report gives actionable fast-start command when no active plan exists', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'plan-lifecycle-no-active-'));
+  try {
+    await mkdir(join(root, '.supervibe', 'memory'), { recursive: true });
+    const report = createPlanLifecycleReport({ rootDir: root });
+    const output = formatPlanLifecycleReport(report);
+    assert.equal(report.activePlanPath, null);
+    assert.ok(output.includes("PLAN_START_COMMAND: /supervibe-loop --from-plan <plan-path> --start --fast-session"));
+    assert.ok(output.includes("PLAN_POINTER_COMMAND: node scripts/supervibe-plan-lifecycle.mjs --repair --plan <plan.md>"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('plan lifecycle repair dry-run is non-mutating and apply writes pointer plus archive index', async () => {
   const { root, currentPlan, oldPlan } = await makeLifecycleFixture();
   const dryRun = await repairPlanLifecycle({ rootDir: root, currentPlanPath: currentPlan });

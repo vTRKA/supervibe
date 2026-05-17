@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
@@ -35,6 +35,7 @@ function graphWithProducerProof(epicId = "epic-graph-proof") {
     planPath: ".supervibe/artifacts/plans/graph-proof.md",
     epicId,
     planReviewPassed: true,
+    releaseProof: true,
     graphProducerProof: {
       command: "/supervibe-loop",
       stage: "work-item-atomization",
@@ -53,6 +54,7 @@ test("persisted non-dry-run graph records first-class producer proof output bind
   const root = await mkdtemp(join(tmpdir(), "work-item-graph-proof-"));
   try {
     const graph = graphWithProducerProof();
+    await writeGraphBuilderInvocation(root, graph.epicId);
     const { graphPath } = await writeWorkItemGraph(graph, { rootDir: root });
     const report = await validateWorkItemGraphFiles({ rootDir: root, files: [graphPath], scopeMode: "graph-scoped" });
     const saved = JSON.parse(await readUtf8(graphPath));
@@ -73,6 +75,7 @@ test("first-class graph producer proof makes unrelated receipt damage irrelevant
   const root = await mkdtemp(join(tmpdir(), "work-item-graph-proof-unrelated-"));
   try {
     const graph = graphWithProducerProof("epic-graph-proof-unrelated");
+    await writeGraphBuilderInvocation(root, graph.epicId);
     const { graphPath } = await writeWorkItemGraph(graph, { rootDir: root });
     const brokenReceipt = join(root, ".supervibe", "artifacts", "_workflow-invocations", "other", "broken.json");
     await mkdir(dirname(brokenReceipt), { recursive: true });
@@ -98,6 +101,7 @@ test("graph validator CLI exposes scoped and strict graph validation modes", asy
       dryRun: true,
     });
     invalid.items.find((item) => item.itemId.endsWith("-t1")).verificationCommands = [];
+    await writeGraphBuilderInvocation(root, valid.epicId);
     const { graphPath: validPath } = await writeWorkItemGraph(valid, { rootDir: root });
     const invalidDir = join(root, ".supervibe", "memory", "work-items", "epic-graph-scope-invalid");
     await mkdir(invalidDir, { recursive: true });
@@ -131,6 +135,32 @@ test("graph validator CLI exposes scoped and strict graph validation modes", asy
     await rm(root, { recursive: true, force: true });
   }
 });
+
+async function writeGraphBuilderInvocation(root, epicId) {
+  const invocationId = "codex-graph-builder-1";
+  const outputRel = `.supervibe/artifacts/_agent-outputs/${invocationId}/agent-output.json`;
+  const graphRel = `.supervibe/memory/work-items/${epicId}/graph.json`;
+  await mkdir(dirname(join(root, outputRel)), { recursive: true });
+  await mkdir(join(root, ".supervibe", "memory"), { recursive: true });
+  await writeFile(join(root, outputRel), `${JSON.stringify({ ok: true })}\n`, "utf8");
+  await appendFile(join(root, ".supervibe", "memory", "agent-invocations.jsonl"), `${JSON.stringify({
+    schemaVersion: 1,
+    invocation_id: invocationId,
+    agent_id: "work-item-graph-builder",
+    subject_id: "work-item-graph-builder",
+    subject_type: "agent",
+    task_summary: "create durable epic/task graph",
+    command: "/supervibe-loop",
+    stage: "work-item-atomization",
+    handoff_id: epicId,
+    host: "codex",
+    host_invocation_source: "codex-spawn-agent",
+    status: "completed",
+    output_artifact: outputRel,
+    output_artifacts: [graphRel],
+    structured_output: { json: outputRel },
+  })}\n`, "utf8");
+}
 
 async function readUtf8(path) {
   const { readFile } = await import("node:fs/promises");

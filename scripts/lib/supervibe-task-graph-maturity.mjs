@@ -18,6 +18,7 @@ import {
   graphIdentity,
   isTrustedGraphCompletionReceiptForGraph,
   isTrustedTaskCompletionReceiptForGraph,
+  isReceiptSuppressedForCompletion,
   trustedReceiptScopeFromReceipt,
 } from "./supervibe-receipt-completion-trust.mjs";
 import { createBlockerV1 } from "./supervibe-work-state.mjs";
@@ -112,6 +113,7 @@ const REQUIRED_SYNC_DIAGNOSTIC_TOKENS = Object.freeze([
 
 export function buildTaskGraphMaturityReport(rootDir = process.cwd(), options = {}) {
   const requireActiveGraph = Boolean(options.requireActiveGraph);
+  const requireReleaseProof = Boolean(options.requireReleaseProof || options.releaseProof || options.finalGate);
   const maturityScope = requireActiveGraph ? "active-workflow-readiness" : "global-capability";
   const dimensions = [
     routingDimension(rootDir),
@@ -149,7 +151,7 @@ export function buildTaskGraphMaturityReport(rootDir = process.cwd(), options = 
     currentGraphDimension(rootDir, { required: requireActiveGraph }),
     ...(requireActiveGraph ? [
       registryIntegrityDimension(rootDir),
-      activeGraphReceiptPolicyDimension(rootDir),
+      activeGraphReceiptPolicyDimension(rootDir, { requireReleaseProof }),
       activeTraceabilityDimension(rootDir),
       activeTrustedCompletionDimension(rootDir),
     ] : []),
@@ -160,12 +162,13 @@ export function buildTaskGraphMaturityReport(rootDir = process.cwd(), options = 
     ? 0
     : Number(((passed / requiredDimensions.length) * 10).toFixed(1));
   const pass = score === 10 && requiredDimensions.every((dimension) => dimension.pass);
-  const executability = buildGraphExecutabilityScore(rootDir, { requireActiveGraph });
+  const executability = buildGraphExecutabilityScore(rootDir, { requireActiveGraph, requireReleaseProof });
   return {
     kind: "supervibe-task-graph-maturity",
     rootDir,
     maturityScope,
     activeProofRequired: requireActiveGraph,
+    releaseProofRequired: requireReleaseProof,
     globalCapabilityOnly: !requireActiveGraph,
     score,
     pass,
@@ -178,6 +181,7 @@ export function buildTaskGraphMaturityReport(rootDir = process.cwd(), options = 
 
 export function buildGraphExecutabilityScore(rootDir = process.cwd(), options = {}) {
   const requireActiveGraph = Boolean(options.requireActiveGraph);
+  const requireReleaseProof = Boolean(options.requireReleaseProof || options.releaseProof || options.finalGate);
   const resolution = resolveActiveWorkItemGraphSync({ rootDir });
   const evidence = (resolution.candidates || []).slice(0, 5).map((file) => relative(rootDir, file).split(sep).join("/"));
   const checks = [];
@@ -235,7 +239,7 @@ export function buildGraphExecutabilityScore(rootDir = process.cwd(), options = 
   }
 
   let receiptPolicy = { pass: false, issues: [] };
-  if (graph) receiptPolicy = validateActiveGraphReceiptPolicy({ rootDir, graph, graphPath: resolution.graphPath });
+  if (graph) receiptPolicy = activeGraphReceiptPolicyForMaturity({ rootDir, graph, graphPath: resolution.graphPath, requireReleaseProof });
   checks.push(scoreCheck("active-graph-receipt-policy", receiptPolicy.pass === true, 2));
   if (graph && receiptPolicy.pass !== true) {
     blockers.push(executabilityBlocker({
@@ -249,7 +253,7 @@ export function buildGraphExecutabilityScore(rootDir = process.cwd(), options = 
   }
 
   const readiness = graph ? summarizeGraphReadiness(graph) : emptyReadiness();
-  checks.push(scoreCheck("dispatchable-work", readiness.dispatchableTaskIds.length > 0 || readiness.inFlightTaskIds.length > 0, 2));
+  checks.push(scoreCheck("dispatchable-work", readiness.remainingTaskIds.length === 0 || readiness.dispatchableTaskIds.length > 0 || readiness.inFlightTaskIds.length > 0, 2));
   if (graph && readiness.dispatchableTaskIds.length === 0 && readiness.inFlightTaskIds.length === 0 && readiness.remainingTaskIds.length > 0) {
     const affectedTaskIds = readiness.blockedTaskIds.length > 0 ? readiness.blockedTaskIds : readiness.remainingTaskIds;
     blockers.push(executabilityBlocker({
@@ -277,6 +281,7 @@ export function buildGraphExecutabilityScore(rootDir = process.cwd(), options = 
     pass,
     status: pass ? "executable" : requireActiveGraph ? "blocked" : "informational-blocked",
     activeProofRequired: requireActiveGraph,
+    releaseProofRequired: requireReleaseProof,
     activeGraphResolution: {
       status: resolution.status,
       source: resolution.source || null,
@@ -379,6 +384,7 @@ export function formatTaskGraphMaturityReport(report) {
     `PASS: ${report.pass}`,
     `MATURITY_SCOPE: ${report.maturityScope || "unknown"}`,
     `ACTIVE_PROOF_REQUIRED: ${report.activeProofRequired === true}`,
+    `RELEASE_PROOF_REQUIRED: ${report.releaseProofRequired === true}`,
     `GLOBAL_CAPABILITY_ONLY: ${report.globalCapabilityOnly === true}`,
     "EXECUTABILITY:",
     `  SCORE: ${report.executability?.score ?? 0}/10`,
@@ -572,7 +578,7 @@ function registryIntegrityDimension(rootDir) {
   };
 }
 
-function activeGraphReceiptPolicyDimension(rootDir) {
+function activeGraphReceiptPolicyDimension(rootDir, { requireReleaseProof = false } = {}) {
   const resolution = resolveActiveWorkItemGraphSync({ rootDir });
   if (resolution.status !== "active") {
     return {
@@ -599,17 +605,45 @@ function activeGraphReceiptPolicyDimension(rootDir) {
       evidence: [relative(rootDir, resolution.graphPath).split(sep).join("/")],
     };
   }
-  const report = validateActiveGraphReceiptPolicy({ rootDir, graph, graphPath: resolution.graphPath });
+  const report = activeGraphReceiptPolicyForMaturity({ rootDir, graph, graphPath: resolution.graphPath, requireReleaseProof });
   return {
     id: "active-graph-receipts",
     title: "Active graph receipt binding",
     pass: report.pass,
-    summary: report.pass
-      ? "active graph has trusted path/hash/host receipt binding"
-      : String(report.issues.length) + " active graph receipt issue(s)",
+    summary: report.deferred
+      ? "fast-session startup receipts deferred until release-handoff"
+      : report.pass
+        ? "active graph has trusted path/hash/host receipt binding"
+        : String(report.issues.length) + " active graph receipt issue(s)",
     blockers: report.issues.map((issue) => issue.code + ": " + issue.message),
     evidence: [relative(rootDir, resolution.graphPath).split(sep).join("/")],
   };
+}
+
+function activeGraphReceiptPolicyForMaturity({ rootDir, graph, graphPath, requireReleaseProof = false } = {}) {
+  if (!requireReleaseProof && graphDefersStartupReceipts(graph)) {
+    return {
+      pass: true,
+      deferred: true,
+      issues: [],
+      trustedReceipts: [],
+      candidateIssues: [],
+      expected: {
+        graphPath: graphPath ? relative(rootDir, graphPath).split(sep).join("/") : null,
+        requiredAt: graph.metadata?.receiptPolicy?.releaseProofRequiredAt || "release-handoff",
+      },
+    };
+  }
+  return validateActiveGraphReceiptPolicy({ rootDir, graph, graphPath });
+}
+
+function graphDefersStartupReceipts(graph = {}) {
+  const metadata = graph.metadata || {};
+  const policy = metadata.receiptPolicy || {};
+  const mode = String(policy.mode || metadata.workflowEvidenceMode || "").toLowerCase();
+  return mode === "fast-session"
+    && policy.startupReceiptsRequired === false
+    && String(policy.releaseProofRequiredAt || "release-handoff").toLowerCase() !== "now";
 }
 
 function activeTraceabilityDimension(rootDir) {
@@ -747,7 +781,7 @@ function trustedReceiptScopesForMaturity(rootDir, graph = null) {
   const trusted = {};
   for (const receipt of readWorkflowReceipts(rootDir)) {
     if (!receipt?.receiptId) continue;
-    if (receipt.recovery) continue;
+    if (isReceiptSuppressedForCompletion(receipt)) continue;
     if (!isTrustedTaskCompletionReceiptForGraph(receipt, graph)) continue;
     const trust = validateWorkflowReceiptTrust(rootDir, receipt, { requireHostInvocationProof: true });
     if (trust.pass) trusted[String(receipt.receiptId)] = trustedReceiptScopeFromReceipt(receipt, graph);
@@ -761,7 +795,7 @@ function trustedGraphReceiptIdsForMaturity(rootDir, graph = {}, { graphPath = nu
   const trusted = [];
   for (const receipt of readWorkflowReceipts(rootDir)) {
     if (!receipt?.receiptId) continue;
-    if (receipt.recovery) continue;
+    if (isReceiptSuppressedForCompletion(receipt)) continue;
     if (!isTrustedGraphCompletionReceiptForGraph(receipt, graph, { rootDir, graphPath })) continue;
     const trust = validateWorkflowReceiptTrust(rootDir, receipt, { requireHostInvocationProof: true });
     if (trust.pass) trusted.push(String(receipt.receiptId));

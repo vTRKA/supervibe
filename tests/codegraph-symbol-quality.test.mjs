@@ -22,6 +22,7 @@ test('CodeStore reports graph health metrics for source symbol quality', async (
   const root = join(tmpdir(), `supervibe-codegraph-quality-${Date.now()}`);
   await mkdir(join(root, 'src'), { recursive: true });
   await mkdir(join(root, 'dist-check', 'assets'), { recursive: true });
+  await writeFile(join(root, 'AGENTS.md'), '# Agent context\n\nUse RAG artifacts for command routing.\n');
   await writeFile(join(root, 'src', 'ideas.tsx'), `
 export const IdeasPage = () => {
   useUserVPNConfigQuery()
@@ -37,7 +38,10 @@ export const IdeasPage = () => {
     const metrics = store.getGraphHealthMetrics();
     assert.equal(metrics.symbolNameQuality.minifiedTopSymbols.length, 0, 'top symbols contain generated minified names');
     assert.equal(metrics.sourceFileSymbolCoverage.generatedIndexedFiles, 0);
+    assert.equal(metrics.sourceFileSymbolCoverage.files, 1);
+    assert.equal(metrics.sourceFileSymbolCoverage.retrievalOnlyFiles, 1);
     assert.ok(metrics.sourceFileSymbolCoverage.coverage > 0);
+    assert.ok(metrics.eligibleProjectEdges.rate >= 0 && metrics.eligibleProjectEdges.rate <= 1);
     assert.ok(metrics.crossResolvedEdges.rate >= 0 && metrics.crossResolvedEdges.rate <= 1);
     assert.ok(metrics.unresolvedImportRate.rate >= 0 && metrics.unresolvedImportRate.rate <= 1);
   } finally {

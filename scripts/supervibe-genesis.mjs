@@ -128,7 +128,6 @@ async function main() {
     targetRoot,
     pluginRoot,
     confidence: appliedState.state.confidence,
-    nextAgentGate: buildVerifyAgentsCommand(report.host?.adapterId || "codex"),
     adaptFileManifest,
     ...applyResult,
     generatedApps: generatedAppsForOutput,
@@ -444,15 +443,16 @@ async function applyManagedGitignore({ targetRoot, pluginRoot, artifact }) {
     extractManagedBlock(template, "SUPERVIBE:BEGIN managed-gitignore", "SUPERVIBE:END managed-gitignore")
       || defaultManagedGitignoreBlock(),
   );
+  const next = upsertManagedBlock(template, block, "SUPERVIBE:BEGIN managed-gitignore", "SUPERVIBE:END managed-gitignore");
   if (!existsSync(target)) {
     await mkdir(dirname(target), { recursive: true });
-    await writeFile(target, ensureTrailingLf(template), "utf8");
+    await writeFile(target, ensureTrailingLf(next), "utf8");
     return { status: "created" };
   }
   const current = await readFile(target, "utf8");
-  const next = upsertManagedBlock(current, block, "SUPERVIBE:BEGIN managed-gitignore", "SUPERVIBE:END managed-gitignore");
-  if (next === current) return { status: "skipped" };
-  await writeFile(target, next, "utf8");
+  const updated = upsertManagedBlock(current, block, "SUPERVIBE:BEGIN managed-gitignore", "SUPERVIBE:END managed-gitignore");
+  if (updated === current) return { status: "skipped" };
+  await writeFile(target, updated, "utf8");
   return { status: "updated" };
 }
 
@@ -943,12 +943,11 @@ async function writeGenesisState({ targetRoot, report, mode, options, operations
       || null,
   );
   const artifactVerification = inspectGenesisArtifactVerification({ targetRoot, report, mode, operations });
-  const agentRuntime = inspectAgentRuntimeEvidence(targetRoot);
+  const agentRuntime = { verified: false, status: "not-required", issues: [] };
   const confidence = buildGenesisConfidenceScore({
     mode,
     report,
     artifactVerification,
-    agentRuntime,
     generateAppsState,
     appGenerated,
     appVerified,
@@ -972,8 +971,8 @@ async function writeGenesisState({ targetRoot, report, mode, options, operations
       artifactVerified: artifactVerification.verified,
       artifactStatus: artifactVerification.status,
       missingArtifactPaths: artifactVerification.missingPaths,
-      agentReceiptsVerified: agentRuntime.verified,
-      agentRuntimeVerified: agentRuntime.verified,
+      agentRuntimeRequired: false,
+      agentRuntimeVerified: false,
       appGenerated,
       appVerified,
       buildVerified: generateAppsState?.buildVerified === true,
@@ -981,7 +980,7 @@ async function writeGenesisState({ targetRoot, report, mode, options, operations
       deployVerified: false,
       completionClaimAllowed: false,
       completionClaim: mode === "applied"
-        ? "bootstrap applied; real agents and app/deploy verification are not claimed without receipts and explicit verification commands"
+        ? "bootstrap applied; app and deploy verification remain separate"
         : "dry-run state only; no scaffold completion claim",
     },
     targetRoot: "<project-root>",
@@ -1022,7 +1021,6 @@ async function writeGenesisState({ targetRoot, report, mode, options, operations
         status: existsSync(join(targetRoot, ".supervibe", "confidence-log.jsonl")) ? "present" : "missing",
       },
       agentRuntime,
-      agentSmokeTest: buildAgentSmokeTestState({ host: report.host?.adapterId || "codex", command: "/supervibe-genesis" }),
     },
     history,
   };
@@ -1034,7 +1032,6 @@ function buildGenesisConfidenceScore({
   mode,
   report = {},
   artifactVerification = {},
-  agentRuntime = {},
   generateAppsState = null,
   appGenerated = false,
   appVerified = false,
@@ -1074,10 +1071,6 @@ function buildGenesisConfidenceScore({
       actual: report.nodeRuntimePreflight.actual || null,
       expected: report.nodeRuntimePreflight.expected || null,
     });
-    score = Math.min(score, 8);
-  }
-  if (agentRuntime.verified !== true) {
-    gaps.push({ code: "agent-runtime-pending", message: "No receipt-bound real host-agent invocation has been verified yet." });
     score = Math.min(score, 8);
   }
   const status = mode === "applied" && artifactVerification.verified !== true
@@ -1186,7 +1179,6 @@ function outputResult(result, options) {
     return;
   }
   const displayReport = reportForExecutionMode(result.report, result.mode);
-  const agentPlan = buildGenesisRuntimeAgentPlan({ result, displayReport });
   const deployHandoff = buildGenesisDeployHandoff(displayReport);
   const providerConfig = result.providerConfig || displayReport.providerConfig || null;
   const lines = [
@@ -1207,10 +1199,6 @@ function outputResult(result, options) {
     `DEPENDENCY_HEALTH_VERIFIED: ${result.generatedApps?.dependencyHealthVerified === true}`,
     `ADAPT_FILE_MANIFEST: ${result.adaptFileManifest?.path || "not-written"}`,
     `CONFIDENCE: ${result.confidence?.label || "unknown"} ${result.confidence?.status || "unknown"}`,
-    `AGENT_PLAN_EMBEDDED: ${Boolean(agentPlan)}`,
-    `AGENT_PLAN_EXECUTION_MODE: ${agentPlan?.plan?.executionMode || "not-run"}`,
-    `AGENT_PLAN_RECEIPT_GATE: ${agentPlan?.plan?.receiptGate || "not-run"}`,
-    `AGENT_PLAN_REQUIRED_AGENTS: ${(agentPlan?.plan?.requiredAgentIds || []).join(",") || "none"}`,
     `DEPLOY_STATUS: ${deployHandoff.status}`,
     `DEPLOY_VERIFIED: ${deployHandoff.deployVerified}`,
     `NEXT_DEPLOY_COMMAND: ${deployHandoff.nextCommand || "none"}`,
@@ -1219,10 +1207,10 @@ function outputResult(result, options) {
     `PROVIDER_CONFIG_CHANGED: ${providerConfig?.apply?.changed === true}`,
     `PROVIDER_CONFIG_WRITTEN: ${providerConfig?.apply?.written === true}`,
     `PROVIDER_CONFIG_BLOCKED: ${providerConfig?.apply?.blocked === true}`,
+    `PROVIDER_CONFIG_MANUAL_PATCH_REQUIRED: ${providerConfig?.apply?.manualPatchRequired === true}`,
     `PROVIDER_CONFIG_HOME_WRITE: ${providerConfig?.homeConfigAction || "manual-only"}`,
     `PROVIDER_CONFIG_PRESERVED_EXISTING: ${providerConfig?.apply?.operationCounts?.preserved ?? 0}`,
     `VERIFY: ${result.verificationCommand || "dry-run only"}`,
-    `NEXT_AGENT_GATE: ${result.nextAgentGate || buildVerifyAgentsCommand(displayReport.host.adapterId)}`,
     "",
     formatGenesisDryRunReport(displayReport),
   ];
@@ -1338,7 +1326,6 @@ function toGenesisSummaryResult(result) {
       nextCommand: deployHandoff.nextCommand,
     },
     providerConfig: summarizeProviderConfig(result.providerConfig || report?.providerConfig || null),
-    nextAgentGate: result.nextAgentGate || buildVerifyAgentsCommand(report?.host?.adapterId || "codex"),
   };
 }
 
@@ -1360,6 +1347,9 @@ function summarizeProviderConfig(providerConfig) {
     homeConfigAction: providerConfig.homeConfigAction || apply.homeConfigAction || "manual-only",
     backupPath: apply.backupPath || null,
     ignoredProjectConfigs: apply.ignoredProjectConfigs || [],
+    manualPatchRequired: apply.manualPatchRequired === true,
+    writeError: apply.writeError || null,
+    diffPreview: apply.report?.diff?.preview || null,
   };
 }
 
@@ -1440,15 +1430,14 @@ async function verifyGenesisAgents({ targetRoot, pluginRoot, options = {}, previ
     statePath = join(targetRoot, ".supervibe", "memory", "genesis", "state.json");
     const verification = {
       ...(previousState.verification || {}),
-      agentReceiptsVerified: agentRuntime.verified,
       agentRuntimeVerified: agentRuntime.verified,
       completionClaimAllowed: previousState.verification?.artifactVerified === true
         && agentRuntime.verified
         && previousState.verification?.appVerified === true
         && previousState.verification?.deployVerified === true,
       completionClaim: agentRuntime.verified
-        ? "agent runtime receipt gate verified; app and deploy gates remain separate"
-        : "real agent completion is not claimed until receipt-bound host-agent telemetry is present",
+        ? "agent runtime smoke verified; app and deploy gates remain separate"
+        : "agent runtime smoke is optional for Genesis bootstrap and has not been verified",
     };
     confidence = reconcileGenesisConfidenceAfterAgentVerification(previousState.confidence, verification);
     verification.confidenceScore = confidence;
@@ -1531,16 +1520,22 @@ function outputGenesisAgentVerification(result, options = {}) {
     "SUPERVIBE_GENESIS_VERIFY_AGENTS",
     `AGENT_RUNTIME_VERIFIED: ${result.agentRuntime.verified === true}`,
     `STATUS: ${result.agentRuntime.status}`,
-    `TRUSTED_HOST_AGENT_RECEIPTS: ${result.agentRuntime.trustedHostAgentReceipts}`,
-    `RECEIPT_BOUND_AGENT_INVOCATIONS: ${result.agentRuntime.receiptBoundAgentInvocations}`,
     `LOGGED_AGENT_INVOCATIONS: ${result.agentRuntime.loggedAgentInvocations}`,
     `STATE_UPDATED: ${result.stateUpdated ? result.statePath : "not-written-no-genesis-state"}`,
     `CONFIDENCE: ${result.confidence?.label || "not-updated"} ${result.confidence?.status || ""}`.trim(),
   ];
   if (result.smokeRecord) lines.push(`SMOKE_RECORD: ${result.smokeRecord.status}`);
-  for (const issue of result.agentRuntime.issues || []) lines.push(`ISSUE: ${issue}`);
+  for (const issue of result.agentRuntime.issues || []) lines.push(`ISSUE: ${formatAgentRuntimeIssue(issue)}`);
   if (!result.agentRuntime.verified) lines.push(`NEXT_ACTION: ${result.agentSmokeTest.commandTemplate}`);
   console.log(lines.join("\n"));
+}
+
+function formatAgentRuntimeIssue(issue) {
+  return String(issue || "")
+    .replace(/host-agent-receipts/gi, "host-agent-runtime-evidence")
+    .replace(/agent-receipts/gi, "agent-runtime-evidence")
+    .replace(/receipts/gi, "runtime-evidence")
+    .replace(/receipt/gi, "runtime-evidence");
 }
 
 function inspectAgentRuntimeEvidence(targetRoot) {
@@ -1591,10 +1586,11 @@ function mergeManagedGitignoreBlock(block) {
     .split(/\r?\n/)
     .filter(Boolean);
   const endIndex = lines.findIndex((line) => /^# SUPERVIBE:END managed-gitignore$/.test(line));
-  const insertAt = endIndex >= 0 ? endIndex : lines.length;
+  let insertAt = endIndex >= 0 ? endIndex : lines.length;
   for (const line of required) {
     if (lines.includes(line)) continue;
     lines.splice(insertAt, 0, line);
+    insertAt += 1;
   }
   return ensureTrailingLf(lines.join("\n"));
 }
@@ -1616,6 +1612,14 @@ function upsertManagedBlock(current, block, beginMarker, endMarker) {
 function defaultManagedGitignoreBlock() {
   return [
     "# SUPERVIBE:BEGIN managed-gitignore",
+    ".supervibe/",
+    ".claude/",
+    ".codex/",
+    ".cursor/",
+    ".gemini/",
+    ".opencode/",
+    ".worktrees/",
+    "worktrees/",
     ".supervibe/memory/code.db*",
     ".supervibe/memory/code-index-checkpoint.json",
     ".supervibe/memory/code-index.lock",
@@ -1634,6 +1638,9 @@ function defaultManagedGitignoreBlock() {
     ".supervibe/memory/adapt/state.json",
     ".supervibe/research-cache/",
     "*.supervibe.bak",
+    ".claude-plugin/.auto-update.json",
+    ".claude-plugin/.auto-update.lock",
+    ".claude-plugin/.upgrade-check.json",
     "docker-compose.override.yml",
     "postgres-data/",
     ".docker/volumes/",
@@ -1684,8 +1691,8 @@ function formatHelp() {
     "  --addons         Comma-separated add-ons such as ai-prompting, security-audit, project-adaptation, github-actions, gitlab-ci, ci-ready.",
     "  --generate-apps  Separate approved step marker for real Laravel/Next/Vite scaffolding after base placeholders.",
     "  --verify-apps    Run declared app lint/build/dependency-health checks; works after --generate-apps or as verify-only for existing apps.",
-    "  --verify-agents  Verify receipt-bound real host-agent telemetry and update Genesis state.",
-    "  --record-smoke   With --verify-agents, record a real host-agent smoke receipt using --host-invocation-id.",
+    "  --verify-agents  Advanced runtime smoke check for host-agent telemetry.",
+    "  --record-smoke   With --verify-agents, record a real host-agent smoke using --host-invocation-id.",
     "  --app-choice     Persist frontend choice: next-app, vite-spa, or monorepo-two-frontends.",
     "  --host           claude, codex, cursor, gemini, or opencode.",
     "  --stack-tags     Explicit stack tags for empty projects.",

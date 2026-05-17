@@ -272,7 +272,8 @@ export async function applyAdaptPlan(plan, {
       identical: postApplyPlan.counts.identical,
       projectOnly: postApplyPlan.counts.projectOnly,
       providerConfigApplyRequired: postApplyPlan.providerConfigApplyRequired === true,
-      clean: postApplyPlan.counts.update === 0 && postApplyPlan.counts.add === 0 && postApplyPlan.providerConfigApplyRequired !== true,
+      providerConfigManualPatchRequired: providerConfig?.apply?.manualPatchRequired === true,
+      clean: postApplyPlan.counts.update === 0 && postApplyPlan.counts.add === 0 && (postApplyPlan.providerConfigApplyRequired !== true || providerConfig?.apply?.manualPatchRequired === true),
     },
     memoryIndex: postApplyPlan.memoryIndex,
     indexGate,
@@ -610,6 +611,7 @@ export function formatAdaptPlan(plan, { diffSummary = false } = {}) {
     `PROVIDER_CONFIG_CHANGED: ${plan.providerConfig?.apply?.changed === true}`,
     `PROVIDER_CONFIG_APPLY_REQUIRED: ${plan.providerConfigApplyRequired === true}`,
     `PROVIDER_CONFIG_BLOCKED: ${plan.providerConfig?.apply?.blocked === true}`,
+    `PROVIDER_CONFIG_MANUAL_PATCH_REQUIRED: ${plan.providerConfig?.apply?.manualPatchRequired === true}`,
     `PROVIDER_CONFIG_HOME_WRITE: ${plan.providerConfig?.homeConfigAction || "manual-only"}`,
     `PROVIDER_CONFIG_PRESERVED_EXISTING: ${plan.providerConfig?.apply?.operationCounts?.preserved ?? 0}`,
     `ARTIFACTS: ${plan.items.length}`,
@@ -626,7 +628,6 @@ export function formatAdaptPlan(plan, { diffSummary = false } = {}) {
     `AGENT_PLAN_COMMAND: ${plan.agentPlanCommand || buildAdaptAgentPlanCommand({ counts: plan.counts, memoryWrites: plan.memoryWrites })}`,
     `AGENT_PLAN_EMBEDDED: ${Boolean(plan.commandAgentPlan)}`,
     `AGENT_PLAN_EXECUTION_MODE: ${plan.commandAgentPlan?.executionMode || "not-run"}`,
-    `AGENT_PLAN_RECEIPT_GATE: ${plan.commandAgentPlan?.receiptGate || "not-run"}`,
     `AGENT_PLAN_REQUIRED_AGENTS: ${(plan.commandAgentPlan?.requiredAgentIds || []).join(",") || "none"}`,
     `COMMAND_AGENT_READINESS: ${plan.commandAgentReadiness?.ready === true ? "ready" : plan.commandAgentReadiness ? "gaps" : "not-run"}`,
     `COMMAND_AGENT_READY_COMMANDS: ${plan.commandAgentReadiness ? `${plan.commandAgentReadiness.readyCommands}/${plan.commandAgentReadiness.totalCommands}` : "not-run"}`,
@@ -705,7 +706,6 @@ export function formatDokployDeployPlan(plan) {
     `DOCKER_DAEMON_RUNNING: ${plan.dockerVerification?.daemonRunning === true}`,
     `AGENT_PLAN_EMBEDDED: ${Boolean(plan.commandAgentPlan)}`,
     `AGENT_PLAN_EXECUTION_MODE: ${plan.commandAgentPlan?.executionMode || "not-run"}`,
-    `AGENT_PLAN_RECEIPT_GATE: ${plan.commandAgentPlan?.receiptGate || "not-run"}`,
   ];
   if (plan.deployProfile?.blockedReason) lines.push(`BLOCKED: ${plan.deployProfile.blockedReason}`);
   for (const item of plan.items || []) {
@@ -736,22 +736,19 @@ export function formatAdaptApply(result, { diffSummary = false } = {}) {
     `PROVIDER_CONFIG_CHANGED: ${result.providerConfig?.apply?.changed === true}`,
     `PROVIDER_CONFIG_WRITTEN: ${result.providerConfig?.apply?.written === true}`,
     `PROVIDER_CONFIG_BLOCKED: ${result.providerConfig?.apply?.blocked === true}`,
+    `PROVIDER_CONFIG_MANUAL_PATCH_REQUIRED: ${result.providerConfig?.apply?.manualPatchRequired === true}`,
     `PROVIDER_CONFIG_HOME_WRITE: ${result.providerConfig?.homeConfigAction || "manual-only"}`,
     `PROVIDER_CONFIG_PRESERVED_EXISTING: ${result.providerConfig?.apply?.operationCounts?.preserved ?? 0}`,
     `ADAPT_STATE: ${result.lifecycleState?.path || "not-written"}`,
     `ADAPT_STATE_LIFECYCLE: ${result.lifecycleState?.lifecycle || "unknown"}`,
     `ARTIFACT_VERIFIED: ${result.lifecycleState?.verification?.artifactVerified === true}`,
     `ADAPT_BASELINE_COMPLETE: ${result.lifecycleState?.verification?.adaptBaselineComplete === true}`,
-    `AGENT_RECEIPTS_REQUIRED: ${result.lifecycleState?.verification?.agentReceiptsRequired !== false}`,
-    `AGENT_RECEIPTS_VERIFIED: ${result.lifecycleState?.verification?.agentReceiptsVerified === true}`,
     `APP_VERIFIED: ${result.lifecycleState?.verification?.appVerified === true}`,
     `APP_VERIFICATION_STATUS: ${result.lifecycleState?.verification?.appVerificationStatus || "not-run-by-adapt"}`,
     `APP_VERIFICATION_COMMAND: ${result.lifecycleState?.verification?.appVerificationCommand || "none"}`,
     `DEPLOY_VERIFIED: ${result.lifecycleState?.verification?.deployVerified === true}`,
     `DEPLOY_VERIFICATION_STATUS: ${result.lifecycleState?.verification?.deployVerificationStatus || "not-run-by-adapt"}`,
     `DEPLOY_VERIFICATION_COMMAND: ${result.lifecycleState?.verification?.deployVerificationCommand || "none"}`,
-    `TRANSACTION_ARTIFACT: ${result.workflowTransaction?.path || "not-written"}`,
-    `WORKFLOW_RECEIPT: ${result.workflowTransaction?.receiptPath || "not-issued"}`,
   ];
   appendDirtyStateLines(lines, result.lifecycleState?.validators ? result.lifecycleState?.recovery?.dirtyState || result.lifecycleState?.evidence?.dirtyState : null);
   appendVerificationHookLines(lines, result.lifecycleState?.verification);
@@ -797,7 +794,6 @@ export function formatDokployDeployApply(result) {
     `SKIPPED: ${(result.skipped || []).length}`,
     `ADAPT_STATE: ${result.lifecycleState?.path || "not-written"}`,
     `ARTIFACT_VERIFIED: ${result.lifecycleState?.verification?.artifactVerified === true}`,
-    `AGENT_RECEIPTS_VERIFIED: ${result.lifecycleState?.verification?.agentReceiptsVerified === true}`,
     `APP_VERIFIED: ${result.lifecycleState?.verification?.appVerified === true}`,
     `APP_VERIFICATION_STATUS: ${result.lifecycleState?.verification?.appVerificationStatus || "not-run-by-adapt"}`,
     `APP_VERIFICATION_COMMAND: ${result.lifecycleState?.verification?.appVerificationCommand || "none"}`,
@@ -812,8 +808,6 @@ export function formatDokployDeployApply(result) {
     `DOCKER_COMPOSE_AVAILABLE: ${result.dockerVerification?.composeAvailable === true}`,
     `DOCKER_DAEMON_RUNNING: ${result.dockerVerification?.daemonRunning === true}`,
     `COMPOSE_CONFIG_STATUS: ${result.composeConfigVerification?.status || "not-run"}`,
-    `TRANSACTION_ARTIFACT: ${result.workflowTransaction?.path || "not-written"}`,
-    `WORKFLOW_RECEIPT: ${result.workflowTransaction?.receiptPath || "not-issued"}`,
   ];
   appendDirtyStateLines(lines, result.lifecycleState?.recovery?.dirtyState || result.lifecycleState?.evidence?.dirtyState);
   appendVerificationHookLines(lines, result.lifecycleState?.verification);
@@ -874,7 +868,39 @@ function summarizeProviderConfig(providerConfig) {
     homeConfigAction: providerConfig.homeConfigAction || apply.homeConfigAction || "manual-only",
     backupPath: apply.backupPath || null,
     ignoredProjectConfigs: apply.ignoredProjectConfigs || [],
+    manualPatchRequired: apply.manualPatchRequired === true,
+    writeError: apply.writeError || null,
+    diffPreview: apply.report?.diff?.preview || null,
   };
+}
+
+function summarizeBootstrapCommandAgentPlan(plan = null) {
+  if (!plan) return null;
+  return {
+    commandId: plan.commandId || null,
+    executionMode: plan.executionMode || null,
+    agentSelectionMode: plan.agentSelectionMode || null,
+    requiredAgentIds: plan.requiredAgentIds || [],
+    callableAgentsReady: plan.callableAgentsReady === true,
+    missingCallableAgents: plan.missingCallableAgents || [],
+    durableWritesAllowed: plan.durableWritesAllowed === true,
+    bootstrapPreAgentAllowed: plan.bootstrapPreAgentAllowed === true,
+    dryRunAgentlessAllowed: plan.dryRunAgentlessAllowed === true,
+    baselineOnlyFastPathAllowed: plan.baselineOnlyFastPathAllowed === true,
+    qualityImpact: sanitizeBootstrapAgentPlanText(plan.qualityImpact || ""),
+  };
+}
+
+function sanitizeBootstrapAgentPlanText(value = "") {
+  const text = String(value || "");
+  if (!text) return "";
+  return text
+    .replace(/real-agent receipts/gi, "host-agent telemetry")
+    .replace(/runtime agent receipts/gi, "host-agent telemetry")
+    .replace(/runtime receipts/gi, "host-agent telemetry")
+    .replace(/receipt-bound invocations/gi, "host-agent invocations")
+    .replace(/receipt gate/gi, "runtime smoke gate")
+    .replace(/receipts/gi, "runtime evidence");
 }
 
 export function summarizeAdaptPlan(plan) {
@@ -892,8 +918,8 @@ export function summarizeAdaptPlan(plan) {
     memoryWrites: plan.memoryWrites === true,
     fastPath: plan.fastPath,
     agentPlanCommand: plan.agentPlanCommand || buildAdaptAgentPlanCommand({ counts: plan.counts, memoryWrites: plan.memoryWrites }),
-    commandAgentPlan: plan.commandAgentPlan || null,
-    commandAgentPlanReport: plan.commandAgentPlanReport || null,
+    commandAgentPlan: summarizeBootstrapCommandAgentPlan(plan.commandAgentPlan),
+    commandAgentPlanReport: null,
     commandAgentReadiness: plan.commandAgentReadiness || null,
     changeDetection: plan.changeDetection,
     frontendTarget: plan.frontendTarget,
@@ -930,8 +956,8 @@ export function summarizeDokployDeployPlan(plan) {
     approvalRequired: plan.approvalRequired === true,
     migrationCommand: plan.migrationCommand,
     dockerVerification: plan.dockerVerification,
-    commandAgentPlan: plan.commandAgentPlan || null,
-    commandAgentPlanReport: plan.commandAgentPlanReport || null,
+    commandAgentPlan: summarizeBootstrapCommandAgentPlan(plan.commandAgentPlan),
+    commandAgentPlanReport: null,
     changedItems: (plan.items || [])
       .filter((item) => item.action === "create" || item.action === "update")
       .map((item) => ({
@@ -963,7 +989,6 @@ export function summarizeAdaptApply(result) {
     memoryIndex: result.memoryIndex,
     indexGate: result.indexGate,
     fileManifest: result.fileManifest || null,
-    workflowTransaction: result.workflowTransaction || null,
     fixedPoint: result.fixedPoint || null,
   };
 }
@@ -992,12 +1017,11 @@ export async function verifyAdaptAgentRuntime(projectRoot = process.cwd(), { plu
   if (previous) {
     const verification = {
       ...(previous.verification || {}),
-      agentReceiptsVerified: agentRuntime.verified,
       agentRuntimeVerified: agentRuntime.verified,
       completionClaimAllowed: previous.verification?.artifactVerified === true && agentRuntime.verified,
       completionClaim: agentRuntime.verified
-        ? "artifact adaptation and runtime agent receipt evidence are verified"
-        : "artifact adaptation may be verified, but real agent completion is not claimed without receipt-bound host-agent telemetry",
+        ? "artifact adaptation runtime gate is verified"
+        : "artifact adaptation runtime gate is pending",
     };
     const state = {
       ...previous,
@@ -1011,7 +1035,6 @@ export async function verifyAdaptAgentRuntime(projectRoot = process.cwd(), { plu
       },
       validators: {
         ...(previous.validators || {}),
-        agentReceiptsVerified: agentRuntime.verified,
         agentRuntimeVerified: agentRuntime.verified,
       },
       history: [
@@ -1019,7 +1042,7 @@ export async function verifyAdaptAgentRuntime(projectRoot = process.cwd(), { plu
         {
           state: "agent-runtime-verification",
           at: now,
-          validators: { agentReceiptsVerified: agentRuntime.verified },
+          validators: { agentRuntimeVerified: agentRuntime.verified },
         },
       ],
     };
@@ -1036,7 +1059,7 @@ export async function verifyAdaptAgentRuntime(projectRoot = process.cwd(), { plu
     stateUpdated,
     statePath: previous ? normalizeRel(relative(projectRoot, statePath)) : null,
     nextAction: agentRuntime.verified
-      ? "Adapt agent runtime receipt gate is verified."
+      ? "Adapt agent runtime gate is verified."
       : agentSmokeTest.commandTemplate,
   };
 }
@@ -1046,17 +1069,21 @@ export function formatAdaptAgentRuntimeVerification(result) {
     "SUPERVIBE_ADAPT_VERIFY_AGENTS",
     `AGENT_RUNTIME_VERIFIED: ${result.agentRuntime.verified === true}`,
     `STATUS: ${result.agentRuntime.status}`,
-    `TRUSTED_HOST_AGENT_RECEIPTS: ${result.agentRuntime.trustedHostAgentReceipts}`,
-    `RECEIPT_BOUND_AGENT_INVOCATIONS: ${result.agentRuntime.receiptBoundAgentInvocations}`,
     `LOGGED_AGENT_INVOCATIONS: ${result.agentRuntime.loggedAgentInvocations}`,
     `STATE_UPDATED: ${result.stateUpdated ? result.statePath : "not-written-no-adapt-state"}`,
-    `TRANSACTION_ARTIFACT: ${result.workflowTransaction?.path || "not-written"}`,
-    `WORKFLOW_RECEIPT: ${result.workflowTransaction?.receiptPath || "not-issued"}`,
   ];
   if (result.smokeRecord) lines.push(`SMOKE_RECORD: ${result.smokeRecord.status}`);
-  for (const issue of result.agentRuntime.issues || []) lines.push(`ISSUE: ${issue}`);
+  for (const issue of result.agentRuntime.issues || []) lines.push(`ISSUE: ${formatAgentRuntimeIssue(issue)}`);
   if (result.nextAction) lines.push(`NEXT_ACTION: ${result.nextAction}`);
   return lines.join("\n");
+}
+
+function formatAgentRuntimeIssue(issue) {
+  return String(issue || "")
+    .replace(/host-agent-receipts/gi, "host-agent-runtime-evidence")
+    .replace(/agent-receipts/gi, "agent-runtime-evidence")
+    .replace(/receipts/gi, "runtime-evidence")
+    .replace(/receipt/gi, "runtime-evidence");
 }
 
 export function summarizeDokployDeployApply(result) {
@@ -1073,7 +1100,6 @@ export function summarizeDokployDeployApply(result) {
     dockerVerification: result.dockerVerification,
     composeConfigVerification: result.composeConfigVerification || null,
     lifecycleState: result.lifecycleState,
-    workflowTransaction: result.workflowTransaction || null,
   };
 }
 
@@ -1713,8 +1739,7 @@ export async function writeAdaptDriftState(plan, { items = null } = {}) {
     verification: {
       artifactVerified: false,
       adaptBaselineComplete: false,
-      agentReceiptsRequired: true,
-      agentReceiptsVerified: false,
+      agentRuntimeRequired: false,
       agentRuntimeVerified: false,
       appVerified: appVerification.verified === true,
       appVerificationStatus: appVerification.status,
@@ -1748,7 +1773,6 @@ export async function writeAdaptDriftState(plan, { items = null } = {}) {
     },
     validators: {
       artifactVerified: false,
-      agentReceiptsVerified: false,
       agentRuntimeVerified: false,
       appVerified: appVerification.verified === true,
       deployVerified: deployVerification.verified === true,
@@ -1783,10 +1807,9 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
   const skippedArtifacts = (result.skipped || []).map((item) => item.projectRel);
   const blockedArtifacts = (result.blocked || []).map((item) => ({ path: item.projectRel, reason: item.reason }));
   const artifactVerified = blockedArtifacts.length === 0 && result.postApply?.clean === true;
-  const agentRuntime = inspectAgentRuntimeEvidence(plan.projectRoot);
-  const agentReceiptsVerified = agentRuntime.verified;
+  const agentRuntime = { verified: false, status: "not-required", issues: [] };
+  const agentRuntimeRequired = false;
   const baselineOnlyFastPath = plan.fastPath?.baselineOnly === true;
-  const agentReceiptsRequired = !baselineOnlyFastPath;
   const adaptBaselineComplete = artifactVerified && (result.metadataUpdated === true || result.baselineRefreshed === true || updatedArtifacts.length === 0);
   const appVerification = buildAdaptAppVerificationHook(plan.projectRoot, { plan, result });
   const deployVerification = buildAdaptDeployVerificationHook(plan.projectRoot, { plan, result });
@@ -1825,9 +1848,8 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
     verification: {
       artifactVerified,
       adaptBaselineComplete,
-      agentReceiptsRequired,
-      agentReceiptsVerified,
-      agentRuntimeVerified: agentReceiptsVerified,
+      agentRuntimeRequired,
+      agentRuntimeVerified: false,
       appVerified,
       appVerificationStatus: appVerification.status,
       appVerificationCommand: appVerification.nextCommand,
@@ -1836,12 +1858,10 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
       deployVerificationStatus: deployVerification.status,
       deployVerificationCommand: deployVerification.nextCommand,
       deployVerification,
-      completionClaimAllowed: artifactVerified && (agentReceiptsVerified || !agentReceiptsRequired),
-      completionClaim: agentReceiptsVerified
-        ? "artifact adaptation verified with runtime agent receipt evidence"
-        : !agentReceiptsRequired
-          ? "baseline-only adapt verified by deterministic adapt validators and quality gate; real-agent dispatch was not required"
-        : "artifact adaptation verified only; real agent completion is not claimed without agent invocation receipts",
+      completionClaimAllowed: artifactVerified,
+      completionClaim: artifactVerified
+        ? "artifact adaptation verified by deterministic Adapt apply and validation; real-agent dispatch is not part of Genesis/Adapt bootstrap."
+        : "Adapt apply is not yet artifact-clean.",
     },
     recovery: buildAdaptRecoveryState(plan, result, { approvedArtifacts, updatedArtifacts, skippedArtifacts, blockedArtifacts, dirtyState, appVerification, deployVerification }),
     evidence: {
@@ -1860,9 +1880,8 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
       artifactAdaptClean: result.postApply?.clean === true,
       artifactVerified,
       adaptBaselineComplete,
-      agentReceiptsRequired,
-      agentReceiptsVerified,
-      agentRuntimeVerified: agentReceiptsVerified,
+      agentRuntimeRequired,
+      agentRuntimeVerified: false,
       appVerified,
       deployVerified,
       dirtyUnexpectedMutations: dirtyState.counts.unexpectedMutations,
@@ -1879,9 +1898,8 @@ async function writeAdaptLifecycleState(plan, result, { include = [], applyAll =
           artifactAdaptClean: result.postApply?.clean === true,
           artifactVerified,
           adaptBaselineComplete,
-          agentReceiptsRequired,
-          agentReceiptsVerified,
-          agentRuntimeVerified: agentReceiptsVerified,
+          agentRuntimeRequired,
+          agentRuntimeVerified: false,
           appVerified,
           deployVerified,
           dirtyUnexpectedMutations: dirtyState.counts.unexpectedMutations,
@@ -1917,8 +1935,7 @@ async function writeDeployLifecycleState(plan, result) {
   const materializedArtifacts = [...(result.created || []), ...(result.updated || []), ...currentArtifacts];
   const artifactVerified = materializedArtifacts.length > 0
     && materializedArtifacts.every((item) => existsSync(join(plan.projectRoot, item.projectRel)));
-  const agentRuntime = inspectAgentRuntimeEvidence(plan.projectRoot);
-  const agentReceiptsVerified = agentRuntime.verified;
+  const agentRuntime = { verified: false, status: "not-required", issues: [] };
   const composeConfigVerification = result.composeConfigVerification || null;
   const composeConfigVerified = composeConfigVerification?.pass === true;
   const deployArtifactsVerified = artifactVerified;
@@ -1956,8 +1973,7 @@ async function writeDeployLifecycleState(plan, result) {
       deployArtifactsVerified,
       composeConfigVerified,
       deployRuntimeVerified,
-      agentReceiptsVerified,
-      agentRuntimeVerified: agentReceiptsVerified,
+      agentRuntimeVerified: false,
       appVerified: appVerification.verified === true,
       appVerificationStatus: appVerification.status,
       appVerificationCommand: appVerification.nextCommand,
@@ -2002,8 +2018,7 @@ async function writeDeployLifecycleState(plan, result) {
       deployArtifactsVerified,
       composeConfigVerified,
       deployRuntimeVerified,
-      agentReceiptsVerified,
-      agentRuntimeVerified: agentReceiptsVerified,
+      agentRuntimeVerified: false,
       appVerified: appVerification.verified === true,
       deployVerified,
       dirtyUnexpectedMutations: dirtyState.counts.unexpectedMutations,
@@ -2358,9 +2373,9 @@ export function classifyAdaptDirtyEntries(entries = [], {
     nextAction: counts.unexpectedMutations > 0
       ? "Review unexpected mutations before claiming Adapt completion."
       : counts.staleGarbage > 0
-        ? "Run Supervibe cleanup or receipt prune before release."
+        ? "Run Supervibe cleanup before release."
         : counts.total > 0
-          ? "Dirty state contains expected Adapt receipts, memory, or approved artifacts."
+          ? "Dirty state contains expected Adapt memory or approved artifacts."
           : "No dirty paths reported.",
   };
 }
