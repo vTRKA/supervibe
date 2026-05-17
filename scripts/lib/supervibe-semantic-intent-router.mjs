@@ -3,8 +3,9 @@ const SEMANTIC_INTENT_PROFILES = Object.freeze([
     intent: "genesis_setup",
     baseConfidence: 0.84,
     minGroups: 2,
+    requiredGroups: [0],
     concepts: [
-      ["genesis", "supervibe-genesis", "bootstrap", "scaffold", "setup", "set up", "install", "initialize", "init", "генезис", "разверн", "настрой"],
+      ["genesis", "supervibe-genesis", "bootstrap", "scaffold", "setup", "set up", "install", "initialize", "init", "migrate", "migration", "генезис", "разверн", "настрой"],
       ["supervibe", "plugin", ".claude", "agents", "skills", "rules", "marketplace"],
       ["codex", "claude", "cursor", "gemini", "opencode", "host", "multi-host", "host instruction", "adapter rules"],
       ["existing repo", "without overwriting", "preserve", "dry-run", "do not overwrite", "не перетир", "без перезапис", "сохран"],
@@ -95,6 +96,7 @@ const SEMANTIC_INTENT_PROFILES = Object.freeze([
     intent: "network_ops",
     baseConfidence: 0.87,
     minGroups: 2,
+    requiredGroups: [0],
     concepts: [
       ["router", "route", "routing", "network", "wifi", "wi-fi", "vpn", "firewall", "nat", "dhcp", "dns", "роутер", "маршрутизатор", "сеть", "вайфай"],
       ["diagnose", "diagnostic", "diagnostics", "configure", "stabilize", "stability", "setup", "fix", "review config", "диагностика", "настроить", "стабилизировать", "не работает", "падает"],

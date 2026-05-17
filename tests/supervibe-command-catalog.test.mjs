@@ -670,8 +670,11 @@ test("genesis bootstrap-pre-agent mode allows only base scaffold before project 
   assert.equal(plan.agentOwnedOutputRequiresReceipts, false);
   assert.equal(plan.agentDispatchRequired, false);
   assert.equal(plan.receiptGate, "bootstrap-pre-agent-basic-scaffold");
-  assert.ok(plan.missingAgents.includes("supervibe-orchestrator"));
+  assert.deepEqual(plan.requiredAgentIds, []);
+  assert.deepEqual(plan.missingAgents, []);
+  assert.equal(plan.durableWriteProofSource, "bootstrap-pre-agent");
   assert.match(report, /BOOTSTRAP_PRE_AGENT_ALLOWED: true/);
+  assert.match(report, /REQUIRED_AGENTS: none/);
   assert.match(report, /RECEIPT_GATE: bootstrap-pre-agent-basic-scaffold/);
   assert.match(report, /Write only bootstrap scaffold\/state/);
 });
@@ -731,6 +734,41 @@ test("command-agent-plan CLI treats bare Genesis as default dry-run bootstrap ph
   assert.match(out, /RECEIPT_GATE: bootstrap-pre-agent-basic-scaffold/);
 });
 
+test("agentless command phases never require host-agent dispatch or receipts", () => {
+  const agentlessModes = new Set([
+    "dry-run-no-agent",
+    "baseline-only-fast-path",
+    "adapt-apply-artifact-sync",
+    "bootstrap-pre-agent",
+  ]);
+  const contexts = [
+    ["dryRun", { dryRun: true, adds: 0, updates: 3, projectOnly: 0, conflicts: 0, memoryWrites: false }],
+    ["applyClean", { apply: true, adds: 0, updates: 3, projectOnly: 0, conflicts: 0, memoryWrites: false }],
+    ["applyBaseline", { apply: true, adds: 0, updates: 0, projectOnly: 0, conflicts: 0, memoryWrites: false }],
+    ["generateApps", { apply: true, generateApps: true }],
+  ];
+
+  for (const profile of listCommandAgentProfiles()) {
+    for (const [label, workflowContext] of contexts) {
+      const plan = buildCommandAgentPlan(profile.commandId, {
+        availableAgentIds: [],
+        callableAgentIds: [],
+        hostAdapterId: "cursor",
+        enforceHostProof: true,
+        workflowContext,
+      });
+      const message = `${profile.commandId} ${label}`;
+      if (!agentlessModes.has(plan.executionMode)) continue;
+      assert.deepEqual(plan.requiredAgentIds, [], message);
+      assert.deepEqual(plan.missingAgents, [], message);
+      assert.deepEqual(plan.missingCallableAgents, [], message);
+      assert.equal(plan.agentDispatchRequired, false, message);
+      assert.equal(plan.parallelAgentDispatchRequired, false, message);
+      assert.equal(plan.agentOwnedOutputRequiresReceipts, false, message);
+      assert.doesNotMatch(plan.receiptGate, /^pending-/, message);
+    }
+  }
+});
 test("adapt dry-run command plan is read-only and agentless while verify-agents keeps the receipt gate", () => {
   const dryRun = buildCommandAgentPlan("/supervibe-adapt", {
     availableAgentIds: [],
@@ -770,10 +808,92 @@ test("adapt dry-run command plan is read-only and agentless while verify-agents 
   assert.equal(baselineOnlyApply.agentDispatchRequired, false);
   assert.equal(baselineOnlyApply.agentOwnedOutputRequiresReceipts, false);
   assert.equal(baselineOnlyApply.receiptGate, "quality-gate-only-baseline-refresh");
-  assert.deepEqual(baselineOnlyApply.requiredAgentIds, ["quality-gate-reviewer"]);
-  assert.doesNotMatch(baselineReport, /REQUIRED_AGENTS: supervibe-orchestrator/);
+  assert.deepEqual(baselineOnlyApply.requiredAgentIds, []);
+  assert.equal(baselineOnlyApply.durableWriteProofSource, "baseline-only-refresh");
+  assert.match(baselineReport, /REQUIRED_AGENTS: none/);
   assert.match(baselineReport, /BASELINE_ONLY_FAST_PATH_ALLOWED: true/);
   assert.match(baselineReport, /real-agent dispatch is not required/);
+});
+
+test("adapt approved apply with multiple zero-conflict updates is deterministic artifact sync", () => {
+  const plan = buildCommandAgentPlan("/supervibe-adapt", {
+    availableAgentIds: [],
+    callableAgentIds: [],
+    hostAdapterId: "cursor",
+    enforceHostProof: true,
+    workflowContext: {
+      apply: true,
+      adds: 0,
+      updates: 3,
+      projectOnly: 0,
+      conflicts: 0,
+      memoryWrites: false,
+    },
+  });
+  const report = formatCommandAgentPlan(plan);
+
+  assert.equal(plan.executionMode, "adapt-apply-artifact-sync");
+  assert.equal(plan.agentSelectionMode, "approved-apply-artifact-sync");
+  assert.deepEqual(plan.requiredAgentIds, []);
+  assert.equal(plan.durableWritesAllowed, true);
+  assert.equal(plan.agentDispatchRequired, false);
+  assert.equal(plan.parallelAgentDispatchRequired, false);
+  assert.equal(plan.agentOwnedOutputRequiresReceipts, false);
+  assert.equal(plan.receiptGate, "not-required-for-approved-adapt-apply");
+  assert.equal(plan.durableWriteProofSource, "approved-adapt-artifact-sync");
+  assert.match(report, /APPROVED_APPLY_ARTIFACT_SYNC_ALLOWED: true/);
+  assert.match(report, /REQUIRED_AGENTS: none/);
+  assert.match(report, /real-agent dispatch is not required/);
+
+  const conflictPlan = buildCommandAgentPlan("/supervibe-adapt", {
+    availableAgentIds: [],
+    callableAgentIds: [],
+    hostAdapterId: "codex",
+    enforceHostProof: true,
+    workflowContext: {
+      apply: true,
+      adds: 0,
+      updates: 3,
+      projectOnly: 0,
+      conflicts: 1,
+      memoryWrites: false,
+    },
+  });
+  assert.notEqual(conflictPlan.executionMode, "adapt-apply-artifact-sync");
+  assert.ok(conflictPlan.requiredAgentIds.includes("repo-researcher"));
+
+  const memoryWritePlan = buildCommandAgentPlan("/supervibe-adapt", {
+    availableAgentIds: [],
+    callableAgentIds: [],
+    hostAdapterId: "codex",
+    enforceHostProof: true,
+    workflowContext: {
+      apply: true,
+      adds: 0,
+      updates: 3,
+      projectOnly: 0,
+      conflicts: 0,
+      memoryWrites: true,
+    },
+  });
+  assert.notEqual(memoryWritePlan.executionMode, "adapt-apply-artifact-sync");
+  assert.ok(memoryWritePlan.requiredAgentIds.includes("memory-curator"));
+
+  for (const workflowContext of [
+    { apply: true, adds: 1, updates: 3, projectOnly: 0, conflicts: 0, memoryWrites: false },
+    { apply: true, adds: 0, updates: 3, projectOnly: 1, conflicts: 0, memoryWrites: false },
+    { apply: true, verifyAgents: true, adds: 0, updates: 3, projectOnly: 0, conflicts: 0, memoryWrites: false },
+  ]) {
+    const guardedPlan = buildCommandAgentPlan("/supervibe-adapt", {
+      availableAgentIds: [],
+      callableAgentIds: [],
+      hostAdapterId: "codex",
+      enforceHostProof: true,
+      workflowContext,
+    });
+    assert.notEqual(guardedPlan.executionMode, "adapt-apply-artifact-sync", JSON.stringify(workflowContext));
+    assert.ok(guardedPlan.requiredAgentIds.includes("supervibe-orchestrator"), JSON.stringify(workflowContext));
+  }
 });
 
 test("adapt command agent plan uses low-risk fast path and reports role sources", () => {

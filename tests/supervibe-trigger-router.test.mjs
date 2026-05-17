@@ -254,6 +254,24 @@ describe("supervibe trigger router", () => {
     assert.notEqual(diagnosticRoute.command, "/supervibe-audit --docs");
   });
 
+  it("routes workflow repair complaints to prompt engineering instead of durable workflow dispatch", () => {
+    const phrases = [
+      "fix adapt apply unnecessary sub-agents after dry-run approval",
+      "\u0447\u0438\u043d\u0438 adapt apply \u043b\u0438\u0448\u043d\u0438\u0435 sub-agents \u043f\u043e\u0441\u043b\u0435 dry-run approval",
+    ];
+
+    for (const phrase of phrases) {
+      const route = routeTriggerRequest(phrase);
+
+      assert.equal(route.intent, "prompt_ai_engineering", phrase);
+      assert.equal(route.command, "/supervibe --agent prompt-ai-engineer", phrase);
+      assert.equal(route.intentArbiter.requestType, "router_implementation_request", phrase);
+      assert.notEqual(route.intent, "genesis_setup", phrase);
+      assert.notEqual(route.intent, "network_ops", phrase);
+      assert.equal(route.intentArbiter.signals.workflowSystemImplementationRequest, true, phrase);
+    }
+  });
+
   it("keeps small routing questions on diagnostics instead of dispatching agent audits", () => {
     const phrases = [
       "do not call agents for this tiny question, just explain the route",

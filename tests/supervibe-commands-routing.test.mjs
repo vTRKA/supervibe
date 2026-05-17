@@ -153,6 +153,22 @@ test("does not route router misroute complaints to docs audit by cleanup terms",
   assert.doesNotMatch(output, /COMMAND: \/supervibe-audit --docs/);
 });
 
+test("routes workflow repair complaints to prompt engineering instead of adapt or genesis dispatch", async () => {
+  for (const request of [
+    "fix adapt apply unnecessary sub-agents after dry-run approval",
+    "\u0447\u0438\u043d\u0438 adapt apply \u043b\u0438\u0448\u043d\u0438\u0435 sub-agents \u043f\u043e\u0441\u043b\u0435 dry-run approval",
+  ]) {
+    const output = await matchCommand(request);
+
+    assert.match(output, /MATCH: semantic-trigger:prompt_ai_engineering/, request);
+    assert.match(output, /INTENT: prompt_ai_engineering/, request);
+    assert.match(output, /COMMAND: \/supervibe --agent prompt-ai-engineer/, request);
+    assert.doesNotMatch(output, /INTENT: genesis_setup/, request);
+    assert.doesNotMatch(output, /INTENT: network_ops/, request);
+    assert.doesNotMatch(output, /COMMAND: \/supervibe-genesis/, request);
+  }
+});
+
 test("routes plain brainstorm and new feature phrases to brainstorm command", async () => {
   for (const request of [
     "брейншторм",

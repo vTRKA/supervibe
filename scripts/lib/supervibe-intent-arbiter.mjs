@@ -10,12 +10,24 @@ const ROUTING_SUBJECT_TERMS = Object.freeze([
   "intent", "intents", "trigger", "triggers", "router", "route", "routing", "semantic router",
   "intent system", "intent matcher", "matcher", "metcher", "classifier", "routing system",
   "plugin understands", "plugin understanding", "understand user", "understands user",
-  "command", "commands", "agent routing", "agent selection", "which agent", "which command",
-  "choose agent", "pick agent", "selected agent", "prompt-ai-engineer", "network-router-engineer",
+  "command", "commands", "agent routing", "agent selection", "agent dispatch", "agent gate", "which agent", "which command",
+  "choose agent", "pick agent", "selected agent", "workflow system", "command-agent-plan",
+  "receipt", "receipts", "runtime receipt", "runtime receipts", "fan-out", "fanout",
+  "prompt-ai-engineer", "network-router-engineer",
   "\u0438\u043d\u0442\u0435\u043d\u0442", "\u0438\u043d\u0442\u0435\u043d\u0442\u044b", "\u0442\u0440\u0438\u0433\u0433\u0435\u0440", "\u0440\u043e\u0443\u0442\u0435\u0440", "\u0440\u043e\u0443\u0442\u0438\u043d\u0433",
   "\u0438\u043d\u0442\u0435\u043d\u0442\u0430", "\u0438\u043d\u0442\u0435\u043d\u0442\u043e\u0432", "\u0440\u043e\u0443\u0442\u0438\u043d\u0433\u0430", "\u043c\u0435\u0442\u0447\u0435\u0440", "\u043c\u0430\u0442\u0447\u0435\u0440", "\u043a\u043b\u0430\u0441\u0441\u0438\u0444\u0438\u043a\u0430\u0442\u043e\u0440",
   "\u043c\u0430\u0440\u0448\u0440\u0443\u0442", "\u043a\u043e\u043c\u0430\u043d\u0434\u0430", "\u043a\u043e\u043c\u0430\u043d\u0434\u0443", "\u0430\u0433\u0435\u043d\u0442", "\u0430\u0433\u0435\u043d\u0442\u0430", "\u0430\u0433\u0435\u043d\u0442\u043e\u0432",
   "\u043a\u0430\u043a\u043e\u0433\u043e \u0430\u0433\u0435\u043d\u0442\u0430", "\u043a\u0430\u043a\u0443\u044e \u043a\u043e\u043c\u0430\u043d\u0434\u0443", "\u0432\u044b\u0431\u043e\u0440 \u0430\u0433\u0435\u043d\u0442\u0430", "\u0432\u044b\u0431\u043e\u0440 \u043a\u043e\u043c\u0430\u043d\u0434",
+]);
+
+const WORKFLOW_SYSTEM_TERMS = Object.freeze([
+  "supervibe workflow", "workflow system", "workflow contract", "workflow receipt", "workflow receipts",
+  "command-agent-plan", "agent dispatch", "agent gate", "agent gates", "agent fanout", "agent fan-out",
+  "subagent", "subagents", "sub-agent", "sub-agents", "spawn_agent", "runtime receipt", "runtime receipts",
+  "dry-run", "apply phase", "adapt apply", "adapt dry-run", "/supervibe-adapt", "approved apply",
+  "receipt gate", "receipt gates", "blocking gate", "blocking gates", "blocker", "blockers", "slowdown", "slowdowns",
+  "\u0432\u043e\u0440\u043a\u0444\u043b\u043e\u0443", "\u0432\u043e\u0440\u043a\u0444\u043b\u043e\u0443 \u0441\u0438\u0441\u0442\u0435\u043c", "\u0441\u0443\u0431\u0430\u0433\u0435\u043d\u0442", "\u0441\u0430\u0431\u0430\u0433\u0435\u043d\u0442",
+  "\u043b\u0438\u0448\u043d\u0438\u0435 \u0430\u0433\u0435\u043d\u0442", "\u043b\u0438\u0448\u043d\u0438\u0439 \u0430\u0433\u0435\u043d\u0442", "\u0431\u043b\u043e\u043a\u0435\u0440", "\u0431\u043b\u043e\u043a\u0435\u0440\u044b", "\u0442\u043e\u0440\u043c\u043e\u0437", "\u0442\u043e\u0440\u043c\u043e\u0437\u0438\u0442",
 ]);
 
 const DIAGNOSTIC_TERMS = Object.freeze([
@@ -39,7 +51,7 @@ const ROUTING_FAILURE_TERMS = Object.freeze([
 
 const IMPLEMENTATION_TERMS = Object.freeze([
   "implement", "implementation", "build", "create", "make", "fix", "repair", "change code", "feature", "code change", "improve", "upgrade",
-  "\u0441\u0434\u0435\u043b\u0430\u0439", "\u0441\u0434\u0435\u043b\u0430\u0442\u044c", "\u0440\u0435\u0430\u043b\u0438\u0437\u0443\u0439", "\u0440\u0435\u0430\u043b\u0438\u0437\u043e\u0432\u0430\u0442\u044c", "\u0438\u0441\u043f\u0440\u0430\u0432\u044c", "\u0444\u0438\u0447\u0443", "\u043a\u043e\u0434",
+  "\u0441\u0434\u0435\u043b\u0430\u0439", "\u0441\u0434\u0435\u043b\u0430\u0442\u044c", "\u0440\u0435\u0430\u043b\u0438\u0437\u0443\u0439", "\u0440\u0435\u0430\u043b\u0438\u0437\u043e\u0432\u0430\u0442\u044c", "\u0438\u0441\u043f\u0440\u0430\u0432\u044c", "\u0438\u0441\u043f\u0440\u0430\u0432\u043b\u044f\u0439", "\u043f\u043e\u0447\u0438\u043d\u0438", "\u0447\u0438\u043d\u0438", "\u0447\u0438\u043d\u0438\u0442\u044c", "\u0444\u0438\u0447\u0443", "\u043a\u043e\u0434",
 ]);
 
 const SECURITY_TERMS = Object.freeze([
@@ -88,6 +100,8 @@ const ROUTER_IMPLEMENTATION_SUPPRESSED_INTENTS = new Set([
   "security_audit",
   "supervibe_audit",
   "workflow_chain_audit",
+  "genesis_setup",
+  "network_ops",
 ]);
 
 const ROUTING_MENTION_SUPPRESSED_INTENTS = new Set([
@@ -147,6 +161,7 @@ export function arbitrateIntentCandidates(candidates = [], options = {}) {
 export function classifyIntentRequest(input = "") {
   const text = normalizeArbiterText(input);
   const routeSubject = hasAny(text, ROUTING_SUBJECT_TERMS);
+  const workflowSystemLanguage = hasAny(text, WORKFLOW_SYSTEM_TERMS);
   const routingFailureLanguage = hasAny(text, ROUTING_FAILURE_TERMS);
   const diagnosticLanguage = hasAny(text, DIAGNOSTIC_TERMS) || routingFailureLanguage || (routeSubject && /[??]/u.test(input));
   const implementationLanguage = hasAny(text, IMPLEMENTATION_TERMS);
@@ -161,7 +176,8 @@ export function classifyIntentRequest(input = "") {
   const routeQualityQuestion = routeSubject && diagnosticLanguage;
   const routeDiagnosticOnlyQuestion = routeQualityQuestion && routingFailureLanguage && !implementationLanguage;
   const promptEngineeringRequest = promptLanguage && promptActionLanguage && !routeQualityQuestion;
-  const routerImplementationRequest = routeSubject && implementationLanguage && !securityLanguage && !networkOpsLanguage;
+  const workflowSystemImplementationRequest = workflowSystemLanguage && implementationLanguage && !securityLanguage && !networkOpsLanguage;
+  const routerImplementationRequest = (routeSubject || workflowSystemLanguage) && implementationLanguage && !securityLanguage && !networkOpsLanguage;
   const routeResearchRequest = routeSubject && researchLanguage && strongResearchLanguage && !routeDiagnosticOnlyQuestion && !routerImplementationRequest && !securityLanguage && !networkOpsLanguage;
   const routerReviewRequest = routeSubject && reviewLanguage && !routeResearchRequest && !routerImplementationRequest && !routeQualityQuestion && !securityLanguage && !networkOpsLanguage;
   const routeAuditRequest = routeSubject && auditLanguage && !routeResearchRequest && !routeDiagnosticOnlyQuestion && !routerImplementationRequest && !routerReviewRequest && !securityLanguage && !reviewLanguage;
@@ -199,6 +215,8 @@ export function classifyIntentRequest(input = "") {
     routerReviewRequest,
     implementationRequest,
     routerImplementationRequest,
+    workflowSystemLanguage,
+    workflowSystemImplementationRequest,
     securityRequest: requestType === "security_request",
     reviewRequest: requestType === "review_request",
     promptEngineeringRequest,
@@ -212,6 +230,8 @@ export function classifyIntentRequest(input = "") {
       diagnosticLanguage,
       implementationLanguage,
       routerImplementationRequest,
+      workflowSystemLanguage,
+      workflowSystemImplementationRequest,
       routingFailureLanguage,
       securityLanguage,
       reviewLanguage,
@@ -234,11 +254,11 @@ function scoreCandidate(candidate, signals, text) {
   if (signals.routerImplementationRequest || signals.routerReviewRequest) {
     if (candidate.intent === "prompt_ai_engineering") {
       score += signals.routerReviewRequest ? 0.12 : 0.16;
-      arbiterEvidence.push(signals.routerReviewRequest ? "review request targets the intent/router contract" : "implementation request targets the intent/router contract");
+      arbiterEvidence.push(signals.routerReviewRequest ? "review request targets the intent/router contract" : signals.workflowSystemImplementationRequest ? "implementation request targets the Supervibe workflow contract" : "implementation request targets the intent/router contract");
     }
     if (ROUTER_IMPLEMENTATION_SUPPRESSED_INTENTS.has(candidate.intent)) {
       score -= 0.42;
-      negativeEvidence.push("route/intent implementation request, not a domain workflow dispatch");
+      negativeEvidence.push(signals.workflowSystemImplementationRequest ? "workflow-system implementation request, not a domain workflow dispatch" : "route/intent implementation request, not a domain workflow dispatch");
     }
     if (candidate.intent === "trigger_diagnostics") {
       score -= 0.04;
@@ -432,13 +452,13 @@ function injectMissingPromptEngineeringCandidate(candidates, signals, routeInten
       confidence: signals.routerReviewRequest ? 0.93 : 0.95,
       originalConfidence: 0,
       source: "intent-arbiter",
-      reason: signals.routerReviewRequest ? "Intent arbiter recognized a review request for the intent/router contract." : "Intent arbiter recognized an implementation request for the intent/router contract.",
+      reason: signals.routerReviewRequest ? "Intent arbiter recognized a review request for the intent/router contract." : signals.workflowSystemImplementationRequest ? "Intent arbiter recognized an implementation request for the Supervibe workflow contract." : "Intent arbiter recognized an implementation request for the intent/router contract.",
       semanticEvidence: {
-        matchedGroups: ["routing subject", signals.routerReviewRequest ? "review wording" : "implementation wording"],
+        matchedGroups: [signals.workflowSystemImplementationRequest ? "workflow system subject" : "routing subject", signals.routerReviewRequest ? "review wording" : "implementation wording"],
         painMatches: [],
       },
       negativeEvidence: [],
-      arbiterEvidence: [signals.routerReviewRequest ? "route subject plus review language" : "route subject plus implementation language"],
+      arbiterEvidence: [signals.routerReviewRequest ? "route subject plus review language" : signals.workflowSystemImplementationRequest ? "workflow system subject plus implementation language" : "route subject plus implementation language"],
       intentArbiterRequestType: signals.routerReviewRequest ? "router_review_request" : "router_implementation_request",
     },
   ];

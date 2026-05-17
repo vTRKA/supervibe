@@ -33,6 +33,20 @@ regression safety.
 - Missing red or green evidence blocks a completion claim unless the final output
   names the exact residual risk and why executable evidence was unavailable.
 
+
+## Scenario Matrix
+
+Before adding tests, map the changed behavior to scenario rows:
+
+- Happy path: valid input or primary user flow succeeds.
+- Negative path: invalid input, denied permission, illegal state, or dependency failure is rejected with a specific observable result.
+- Boundary/null path: zero, one, max, max+1, negative, empty, null, undefined, missing fields, and very large inputs where relevant.
+- Concurrency/idempotency path: double-submit, retry, simultaneous write, out-of-order response, or stale read where relevant.
+- Time/locale/encoding path: fake-clock, timezone, DST, currency rounding, Unicode, RTL, or normalization cases where relevant.
+- Regression path: exact reported symptom is reproduced before the fix and remains in the suite.
+
+A row may be marked N/A only with a concrete reason. Do not treat a suite as adequate when every new test is a happy path, snapshot, broad smoke check, or assertion that would still pass after deleting the behavior.
+
 ## Test Shape
 
 - Size tests to the behavior: small for pure logic, medium for owned boundaries,
@@ -89,9 +103,11 @@ regression safety.
 
 ## Acceptance Check
 
-- Every user-visible or contract-visible change has a matching test, validator,
+- Every user-visible or contract-visible change has a scenario matrix and a matching test, validator,
   or explicit manual evidence item.
 - The final report can be replayed by another agent from the command and file
   references alone.
 - Remaining risk is bounded to untested surfaces and does not contradict the
   requested verification scope.
+- New or changed tests answer the mutation question: the report names at least
+  one bad implementation change the assertions would catch.

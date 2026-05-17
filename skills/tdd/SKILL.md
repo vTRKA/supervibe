@@ -17,8 +17,8 @@ prerequisites: []
 emits-artifact: agent-output
 confidence-rubric: confidence-rubrics/agent-delivery.yaml
 gate-on-exit: true
-version: 1
-last-verified: 2026-04-27T00:00:00.000Z
+version: 1.1
+last-verified: 2026-05-17T00:00:00.000Z
 ---
 
 # TDD
@@ -91,6 +91,21 @@ Use TDD as a behavior loop, not as a documentation ritual.
 Evidence must show the failing-before command and the passing-after command. If
 either side cannot be produced, stop the completion claim and record explicit
 residual risk.
+
+
+## Scenario matrix before RED
+
+Before writing the first failing test, enumerate the behavior matrix so the suite does not collapse into one happy path:
+
+| Dimension | Ask | Test shape |
+| --- | --- | --- |
+| Happy | What valid input or flow succeeds? | One clear success case at the lowest useful layer. |
+| Negative | What invalid input, denied permission, or bad state is rejected? | Error/rejection case with exact observable error and no unwanted side effect. |
+| Boundary/null | Which zero, one, max, max+1, empty, null, undefined, or missing-field cases matter? | Parameterized cases or separate DAMP tests when readability is better. |
+| Concurrency/degraded | What happens on retry, double-submit, timeout, unavailable dependency, or out-of-order response? | Integration or contract test with deterministic fake clock/dependency where needed. |
+| Regression | What reported symptom must never return? | Failing-before reproduction kept as a permanent regression guard. |
+
+Use explicit N/A rationale for dimensions that do not apply. A behavior change with only a success-path test is not ready unless the missing failure dimensions are intentionally out of scope.
 
 ## Test sizing and pyramid
 
@@ -213,6 +228,7 @@ owns.
 ## Output contract
 
 Returns:
+- Scenario matrix: changed behaviors mapped to happy, negative, boundary/null, concurrency/degraded, regression, or explicit N/A rationale.
 - Failing-before evidence: command, working directory, exit code, and the
   relevant failure line proving the test was red for the expected reason.
 - Passing-after evidence: command, working directory, exit code, and the
@@ -238,12 +254,14 @@ Returns:
 
 ## Verification
 
+- Scenario matrix exists for changed behavior, including at least one failure or edge case where applicable.
 - Failing-before evidence exists or residual risk is explicit.
 - Passing-after evidence exists or residual risk is explicit.
 - Test file exists with assertion
 - Test command output shows transition: FAIL → PASS
 - Coverage delta ≥0% (project may have higher bar)
 - No regressions in existing tests
+- Mutation question answered for new tests: what incorrect code path would this assertion catch?
 
 ## Related
 

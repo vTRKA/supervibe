@@ -5,7 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const PLUGIN_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const SUPERVIBE_VERSION = "2.1.44";
+const SUPERVIBE_VERSION = "2.1.45";
 
 const SupervibePlugin = async ({ client, directory, worktree }) => {
   const projectRoot = resolve(worktree || directory || process.cwd());

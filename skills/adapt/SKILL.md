@@ -38,8 +38,9 @@ Lifecycle: `scan -> real-dry-run -> agent-plan -> review -> approved -> applied 
 
 Lifecycle gates are split by phase: `--dry-run` is read-only and may run
 without host-agent telemetry; `--apply` requires explicit user approval for
-writes; optional `--verify-agents` is an advanced runtime smoke diagnostic and
-is not part of Adapt completion.
+writes and zero-conflict approved artifact sync does not require host-agent
+telemetry; optional `--verify-agents` is an advanced runtime smoke diagnostic
+and is not part of Adapt completion.
 
 Every interactive step asks one question at a time using `Step N/M` or `Step N/M`. Each question lists the recommended/default option first, gives a one-line tradeoff summary for every option, allows a free-form answer, and names the stop condition.
 

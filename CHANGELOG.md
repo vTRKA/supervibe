@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.45] - 2026-05-17
+
+### Fixed
+
+- Strengthened QA/TDD guidance with scenario-matrix, negative-path, boundary/null, degraded-dependency, and mutation-adequacy checks so test agents stop shipping flat happy-path suites.
+- Removed approved zero-conflict `/supervibe-adapt --apply` agent fan-out by treating listed artifact updates as deterministic artifact sync unless verification, conflicts, project-owned files, memory writes, or delegated review are requested.
+- Tightened workflow-repair intent routing so adapt/apply dry-run sub-agent complaints route to system prompt/workflow repair instead of genesis or network diagnostics, while normal agent-strengthening requests keep their direct route.
+
+### Validation
+
+- Rechecked targeted adapt command-agent planning, trigger/command routing, command-agent enforcement, agent maturity route replay, package audit, and the full release gate for the 2.1.45 package bump.
+
 ## [2.1.44] - 2026-05-17
 
 ### Fixed

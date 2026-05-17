@@ -847,7 +847,16 @@ export function buildCommandAgentPlan(commandId, {
     && workflowContext.apply === true
     && workflowContext.verifyAgents !== true
     && isBaselineOnlyFastPath(workflowContext);
+  const adaptApprovedApplyArtifactSyncPhase = profile.commandId === "/supervibe-adapt"
+    && workflowContext.apply === true
+    && workflowContext.verifyAgents !== true
+    && !adaptBaselineOnlyApplyPhase
+    && isApprovedApplyArtifactSyncFastPath(workflowContext);
   const bootstrapPreAgent = genesisBootstrapPhase;
+  const commandPhaseRunsWithoutAgents = genesisBootstrapPhase
+    || adaptDryRunPhase
+    || adaptBaselineOnlyApplyPhase
+    || adaptApprovedApplyArtifactSyncPhase;
   const lowRiskFastPath = isLowRiskFastPath(profile, workflowContext);
   const receiptStatus = normalizeReceiptTrust(receiptTrust);
   const scopedReceiptStatus = normalizeReceiptTrust(scopedReceiptTrust);
@@ -855,17 +864,19 @@ export function buildCommandAgentPlan(commandId, {
   const activeReceiptStatus = scopedReceiptGateActive ? scopedReceiptStatus : receiptStatus;
   const runtimeReceiptsTrusted = activeReceiptStatus.trusted === true;
   const dynamicAgentResolution = resolveDynamicCommandAgents(profile, workflowContext);
-  const baseRequiredAgentIds = adaptBaselineOnlyApplyPhase
-    ? (profile.baselineOnlyRequiredAgentIds || profile.lowRiskRequiredAgentIds || [])
+  const baseRequiredAgentIds = commandPhaseRunsWithoutAgents
+    ? []
     : [
         profile.ownerAgentId,
         ...(lowRiskFastPath ? profile.lowRiskRequiredAgentIds : profile.requiredAgentIds),
       ];
-  const requiredAgentIds = unique([
-    ...baseRequiredAgentIds,
-    ...dynamicAgentResolution.selectedAgentIds,
-    ...extraRequiredAgentIds,
-  ]);
+  const requiredAgentIds = commandPhaseRunsWithoutAgents
+    ? []
+    : unique([
+        ...baseRequiredAgentIds,
+        ...dynamicAgentResolution.selectedAgentIds,
+        ...extraRequiredAgentIds,
+      ]);
   const callableAgentSourceRows = agentSourcesFor(requiredAgentIds, callableAgentSources);
   const logicalFallbackRequiredAgents = callableAgentSourceRows
     .filter((item) => /logical/i.test(String(item.source || "")))
@@ -891,6 +902,7 @@ export function buildCommandAgentPlan(commandId, {
   const blocked = !bootstrapPreAgent
     && !adaptDryRunPhase
     && !adaptBaselineOnlyApplyPhase
+    && !adaptApprovedApplyArtifactSyncPhase
     && (missingAgents.length > 0 || callableAgentsBlocked || hostProofBlocked);
   const executionMode = blocked
     ? COMMAND_AGENT_ORCHESTRATION_CONTRACT.blockedMode
@@ -898,6 +910,8 @@ export function buildCommandAgentPlan(commandId, {
       ? "dry-run-no-agent"
     : adaptBaselineOnlyApplyPhase
       ? "baseline-only-fast-path"
+    : adaptApprovedApplyArtifactSyncPhase
+      ? "adapt-apply-artifact-sync"
     : bootstrapPreAgent
       ? "bootstrap-pre-agent"
     : "agent-dispatch-required";
@@ -906,20 +920,30 @@ export function buildCommandAgentPlan(commandId, {
   const bootstrapOnly = executionMode === "bootstrap-pre-agent";
   const dryRunAgentless = executionMode === "dry-run-no-agent";
   const baselineOnly = executionMode === "baseline-only-fast-path";
-  const receiptTrustApplies = runtimeReceiptsTrusted && !blocked && !bootstrapOnly && !dryRunAgentless && !baselineOnly;
-  const activeScopedCommandAgentPlanRequired = scopedReceiptGateActive && !bootstrapOnly && !dryRunAgentless && !baselineOnly;
+  const adaptApplyArtifactSync = executionMode === "adapt-apply-artifact-sync";
+  const receiptTrustApplies = runtimeReceiptsTrusted && !blocked && !bootstrapOnly && !dryRunAgentless && !baselineOnly && !adaptApplyArtifactSync;
+  const activeScopedCommandAgentPlanRequired = scopedReceiptGateActive && !bootstrapOnly && !dryRunAgentless && !baselineOnly && !adaptApplyArtifactSync;
   const globalReceiptTrustIgnoredForActiveScope = activeScopedCommandAgentPlanRequired
     && receiptStatus.trusted === true
     && scopedReceiptStatus.trusted !== true;
-  const durableWriteProofSource = receiptTrustApplies
-    ? (scopedReceiptGateActive ? "scoped-runtime-agent-receipts" : "runtime-agent-receipts")
-    : "blocked";
+  const durableWriteProofSource = dryRunAgentless
+    ? "read-only-dry-run"
+    : baselineOnly
+      ? "baseline-only-refresh"
+    : adaptApplyArtifactSync
+      ? "approved-adapt-artifact-sync"
+    : bootstrapOnly
+      ? "bootstrap-pre-agent"
+    : receiptTrustApplies
+      ? (scopedReceiptGateActive ? "scoped-runtime-agent-receipts" : "runtime-agent-receipts")
+      : "blocked";
   const agentFanoutPolicy = copyAgentFanoutPolicy(profile.agentFanoutPolicy);
   const minimumParallelAgents = Number(agentFanoutPolicy.minParallelAgents || 1);
   const parallelAgentDispatchRequired = agentFanoutPolicy.required === true
     && !bootstrapOnly
     && !dryRunAgentless
-    && !baselineOnly;
+    && !baselineOnly
+    && !adaptApplyArtifactSync;
   const compactContinuationAgentDispatchRequired = parallelAgentDispatchRequired
     && agentFanoutPolicy.requiredAfterContextCompaction === true;
   const simpleTaskAgentDispatchRequired = parallelAgentDispatchRequired
@@ -928,6 +952,7 @@ export function buildCommandAgentPlan(commandId, {
     && !bootstrapPreAgent
     && !dryRunAgentless
     && !baselineOnly
+    && !adaptApplyArtifactSync
     && callableAgentsReady
     && !receiptTrustApplies
     ? buildCodexSpawnPayloads(requiredAgentIds, { commandId: profile.commandId })
@@ -936,7 +961,11 @@ export function buildCommandAgentPlan(commandId, {
   return {
     commandId: profile.commandId,
     ownerAgentId: profile.ownerAgentId,
-    agentSelectionMode: baselineOnly ? "baseline-only-fast-path" : lowRiskFastPath ? "low-risk-fast-path" : "standard",
+    agentSelectionMode: baselineOnly
+      ? "baseline-only-fast-path"
+      : adaptApplyArtifactSync
+        ? "approved-apply-artifact-sync"
+        : lowRiskFastPath ? "low-risk-fast-path" : "standard",
     executionMode,
     requestedExecutionMode: requestedMode,
     defaultExecutionMode: profile.defaultExecutionMode,
@@ -985,6 +1014,8 @@ export function buildCommandAgentPlan(commandId, {
         ? "not-required-for-dry-run"
       : baselineOnly
         ? "quality-gate-only-baseline-refresh"
+      : adaptApplyArtifactSync
+        ? "not-required-for-approved-adapt-apply"
       : bootstrapOnly
         ? "bootstrap-pre-agent-basic-scaffold"
       : scopedReceiptGateActive && receiptTrustApplies
@@ -1005,7 +1036,7 @@ export function buildCommandAgentPlan(commandId, {
     durableWriteProofSource,
     requiredPlanFields: [...profile.requiredPlanFields],
     requiredReceiptFields: [...profile.requiredReceiptFields],
-    durableWritesAllowed: (bootstrapOnly && workflowContext.dryRun !== true) || baselineOnly || receiptTrustApplies,
+    durableWritesAllowed: (bootstrapOnly && workflowContext.dryRun !== true) || baselineOnly || adaptApplyArtifactSync || receiptTrustApplies,
     agentOwnedOutputAllowed: receiptTrustApplies,
     agentOwnedOutputRequiresReceipts: realAgentCapable && !receiptTrustApplies,
     agentDispatchRequired: realAgentCapable && !receiptTrustApplies,
@@ -1013,12 +1044,15 @@ export function buildCommandAgentPlan(commandId, {
     bootstrapPreAgentAllowed: bootstrapOnly,
     dryRunAgentlessAllowed: dryRunAgentless,
     baselineOnlyFastPathAllowed: baselineOnly,
+    approvedApplyArtifactSyncAllowed: adaptApplyArtifactSync,
     qualityImpact: receiptTrustApplies
         ? `${scopedReceiptGateActive ? "Scoped runtime agent receipt gate" : "Runtime agent receipt gate"} is trusted (${activeReceiptStatus.trustedHostAgentReceipts}/${activeReceiptStatus.minHostAgentReceipts} host receipts, ${activeReceiptStatus.agentInvocations}/${activeReceiptStatus.minAgentInvocations} receipt-bound invocations).`
       : dryRunAgentless
         ? "Adapt dry-run is read-only planning and may run without real-agent receipts; apply and verify-agents remain separate gated phases."
       : baselineOnly
         ? "Baseline-only adapt apply has no managed artifact changes and uses deterministic adapt validators plus the quality gate; real-agent dispatch is not required."
+      : adaptApplyArtifactSync
+        ? "Approved adapt apply is deterministic artifact sync for zero-conflict upstream updates; real-agent dispatch is not required unless verify-agents or a review/recovery task is requested."
       : bootstrapOnly
         ? "Bootstrap-pre-agent mode may install base host scaffold and state only; specialist-owned output and completion claims still require runtime agent receipts after agents are installed."
       : hostProofBlocked
@@ -1295,6 +1329,7 @@ export function formatCommandAgentPlan(plan = {}) {
     `BOOTSTRAP_PRE_AGENT_ALLOWED: ${plan.bootstrapPreAgentAllowed === true}`,
     `DRY_RUN_AGENTLESS_ALLOWED: ${plan.dryRunAgentlessAllowed === true}`,
     `BASELINE_ONLY_FAST_PATH_ALLOWED: ${plan.baselineOnlyFastPathAllowed === true}`,
+    `APPROVED_APPLY_ARTIFACT_SYNC_ALLOWED: ${plan.approvedApplyArtifactSyncAllowed === true}`,
     `AGENT_OUTPUT_REQUIRES_RECEIPTS: ${plan.agentOwnedOutputRequiresReceipts === true}`,
     `REQUIRED_AGENTS: ${(plan.requiredAgentIds || []).join(", ") || "none"}`,
     `REQUIRED_AGENT_SOURCES: ${formatAgentSources(plan.requiredAgentSources)}`,
@@ -1517,6 +1552,16 @@ function isLowRiskFastPath(profile = {}, workflowContext = {}) {
   return adds === 0 && updates <= 1 && projectOnly === 0 && conflicts === 0 && memoryWrites === false;
 }
 
+function isApprovedApplyArtifactSyncFastPath(workflowContext = {}) {
+  const adds = Number(workflowContext.adds ?? workflowContext.add ?? NaN);
+  const updates = Number(workflowContext.updates ?? workflowContext.update ?? NaN);
+  const projectOnly = Number(workflowContext.projectOnly ?? workflowContext["project-only"] ?? NaN);
+  const conflicts = Number(workflowContext.conflicts ?? workflowContext.conflict ?? NaN);
+  const memoryWrites = normalizeBoolean(workflowContext.memoryWrites ?? workflowContext["memory-writes"], false);
+  if ([adds, updates, projectOnly, conflicts].some((value) => !Number.isFinite(value))) return false;
+  return adds === 0 && updates > 0 && projectOnly === 0 && conflicts === 0 && memoryWrites === false;
+}
+
 function isBaselineOnlyFastPath(workflowContext = {}) {
   const adds = Number(workflowContext.adds ?? workflowContext.add ?? NaN);
   const updates = Number(workflowContext.updates ?? workflowContext.update ?? NaN);
@@ -1588,6 +1633,9 @@ function nextActionForPlan(plan = {}) {
   }
   if (plan.executionMode === "baseline-only-fast-path") {
     return "Run baseline-only adapt apply and deterministic validators; real-agent dispatch is not required for zero-change metadata refresh.";
+  }
+  if (plan.executionMode === "adapt-apply-artifact-sync") {
+    return "Run the approved adapt apply for the listed zero-conflict artifact updates; real-agent dispatch is not required unless verify-agents or delegated review is requested.";
   }
   if (plan.agentReceiptsTrusted) return "Runtime agent receipt gate is already trusted; proceed with the command-specific verified next action.";
   if (plan.scopedReceiptGateActive) return "Invoke required host agents for this command/handoff, capture invocation ids, then issue scoped workflow receipts before durable writes or completion claims.";
