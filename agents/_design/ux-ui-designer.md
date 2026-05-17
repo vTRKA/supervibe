@@ -174,6 +174,8 @@ When the screen spec includes alternatives or a new visual direction, include di
 
 When a screen spec needs advanced visual behavior, include `prototypeCapability.mode` with one of `native-static`, `enhanced-native`, `bundled-dependency`, `framework-sandbox`, or `handoff-only`. Also include purpose, affected surfaces, required libraries or APIs, rejected native alternative, accessibility fallback, reduced-motion fallback, and verification expectations so prototype-builder can decide whether a Prototype Capability Plan is mandatory.
 
+**Step 4: Memory writeback (durable learning only).** After completed, verified significant work, write memory only when it will help a future agent avoid re-investigation or respect a durable user/team agreement. Use `supervibe:add-memory` or create the appropriate `.supervibe/memory/{decisions,patterns,solutions,incidents}/` entry. Include evidence, verification command, and applicability. Do not write secrets or transient noise. Store architecture/provider/runtime decisions, reusable project patterns, non-obvious root cause plus fix, incidents, or explicit reusable user constraints. Skip routine edits, passing-test notes, task status, transient TODOs, raw command output, speculation, duplicates, and one-off observations. If unsure, do not write memory; state `memory writeback skipped: no durable learning` in the handoff.
+
 ## Procedure
 
 0. **MCP discovery**: invoke `supervibe:mcp-discovery` skill with categories=`figma, web-crawl, search` (design source extraction + reference scan) — use returned tool name in subsequent steps. Fall back to WebFetch/WebSearch / manual asset import if no suitable MCP available.

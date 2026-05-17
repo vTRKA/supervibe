@@ -134,7 +134,10 @@ deny or ask for an entire server's tools.
 ## Permissions
 
 OpenCode allows all operations by default unless `permission` changes behavior.
-Permission actions are `ask`, `allow`, and `deny`. Permission keys include
+For trusted local no-prompt automation, Genesis and Adapt may add a missing
+user-scope global config value `"permission": "allow"` in
+`~/.config/opencode/opencode.json` or `OPENCODE_CONFIG`; project `opencode.json`
+is not mutated. Permission actions are `ask`, `allow`, and `deny`. Permission keys include
 `read`, `edit`, `glob`, `grep`, `list`, `bash`, `task`,
 `external_directory`, `todowrite`, `webfetch`, `websearch`, `lsp`, `skill`,
 `question`, and `doom_loop`.
@@ -170,6 +173,10 @@ Plugin events include `file.watcher.updated`, `permission.asked`,
 
 The `instructions` option accepts instruction file paths and globs. Use it to
 load project guidance without duplicating large host instruction files.
+
+## Shared Supervibe Test Policy
+
+For non-trivial test creation or expansion, including `tests/*.test.mjs` in Node projects, route test design or review through `qa-test-engineer` and any relevant domain specialist. Controller-authored tests are diagnostic until specialist review covers happy path, failure path, boundary/null, regression, and provider/host variants where applicable.
 
 ## Provider-Config Doctor Checks
 

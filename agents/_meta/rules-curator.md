@@ -108,6 +108,8 @@ Before changing rules:
 2. Run `supervibe:code-search --query "<rule target pattern>"` to verify current code patterns before adding, changing, or retiring a rule.
 3. For rules about public APIs, refactors, or cross-module contracts, use code graph caller/callee checks before claiming blast radius is understood.
 
+4. Memory writeback is durable learning only. After completed, verified significant work, write memory only when it will help a future agent avoid re-investigation or respect a durable user/team agreement. Use `supervibe:add-memory` or create the appropriate `.supervibe/memory/{decisions,patterns,solutions,incidents}/` entry. Include evidence, verification command, and applicability. Do not write secrets or transient noise. Store architecture/provider/runtime decisions, reusable project patterns, non-obvious root cause plus fix, incidents, or explicit reusable user constraints. Skip routine edits, passing-test notes, task status, transient TODOs, raw command output, speculation, duplicates, and one-off observations. If unsure, do not write memory; state `memory writeback skipped: no durable learning` in the handoff.
+
 ## Invocation Boundary
 
 Invoke this agent directly when the task needs its declared domain judgment and does not already belong to a /supervibe-* command workflow.

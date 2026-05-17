@@ -534,26 +534,49 @@ register_codex() {
     const pluginHeader = `[plugins."${pluginKey}"]`;
 
     function escapeRegExp(value) {
-      return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    function splitInlineSectionSetting(text, sectionHeader, settingKey) {
+      const re = new RegExp("(^|\\n)(" + escapeRegExp(sectionHeader) + ")[ \\t]*(" + escapeRegExp(settingKey) + "\\s*=)", "g");
+      return String(text || "").replace(re, "$1$2\n$3");
+    }
+
+    function dedupeSection(text, sectionHeader) {
+      const lines = String(text || "").replace(/\r\n?/g, "\n").split("\n");
+      const output = [];
+      let seen = false;
+      let skipping = false;
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed === sectionHeader) {
+          if (seen) { skipping = true; continue; }
+          seen = true;
+          skipping = false;
+          output.push(line);
+          continue;
+        }
+        if (skipping) {
+          if (/^\s*\[/.test(line)) { skipping = false; output.push(line); }
+          continue;
+        }
+        output.push(line);
+      }
+      return output.join("\n");
     }
 
     function upsertSectionSetting(text, sectionHeader, settingKey, settingLine) {
-      const headerRe = new RegExp(`^${escapeRegExp(sectionHeader)}[ \t]*$`, "m");
+      const headerRe = new RegExp("^" + escapeRegExp(sectionHeader) + "[ \\t]*$", "m");
       const match = headerRe.exec(text);
-      if (!match) {
-        return `${text.trimEnd()}\n\n${sectionHeader}\n${settingLine}\n`;
-      }
+      if (!match) return text.trimEnd() + "\n\n" + sectionHeader + "\n" + settingLine + "\n";
       const bodyStart = match.index + match[0].length;
       const rest = text.slice(bodyStart);
       const nextRel = rest.search(/^\s*\[/m);
       const bodyEnd = nextRel === -1 ? text.length : bodyStart + nextRel;
       let body = text.slice(bodyStart, bodyEnd);
-      const settingRe = new RegExp(`^\\s*${escapeRegExp(settingKey)}\\s*=.*$`, "m");
-      if (settingRe.test(body)) {
-        body = body.replace(settingRe, settingLine);
-      } else {
-        body = body.endsWith("\n") || body === "" ? `${body}${settingLine}\n` : `${body}\n${settingLine}\n`;
-      }
+      const settingRe = new RegExp("^\\s*" + escapeRegExp(settingKey) + "\\s*=.*$", "m");
+      if (settingRe.test(body)) body = body.replace(settingRe, settingLine);
+      else body = body.endsWith("\n") || body === "" ? body + settingLine + "\n" : body + "\n" + settingLine + "\n";
       return text.slice(0, bodyStart) + body + text.slice(bodyEnd);
     }
 
@@ -563,12 +586,16 @@ register_codex() {
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
     }
+    text = splitInlineSectionSetting(text, pluginHeader, "enabled");
+    text = dedupeSection(text, pluginHeader);
     text = upsertSectionSetting(text, "[features]", "plugins", "plugins = true");
-text = upsertSectionSetting(text, "[features]", "hooks", "hooks = true");
-text = upsertSectionSetting(text, "[features]", "codex_hooks", "codex_hooks = true");
-text = upsertSectionSetting(text, "[features]", "plugin_hooks", "plugin_hooks = true");
+    text = upsertSectionSetting(text, "[features]", "hooks", "hooks = true");
+    text = upsertSectionSetting(text, "[features]", "codex_hooks", "codex_hooks = true");
+    text = upsertSectionSetting(text, "[features]", "plugin_hooks", "plugin_hooks = true");
     text = upsertSectionSetting(text, pluginHeader, "enabled", "enabled = true");
-    fs.writeFileSync(configPath, `${text.trimEnd()}\n`);
+    text = splitInlineSectionSetting(text, pluginHeader, "enabled");
+    text = dedupeSection(text, pluginHeader);
+    fs.writeFileSync(configPath, text.trimEnd() + "\n", "utf8");
   '
 
   local agents_skills="$HOME/.agents/skills"

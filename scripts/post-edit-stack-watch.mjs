@@ -33,6 +33,14 @@ const SILENT = process.env.SUPERVIBE_HOOK_SILENT === '1';
 const NO_INDEX = process.env.SUPERVIBE_HOOK_NO_INDEX === '1';
 const NO_BOOTSTRAP = process.env.SUPERVIBE_HOOK_NO_BOOTSTRAP === '1';
 const USE_EMBED = process.env.SUPERVIBE_HOOK_EMBED === '1';
+const HOOK_SCAN_OPTIONS = {
+  maxMilliseconds: positiveIntEnv('SUPERVIBE_HOOK_SCAN_MAX_MS', 5000),
+  maxUpdates: positiveIntEnv('SUPERVIBE_HOOK_SCAN_MAX_FILES', 50),
+  discoverNew: process.env.SUPERVIBE_HOOK_SCAN_DISCOVER_NEW === '1',
+  prune: process.env.SUPERVIBE_HOOK_SCAN_PRUNE === '1',
+  allowFullDiscovery: process.env.SUPERVIBE_HOOK_SCAN_ALLOW_FULL_DISCOVERY === '1',
+};
+const CODE_DISCOVERY_REPAIR_COMMAND = 'node scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress';
 
 const reminders = [];
 const sourceFiles = [];
@@ -80,13 +88,23 @@ async function reindexCode() {
     store = new CodeStore(PROJECT_ROOT, { useEmbeddings: USE_EMBED, useGraph: true });
     await store.init();
 
-    if (shouldBootstrap || FALLBACK_MTIME_SCAN) {
-      const { scanCodeChanges } = await import('./lib/mtime-scan.mjs');
-      const counts = await scanCodeChanges(store, PROJECT_ROOT);
-      return counts.reindexed + counts.discovered + counts.removed + counts.pruned;
+    let updated = 0;
+    if (shouldBootstrap && sourceFiles.length > 0) {
+      for (const file of sourceFiles) {
+        try {
+          const r = await store.indexFile(file);
+          if (r.indexed || r.skipped === 'unchanged-graph-healed') updated++;
+        } catch {}
+      }
+      return updated;
     }
 
-    let updated = 0;
+    if (FALLBACK_MTIME_SCAN) {
+      const { scanCodeChanges } = await import('./lib/mtime-scan.mjs');
+      const counts = await scanCodeChanges(store, PROJECT_ROOT, HOOK_SCAN_OPTIONS);
+      reportDeferredCodeDiscovery(counts);
+      return counts.reindexed + counts.discovered + counts.removed + counts.pruned;
+    }
     for (const file of sourceFiles) {
       try {
         const r = await store.indexFile(file);
@@ -107,6 +125,17 @@ async function reindexCode() {
   }
 }
 
+function reportDeferredCodeDiscovery(counts = {}) {
+  if (SILENT || !FALLBACK_MTIME_SCAN) return;
+  const discoveryDisabled = HOOK_SCAN_OPTIONS.discoverNew !== true;
+  const budgetDeferred = counts.truncated === true || Number(counts.deferred || 0) > 0;
+  if (!discoveryDisabled && !budgetDeferred) return;
+  const reason = discoveryDisabled
+    ? 'new-file discovery is deferred in bounded shell fallback'
+    : 'scan budget was reached';
+  console.log('[supervibe] Code RAG fallback scan deferred discovery/prune: ' + reason + '. NEXT: ' + CODE_DISCOVERY_REPAIR_COMMAND);
+}
+
 async function reindexMemory() {
   if (NO_INDEX || (!FALLBACK_MTIME_SCAN && memoryFiles.length === 0 && removedMemoryFiles.length === 0)) return 0;
   const dbPath = resolve(PROJECT_ROOT, '.supervibe', 'memory', 'memory.db');
@@ -120,7 +149,7 @@ async function reindexMemory() {
 
     if (FALLBACK_MTIME_SCAN && memoryFiles.length === 0 && removedMemoryFiles.length === 0) {
       const { scanMemoryChanges } = await import('./lib/mtime-scan.mjs');
-      const counts = await scanMemoryChanges(store, PROJECT_ROOT);
+      const counts = await scanMemoryChanges(store, PROJECT_ROOT, HOOK_SCAN_OPTIONS);
       return counts.reindexed + counts.removed;
     }
 
@@ -151,6 +180,13 @@ async function reindex() {
   if (total > 0 && !SILENT && process.env.SUPERVIBE_VERBOSE === '1') {
     console.log(`[supervibe] auto-reindexed ${code} code file(s), ${mem} memory entr(ies)`);
   }
+}
+
+function positiveIntEnv(name, fallback) {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') return fallback;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : fallback;
 }
 
 function readHookInput() {

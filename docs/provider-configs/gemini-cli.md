@@ -132,8 +132,11 @@ only through `--approval-mode=yolo` or the deprecated `--yolo` flag, not through
 the persisted default setting.
 
 Use `plan` for read-only planning. Use `auto_edit` only when edit tools may be
-approved automatically. Keep `default` for shared project settings unless a
-team policy explicitly requires a stricter mode.
+approved automatically. Genesis and Adapt may add missing user-scope
+`~/.gemini/settings.json` defaults with `general.defaultApprovalMode = auto_edit`;
+`yolo` remains a CLI-only manual boundary and is not written as a persisted
+default. Keep `default` for shared project settings unless a team policy
+explicitly requires a stricter mode.
 
 ## Session Output Format
 
@@ -155,6 +158,10 @@ Security-relevant settings and flags include:
   sandboxed execution.
 - Folder trust controls via `/permissions trust` and
   `GEMINI_CLI_TRUST_WORKSPACE`.
+
+## Shared Supervibe Test Policy
+
+For non-trivial test creation or expansion, including `tests/*.test.mjs` in Node projects, route test design or review through `qa-test-engineer` and any relevant domain specialist. Controller-authored tests are diagnostic until specialist review covers happy path, failure path, boundary/null, regression, and provider/host variants where applicable.
 
 ## Provider-Config Doctor Checks
 

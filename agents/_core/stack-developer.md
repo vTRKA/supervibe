@@ -82,6 +82,8 @@ If the task packet does not name the owned write set, acceptance signal, and all
 
 Before non-trivial implementation work, run `supervibe:project-memory` for prior decisions and `supervibe:code-search` for local patterns. Use Code Graph for structural edits: `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers "<symbol>"`, plus `--callees` or `--neighbors "<symbol>" --depth 2` when blast radius is unclear. Record whether this was Case A/B/C in the handoff, or state why Code Graph was not applicable.
 
+4. Memory writeback is durable learning only. After completed, verified significant work, write memory only when it will help a future agent avoid re-investigation or respect a durable user/team agreement. Use `supervibe:add-memory` or create the appropriate `.supervibe/memory/{decisions,patterns,solutions,incidents}/` entry. Include evidence, verification command, and applicability. Do not write secrets or transient noise. Store architecture/provider/runtime decisions, reusable project patterns, non-obvious root cause plus fix, incidents, or explicit reusable user constraints. Skip routine edits, passing-test notes, task status, transient TODOs, raw command output, speculation, duplicates, and one-off observations. If unsure, do not write memory; state `memory writeback skipped: no durable learning` in the handoff.
+
 ## Durable Output Evidence Gate
 
 Implementation handoffs must record these fields before claiming ready or complete:

@@ -89,7 +89,11 @@ function indentBlock(value = "", prefix = "  ") {
 function inspectProvider(provider, { rootDir, homeDir }) {
   const configPaths = provider.paths?.config || [];
   const projectPaths = provider.paths?.project || [];
-  const userConfigCandidates = configPaths.filter((path) => path.startsWith("~/"));
+  const userConfigDisplayPath = providerUserConfigDisplayPath(provider);
+  const userConfigCandidates = uniqueStrings([
+    ...configPaths.filter((path) => path.startsWith("~/")),
+    userConfigDisplayPath,
+  ]);
   const projectConfigCandidates = configPaths.filter((path) => !path.startsWith("~/") && !isEnvironmentPath(path));
   const projectPathStatuses = projectPaths.map((path) => presence(path, { rootDir, homeDir }));
   const projectConfigStatuses = projectConfigCandidates.map((path) => presence(path, { rootDir, homeDir }));
@@ -99,7 +103,7 @@ function inspectProvider(provider, { rootDir, homeDir }) {
     userConfigStatuses,
   });
   const applyPreview = buildProviderApplyPreview(provider, {
-    projectConfig: projectConfigStatuses[0] || null,
+    userConfig: userConfigStatuses[0] || null,
     rootDir,
     homeDir,
   });
@@ -121,10 +125,10 @@ function inspectProvider(provider, { rootDir, homeDir }) {
   };
 }
 
-function buildProviderApplyPreview(provider, { projectConfig, rootDir, homeDir } = {}) {
-  const targetPath = projectConfig?.displayPath || provider.paths?.config?.find((path) => !path.startsWith("~/")) || "project-config";
+function buildProviderApplyPreview(provider, { userConfig, rootDir, homeDir } = {}) {
+  const targetPath = userConfig?.displayPath || providerUserConfigDisplayPath(provider) || "user-provider-home-config";
   const resolvedPath = resolveProviderPath(targetPath, { rootDir, homeDir });
-  const text = projectConfig?.present && existsSync(resolvedPath) ? readFileSync(resolvedPath, "utf8") : "";
+  const text = userConfig?.present && existsSync(resolvedPath) ? readFileSync(resolvedPath, "utf8") : "";
   return createProviderConfigApplyReport({
     provider,
     text,
@@ -135,34 +139,23 @@ function buildProviderApplyPreview(provider, { projectConfig, rootDir, homeDir }
 
 function buildProviderRecommendations(provider, { projectConfigStatuses = [], userConfigStatuses = [] } = {}) {
   const recommendations = [];
-  const projectConfig = projectConfigStatuses[0] || null;
   const userConfig = userConfigStatuses[0] || null;
-  if (!projectConfig?.present) {
-    recommendations.push({
-      id: "create-project-config-preview",
-      target: projectConfig?.displayPath || provider.paths?.config?.find((path) => !path.startsWith("~/")) || "project-config",
-      tier: "safe-default",
-      sourceUrl: provider.sources?.[0]?.url || "manifest",
-      previewOnly: true,
-      reason: "project provider config is missing or not visible",
-      preview: previewForProvider(provider),
-    });
-  }
-  if (!userConfig?.present && provider.paths?.config?.some((path) => path.startsWith("~/"))) {
+  const userTarget = userConfig?.displayPath || providerUserConfigDisplayPath(provider) || "user-provider-home-config";
+  if (!userConfig?.present && userTarget !== "user-provider-home-config") {
     recommendations.push({
       id: "home-config-preview-only",
-      target: userConfig?.displayPath || provider.paths.config.find((path) => path.startsWith("~/")),
+      target: userTarget,
       tier: "manual-only",
       sourceUrl: provider.sources?.[0]?.url || "manifest",
       previewOnly: true,
-      reason: "home config presence is missing; Supervibe will not write it automatically",
-      preview: "show instructions only; require explicit user-owned home-config edit",
+      reason: "user provider-home config is missing or not visible; Supervibe will not write project runtime configs",
+      preview: previewForProvider(provider),
     });
   }
   if (provider.providerLimits?.maxThreadsKey || provider.providerLimits?.jobRuntimeKey) {
     recommendations.push({
       id: "safe-power-settings-preview",
-      target: projectConfig?.displayPath || provider.paths?.config?.[0] || "project-config",
+      target: userTarget,
       tier: "max-power",
       sourceUrl: provider.sources?.[0]?.url || "manifest",
       previewOnly: true,
@@ -173,7 +166,7 @@ function buildProviderRecommendations(provider, { projectConfigStatuses = [], us
   for (const preset of provider.powerPresets || []) {
     recommendations.push({
       id: `power-${slugify(preset.setting || preset.outcome || preset.tier)}`,
-      target: projectConfig?.displayPath || provider.paths?.config?.[0] || "project-config",
+      target: userTarget,
       tier: preset.tier || "safe-default",
       sourceUrl: preset.sourceUrl || provider.sources?.[0]?.url || "manifest",
       checkedAt: preset.checkedAt || provider.sources?.[0]?.checkedAt || null,
@@ -185,18 +178,33 @@ function buildProviderRecommendations(provider, { projectConfigStatuses = [], us
   return recommendations;
 }
 
+function providerUserConfigDisplayPath(provider = {}) {
+  const configured = provider.paths?.config?.find((path) => path.startsWith("~/"));
+  if (configured) return configured;
+  const runtimeConfig = provider.runtimeConfig || {};
+  const homeSegments = Array.isArray(runtimeConfig.defaultProviderHomeSegments) ? runtimeConfig.defaultProviderHomeSegments : [];
+  if (homeSegments.length > 0 && runtimeConfig.configFile) {
+    return ["~", ...homeSegments, runtimeConfig.configFile].join("/");
+  }
+  return null;
+}
+
+function uniqueStrings(values = []) {
+  return [...new Set(values.filter(Boolean))];
+}
+
 function previewForProvider(provider) {
   if (provider.id === "codex") {
     const limits = provider.providerLimits || {};
     const maxThreads = limits.defaultMaxThreads ?? "review";
     const maxDepth = limits.defaultMaxDepth ?? "review";
     const jobRuntimeSeconds = limits.defaultJobRuntimeSeconds ?? "review";
-    return `approval_policy=on-request; sandbox_mode=workspace-write; default_permissions=:workspace; web_search=live; [features].apps=true; [features].multi_agent=true; [agents].max_threads=${maxThreads}; [agents].max_depth=${maxDepth}; [agents].job_max_runtime_seconds=${jobRuntimeSeconds}; [apps._default].enabled=true; [[tool_suggest.discoverables]].type=plugin; [[tool_suggest.discoverables]].id=supervibe@supervibe-marketplace`;
+    return `approval_policy=never; sandbox_mode=workspace-write; default_permissions=:workspace; web_search=live; [features].apps=true; [features].multi_agent=true; [agents].max_threads=${maxThreads}; [agents].max_depth=${maxDepth}; [agents].job_max_runtime_seconds=${jobRuntimeSeconds}; [apps._default].enabled=true; [[tool_suggest.discoverables]].type=plugin; [[tool_suggest.discoverables]].id=supervibe@supervibe-marketplace`;
   }
-  if (provider.id === "claude-code") return "create .claude/settings.json with permissions deny rules, MCP allowlist, and hook placeholders";
-  if (provider.id === "gemini-cli") return "create .gemini/settings.json with checkpointing, plan approval mode, MCP tool filters, and privacy settings";
-  if (provider.id === "cursor") return "create scoped .cursor/rules and .cursor/mcp.json previews; do not auto-create remote background-agent config";
-  if (provider.id === "opencode") return "create opencode.json with schema, permission ask defaults, watcher ignores, and per-agent permission narrowing";
+  if (provider.id === "claude-code") return "update ~/.claude/settings.json with permissions defaults, MCP allowlist, and hook placeholders";
+  if (provider.id === "gemini-cli") return "update ~/.gemini/settings.json with checkpointing, auto_edit approval mode, MCP tool filters, and privacy settings";
+  if (provider.id === "cursor") return "update ~/.cursor/cli-config.json with CLI permissions defaults; keep project .cursor rules as context-only previews";
+  if (provider.id === "opencode") return "update ~/.config/opencode/opencode.json or OPENCODE_CONFIG outside the project root with JSON permission allow defaults for trusted local automation";
   return "create provider project config preview";
 }
 

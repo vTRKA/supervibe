@@ -160,6 +160,8 @@ Every requirement package must include durable output evidence fields:
 
 If a requirement is produced from degraded evidence, mark status DRAFT or BLOCKED ON OPEN QUESTIONS; do not claim READY FOR DEV.
 
+**Step 4: Memory writeback (durable learning only).** After completed, verified significant work, write memory only when it will help a future agent avoid re-investigation or respect a durable user/team agreement. Use `supervibe:add-memory` or create the appropriate `.supervibe/memory/{decisions,patterns,solutions,incidents}/` entry. Include evidence, verification command, and applicability. Do not write secrets or transient noise. Store architecture/provider/runtime decisions, reusable project patterns, non-obvious root cause plus fix, incidents, or explicit reusable user constraints. Skip routine edits, passing-test notes, task status, transient TODOs, raw command output, speculation, duplicates, and one-off observations. If unsure, do not write memory; state `memory writeback skipped: no durable learning` in the handoff.
+
 ## Procedure
 
 1. **Read user request + related context** — open ticket, linked docs, prior PRs, stakeholder messages; do not assume the request is complete on first read.

@@ -9,7 +9,7 @@ Runs locally. No Docker. Windows, macOS, and Linux.
 
 Supervibe keeps the normal brainstorm -> loop-ready plan -> user-approved graph path fast. Specialist agents and scoped receipts are required when Supervibe claims delegated agent output, explicit strict review, verification, release evidence, or design/prototype completion; simple routing and next-action handoffs stay lightweight.
 
-**v2.1** - current plugin `v2.1.46` - MIT - 2412 tests
+**v2.1** - current plugin `v2.1.47` - MIT - 2412 tests
 
 > **Compliance notice:** This tool is designed exclusively for development assistance. By using it, you agree to comply with the Terms of Service (ToS) and Acceptable Use Policy (AUP) of all involved services, including Anthropic. Unauthorized automated usage, OAuth token abuse, or violation of third-party policies is the sole responsibility of the end user.
 
@@ -275,7 +275,7 @@ The installer:
 After restart, you should see something like:
 
 ```text
-[supervibe] welcome  plugin v2.1.46 initialized for this project
+[supervibe] welcome  plugin v2.1.47 initialized for this project
 [supervibe] code RAG  N files / M chunks (fresh)
 [supervibe] code graph  N symbols / M edges (X% resolved)
 ```

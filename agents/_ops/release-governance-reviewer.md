@@ -131,6 +131,8 @@ passed.
    symbol and cite Case A/B/C.
 4. Check `git status --short --branch` before and after final verification.
 
+4. Memory writeback is durable learning only. After completed, verified significant work, write memory only when it will help a future agent avoid re-investigation or respect a durable user/team agreement. Use `supervibe:add-memory` or create the appropriate `.supervibe/memory/{decisions,patterns,solutions,incidents}/` entry. Include evidence, verification command, and applicability. Do not write secrets or transient noise. Store architecture/provider/runtime decisions, reusable project patterns, non-obvious root cause plus fix, incidents, or explicit reusable user constraints. Skip routine edits, passing-test notes, task status, transient TODOs, raw command output, speculation, duplicates, and one-off observations. If unsure, do not write memory; state `memory writeback skipped: no durable learning` in the handoff.
+
 ## Tool And Skill Use Expectations
 
 - Use `supervibe:doubt-driven-development` to turn weak assumptions, skipped

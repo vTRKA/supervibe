@@ -107,7 +107,7 @@ test('scanCodeChanges: skip when nothing changed (idempotent, fast)', async () =
   await store.init();
   await store.indexFile(f);
 
-  // No changes — scan should be a no-op
+  // No changes - scan should be a no-op
   const counts = await scanCodeChanges(store, fresh);
   store.close();
   assert.strictEqual(counts.reindexed, 0);
@@ -115,4 +115,58 @@ test('scanCodeChanges: skip when nothing changed (idempotent, fast)', async () =
   assert.strictEqual(counts.scanned, 1);
 
   await rm(fresh, { recursive: true, force: true });
+});
+
+test('scanCodeChanges: respects reindex budget and defers extra changed files', async () => {
+  const root = join(tmpdir(), `supervibe-mtime-budget-${Date.now()}`);
+  await mkdir(join(root, 'src'), { recursive: true });
+  const first = join(root, 'src', 'first.ts');
+  const second = join(root, 'src', 'second.ts');
+  await writeFile(first, `export const first = 1;\n`);
+  await writeFile(second, `export const second = 1;\n`);
+
+  const store = new CodeStore(root, { useEmbeddings: false });
+  await store.init();
+  await store.indexFile(first);
+  await store.indexFile(second);
+
+  await writeFile(first, `export const first = 2;\n`);
+  await writeFile(second, `export const second = 2;\n`);
+  const future = new Date(Date.now() + 5000);
+  await utimes(first, future, future);
+  await utimes(second, future, future);
+
+  const counts = await scanCodeChanges(store, root, { maxReindexed: 1, discoverNew: false, prune: false });
+  store.close();
+
+  assert.strictEqual(counts.reindexed, 1, `expected one budgeted reindex; got ${JSON.stringify(counts)}`);
+  assert.strictEqual(counts.truncated, true);
+  assert.ok(counts.deferred >= 1);
+
+  await rm(root, { recursive: true, force: true });
+});
+
+
+test('scanCodeChanges: bounded startup budget defers full inventory discovery', async () => {
+  const root = join(tmpdir(), `supervibe-mtime-discovery-budget-${Date.now()}`);
+  await mkdir(join(root, 'src'), { recursive: true });
+  const indexed = join(root, 'src', 'indexed.ts');
+  const discovered = join(root, 'src', 'discovered.ts');
+  await writeFile(indexed, `export const indexed = 1;\n`);
+  await writeFile(discovered, `export const discovered = 1;\n`);
+
+  const store = new CodeStore(root, { useEmbeddings: false });
+  await store.init();
+  await store.indexFile(indexed);
+
+  const counts = await scanCodeChanges(store, root, { maxMilliseconds: 5000 });
+  const discoveredRows = store.db.prepare('SELECT COUNT(*) AS n FROM code_files WHERE path = ?').get(store.toRel(discovered)).n;
+  store.close();
+
+  assert.strictEqual(counts.discovered, 0, `bounded scan must not run full discovery; got ${JSON.stringify(counts)}`);
+  assert.strictEqual(discoveredRows, 0);
+  assert.strictEqual(counts.truncated, true);
+  assert.ok(counts.deferred >= 1);
+
+  await rm(root, { recursive: true, force: true });
 });

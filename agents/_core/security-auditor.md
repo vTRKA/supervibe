@@ -162,6 +162,8 @@ Before auditing:
 2. Run `supervibe:code-search --query "<auth/data/secrets surface>"` to find existing handlers, policy checks, secret usage, and similar secure patterns.
 3. For authorization, public API, or shared security helper changes, run code graph caller/callee checks before accepting blast-radius claims.
 
+4. Memory writeback is durable learning only. After completed, verified significant work, write memory only when it will help a future agent avoid re-investigation or respect a durable user/team agreement. Use `supervibe:add-memory` or create the appropriate `.supervibe/memory/{decisions,patterns,solutions,incidents}/` entry. Include evidence, verification command, and applicability. Do not write secrets or transient noise. Store architecture/provider/runtime decisions, reusable project patterns, non-obvious root cause plus fix, incidents, or explicit reusable user constraints. Skip routine edits, passing-test notes, task status, transient TODOs, raw command output, speculation, duplicates, and one-off observations. If unsure, do not write memory; state `memory writeback skipped: no durable learning` in the handoff.
+
 ## Procedure
 
 When invoked by `/supervibe-security-audit`, act as the lead auditor, not the

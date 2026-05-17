@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { runInNewContext } from "node:vm";
 import test from "node:test";
 
 test("supervibe-upgrade rebuilds generated registry before final audit without running dev tests", async () => {
@@ -109,4 +110,39 @@ test("supervibe-upgrade requires ONNX model setup before npm ci", async () => {
   assert.match(modelScript, /no stall timeout/, "shared setup should not interrupt direct downloads");
   assert.match(modelScript, /content-length/, "shared setup should report percent when the server provides model size");
   assert.doesNotMatch(modelScript, /DEFAULT_DOWNLOAD_STALL_MS|SUPERVIBE_MODEL_STALL_TIMEOUT|SUPERVIBE_MODEL_DOWNLOAD_TIMEOUT|DEFAULT_DOWNLOAD_TIMEOUT|request\.setTimeout|setTimeout\(|GIT_LFS_SKIP_SMUDGE|filter\.lfs|git lfs/i, "direct model download must not use stall/absolute timeouts or repository large-file fallback");
+});
+
+test("supervibe-upgrade normalizes duplicate and inline Codex plugin config sections", async () => {
+  const source = await readFile("scripts/supervibe-upgrade.mjs", "utf8");
+
+  assert.match(source, /normalizeCodexPluginHooksConfigText/);
+  assert.match(source, /splitInlineTomlSectionSetting/);
+  assert.match(source, /dedupeTomlSection/);
+  assert.match(source, /[plugins.\"${pluginKey}\"]/);
+  assert.match(source, /upsertTomlSectionSetting\(output, pluginHeader, 'enabled', 'enabled = true'\)/);
+
+  const helperStart = source.indexOf("function normalizeCodexPluginHooksConfigText");
+  const helperEnd = source.indexOf("function refreshTerminalCommands");
+  assert.ok(helperStart >= 0 && helperEnd > helperStart, "normalizer helper block should be extractable");
+  const normalize = runInNewContext(`${source.slice(helperStart, helperEnd)}; normalizeCodexPluginHooksConfigText;`);
+  const input = [
+    "[features]",
+    "plugins = false",
+    "",
+    "[plugins.\"supervibe@supervibe-marketplace\"]enabled = true",
+    "",
+    "[[hooks.SessionStart]]",
+    "matcher = \"startup|resume|clear|compact\"",
+    "",
+    "[plugins.\"supervibe@supervibe-marketplace\"]",
+    "enabled = true",
+    "",
+  ].join("\n");
+  const output = normalize(input);
+
+  assert.equal((output.match(/\[plugins\."supervibe@supervibe-marketplace"\]/g) || []).length, 1);
+  assert.match(output, /\[plugins\."supervibe@supervibe-marketplace"\]\nenabled = true/);
+  assert.doesNotMatch(output, /\[plugins\."supervibe@supervibe-marketplace"\]enabled/);
+  assert.match(output, /\[features\][\s\S]*plugins = true/);
+  assert.match(output, /\[\[hooks\.SessionStart\]\][\s\S]*matcher = "startup\|resume\|clear\|compact"/);
 });

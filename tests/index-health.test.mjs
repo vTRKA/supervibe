@@ -127,6 +127,35 @@ test('graph-only symbol degradation warns by default but fails strict graph gate
   assert.ok(strictGate.failedGates.some((item) => item.code === 'symbol-coverage'));
 });
 
+test('index health suppresses semantic warning when embeddings are intentionally disabled', () => {
+  const health = buildIndexHealthSnapshot({
+    semanticEmbeddingsExpected: false,
+    manifest: {
+      eligibleSourceFiles: 2,
+      indexedSourceFiles: 2,
+      languageCoverage: {
+        javascript: { eligible: 2, indexed: 2, filesWithSymbols: 2 },
+      },
+      generatedIndexedFiles: [],
+      staleRows: [],
+      contentChangedRows: [],
+      embeddingHealth: {
+        totalChunks: 8,
+        embeddedChunks: 0,
+      },
+      crossResolvedEdges: { resolved: 0, total: 0 },
+    },
+  });
+
+  assert.equal(health.embeddingHealth.status, 'semantic-disabled');
+  assert.equal(health.semanticEmbeddingsExpected, false);
+  assert.equal(health.issues.some((issue) => issue.code === 'semantic-embeddings-unavailable'), false);
+  assert.doesNotMatch(formatIndexHealth(health), /semantic embeddings are missing/);
+
+  const gate = evaluateIndexHealthGate(health);
+  assert.equal(gate.warnings.some((item) => item.code === 'semantic-embeddings-unavailable'), false);
+});
+
 test('config-only zero-symbol language is graph-ready in normal health gate', () => {
   const health = buildIndexHealthSnapshot({
     manifest: {

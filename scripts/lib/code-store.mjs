@@ -1028,8 +1028,9 @@ export class CodeStore {
       const hash = await hashFile(absPath);
       const existing = this.db.prepare('SELECT content_hash, graph_version FROM code_files WHERE path = ?').get(relPath);
       const existingGraphVersion = Number(existing?.graph_version || 0);
+      const graphEligible = isGraphIndexableLanguage(lang);
       const preserveGraphWhenDisabled = !this.useGraph && existing && existing.content_hash === hash && existingGraphVersion > 0;
-      const graphStale = this.useGraph && existingGraphVersion !== CODE_GRAPH_EXTRACTOR_VERSION;
+      const graphStale = this.useGraph && graphEligible && existingGraphVersion !== CODE_GRAPH_EXTRACTOR_VERSION;
       const embeddingStale = existing && existing.content_hash === hash && this.fileHasMissingEmbeddings(relPath);
       const chunkMetadataStale = existing && existing.content_hash === hash && this.fileHasStaleChunkMetadata(relPath);
       const chunkEntityStale = existing && existing.content_hash === hash && this.fileHasStaleChunkEntities(relPath);
@@ -1091,7 +1092,7 @@ export class CodeStore {
           preservedGraphVersion: existingGraphVersion,
         });
 
-        if (this.useGraph && !result.partial) {
+        if (this.useGraph && graphEligible && !result.partial) {
           if (this.shouldSkipLargeFileGraphExtraction({
             fileSizeBytes: Number(fileStats?.size || 0),
             lineCount: result.lineCount || lines,

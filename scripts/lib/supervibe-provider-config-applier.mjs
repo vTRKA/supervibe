@@ -120,9 +120,30 @@ export function formatProviderConfigApplyReport(report = {}) {
 }
 
 export function buildProviderDefaultEntries(provider = {}) {
+  if (provider.id === "claude-code") {
+    return [
+      keyEntry(["permissions", "defaultMode"], provider.runtimeConfig?.defaultPermissionMode || "bypassPermissions", "permissions.defaultMode"),
+      keyEntry(["permissions", "skipDangerousModePermissionPrompt"], true, "permissions.skipDangerousModePermissionPrompt"),
+    ];
+  }
+  if (provider.id === "gemini-cli") {
+    return [
+      keyEntry(["general", "defaultApprovalMode"], provider.runtimeConfig?.defaultApprovalMode || "auto_edit", "general.defaultApprovalMode"),
+    ];
+  }
+  if (provider.id === "cursor") {
+    return [
+      keyEntry(["permissions", "allow"], ["Shell(*)", "Read(**)", "Write(**)"], "permissions.allow"),
+    ];
+  }
+  if (provider.id === "opencode") {
+    return [
+      keyEntry(["permission"], provider.runtimeConfig?.defaultPermission || "allow", "permission.allow"),
+    ];
+  }
   if (provider.id !== "codex") return [];
   const limits = provider.providerLimits || {};
-  const approvalPolicy = provider.runtimeConfig?.defaultApprovalPolicy || "on-request";
+  const approvalPolicy = provider.runtimeConfig?.defaultApprovalPolicy || "never";
   return [
     keyEntry(["approval_policy"], approvalPolicy, "approval_policy"),
     keyEntry(["sandbox_mode"], "workspace-write", "sandbox_mode"),
@@ -283,6 +304,23 @@ export function resolveUserProviderConfigTarget({
   const format = runtimeConfig.format || inferFormatFromPath(configFile);
   const resolvedProjectRoot = resolve(projectRoot || process.cwd());
 
+  const inlineConfig = selectInlineConfigContent({ providerId: selectedProviderId, env });
+  if (inlineConfig) {
+    return {
+      scope: "user-provider-home",
+      providerId: selectedProviderId,
+      providerHome: null,
+      configFile,
+      absolutePath: null,
+      targetPath: null,
+      format,
+      writable: false,
+      providerHomeSource: inlineConfig.source,
+      projectRootBlocked: false,
+      issue: issue("provider-config-inline-override-present", inlineConfig.source, "Inline provider config content has higher precedence than the user config file; automatic no-prompt defaults are blocked until the inline override is removed or updated."),
+    };
+  }
+
   if (!runtimeConfig.writable) {
     return {
       scope: "manual-only",
@@ -296,6 +334,41 @@ export function resolveUserProviderConfigTarget({
       providerHomeSource: "manual-only",
       projectRootBlocked: false,
       issue: issue("provider-config-manual-only", selectedProviderId, "Provider runtime config is manual-only."),
+    };
+  }
+
+  const explicitConfig = selectExplicitConfigFile({ runtimeConfig, env });
+  if (explicitConfig) {
+    const absolutePath = resolve(explicitConfig.value);
+    const explicitFormat = inferFormatFromPath(absolutePath);
+    const resolvedProviderHome = dirname(absolutePath);
+    const underProjectRoot = isPathInsideRoot(resolvedProjectRoot, absolutePath);
+    if (underProjectRoot) {
+      return {
+        scope: "user-provider-home",
+        providerId: selectedProviderId,
+        providerHome: normalizePathForReport(resolvedProviderHome),
+        configFile: runtimeConfig.configFile,
+        absolutePath: normalizePathForReport(absolutePath),
+        targetPath: normalizePathForReport(absolutePath),
+        format: explicitFormat,
+        writable: false,
+        providerHomeSource: explicitConfig.source,
+        projectRootBlocked: true,
+        issue: issue("provider-config-target-inside-project-root", normalizePathForReport(absolutePath), "Provider runtime config target must stay outside the project root."),
+      };
+    }
+    return {
+      scope: "user-provider-home",
+      providerId: selectedProviderId,
+      providerHome: resolvedProviderHome,
+      configFile: runtimeConfig.configFile,
+      absolutePath,
+      targetPath: normalizePathForReport(absolutePath),
+      format: explicitFormat,
+      writable: true,
+      providerHomeSource: explicitConfig.source,
+      projectRootBlocked: false,
     };
   }
 
@@ -369,6 +442,13 @@ export function detectProjectProviderRuntimeConfigs({ projectRoot = process.cwd(
     { projectRel: ".codex/config.toml", providerId: "codex" },
     { projectRel: ".claude/settings.json", providerId: "claude-code" },
     { projectRel: ".claude/settings.local.json", providerId: "claude-code" },
+    { projectRel: ".gemini/settings.json", providerId: "gemini-cli" },
+    { projectRel: ".cursor/cli-config.json", providerId: "cursor" },
+    { projectRel: ".cursor/cli.json", providerId: "cursor" },
+    { projectRel: "opencode.json", providerId: "opencode" },
+    { projectRel: "opencode.jsonc", providerId: "opencode" },
+    { projectRel: ".opencode/opencode.json", providerId: "opencode" },
+    { projectRel: ".opencode/opencode.jsonc", providerId: "opencode" },
     { projectRel: "config.toml", providerId: "unknown" },
   ]
     .map((entry) => ({ ...entry, absolutePath: resolve(root, ...entry.projectRel.split("/")) }))
@@ -739,6 +819,7 @@ function normalizeRuntimeConfig(provider = {}) {
     return {
       scope: configured.scope || "manual-only",
       providerHomeEnv: Array.isArray(configured.providerHomeEnv) ? configured.providerHomeEnv : [configured.providerHomeEnv].filter(Boolean),
+      configFileEnv: Array.isArray(configured.configFileEnv) ? configured.configFileEnv : [configured.configFileEnv].filter(Boolean),
       defaultProviderHomeSegments: configured.defaultProviderHomeSegments || defaultProviderHomeSegments(provider.id),
       configFile: configured.configFile || defaultConfigFile(provider.id),
       format: configured.format || inferFormatFromPath(configured.configFile || defaultConfigFile(provider.id)),
@@ -753,6 +834,7 @@ function normalizeRuntimeConfig(provider = {}) {
   return {
     scope: provider.id === "codex" ? "user-provider-home" : "manual-only",
     providerHomeEnv: defaultProviderHomeEnv(provider.id),
+    configFileEnv: defaultConfigFileEnv(provider.id),
     defaultProviderHomeSegments: segments.length > 1 ? [segments[0]] : defaultProviderHomeSegments(provider.id),
     configFile,
     format: inferFormatFromPath(configFile),
@@ -764,19 +846,45 @@ function normalizeRuntimeConfig(provider = {}) {
 function defaultProviderHomeEnv(providerId = "") {
   if (providerId === "codex") return ["CODEX_HOME"];
   if (providerId === "claude-code") return ["CLAUDE_HOME"];
+  if (providerId === "gemini-cli") return ["GEMINI_HOME"];
+  return [];
+}
+
+function defaultConfigFileEnv(providerId = "") {
+  if (providerId === "opencode") return ["OPENCODE_CONFIG"];
   return [];
 }
 
 function defaultProviderHomeSegments(providerId = "") {
   if (providerId === "codex") return [".codex"];
   if (providerId === "claude-code") return [".claude"];
+  if (providerId === "gemini-cli") return [".gemini"];
+  if (providerId === "cursor") return [".cursor"];
+  if (providerId === "opencode") return [".config", "opencode"];
   return [`.${providerId || "provider"}`];
 }
 
 function defaultConfigFile(providerId = "") {
   if (providerId === "codex") return "config.toml";
   if (providerId === "claude-code") return "settings.json";
+  if (providerId === "gemini-cli") return "settings.json";
+  if (providerId === "cursor") return "cli-config.json";
+  if (providerId === "opencode") return "opencode.json";
   return "config.toml";
+}
+
+function selectExplicitConfigFile({ runtimeConfig, env = process.env } = {}) {
+  for (const key of runtimeConfig.configFileEnv || []) {
+    if (env?.[key]) return { value: env[key], source: key };
+  }
+  return null;
+}
+
+function selectInlineConfigContent({ providerId = "", env = process.env } = {}) {
+  if (providerId === "opencode" && env?.OPENCODE_CONFIG_CONTENT) {
+    return { value: env.OPENCODE_CONFIG_CONTENT, source: "OPENCODE_CONFIG_CONTENT" };
+  }
+  return null;
 }
 
 function selectProviderHome({ runtimeConfig, providerHome, userHome, env = process.env } = {}) {
@@ -852,9 +960,14 @@ function toProjectRelative(rootDir, absolutePath) {
   return absolute.replace(/\\/g, "/");
 }
 
+function normalizePathForContainment(path = "") {
+  const resolved = resolve(path);
+  return process.platform === "win32" ? resolved.toLowerCase() : resolved;
+}
+
 function isPathInsideRoot(rootDir, absolutePath) {
-  const root = resolve(rootDir);
-  const absolute = resolve(absolutePath);
+  const root = normalizePathForContainment(rootDir);
+  const absolute = normalizePathForContainment(absolutePath);
   return absolute === root || absolute.startsWith(`${root}\\`) || absolute.startsWith(`${root}/`);
 }
 
@@ -1037,6 +1150,7 @@ function listTomlKeyPaths(text = "") {
 function detectTomlDuplicateKeys(text = "") {
   const duplicates = [];
   const seen = new Map();
+  const seenTables = new Map();
   let table = "";
   const arrayCounts = new Map();
   let arrayInstance = "";
@@ -1050,6 +1164,11 @@ function detectTomlDuplicateKeys(text = "") {
         arrayCounts.set(table, nextCount);
         arrayInstance = `${table}[${nextCount}]`;
       } else {
+        if (seenTables.has(table)) {
+          duplicates.push({ path: `[${table}]`, line: index + 1, firstLine: seenTables.get(table) });
+        } else {
+          seenTables.set(table, index + 1);
+        }
         arrayInstance = "";
       }
       continue;

@@ -29,7 +29,7 @@ locations, but those locations are not production plugin-agent storage:
 
 ## Core philosophy (read first — orients every decision)
 
-These six principles override defaults whenever they conflict with general practice:
+These principles override defaults whenever they conflict with general practice:
 
 1. **Persona over generic agents.** Every agent is a specialist with explicit decision tree, procedure, output contract, and anti-patterns. Generic helpfulness is what training data already gives — agents earn their place by being specific.
 2. **Evidence over assertion.** Every claim — "X works", "Y is safe", "Z is the right approach" — must cite file:line, test output, graph evidence, or memory entry. No "trust me" outputs.
@@ -39,6 +39,7 @@ These six principles override defaults whenever they conflict with general pract
 6. **Anti-half-finished discipline.** No commented-out code, no TODOs without owners, no half-applied refactors. Either complete a change or revert it cleanly.
 7. **Managed host context only.** Host instruction files and host rule surfaces are user-owned outside Supervibe managed blocks. Use `scripts/lib/supervibe-context-migrator.mjs` dry-run plans and backups before writing host instruction files.
 8. **Real producers over controller emulation.** Inline/manual drafts are diagnostics only. If a command plan names specialist agents, workers, reviewers, validators, executable skill producers, or external tools, invoke the real host/tool path when available and bind the output with runtime receipts. Do not claim a specialist ran from a controller-written markdown draft.
+9. **Specialist-owned test coverage.** For non-trivial test creation or expansion, including `tests/*.test.mjs`, route test design or review through `qa-test-engineer` and any relevant domain specialist. Controller-authored tests are diagnostic until specialist review covers happy path, failure path, boundary/null, regression, and provider/host variants where applicable.
 
 ---
 

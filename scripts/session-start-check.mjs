@@ -139,6 +139,26 @@ export function createMissingCodeIndexDiagnostic(projectRoot = PROJECT_ROOT) {
   };
 }
 
+function positiveIntEnv(name, fallback) {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') return fallback;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : fallback;
+}
+
+function buildSessionStartScanOptions(kind = 'code') {
+  const prefix = kind === 'memory' ? 'SUPERVIBE_SESSION_START_MEMORY_SCAN' : 'SUPERVIBE_SESSION_START_SCAN';
+  const sharedMaxMs = positiveIntEnv('SUPERVIBE_SESSION_START_SCAN_MAX_MS', 5000);
+  const sharedMaxFiles = positiveIntEnv('SUPERVIBE_SESSION_START_SCAN_MAX_FILES', 50);
+  return {
+    maxMilliseconds: positiveIntEnv(`${prefix}_MAX_MS`, sharedMaxMs),
+    maxUpdates: positiveIntEnv(`${prefix}_MAX_FILES`, sharedMaxFiles),
+    discoverNew: process.env[`${prefix}_DISCOVER_NEW`] === '1',
+    prune: process.env[`${prefix}_PRUNE`] === '1',
+    allowFullDiscovery: process.env[`${prefix}_ALLOW_FULL_DISCOVERY`] === '1',
+  };
+}
+
 export function createMissingMemoryIndexDiagnostic(projectRoot = PROJECT_ROOT) {
   const dbPath = join(projectRoot, ".supervibe", "memory", "memory.db");
   return {
@@ -153,6 +173,7 @@ export async function ensureCodeIndexFresh(projectRoot, {
   allowBuild = process.env.SUPERVIBE_SESSION_START_ALLOW_INDEX_BUILD !== "0",
   useEmbeddings = process.env.SUPERVIBE_SESSION_START_EMBED === "1" ||
     process.env.SUPERVIBE_SESSION_START_EMBEDDINGS === "1",
+  scanOptions = buildSessionStartScanOptions('code'),
 } = {}) {
   const { CodeStore } = await import("./lib/code-store.mjs");
 
@@ -177,7 +198,7 @@ export async function ensureCodeIndexFresh(projectRoot, {
       let scanCounts = null;
       try {
         const { scanCodeChanges } = await import("./lib/mtime-scan.mjs");
-        scanCounts = await scanCodeChanges(store, projectRoot);
+        scanCounts = await scanCodeChanges(store, projectRoot, scanOptions);
       } catch {}
       const stats = store.stats();
       store.close();
@@ -200,6 +221,7 @@ export async function ensureMemoryIndexFresh(projectRoot, {
     process.env.SUPERVIBE_SESSION_START_ALLOW_INDEX_BUILD !== "0",
   useEmbeddings = false,
   now = new Date().toISOString(),
+  scanOptions = buildSessionStartScanOptions('memory'),
 } = {}) {
   const dbPath = join(projectRoot, ".supervibe", "memory", "memory.db");
   const indexExists = existsSync(dbPath);
@@ -227,7 +249,7 @@ export async function ensureMemoryIndexFresh(projectRoot, {
     const { scanMemoryChanges } = await import("./lib/mtime-scan.mjs");
     const store = new MemoryStore(projectRoot, { useEmbeddings: false });
     await store.init();
-    const scanCounts = await scanMemoryChanges(store, projectRoot);
+    const scanCounts = await scanMemoryChanges(store, projectRoot, scanOptions);
     store.close();
     return { action: "skip", scanCounts };
   } catch (err) {
@@ -257,6 +279,9 @@ async function reportCodeIndexHealth() {
         console.log(
           `[supervibe] mtime-scan: ${sc.reindexed} file(s) reindexed, ${sc.discovered || 0} discovered, ${sc.removed} removed, ${sc.pruned || 0} pruned`,
         );
+      }
+      if (sc && (sc.truncated || (sc.deferred || 0) > 0)) {
+        console.log(`[supervibe] mtime-scan deferred ${sc.deferred || 0} item(s) to keep session startup responsive`);
       }
     } else {
       console.log(
@@ -485,6 +510,9 @@ export async function main({ env = process.env } = {}) {
         console.log(
           `[supervibe] memory mtime-scan: ${counts.reindexed} entr(ies) reindexed, ${counts.removed} removed`,
         );
+      }
+      if (counts && (counts.truncated || (counts.deferred || 0) > 0)) {
+        console.log(`[supervibe] memory mtime-scan deferred ${counts.deferred || 0} item(s) to keep session startup responsive`);
       }
     } catch {
       // Non-fatal

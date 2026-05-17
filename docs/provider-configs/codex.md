@@ -44,7 +44,7 @@ use as the automatic apply candidate after normal path and trust checks.
 
 model = "gpt-5.5"
 model_provider = "openai"
-approval_policy = "on-request"
+approval_policy = "never"
 sandbox_mode = "workspace-write"
 web_search = "live"
 default_permissions = ":workspace"
@@ -240,14 +240,13 @@ Schema-backed sandbox modes are `read-only`, `workspace-write`, and
 `sandbox_workspace_write.network_access = false` unless the task requires
 network access.
 
-Supervibe-managed noninteractive loop defaults use `approval_policy = "on-request"`
-so workers do not stall on repeated prompts. The safety tradeoff is that this
-must be paired with `sandbox_mode = "workspace-write"`, scoped
-`default_permissions`, external secret hygiene, and preview-only
-provider-config application. Existing user-owned approval policies are never
-overwritten by genesis/adapt/provider doctor flows. Add custom secret deny
-tables only after verifying the active Codex schema accepts those permission
-surfaces.
+Supervibe-managed noninteractive loop defaults use `approval_policy = "never"`
+so local worker and hook loops do not stall on repeated prompts. This is not
+full machine access: it must stay paired with `sandbox_mode = "workspace-write"`,
+scoped `default_permissions`, external secret hygiene, and provider-home-only
+config application. Existing user-owned approval policies are never overwritten
+by genesis/adapt/provider doctor flows. Add custom secret deny tables only after
+verifying the active Codex schema accepts those permission surfaces.
 
 Use `default_permissions` for reusable permission profiles. Built-in profile
 names are `:read-only`, `:workspace`, and `:danger-no-sandbox`; custom names

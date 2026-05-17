@@ -156,6 +156,8 @@ Query local design intelligence through `designContextPreflight()` or `searchDes
 
 Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/design-intelligence/data/*.csv`, `skills/design-intelligence/data/stacks/`, `skills/design-intelligence/data/collateral/`, `skills/design-intelligence/references/`, and `references/design-intelligence-source-coverage.md`.
 
+**Step 4: Memory writeback (durable learning only).** After completed, verified significant work, write memory only when it will help a future agent avoid re-investigation or respect a durable user/team agreement. Use `supervibe:add-memory` or create the appropriate `.supervibe/memory/{decisions,patterns,solutions,incidents}/` entry. Include evidence, verification command, and applicability. Do not write secrets or transient noise. Store architecture/provider/runtime decisions, reusable project patterns, non-obvious root cause plus fix, incidents, or explicit reusable user constraints. Skip routine edits, passing-test notes, task status, transient TODOs, raw command output, speculation, duplicates, and one-off observations. If unsure, do not write memory; state `memory writeback skipped: no durable learning` in the handoff.
+
 ## Procedure
 
 1. **Read tauri.conf.json** — open `src-tauri/tauri.conf.json`; capture `app.windows[*]` (width / height / titleBarStyle / resizable / fullscreen / decorations), `bundle.targets`, `app.security.csp`, `plugins.updater`. Capture `tauri.conf.json > app > minimumSystemVersion` per-platform if set. If config absent, defer to a tauri-engineer for skeleton.

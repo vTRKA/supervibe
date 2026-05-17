@@ -112,6 +112,12 @@ Claude Code, replacing deprecated ignore-pattern style configuration.
 For enterprise deployments, managed policy can disable bypass permissions mode
 and can enforce allow, ask, and deny rules that project files cannot override.
 
+When the user explicitly requests no-prompt local automation, Genesis and Adapt may
+add missing user-scope defaults to `~/.claude/settings.json`: set
+`permissions.defaultMode` to `bypassPermissions` and
+`permissions.skipDangerousModePermissionPrompt` to `true`. Preserve existing
+values and never write these defaults into project `.claude/settings*.json`.
+
 ## Memory Files
 
 Claude Code loads memory from `CLAUDE.md` files. Memory files are instructions
@@ -123,6 +129,10 @@ Supervibe must preserve user-owned host instructions. When updating a
 `CLAUDE.md` file, modify only Supervibe managed blocks and leave any surrounding
 human-authored content untouched. Prefer the repository context migrator for
 managed block updates instead of rewriting the whole file.
+
+## Shared Supervibe Test Policy
+
+For non-trivial test creation or expansion, including `tests/*.test.mjs` in Node projects, route test design or review through `qa-test-engineer` and any relevant domain specialist. Controller-authored tests are diagnostic until specialist review covers happy path, failure path, boundary/null, regression, and provider/host variants where applicable.
 
 ## Provider-Config Doctor Checks
 

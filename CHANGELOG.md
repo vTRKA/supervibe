@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.1.46] - 2026-05-18
+## [2.1.47] - 2026-05-18
 
 ### Added
 
@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Validation
 
-- Rechecked targeted skill baseline tests, skill content/operational validators, agent skill coverage, and agent section order before the 2.1.46 package bump.
+- Rechecked targeted skill baseline tests, skill content/operational validators, agent skill coverage, and agent section order before the 2.1.47 package bump.
 
 ## [2.1.45] - 2026-05-17
 

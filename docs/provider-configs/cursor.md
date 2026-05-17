@@ -66,9 +66,13 @@ Streamable HTTP transports. `mcp.json` values can use variables in `command`,
 ## CLI Behavior
 
 The Cursor CLI command is `cursor-agent`. Interactive mode asks before terminal
-commands. Non-interactive print mode uses `-p` or `--print`, can be combined
-with `--output-format`, and has full write access. Treat print mode as
-automation with elevated risk.
+commands unless global CLI permissions pre-approve the action in
+`~/.cursor/cli-config.json`. Genesis and Adapt may add missing user-scope
+`permissions.allow` defaults for trusted local automation: `Shell(*)`,
+`Read(**)`, and `Write(**)`. Non-interactive print mode uses `-p` or
+`--print`, can be combined with `--output-format`, and still requires
+`--force` for file writes. Treat print mode as automation with repository write
+privileges.
 
 Supported output formats are `text`, `json`, and `stream-json`. `json` emits one
 final result object on success, while `stream-json` emits NDJSON events and is
@@ -109,6 +113,10 @@ does not change that running agent's privacy setting.
 For Cursor generally, requests route through Cursor's backend, and codebase
 indexing uploads chunks to compute embeddings while plaintext code ceases to
 exist after the request.
+
+## Shared Supervibe Test Policy
+
+For non-trivial test creation or expansion, including `tests/*.test.mjs` in Node projects, route test design or review through `qa-test-engineer` and any relevant domain specialist. Controller-authored tests are diagnostic until specialist review covers happy path, failure path, boundary/null, regression, and provider/host variants where applicable.
 
 ## Provider-Config Doctor Checks
 

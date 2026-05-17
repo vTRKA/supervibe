@@ -180,6 +180,8 @@ Every direction that relies on advanced motion, generated media, charts, maps, c
 
 When recommending a non-default mode, require a Prototype Capability Plan and name candidate library/API families in this order: Motion, GSAP, Lottie, Rive, Three.js, PixiJS, D3, Observable Plot, ECharts, MapLibre, Theatre.js, Rough.js, Matter.js, Monaco, CodeMirror. The recommendation is directional; prototype-builder still owns feasibility, bundle, accessibility, reduced-motion, and verification evidence.
 
+**Step 4: Memory writeback (durable learning only).** After completed, verified significant work, write memory only when it will help a future agent avoid re-investigation or respect a durable user/team agreement. Use `supervibe:add-memory` or create the appropriate `.supervibe/memory/{decisions,patterns,solutions,incidents}/` entry. Include evidence, verification command, and applicability. Do not write secrets or transient noise. Store architecture/provider/runtime decisions, reusable project patterns, non-obvious root cause plus fix, incidents, or explicit reusable user constraints. Skip routine edits, passing-test notes, task status, transient TODOs, raw command output, speculation, duplicates, and one-off observations. If unsure, do not write memory; state `memory writeback skipped: no durable learning` in the handoff.
+
 ## Procedure
 
 Detailed reusable patterns live in `references/agents/design-creative-direction.md`. Load that one-hop reference only when this task needs the deeper matrix, template, or examples.

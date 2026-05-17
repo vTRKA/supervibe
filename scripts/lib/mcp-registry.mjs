@@ -76,6 +76,8 @@ const KNOWN_MCP_TOOLS = {
 const ADAPTER_TOOL_OVERLAYS = {
   codex: {
     context7: ['mcp__mcp_server_context7__resolve_library_id', 'mcp__mcp_server_context7__query_docs'],
+    playwright: ['mcp__playwright__browser_navigate', 'mcp__playwright__browser_take_screenshot', 'mcp__playwright__browser_snapshot'],
+    browser: ['mcp__playwright__browser_navigate', 'mcp__playwright__browser_take_screenshot', 'mcp__playwright__browser_snapshot'],
     figma: ['mcp__mcp_server_figma__get_figma_data', 'mcp__mcp_server_figma__download_figma_images'],
     firecrawl: ['mcp__mcp_server_firecrawl__firecrawl_scrape', 'mcp__mcp_server_firecrawl__firecrawl_crawl', 'mcp__mcp_server_firecrawl__firecrawl_search'],
     openaiDeveloperDocs: OPENAI_DEVELOPER_DOCS_TOOLS,
@@ -172,7 +174,10 @@ export async function discoverMcps({ configPath = null, host = null, runtimeTool
     })).filter((entry) => entry.availableTools.length > 0)
     : [];
   const mcps = mergeMcpEntries(runtimeEntries, configEntries);
-  const desiredCapabilities = buildDesiredCapabilities(configuredMcps.map((entry) => entry.name));
+  const desiredCapabilities = buildDesiredCapabilities(unique([
+    ...configuredMcps.map((entry) => entry.name),
+    ...runtimeEntries.map((entry) => entry.name),
+  ]));
   const registry = buildRegistry({
     mcps,
     configuredMcps,
@@ -382,10 +387,10 @@ function discoverRuntimeEntries(input, { host, now }) {
   for (const tool of tools) {
     const definition = identifyDefinitionForTool(tool);
     if (!definition) continue;
-    if (!byName.has(definition.name)) byName.set(definition.name, []);
-    byName.get(definition.name).push(tool);
+    if (!byName.has(definition.name)) byName.set(definition.name, { definition, tools: [] });
+    byName.get(definition.name).tools.push(tool);
   }
-  return [...byName.entries()].map(([name, names]) => buildMcpEntry({ definition: MCP_DEFINITIONS[name], rawName: name, def: {}, tools: unique(names).sort(), host, source: 'runtime-discovery', now, available: true }));
+  return [...byName.values()].map(({ definition, tools: names }) => buildMcpEntry({ definition, rawName: definition.name, def: {}, tools: unique(names).sort(), host, source: 'runtime-discovery', now, available: true }));
 }
 
 function buildMcpEntry({ definition, rawName = null, def = {}, tools = [], host = 'unknown', source = 'provider-config', now = null, configSource = null, available = true }) {
@@ -463,8 +468,8 @@ function buildCapabilityStates({ desiredCapabilities = [], availableMcps = [], c
   const hostId = normalizeHost(host);
   return (desiredCapabilities || []).map((desired) => {
     const capabilityId = desired.capabilityId;
-    const available = (availableMcps || []).find((mcp) => mcp.capabilityId === capabilityId) || null;
-    const configured = (configuredMcps || []).filter((entry) => entry.capabilityId === capabilityId);
+    const available = (availableMcps || []).find((mcp) => mcpMatchesCapability(mcp, capabilityId)) || null;
+    const configured = (configuredMcps || []).filter((entry) => entryMatchesCapability(entry, capabilityId));
     const bindings = available?.adapterBindings || [available?.adapterBinding].filter(Boolean);
     const runtimeBinding = bindings.find((binding) => normalizeHost(binding.host) === hostId && binding.source === "runtime-discovery") || null;
     const sameHostBinding = bindings.find((binding) => normalizeHost(binding.host) === hostId) || null;
@@ -526,7 +531,10 @@ function limitationsForCapabilityState(state, { hasRuntimeDiscovery = false, con
 }
 
 function buildDesiredCapabilities(configuredNames = []) {
-  const configuredCapabilityIds = unique(configuredNames).map(getDefinition).filter(Boolean).map((definition) => definition.capabilityId);
+  const configuredCapabilityIds = unique(configuredNames)
+    .map((name) => getDefinition(name) || definitionFromConfiguredEntry({ name }))
+    .filter(Boolean)
+    .map((definition) => definition.capabilityId);
   const ids = unique([...DESIRED_CAPABILITY_ORDER, ...configuredCapabilityIds]);
   return ids.map((capabilityId) => {
     const definition = Object.values(MCP_DEFINITIONS).find((item) => item.capabilityId === capabilityId);
@@ -535,8 +543,9 @@ function buildDesiredCapabilities(configuredNames = []) {
 }
 
 function buildMissingCapabilities(desiredCapabilities, mcps, hasRuntimeDiscovery) {
-  const available = new Set((mcps || []).map((mcp) => mcp.capabilityId));
-  return (desiredCapabilities || []).filter((desired) => !available.has(desired.capabilityId)).map((desired) => ({ capabilityId: desired.capabilityId, desiredBy: desired.desiredBy || [], preferredMcp: desired.preferredMcp || desired.capabilityId, reason: hasRuntimeDiscovery ? 'not-observed-in-runtime-discovery' : 'not-configured-or-not-discovered', fallback: desired.fallback || null }));
+  return (desiredCapabilities || [])
+    .filter((desired) => !(mcps || []).some((mcp) => mcpMatchesCapability(mcp, desired.capabilityId)))
+    .map((desired) => ({ capabilityId: desired.capabilityId, desiredBy: desired.desiredBy || [], preferredMcp: desired.preferredMcp || desired.capabilityId, reason: hasRuntimeDiscovery ? 'not-observed-in-runtime-discovery' : 'not-configured-or-not-discovered', fallback: desired.fallback || null }));
 }
 
 function buildAvailableToolsByHost(mcps) {
@@ -545,8 +554,12 @@ function buildAvailableToolsByHost(mcps) {
     for (const binding of mcp.adapterBindings || [mcp.adapterBinding].filter(Boolean)) {
       const host = normalizeHost(binding.host);
       grouped[host] ||= {};
-      grouped[host][mcp.capabilityId] = [...(binding.availableTools || [])];
-      grouped[host][mcp.name] = [...(binding.availableTools || [])];
+      const tools = [...(binding.availableTools || [])];
+      grouped[host][mcp.capabilityId] = tools;
+      grouped[host][mcp.name] = tools;
+      for (const capability of mcp.capabilities || []) {
+        grouped[host][capability] = unique([...(grouped[host][capability] || []), ...tools]);
+      }
     }
   }
   return grouped;
@@ -560,6 +573,9 @@ function buildToolNamespacesByHost(mcps) {
       grouped[host] ||= {};
       grouped[host][mcp.capabilityId] = binding.toolNamespace || null;
       grouped[host][mcp.name] = binding.toolNamespace || null;
+      for (const capability of mcp.capabilities || []) {
+        grouped[host][capability] ||= binding.toolNamespace || null;
+      }
     }
   }
   return grouped;
@@ -603,7 +619,9 @@ function sanitizeToolNames(tools = []) {
 }
 
 function identifyDefinitionForTool(tool) {
-  return Object.values(MCP_DEFINITIONS).find((definition) => definition.toolPatterns.some((pattern) => pattern.test(tool))) || null;
+  return Object.values(MCP_DEFINITIONS).find((definition) => definition.toolPatterns.some((pattern) => pattern.test(tool)))
+    || definitionFromRuntimeTool(tool)
+    || null;
 }
 
 function getDefinition(name) {
@@ -625,6 +643,17 @@ function inferToolNamespace(toolName = '') {
   return match ? match[1] : null;
 }
 
+function inferRuntimeMcpName(toolName = '') {
+  const match = String(toolName || '').match(/^mcp__([A-Za-z0-9_-]+)__[A-Za-z0-9_-]+$/);
+  return match ? match[1] : '';
+}
+
+function definitionFromRuntimeTool(toolName = '') {
+  const rawName = inferRuntimeMcpName(toolName);
+  if (!rawName) return null;
+  return getDefinition(rawName) || definitionFromConfiguredEntry({ name: rawName, def: { runtime: true } });
+}
+
 function definitionFromConfiguredEntry(entry = {}) {
   const name = normalizeRequestedName(entry.name || 'tool') || 'tool';
   return { name, capabilityId: name, capabilities: inferCapabilities(name), riskClass: inferRiskClass(name, entry.def || {}), desiredBy: ['configured-provider'], fallback: null, aliases: [name], toolPatterns: [] };
@@ -642,11 +671,28 @@ function normalizeRequestedName(name = '') {
   return lower;
 }
 
+function mcpMatchesCapability(mcp = {}, capabilityId = '') {
+  const normalized = normalizeRequestedName(capabilityId);
+  return [mcp.name, mcp.capabilityId, ...(mcp.capabilities || [])]
+    .map(normalizeRequestedName)
+    .includes(normalized);
+}
+
+function entryMatchesCapability(entry = {}, capabilityId = '') {
+  const normalized = normalizeRequestedName(capabilityId);
+  const definition = getDefinition(entry.name) || getDefinition(entry.rawName) || definitionFromConfiguredEntry(entry);
+  return [entry.name, entry.rawName, entry.capabilityId, definition?.name, definition?.capabilityId, ...(definition?.capabilities || [])]
+    .map(normalizeRequestedName)
+    .includes(normalized);
+}
+
 function matchesMcpOrCapability(mcp, name) {
   const definition = getDefinition(name);
-  if (definition) return mcp.name === definition.name || mcp.capabilityId === definition.capabilityId;
+  if (definition) return mcpMatchesCapability(mcp, definition.capabilityId) || normalizeRequestedName(mcp.name) === normalizeRequestedName(definition.name);
   const normalized = normalizeRequestedName(name);
-  return normalizeRequestedName(mcp.name) === normalized || normalizeRequestedName(mcp.capabilityId) === normalized;
+  return [mcp.name, mcp.capabilityId, ...(mcp.capabilities || [])]
+    .map(normalizeRequestedName)
+    .includes(normalized);
 }
 
 function mergeMcpEntries(...groups) {
@@ -772,4 +818,3 @@ function inferRiskClass(name = '', def = {}) {
   const text = String(name || '') + ' ' + String(def.command || '') + ' ' + (def.args || []).join(' ');
   return /write|deploy|publish|browser|playwright|tauri/i.test(text) ? 'interactive' : 'read';
 }
-

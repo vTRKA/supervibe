@@ -25,6 +25,7 @@ export function buildIndexHealthSnapshot({
   manifest = {},
   coverageThreshold = DEFAULT_COVERAGE_THRESHOLD,
   generatedAt = 'deterministic-local',
+  semanticEmbeddingsExpected = manifest.semanticEmbeddingsExpected !== false,
 } = {}) {
   const indexedPaths = normalizeIndexedPaths(manifest.indexedPaths || []);
   const generatedIndexedFiles = manifest.generatedIndexedFiles
@@ -45,6 +46,10 @@ export function buildIndexHealthSnapshot({
   const eligibleProjectEdges = normalizeEligibleProjectEdges(manifest.eligibleProjectEdges || graphHealth.eligibleProjectEdges || {});
   const graphVersionStaleRows = normalizeIndexedPaths(manifest.graphVersionStaleRows || graphHealth.graphVersionStaleRows || []);
   const embeddingHealth = normalizeEmbeddingHealth(manifest.embeddingHealth || {});
+  embeddingHealth.expected = semanticEmbeddingsExpected !== false;
+  if (!embeddingHealth.expected && embeddingHealth.totalChunks > 0 && embeddingHealth.embeddedChunks === 0) {
+    embeddingHealth.status = 'semantic-disabled';
+  }
   const chunkEntityHealth = normalizeChunkEntityHealth(manifest.chunkEntityHealth || {});
   const semanticAnchorHealth = normalizeSemanticAnchorHealth(manifest.semanticAnchorHealth || {});
   const retrievalLanes = normalizeRetrievalLanes(manifest.retrievalLanes || []);
@@ -110,14 +115,14 @@ export function buildIndexHealthSnapshot({
     });
   }
 
-  if (embeddingHealth.totalChunks > 0 && embeddingHealth.embeddedChunks === 0) {
+  if (embeddingHealth.expected && embeddingHealth.totalChunks > 0 && embeddingHealth.embeddedChunks === 0) {
     issues.push({
       code: 'semantic-embeddings-unavailable',
       severity: 'warning',
       message: 'semantic embeddings are missing; search falls back to lexical/BM25',
       details: embeddingHealth,
     });
-  } else if (embeddingHealth.totalChunks > 0 && embeddingHealth.coverage < 0.9) {
+  } else if (embeddingHealth.expected && embeddingHealth.totalChunks > 0 && embeddingHealth.coverage < 0.9) {
     issues.push({
       code: 'semantic-embeddings-partial',
       severity: 'warning',
@@ -175,6 +180,7 @@ export function buildIndexHealthSnapshot({
     chunkEntityHealth,
     semanticAnchorHealth,
     retrievalLanes,
+    semanticEmbeddingsExpected: embeddingHealth.expected,
     issues,
   };
 }
@@ -183,6 +189,7 @@ export async function collectIndexHealthFromStore(store, {
   rootDir = process.cwd(),
   coverageThreshold = DEFAULT_COVERAGE_THRESHOLD,
   generatedAt = new Date().toISOString(),
+  semanticEmbeddingsExpected = true,
 } = {}) {
   const stats = store.stats();
   const grammarHealth = store.getGrammarHealth();
@@ -245,6 +252,7 @@ export async function collectIndexHealthFromStore(store, {
       chunkEntityHealth,
       semanticAnchorHealth,
       retrievalLanes,
+      semanticEmbeddingsExpected,
       crossResolvedEdges: graphHealth.crossResolvedEdges || {
         resolved: stats.resolvedEdges,
         total: stats.totalEdges,
@@ -252,6 +260,7 @@ export async function collectIndexHealthFromStore(store, {
     },
     coverageThreshold,
     generatedAt,
+    semanticEmbeddingsExpected,
   });
 }
 
@@ -438,7 +447,7 @@ export function evaluateIndexHealthGate(health = {}, {
       actual: health.chunkEntityHealth.status,
     });
   }
-  if (health.embeddingHealth?.totalChunks > 0 && health.embeddingHealth?.embeddedChunks === 0) {
+  if (health.embeddingHealth?.expected !== false && health.embeddingHealth?.totalChunks > 0 && health.embeddingHealth?.embeddedChunks === 0) {
     warnings.push({
       code: 'semantic-embeddings-unavailable',
       message: 'semantic embeddings are unavailable; lexical retrieval remains usable',

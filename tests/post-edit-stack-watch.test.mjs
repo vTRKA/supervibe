@@ -201,6 +201,27 @@ test('hook: scans mtime changes after Bash without explicit paths', async () => 
   assert.doesNotMatch(allText, /before/);
 });
 
+test('hook: Bash fallback reports deferred discovery for new source files without explicit paths', async () => {
+  const generatedFile = join(sandbox, 'src', 'generated-by-shell.ts');
+  await writeFile(generatedFile, "export const generatedByShell = 'new';\n");
+
+  const out = runHookWithInput({
+    tool_name: 'Bash',
+    tool_input: { command: 'npm run generate' },
+  }, { SUPERVIBE_FILE_PATHS: '', SUPERVIBE_HOOK_SILENT: '0' });
+
+  assert.match(out, /Code RAG fallback scan deferred discovery\/prune/);
+  assert.match(out, /build-code-index\.mjs --root \. --resume --source-only/);
+
+  const store = new CodeStore(sandbox, { useEmbeddings: false });
+  await store.init();
+  try {
+    const row = store.db.prepare('SELECT path FROM code_files WHERE path = ?').get('src/generated-by-shell.ts');
+    assert.equal(row, undefined);
+  } finally {
+    store.close();
+  }
+});
 test('hook: skips Bash fallback for read-only shell commands without explicit paths', async () => {
   const readOnlyFile = join(sandbox, 'src', 'read-only-command.ts');
   await writeFile(readOnlyFile, `export const readOnlyCommand = 'before';\n`);

@@ -253,11 +253,7 @@ function refreshCodexPluginHooksConfig() {
   } catch (error) {
     if (error.code !== 'ENOENT') throw error;
   }
-  text = upsertTomlSectionSetting(text, '[features]', 'plugins', 'plugins = true');
-  text = upsertTomlSectionSetting(text, '[features]', 'hooks', 'hooks = true');
-  text = upsertTomlSectionSetting(text, '[features]', 'codex_hooks', 'codex_hooks = true');
-  text = upsertTomlSectionSetting(text, '[features]', 'plugin_hooks', 'plugin_hooks = true');
-  text = upsertTomlSectionSetting(text, '[plugins."supervibe@supervibe-marketplace"]', 'enabled', 'enabled = true');
+  text = normalizeCodexPluginHooksConfigText(text);
   writeFileSync(configPath, `${text.trimEnd()}\n`, 'utf8');
   console.log('[supervibe:upgrade] refreshed Codex plugin hook config');
 }
@@ -265,6 +261,54 @@ function refreshCodexPluginHooksConfig() {
 function refreshGeminiSessionHooksConfig() {
   const ok = run('node', ['scripts/register-gemini-hooks.mjs', '--plugin-root', PLUGIN_ROOT, '--if-registered']);
   if (!ok) fail('Gemini session hook config refresh failed - run node scripts/register-gemini-hooks.mjs for details.');
+}
+
+function normalizeCodexPluginHooksConfigText(text, { pluginKey = 'supervibe@supervibe-marketplace' } = {}) {
+  const pluginHeader = `[plugins."${pluginKey}"]`;
+  let output = String(text || '').replace(/^\uFEFF/, '');
+  output = splitInlineTomlSectionSetting(output, pluginHeader, 'enabled');
+  output = dedupeTomlSection(output, pluginHeader);
+  output = upsertTomlSectionSetting(output, '[features]', 'plugins', 'plugins = true');
+  output = upsertTomlSectionSetting(output, '[features]', 'hooks', 'hooks = true');
+  output = upsertTomlSectionSetting(output, '[features]', 'codex_hooks', 'codex_hooks = true');
+  output = upsertTomlSectionSetting(output, '[features]', 'plugin_hooks', 'plugin_hooks = true');
+  output = upsertTomlSectionSetting(output, pluginHeader, 'enabled', 'enabled = true');
+  output = splitInlineTomlSectionSetting(output, pluginHeader, 'enabled');
+  return dedupeTomlSection(output, pluginHeader);
+}
+
+function splitInlineTomlSectionSetting(text, sectionHeader, settingKey) {
+  const re = new RegExp(`(^|\\n)(${escapeRegExp(sectionHeader)})[ \\t]*(${escapeRegExp(settingKey)}\\s*=)`, 'g');
+  return String(text || '').replace(re, `$1$2\n$3`);
+}
+
+function dedupeTomlSection(text, sectionHeader) {
+  const lines = String(text || '').replace(/\r\n?/g, '\n').split('\n');
+  const output = [];
+  let seen = false;
+  let skipping = false;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed === sectionHeader) {
+      if (seen) {
+        skipping = true;
+        continue;
+      }
+      seen = true;
+      skipping = false;
+      output.push(line);
+      continue;
+    }
+    if (skipping) {
+      if (/^\s*\[/.test(line)) {
+        skipping = false;
+        output.push(line);
+      }
+      continue;
+    }
+    output.push(line);
+  }
+  return output.join('\n');
 }
 
 function upsertTomlSectionSetting(text, sectionHeader, settingKey, settingLine) {
@@ -436,4 +480,3 @@ if (before === after) {
   console.log(`[supervibe:upgrade] Terminal aliases are refreshed for this OS: supervibe-update and supervibe-adapt.`);
 }
 console.log('=================================================');
-

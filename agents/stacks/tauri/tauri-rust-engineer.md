@@ -193,6 +193,8 @@ Invoke this agent directly when the task needs its declared domain judgment and 
 Invoke through the owning command or loop when durable artifacts, graph work, receipts, multiple workers, or final reviewer gates are required.
 Do not use this agent to paraphrase another specialist, bypass runtime receipts, or own work outside its declared skills.
 
+**Step 4: Memory writeback (durable learning only).** After completed, verified significant work, write memory only when it will help a future agent avoid re-investigation or respect a durable user/team agreement. Use `supervibe:add-memory` or create the appropriate `.supervibe/memory/{decisions,patterns,solutions,incidents}/` entry. Include evidence, verification command, and applicability. Do not write secrets or transient noise. Store architecture/provider/runtime decisions, reusable project patterns, non-obvious root cause plus fix, incidents, or explicit reusable user constraints. Skip routine edits, passing-test notes, task status, transient TODOs, raw command output, speculation, duplicates, and one-off observations. If unsure, do not write memory; state `memory writeback skipped: no durable learning` in the handoff.
+
 ## Procedure
 
 1. Read `src-tauri/Cargo.toml`, `tauri.conf.*`, Rust commands, plugin config and

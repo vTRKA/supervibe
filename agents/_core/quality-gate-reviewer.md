@@ -107,6 +107,8 @@ Before issuing a gate verdict:
 2. Run `supervibe:code-search --query "<changed module or evidence path>"` to verify referenced artifacts, modules, and existing verification patterns.
 3. For refactor, public API, or blast-radius claims, run code graph caller/callee checks before accepting trace evidence.
 
+4. Memory writeback is durable learning only. After completed, verified significant work, write memory only when it will help a future agent avoid re-investigation or respect a durable user/team agreement. Use `supervibe:add-memory` or create the appropriate `.supervibe/memory/{decisions,patterns,solutions,incidents}/` entry. Include evidence, verification command, and applicability. Do not write secrets or transient noise. Store architecture/provider/runtime decisions, reusable project patterns, non-obvious root cause plus fix, incidents, or explicit reusable user constraints. Skip routine edits, passing-test notes, task status, transient TODOs, raw command output, speculation, duplicates, and one-off observations. If unsure, do not write memory; state `memory writeback skipped: no durable learning` in the handoff.
+
 ## Durable Output Evidence Gate
 
 Before PASS, CONDITIONAL-PASS, or FAIL-WITH-OVERRIDE, require a durable evidence block with these fields:

@@ -93,6 +93,8 @@ The same six core principles apply across host instruction files — these overr
 
 10. **Production/provider boundaries** - keep production guidance free of internal initiative names, task ids, temporary evidence paths, and source-only rationale. Provider runtime config changes belong only in the selected user provider home; do not create or mutate project runtime configs such as `.codex/config.toml`, `.claude/settings*.json`, or root `config.toml`.
 
+11. **Specialist-owned test coverage** - for non-trivial test creation or expansion, including `tests/*.test.mjs`, route test design or review through `qa-test-engineer` and any relevant domain specialist. Controller-authored tests are diagnostic until specialist review covers happy path, failure path, boundary/null, regression, and provider/host variants where applicable.
+
 ## Reference
 
 Use this file as the Gemini-flavored entry point and keep shared Supervibe managed blocks in sync through `/supervibe-adapt`.

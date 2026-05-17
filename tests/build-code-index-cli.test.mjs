@@ -353,6 +353,27 @@ test("build-code-index --list-missing --embeddings-only reports embedding repair
   });
 });
 
+test("build-code-index graph repair ignores retrieval-only markdown rows", async () => {
+  await withFixture(async (rootDir) => {
+    await writeFile(join(rootDir, "README.md"), "# Fixture\n\nRetrieval-only project context.\n", "utf8");
+
+    execFileSync(process.execPath, [scriptPath, "--root", rootDir, "--source-only", "--heartbeat-seconds", "0"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      maxBuffer: 1024 * 1024 * 4,
+    });
+
+    const out = execFileSync(process.execPath, [scriptPath, "--root", rootDir, "--list-missing", "--graph", "--no-embeddings", "--heartbeat-seconds", "0"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      maxBuffer: 1024 * 1024 * 4,
+    });
+
+    assert.ok(out.includes("src/main.ts (graph-version-stale)"));
+    assert.equal(out.includes("README.md (graph-version-stale)"), false);
+  });
+});
+
 test("build-code-index --embeddings-only writes embeddings without rebuilding graph rows", async () => {
   await withFixture(async (rootDir) => {
     await writeFile(join(rootDir, "src", "graph.js"), [

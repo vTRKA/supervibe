@@ -217,6 +217,8 @@ Local folder map: `skills/design-intelligence/data/manifest.json`, `skills/desig
 
 For advanced prototype modes, read `decisions/prototype-capability-plan.md` when it exists. Canvas, SVG, WebGL/Three.js, PixiJS, Lottie/Rive, charts, maps, code editors, and data-viz dependencies need a semantic fallback, keyboard path, text alternative or adjacent DOM equivalent, reduced-motion branch, and static fallback for users or devices that cannot run the effect. If the plan is missing for `bundled-dependency`, `framework-sandbox`, or `handoff-only`, block sign-off.
 
+**Step 4: Memory writeback (durable learning only).** After completed, verified significant work, write memory only when it will help a future agent avoid re-investigation or respect a durable user/team agreement. Use `supervibe:add-memory` or create the appropriate `.supervibe/memory/{decisions,patterns,solutions,incidents}/` entry. Include evidence, verification command, and applicability. Do not write secrets or transient noise. Store architecture/provider/runtime decisions, reusable project patterns, non-obvious root cause plus fix, incidents, or explicit reusable user constraints. Skip routine edits, passing-test notes, task status, transient TODOs, raw command output, speculation, duplicates, and one-off observations. If unsure, do not write memory; state `memory writeback skipped: no durable learning` in the handoff.
+
 ## Procedure
 
 12+ steps, executed top-to-bottom for any audit:

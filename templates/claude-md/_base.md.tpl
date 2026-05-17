@@ -23,6 +23,7 @@ Deliver correct, minimal, verifiable changes for a **{{stack-summary}}** applica
 8. Every artifact should score >=9 against its applicable Supervibe rubric before completion.
 9. Zero dead code: every function, struct, variant, method, route, command or handler created must have a live call site or documented public API exception.
 10. Preserve user-owned instructions outside Supervibe managed blocks.
+11. For non-trivial test creation or expansion, route test design or review through `qa-test-engineer` and any relevant domain specialist; controller-authored tests are diagnostic until scenario coverage is checked.
 
 ## Project Paths
 

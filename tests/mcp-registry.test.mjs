@@ -85,6 +85,7 @@ test('getMcpTools: returns adapter-specific Codex namespace overlays', () => {
   const tools = getMcpTools('context7', { host: 'codex' });
   assert.ok(tools.includes('mcp__mcp_server_context7__resolve_library_id'));
   assert.ok(!tools.includes('mcp__mcp-server-context7__resolve-library-id'));
+  assert.ok(getMcpTools('browser', { host: 'codex' }).includes('mcp__playwright__browser_snapshot'));
 
   const bindings = getMcpToolBindings('figma');
   assert.ok(bindings.adapterTools.codex.includes('mcp__mcp_server_figma__get_figma_data'));
@@ -130,6 +131,7 @@ test('discoverMcps: binds Codex runtime tool namespaces by host', async () => {
     runtimeTools: [
       'mcp__mcp_server_context7__query_docs',
       'mcp__mcp_server_figma__get_figma_data',
+      'mcp__playwright__browser_snapshot',
     ],
     allowConfigToolFallback: false,
   });
@@ -141,6 +143,13 @@ test('discoverMcps: binds Codex runtime tool namespaces by host', async () => {
   assert.ok(context7.adapterBinding.adapterTools.includes('mcp__mcp_server_context7__query_docs'));
   assert.ok(registry.availableToolsByHost.codex.context7.includes('mcp__mcp_server_context7__query_docs'));
   assert.strictEqual(registry.toolNamespacesByHost.codex.context7, 'mcp__mcp_server_context7__');
+
+  const browser = registry.mcps.find(mcp => mcp.capabilityId === 'browser');
+  assert.ok(browser);
+  assert.strictEqual(browser.name, 'playwright');
+  assert.strictEqual(browser.toolNamespace, 'mcp__playwright__');
+  assert.ok(registry.availableToolsByHost.codex.browser.includes('mcp__playwright__browser_snapshot'));
+  assert.strictEqual(registry.capabilityStates.find(item => item.capabilityId === 'browser').state, 'runtime-available');
 });
 
 test('discoverMcps: persists full Tauri desktop testing catalog', async () => {
@@ -160,6 +169,25 @@ test('discoverMcps: persists full Tauri desktop testing catalog', async () => {
   assert.ok(registry.capabilities.desktop.some(mcp => mcp.name === 'tauri'));
 });
 
+test('discoverMcps: preserves unknown runtime MCP namespaces as generic capabilities', async () => {
+  await discoverMcps({
+    host: 'codex',
+    runtimeTools: ['mcp__team_private_browser__capture_state'],
+    allowConfigToolFallback: false,
+  });
+
+  const registry = await getRegistry();
+  const generic = registry.mcps.find(mcp => mcp.name === 'team-private-browser');
+  assert.ok(generic);
+  assert.strictEqual(generic.capabilityId, 'team-private-browser');
+  assert.strictEqual(generic.toolNamespace, 'mcp__team_private_browser__');
+  assert.ok(generic.availableTools.includes('mcp__team_private_browser__capture_state'));
+  assert.ok(registry.desiredCapabilities.some(item => item.capabilityId === 'team-private-browser'));
+  assert.strictEqual(registry.capabilityStates.find(item => item.capabilityId === 'browser').state, 'runtime-available');
+  assert.ok(registry.availableToolsByHost.codex.browser.includes('mcp__team_private_browser__capture_state'));
+  assert.ok(!registry.missingCapabilities.some(item => item.capabilityId === 'browser'));
+});
+
 test('agents and skills reference only registered Tauri MCP tools', async () => {
   const allowed = new Set(getMcpTools('tauri'));
   const files = [
@@ -176,7 +204,7 @@ test('agents and skills reference only registered Tauri MCP tools', async () => 
   }
 });
 
-test('discoverMcps: no config file → empty registry, no error', async () => {
+test('discoverMcps: no config file -> empty registry, no error', async () => {
   const found = await discoverMcps({ configPath: '/nonexistent/config.json' });
   assert.deepStrictEqual(found, []);
 });

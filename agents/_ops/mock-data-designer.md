@@ -106,6 +106,8 @@ Before producing any artifact or structural recommendation:
 2. Run `supervibe:code-search` or `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "mock data API contract fixtures schema frontend backend"` and read the top relevant hits before writing a new convention.
 3. Use Code Graph for refactor, rename, move, delete, public API, or shared fixture loader changes. Run `node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --callers "<symbol>"` and cite Case A/B/C graph evidence.
 
+4. Memory writeback is durable learning only. After completed, verified significant work, write memory only when it will help a future agent avoid re-investigation or respect a durable user/team agreement. Use `supervibe:add-memory` or create the appropriate `.supervibe/memory/{decisions,patterns,solutions,incidents}/` entry. Include evidence, verification command, and applicability. Do not write secrets or transient noise. Store architecture/provider/runtime decisions, reusable project patterns, non-obvious root cause plus fix, incidents, or explicit reusable user constraints. Skip routine edits, passing-test notes, task status, transient TODOs, raw command output, speculation, duplicates, and one-off observations. If unsure, do not write memory; state `memory writeback skipped: no durable learning` in the handoff.
+
 ## Tool And Skill Use Expectations
 
 - Use `supervibe:mock-data-contract` when the task asks for durable mock

@@ -669,7 +669,7 @@ async function main() {
   }
 
   if (args.integrations) {
-    const mcpReg = await getMcpRegistry({ refresh: false });
+    const mcpReg = await getMcpRegistry({ refresh: false, includeRuntimePalette: true });
     const catalog = createIntegrationCatalog({
       availableCommands: detectAvailableCommands(['git', 'gh', 'jira', 'linear', 'notion']),
       mcpRegistry: mcpReg,
@@ -870,9 +870,14 @@ async function main() {
       if (!graphNotBuilt) {
         console.log(color(`  Language coverage: ${health.length - broken.length}/${Math.max(health.length, s.byLang.length)} active language(s), ${broken.length} broken`, broken.length > 0 ? 'yellow' : 'dim'));
       }
-      const lowCoverage = health.filter(h => !h.configOnly && h.coverage < 0.5 && h.files > 5);
+      const lowCoverageLanguages = new Set(
+        [...(indexGate.failedGates || []), ...(indexGate.warnings || [])]
+          .filter((item) => item.code === 'symbol-coverage' && item.language)
+          .map((item) => item.language),
+      );
+      const lowCoverage = health.filter((h) => lowCoverageLanguages.has(h.language));
       for (const lc of lowCoverage) {
-        console.log(color(`  ⚠  ${lc.language}: only ${(lc.coverage*100).toFixed(0)}% files have extracted symbols`, 'yellow'));
+        console.log(color(`  Graph note: ${lc.language} symbols found in ${(lc.coverage * 100).toFixed(0)}% of indexed files; source RAG remains available for indexed files.`, 'yellow'));
       }
 
       // Grammar runtime status (missing/truncated WASM)
@@ -997,13 +1002,21 @@ async function main() {
 
   // MCP registry
   console.log();
-  const mcpReg = await getMcpRegistry({ refresh: false });
+  const mcpReg = await getMcpRegistry({ refresh: false, includeRuntimePalette: true });
   if (mcpReg.mcps.length === 0) {
-    console.log(color('○ MCPs: none registered (run `node scripts/discover-mcps.mjs` to scan)', 'dim'));
+    console.log(color('\u25cb MCPs: none registered (run `node scripts/discover-mcps.mjs` to scan)', 'dim'));
   } else {
-    console.log(color(`✓ MCPs: ${mcpReg.mcps.length} available`, 'green'));
+    const capabilityStates = new Map((mcpReg.agentHandoff?.capabilities || []).map((item) => [item.capabilityId, item]));
+    const runtimeAvailable = new Set(
+      [...capabilityStates.values()]
+        .filter((item) => item.state === 'runtime-available')
+        .map((item) => item.capabilityId),
+    );
+    console.log(color(`\u2713 MCPs: ${mcpReg.mcps.length} registered, ${runtimeAvailable.size} runtime available`, 'green'));
     for (const m of mcpReg.mcps) {
-      console.log(color(`  ${m.name}  (${m.tools.length} tools)`, 'dim'));
+      const capability = capabilityStates.get(m.capabilityId);
+      const stateNote = capability?.state ? `; ${capability.state}` : '';
+      console.log(color(`  ${m.name}  (${m.tools.length} tools${stateNote})`, 'dim'));
     }
   }
   if (mcpReg.agentHandoff) {

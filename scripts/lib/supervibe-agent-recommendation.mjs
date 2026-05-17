@@ -1231,6 +1231,7 @@ function renderManagedInstruction({ hostSelection, fingerprint, agentProfile, re
     "- Start by checking project memory, semantic code search and code graph before non-trivial changes.",
     "- Explain the current step, what evidence was gathered, and what decision is being made before writing files.",
     "- Ask concise questions only when the answer changes implementation, safety or scope.",
+    "- For non-trivial test creation or expansion, including `tests/*.test.mjs`, route test design or review through `qa-test-engineer` and any relevant domain specialist. Controller-authored tests are diagnostic until specialist review covers happy path, failure path, boundary/null, regression, and provider/host variants where applicable.",
     "- Preserve user-owned instructions outside this managed block and keep host-specific files in the selected adapter folders.",
     `- Follow \`.editorconfig\`, \`.gitattributes\`, and \`${terminalRulePath}\`: write text files as UTF-8 with LF, prefer Node \`fs.writeFile(..., "utf8")\`, and avoid legacy PowerShell redirection for non-ASCII or machine-readable files.`,
     "",

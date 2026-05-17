@@ -187,6 +187,8 @@ Every repo research report must include durable output evidence fields:
 
 When any field is degraded, label the affected finding [PARTIAL] or [UNKNOWN] instead of [EXISTS] or [PATTERN].
 
+**Step 4: Memory writeback (durable learning only).** After completed, verified significant work, write memory only when it will help a future agent avoid re-investigation or respect a durable user/team agreement. Use `supervibe:add-memory` or create the appropriate `.supervibe/memory/{decisions,patterns,solutions,incidents}/` entry. Include evidence, verification command, and applicability. Do not write secrets or transient noise. Store architecture/provider/runtime decisions, reusable project patterns, non-obvious root cause plus fix, incidents, or explicit reusable user constraints. Skip routine edits, passing-test notes, task status, transient TODOs, raw command output, speculation, duplicates, and one-off observations. If unsure, do not write memory; state `memory writeback skipped: no durable learning` in the handoff.
+
 ## Procedure
 
 1. **Search project memory first** — `supervibe:project-memory` query the research goal against `.supervibe/memory/learnings/`. If a recent map (<180d) exists, start there and only update stale sections.

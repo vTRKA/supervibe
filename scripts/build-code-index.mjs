@@ -16,6 +16,7 @@ import { CodeStore, CODE_GRAPH_EXTRACTOR_VERSION, CODE_RAG_CHUNK_METADATA_VERSIO
 import { collectIndexHealthFromStore, evaluateIndexHealthGate, formatIndexHealth } from './lib/supervibe-index-health.mjs';
 import { buildCodeIndexFreshnessStatus, formatCodeIndexFreshnessStatus } from './lib/code-index-health-status.mjs';
 import { discoverSourceFiles } from './lib/supervibe-index-policy.mjs';
+import { isGraphIndexableLanguage } from './lib/code-chunker.mjs';
 import { formatWatcherDiagnostics, readWatcherDiagnostics } from './lib/supervibe-index-watcher.mjs';
 import { recoverCorruptCodeDb } from './lib/supervibe-db-migrations.mjs';
 import { buildRepoMap, formatRepoMapContext, selectRepoMapContext } from './lib/supervibe-repo-map.mjs';
@@ -575,7 +576,7 @@ async function collectMissingOrStaleFiles(store, rootDir, {
           ? 'chunk-entities-missing'
           : 'chunk-entities-partial';
       stale.push({ ...file, reason });
-    } else if (includeGraph && Number(row.graphVersion || 0) !== CODE_GRAPH_EXTRACTOR_VERSION) {
+    } else if (includeGraph && isGraphIndexableLanguage(file.language) && Number(row.graphVersion || 0) !== CODE_GRAPH_EXTRACTOR_VERSION) {
       const knownFailed = knownFailedByPath.get(file.relPath);
       if (knownFailed) {
         knownFailedSkipped.push({ ...file, reason: `known-failed-${knownFailed.phase || 'file'}` });
@@ -983,7 +984,7 @@ async function main() {
 
     const stats = store.stats();
     const health = values.health && !counts.bounded
-      ? await (progress.onProgress({ phase: 'health', current: counts.discovered || counts.indexed + counts.skipped, total: counts.discovered || counts.indexed + counts.skipped }), collectIndexHealthFromStore(store, { rootDir }))
+      ? await (progress.onProgress({ phase: 'health', current: counts.discovered || counts.indexed + counts.skipped, total: counts.discovered || counts.indexed + counts.skipped }), collectIndexHealthFromStore(store, { rootDir, semanticEmbeddingsExpected: !noEmbeddings }))
       : null;
     if (values.health && counts.bounded) {
       console.log('SUPERVIBE_INDEX_HEALTH_SKIPPED: bounded run stopped before full health scan; rerun without --max-seconds or continue with --resume');

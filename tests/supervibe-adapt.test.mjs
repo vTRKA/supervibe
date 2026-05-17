@@ -285,7 +285,7 @@ test("supervibe-adapt apply continues when Codex provider config needs manual pa
     assert.equal(summary.providerConfig.blocked, false);
     assert.equal(summary.providerConfig.manualPatchRequired, true);
     assert.equal(summary.providerConfig.homeConfigAction, "manual-patch-required");
-    assert.match(summary.providerConfig.diffPreview, /approval_policy = "on-request"/);
+    assert.match(summary.providerConfig.diffPreview, /approval_policy = "never"/);
     assert.equal(summary.postApply.providerConfigManualPatchRequired, true);
     assert.equal(summary.postApply.clean, true);
     assert.equal(state.providerConfig.manualPatchRequired, true);

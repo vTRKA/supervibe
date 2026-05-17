@@ -5,6 +5,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
+import { buildGenesisDryRunReport } from "../scripts/lib/supervibe-agent-recommendation.mjs";
+
 const ROOT = process.cwd();
 const GENESIS_SCRIPT = join(ROOT, "scripts", "supervibe-genesis.mjs");
 
@@ -120,7 +122,7 @@ test("supervibe-genesis apply continues when Codex provider config needs manual 
     assert.equal(summary.providerConfig.blocked, false);
     assert.equal(summary.providerConfig.manualPatchRequired, true);
     assert.equal(summary.providerConfig.homeConfigAction, "manual-patch-required");
-    assert.match(summary.providerConfig.diffPreview, /approval_policy = "on-request"/);
+    assert.match(summary.providerConfig.diffPreview, /approval_policy = "never"/);
     assert.equal(state.providerConfig.apply.manualPatchRequired, true);
     assert.equal(existsSync(join(projectRoot, ".codex", "config.toml")), false);
   } finally {
@@ -160,5 +162,25 @@ test("supervibe-genesis blocks duplicate Codex provider config keys before scaff
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
     rmSync(homeRoot, { recursive: true, force: true });
+  }
+});
+
+test("Genesis managed context includes specialist-owned test policy for every host adapter", () => {
+  const projectRoot = mkdtempSync(join(tmpdir(), "supervibe-genesis-host-context-"));
+  try {
+    for (const host of ["claude", "codex", "cursor", "gemini", "opencode"]) {
+      const report = buildGenesisDryRunReport({
+        targetRoot: projectRoot,
+        pluginRoot: ROOT,
+        env: { ...process.env, SUPERVIBE_HOST: host },
+      });
+      const after = report.contextMigration.afterContent;
+      assert.match(after, /qa-test-engineer/);
+      assert.match(after, /tests\/\*\.test\.mjs/);
+      assert.match(after, /provider\/host variants/);
+      assert.equal(report.host.adapterId, host);
+    }
+  } finally {
+    rmSync(projectRoot, { recursive: true, force: true });
   }
 });

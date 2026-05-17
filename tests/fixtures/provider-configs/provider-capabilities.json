@@ -152,7 +152,7 @@
           "setting": "approval_policy + sandbox_mode + default_permissions + mcp scopes/timeouts",
           "tier": "safe-default",
           "previewOnly": true,
-          "preview": "approval_policy=\"on-request\"; sandbox_mode=\"workspace-write\"; default_permissions=\":workspace\"; mcp timeouts",
+          "preview": "approval_policy=\"never\"; sandbox_mode=\"workspace-write\"; default_permissions=\":workspace\"; mcp timeouts",
           "sourceUrl": "https://developers.openai.com/codex/config-reference",
           "checkedAt": "2026-05-13"
         },
@@ -221,7 +221,7 @@
         "configFile": "config.toml",
         "format": "toml",
         "mergeStrategy": "add-missing-only",
-        "defaultApprovalPolicy": "on-request",
+        "defaultApprovalPolicy": "never",
         "writable": true
       }
     },
@@ -292,7 +292,9 @@
             "permissions.ask",
             "permissions.deny",
             "managed settings",
-            "sandbox settings"
+            "sandbox settings",
+            "permissions.defaultMode",
+            "permissions.skipDangerousModePermissionPrompt"
           ]
         },
         "schema": {
@@ -365,7 +367,21 @@
           "url": "https://docs.anthropic.com/en/docs/claude-code/sub-agents",
           "checkedAt": "2026-05-13"
         }
-      ]
+      ],
+      "runtimeConfig": {
+        "scope": "user-provider-home",
+        "providerHomeEnv": [
+          "CLAUDE_HOME"
+        ],
+        "defaultProviderHomeSegments": [
+          ".claude"
+        ],
+        "configFile": "settings.json",
+        "format": "json",
+        "mergeStrategy": "add-missing-only",
+        "defaultPermissionMode": "bypassPermissions",
+        "writable": true
+      }
     },
     {
       "id": "gemini-cli",
@@ -475,7 +491,7 @@
           "setting": "approval modes + sandbox + policy engine + env exclusion",
           "tier": "safe-default",
           "previewOnly": true,
-          "preview": "keep persisted approval conservative and yolo manual-only",
+          "preview": "use auto_edit for trusted local work without repeated edit prompts; keep yolo CLI-only manual",
           "sourceUrl": "https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/settings.md",
           "checkedAt": "2026-05-13"
         },
@@ -511,7 +527,21 @@
           "url": "https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/reference.md",
           "checkedAt": "2026-05-13"
         }
-      ]
+      ],
+      "runtimeConfig": {
+        "scope": "user-provider-home",
+        "providerHomeEnv": [
+          "GEMINI_HOME"
+        ],
+        "defaultProviderHomeSegments": [
+          ".gemini"
+        ],
+        "configFile": "settings.json",
+        "format": "json",
+        "mergeStrategy": "add-missing-only",
+        "defaultApprovalMode": "auto_edit",
+        "writable": true
+      }
     },
     {
       "id": "cursor",
@@ -581,7 +611,8 @@
           "surfaces": [
             "interactive CLI approval",
             "cursor-agent --print full write access",
-            "GitHub read-write for background agents"
+            "GitHub read-write for background agents",
+            "permissions.allow"
           ]
         },
         "schema": {
@@ -655,7 +686,20 @@
           "url": "https://docs.cursor.com/en/background-agents",
           "checkedAt": "2026-05-13"
         }
-      ]
+      ],
+      "runtimeConfig": {
+        "scope": "user-provider-home",
+        "providerHomeEnv": [
+          "CURSOR_HOME"
+        ],
+        "defaultProviderHomeSegments": [
+          ".cursor"
+        ],
+        "configFile": "cli-config.json",
+        "format": "json",
+        "mergeStrategy": "add-missing-only",
+        "writable": true
+      }
     },
     {
       "id": "opencode",
@@ -784,7 +828,7 @@
           "setting": "permission + MCP per-agent enablement + enabled/disabled providers",
           "tier": "safe-default",
           "previewOnly": true,
-          "preview": "deny edits for reviewers and ask for bash/task/web tools",
+          "preview": "set permission=\"allow\" for trusted local no-prompt work; keep per-agent deny rules for reviewers",
           "sourceUrl": "https://opencode.ai/docs/config/",
           "checkedAt": "2026-05-13"
         },
@@ -793,7 +837,7 @@
           "setting": "plugins + plugin hooks + watcher events + server settings",
           "tier": "balanced",
           "previewOnly": true,
-          "preview": "use plugin hooks for status and permission events after approval",
+          "preview": "use plugin hooks for status and permission events after explicit setup",
           "sourceUrl": "https://opencode.ai/docs/plugins/",
           "checkedAt": "2026-05-13"
         },
@@ -820,7 +864,22 @@
           "url": "https://opencode.ai/docs/plugins/",
           "checkedAt": "2026-05-13"
         }
-      ]
+      ],
+      "runtimeConfig": {
+        "scope": "user-provider-home",
+        "configFileEnv": [
+          "OPENCODE_CONFIG"
+        ],
+        "defaultProviderHomeSegments": [
+          ".config",
+          "opencode"
+        ],
+        "configFile": "opencode.json",
+        "format": "json",
+        "mergeStrategy": "add-missing-only",
+        "defaultPermission": "allow",
+        "writable": true
+      }
     }
   ]
 }
