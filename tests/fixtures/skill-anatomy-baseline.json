@@ -1,19 +1,19 @@
 {
   "schemaVersion": 3,
-  "source": "2026-05-13-local-skill-baseline",
+  "source": "2026-05-18-local-skill-baseline",
   "sourceKind": "internalized-local-baseline",
-  "capturedRevision": "2026-05-13-localized",
-  "refreshedAt": "2026-05-13",
+  "capturedRevision": "2026-05-18-localized",
+  "refreshedAt": "2026-05-18",
   "license": "MIT",
   "copyrightBoundary": "Use internalized facts, section names, and local comparison fields only; do not copy third-party prose or host-specific shell hooks into local skills.",
   "policy": "local-baseline-with-validator-enforcement",
   "refreshMetadata": {
-    "capturedRevision": "2026-05-13-localized",
-    "refreshedAt": "2026-05-13",
+    "capturedRevision": "2026-05-18-localized",
+    "refreshedAt": "2026-05-18",
     "refreshCommand": "Update from approved local research notes and Supervibe artifacts only.",
     "stalenessPolicy": "Mark the fixture stale when local validators, skill anatomy, or approved baseline research no longer derive every required anatomy heading."
   },
-  "baselineSkillCount": 22,
+  "baselineSkillCount": 23,
   "baselineAgentPatternCount": 3,
   "requiredSkillAnatomy": [
     "Overview",
@@ -119,9 +119,9 @@
     },
     {
       "baselineSkill": "ci-cd-and-automation",
-      "localEquivalent": "feature-flag-rollout; finishing-a-development-branch; verification",
-      "gap": "Local release skills cover gates and flags but CI/CD automation needs lifecycle mapping.",
-      "action": "map",
+      "localEquivalent": "ci-cd-and-automation; feature-flag-rollout; finishing-a-development-branch; verification",
+      "gap": "Direct local automation skill now exists and keeps gates, failure feedback, secret safety, dry-run, and rollback explicit.",
+      "action": "fixed",
       "owner": "T011",
       "verification": "npm run validate:skill-content-quality"
     },
@@ -135,9 +135,9 @@
     },
     {
       "baselineSkill": "code-simplification",
-      "localEquivalent": "strengthen; code-review; rule-audit",
-      "gap": "No exact simplification skill; local behavior is distributed across strengthen, review, and rule audit.",
-      "action": "deepen",
+      "localEquivalent": "code-simplification; strengthen; code-review; rule-audit",
+      "gap": "Direct local simplification skill now exists and preserves caller evidence, protected-block checks, and behavior verification.",
+      "action": "fixed",
       "owner": "T012",
       "verification": "npm run validate:skill-content-quality"
     },
@@ -159,19 +159,19 @@
     },
     {
       "baselineSkill": "deprecation-and-migration",
-      "localEquivalent": "feature-flag-rollout; finishing-a-development-branch",
-      "gap": "Migration/deprecation is not a first-class skill yet; template coverage planned.",
-      "action": "split",
+      "localEquivalent": "deprecation-and-migration; feature-flag-rollout; finishing-a-development-branch",
+      "gap": "Direct local migration skill now exists and keeps compatibility, communication, rollout, rollback, and removal evidence explicit.",
+      "action": "fixed",
       "owner": "T022",
-      "verification": "npm run validate:template-quality"
+      "verification": "npm run validate:skill-content-quality"
     },
     {
       "baselineSkill": "documentation-and-adrs",
-      "localEquivalent": "source-driven-development; writing-plans; prd",
-      "gap": "Decision-record behavior exists across planning/source skills, not one canonical skill.",
-      "action": "map",
+      "localEquivalent": "documentation-and-adrs; source-driven-development; writing-plans; prd",
+      "gap": "Direct local documentation and decision-record skill now exists while retaining source, plan, and PRD evidence links.",
+      "action": "fixed",
       "owner": "T022",
-      "verification": "npm run validate:template-quality"
+      "verification": "npm run validate:skill-content-quality"
     },
     {
       "baselineSkill": "doubt-driven-development",
@@ -214,12 +214,20 @@
       "verification": "npm run validate:skill-content-quality"
     },
     {
+      "baselineSkill": "interview-me",
+      "localEquivalent": "interview-me; requirements-intake; brainstorming",
+      "gap": "Direct local interview skill exists for one-question clarification, hypothesis tracking, confidence threshold, and handoff before requirements or PRD work.",
+      "action": "fixed",
+      "owner": "T016",
+      "verification": "npm run validate:skill-content-quality"
+    },
+    {
       "baselineSkill": "performance-optimization",
-      "localEquivalent": "verification; browser-runtime-verification",
-      "gap": "Performance is mostly handled by reviewer agents and verification, not a dedicated skill.",
-      "action": "support-skill-exception",
+      "localEquivalent": "performance-optimization; verification; browser-runtime-verification",
+      "gap": "Direct local performance skill now exists and requires measurement-first evidence, profiling, regression guard, and browser runtime proof when applicable.",
+      "action": "fixed",
       "owner": "T022",
-      "verification": "npm run validate:agent-skill-coverage"
+      "verification": "npm run validate:skill-content-quality"
     },
     {
       "baselineSkill": "planning-and-task-breakdown",

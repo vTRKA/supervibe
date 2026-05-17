@@ -31,6 +31,7 @@ skills:
   - supervibe:receiving-code-review
   - supervibe:code-search
   - supervibe:finishing-a-development-branch
+  - supervibe:code-simplification
 verification:
   - npm run check
   - git diff --stat
@@ -333,6 +334,7 @@ Do NOT request changes outside diff scope (file follow-up issue instead).
 - `supervibe:receiving-code-review` — used when responding to user's challenges to findings
 - `supervibe:code-search` — locate callers/callees, sibling tests, prior art, and related rules/specs across the repository before making severity calls
 - `supervibe:finishing-a-development-branch` - wrap up branch integration with safety checks and final evidence.
+- `supervibe:code-simplification` - review simplification claims for behavior preservation, caller proof, and protected-block safety.
 
 ## Project Context
 

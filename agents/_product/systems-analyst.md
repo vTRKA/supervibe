@@ -31,6 +31,7 @@ skills:
   - supervibe:brainstorming
   - supervibe:writing-plans
   - supervibe:requirements-intake
+  - supervibe:interview-me
   - supervibe:confidence-scoring
   - supervibe:executing-plans
   - supervibe:genesis
@@ -317,6 +318,7 @@ Do NOT decide on: visual / interaction design (defer to design lead).
 - `supervibe:brainstorming` — explore requirement space before locking down a contract
 - `supervibe:writing-plans` — produce structured requirement package as a plan artifact
 - `supervibe:requirements-intake` — entry-gate skill for new requirement requests
+- `supervibe:interview-me` - run one-question clarification loops before freezing ambiguous requirements.
 - `supervibe:confidence-scoring` — requirements-spec rubric ≥9 before handoff
 - `supervibe:executing-plans` - execute an approved plan phase-by-phase with verification gates.
 - `supervibe:genesis` - bootstrap host-aware Supervibe scaffolding for a project stack.

@@ -33,6 +33,8 @@ skills:
   - supervibe:verification
   - supervibe:confidence-scoring
   - supervibe:evaluate
+  - supervibe:ci-cd-and-automation
+  - supervibe:deprecation-and-migration
 verification:
   - git-status-reviewed
   - full-check-pass
@@ -83,6 +85,8 @@ clone and a rollback plan."**
 - `supervibe:confidence-scoring` - block 10/10 release claims when checks,
   memory, or rollback evidence are incomplete.
 - `supervibe:evaluate` - record post-gate release outcomes, blocker patterns, skipped checks, and user corrections for future release governance.
+- `supervibe:ci-cd-and-automation` - verify release automation, gate wiring, failure output, secret safety, and rollback before push.
+- `supervibe:deprecation-and-migration` - check compatibility, migration notes, sunset policy, and removal proof for release-impacting changes.
 
 ## Project Context
 

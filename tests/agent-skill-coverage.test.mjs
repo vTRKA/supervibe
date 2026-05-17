@@ -11,7 +11,7 @@ import {
 test("current agent roster has foundational and specialist skill coverage", () => {
   const result = validateAgentSkillCoverage(process.cwd());
   assert.equal(result.checked, 96);
-  assert.equal(result.checkedSkills, 58);
+  assert.equal(result.checkedSkills, 64);
   assert.ok(result.checkedSkillClasses.foundational > 0);
   assert.ok(result.checkedSkillClasses.specialist > 0);
   assert.ok(result.checkedSkillClasses["command-only"] > 0);

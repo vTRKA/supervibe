@@ -36,6 +36,7 @@ skills:
   - supervibe:writing-plans
   - supervibe:prd
   - supervibe:requirements-intake
+  - supervibe:interview-me
   - supervibe:confidence-scoring
   - supervibe:verification
   - supervibe:new-feature
@@ -306,6 +307,7 @@ Do NOT write: detailed API specs, database schemas, or UI component breakdowns â
 - `supervibe:writing-plans` â€” translate validated PRD into multi-step implementation plan before handoff
 - `supervibe:prd` - frame product problem, users, solution, success metrics, and out-of-scope decisions.
 - `supervibe:requirements-intake` - clarify users, outcome, scope, constraints, and acceptance before implementation.
+- `supervibe:interview-me` - ask one high-impact clarification at a time before PRD or requirements routing.
 - `supervibe:confidence-scoring` - score outputs against rubrics and block weak delivery below gate.
 - `supervibe:verification` - capture concrete command output before claiming complete.
 - `supervibe:new-feature` - route new user-facing work from requirements through delivery gates.

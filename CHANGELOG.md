@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.46] - 2026-05-18
+
+### Added
+
+- Added first-class local skills for upstream parity gaps: interview-me, code-simplification, performance-optimization, deprecation-and-migration, documentation-and-adrs, and ci-cd-and-automation.
+- Refreshed the internal skill baseline to 23 upstream skills and wired canonical lifecycle coverage, owner agents, and validation expectations for the new direct mappings.
+
+### Validation
+
+- Rechecked targeted skill baseline tests, skill content/operational validators, agent skill coverage, and agent section order before the 2.1.46 package bump.
+
 ## [2.1.45] - 2026-05-17
 
 ### Fixed

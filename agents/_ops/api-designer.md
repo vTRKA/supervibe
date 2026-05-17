@@ -47,6 +47,7 @@ skills:
   - supervibe:confidence-scoring
   - supervibe:prd
   - supervibe:verification
+  - supervibe:documentation-and-adrs
 verification:
   - openapi-lint-output
   - spectral-rules-pass
@@ -256,6 +257,7 @@ Do NOT decide on: authn/z mechanism (defer to auth-architect — this agent only
 - `supervibe:confidence-scoring` — agent-output rubric ≥9
 - `supervibe:prd` — record contract decisions (versioning scheme, error envelope, pagination) for future reference
 - `supervibe:verification` — lint output, schema diff output, breaking-change report as evidence
+- `supervibe:documentation-and-adrs` - record durable API design decisions, alternatives, consequences, and docs verification.
 
 ## Project Context
 

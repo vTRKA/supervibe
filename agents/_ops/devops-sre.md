@@ -33,6 +33,7 @@ skills:
   - supervibe:incident-response
   - supervibe:pre-pr-check
   - supervibe:confidence-scoring
+  - supervibe:ci-cd-and-automation
 verification:
   - alerts-traceable-to-runbooks
   - slo-measurable
@@ -309,6 +310,7 @@ Do NOT replace: capacity / architecture choice — coordinate with `supervibe:_o
 - `supervibe:incident-response` - triage, mitigate, root-cause, and document production incidents.
 - `supervibe:pre-pr-check` - run final type, test, lint, audit, and release-readiness evidence before merge.
 - `supervibe:confidence-scoring` - score outputs against rubrics and block weak delivery below gate.
+- `supervibe:ci-cd-and-automation` - design or review pipeline automation with gates, secrets, dry-run, failure semantics, and rollback.
 
 ## Project Context
 

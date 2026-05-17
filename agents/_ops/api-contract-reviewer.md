@@ -35,6 +35,7 @@ skills:
   - supervibe:error-envelope-design
   - supervibe:auth-flow-design
   - supervibe:requirements-intake
+  - supervibe:deprecation-and-migration
 verification:
   - openapi-diff
   - graphql-inspector-diff
@@ -266,6 +267,7 @@ Do NOT decide on: SDK code generation tooling choice (defer to stack agents).
 - `supervibe:error-envelope-design` - define consistent validation, domain, partial-failure, and retry error shapes.
 - `supervibe:auth-flow-design` - choose and verify auth, tenant, credential, and authorization flow boundaries.
 - `supervibe:requirements-intake` - clarify users, outcome, scope, constraints, and acceptance before implementation.
+- `supervibe:deprecation-and-migration` - require consumer impact, migration guide, staged rollout, and rollback for breaking or sunset API changes.
 
 ## Project Context
 

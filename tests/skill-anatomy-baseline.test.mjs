@@ -41,6 +41,7 @@ const EXPECTED_BASELINE_SKILLS = Object.freeze([
   "git-workflow-and-versioning",
   "idea-refine",
   "incremental-implementation",
+  "interview-me",
   "performance-optimization",
   "planning-and-task-breakdown",
   "security-and-hardening",
@@ -96,7 +97,7 @@ test("local baseline fixture captures reusable skill anatomy", async () => {
   assert.match(fixture.refreshedAt, /^\d{4}-\d{2}-\d{2}$/);
   assert.equal(fixture.license, "MIT");
   assert.equal(fixture.policy, "local-baseline-with-validator-enforcement");
-  assert.equal(fixture.baselineSkillCount, 22);
+  assert.equal(fixture.baselineSkillCount, 23);
   assert.equal(fixture.baselineAgentPatternCount, 3);
   assert.deepEqual(fixture.refreshMetadata, {
     capturedRevision: fixture.capturedRevision,
@@ -134,7 +135,7 @@ test("local baseline fixture captures reusable skill anatomy", async () => {
   assert.ok(fixture.hookPortabilityConstraints.some((entry) => /do not copy shell hooks/i.test(entry)));
   assert.ok(fixture.hookPortabilityConstraints.some((entry) => /host-neutral|host-specific/i.test(entry)));
 
-  assert.equal(fixture.equivalenceRows.length, 22);
+  assert.equal(fixture.equivalenceRows.length, 23);
   const baselineSkills = fixture.equivalenceRows.map((row) => row.baselineSkill).sort();
   assert.deepEqual(baselineSkills, [...EXPECTED_BASELINE_SKILLS].sort());
   assert.equal(new Set(baselineSkills).size, fixture.baselineSkillCount);

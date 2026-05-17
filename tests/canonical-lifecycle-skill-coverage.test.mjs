@@ -40,6 +40,13 @@ const EXPECTED_OWNER_IDS = [
 ];
 
 const REQUIRED_EXPECTATIONS_BY_BASELINE_SKILL = Object.freeze({
+  "interview-me": [
+    "clarifyingQuestions",
+    "answerSynthesis",
+    "confidenceThreshold",
+    "userOutcome",
+    "scopeBoundary",
+  ],
   "api-and-interface-design": [
     "contractFirstBoundaries",
     "hyrumRisk",
@@ -379,7 +386,14 @@ test("canonical skill manifest has stable coverage-set structure", async () => {
   assertSafeRelativePath(manifest.baselineEvidence.equivalenceDoc);
 
   assert.equal(manifest.skillCreationPolicy.mode, "map-existing-first");
-  assert.deepEqual(manifest.skillCreationPolicy.createdSkills, []);
+  assert.deepEqual(manifest.skillCreationPolicy.createdSkills, [
+    "supervibe:ci-cd-and-automation",
+    "supervibe:code-simplification",
+    "supervibe:deprecation-and-migration",
+    "supervibe:documentation-and-adrs",
+    "supervibe:interview-me",
+    "supervibe:performance-optimization",
+  ]);
   assertRoutingValidationPolicy(manifest);
   assert.equal(manifest.coveragePolicy.requiredSkillPrefix, "supervibe:");
   assert.ok(manifest.coveragePolicy.minimumRequiredSkillsPerSet >= 4);

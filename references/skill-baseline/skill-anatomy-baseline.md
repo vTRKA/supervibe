@@ -1,12 +1,12 @@
 # Internal Skill Anatomy Baseline
 
-Refreshed: 2026-05-13
+Refreshed: 2026-05-18
 License: MIT
 Copyright boundary: Use internalized facts, section names, and local comparison fields only; do not copy third-party prose or host-specific shell hooks into local skills.
 
 ## Baseline Counts
 
-- Baseline skills: 22
+- Baseline skills: 23
 - Baseline agent patterns: 3
 - Baseline reference packs: 5
 - Hook portability notes: 3

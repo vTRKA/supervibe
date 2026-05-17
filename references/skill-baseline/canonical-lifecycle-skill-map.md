@@ -21,7 +21,14 @@ Policy:
   "validationTaskRef": "T029.sub4",
   "skillCreationPolicy": {
     "mode": "map-existing-first",
-    "createdSkills": [],
+    "createdSkills": [
+      "supervibe:ci-cd-and-automation",
+      "supervibe:code-simplification",
+      "supervibe:deprecation-and-migration",
+      "supervibe:documentation-and-adrs",
+      "supervibe:interview-me",
+      "supervibe:performance-optimization"
+    ],
     "duplicateSkillPolicy": "forbidden-without-explicit-gap-and-owner",
     "aliasRequirement": "baseline skill coverage must name owner task, rationale, explicit gap, and local skill coverage"
   },
@@ -38,6 +45,7 @@ Policy:
     "minimumCoverageExpectationsPerBaselineSkill": 3,
     "coverageExpectations": [
       "acceptanceCriteria",
+      "answerSynthesis",
       "apiDataContract",
       "atomicCommits",
       "behaviorPreservation",
@@ -45,9 +53,11 @@ Policy:
       "browserRuntimeEvidence",
       "callerChecks",
       "changelogDecision",
+      "clarifyingQuestions",
       "communicationPlan",
       "compatibilityPlan",
       "complexityReduction",
+      "confidenceThreshold",
       "contextPacking",
       "contractFirstBoundaries",
       "decisionRecord",
@@ -105,28 +115,33 @@ Policy:
       "baselineSkills": [
         "context-engineering",
         "idea-refine",
+        "interview-me",
         "source-driven-development",
         "spec-driven-development"
       ],
       "requiredSkills": [
-        "supervibe:requirements-intake",
-        "supervibe:prd",
         "supervibe:brainstorming",
-        "supervibe:explore-alternatives",
-        "supervibe:project-memory",
         "supervibe:code-search",
+        "supervibe:explore-alternatives",
+        "supervibe:interview-me",
+        "supervibe:prd",
+        "supervibe:project-memory",
+        "supervibe:requirements-intake",
         "supervibe:source-driven-development",
         "supervibe:verification"
       ],
       "coverageExpectations": [
-        "userOutcome",
-        "scopeBoundary",
-        "nonGoals",
-        "sourceEvidence",
-        "retrievalEvidence",
-        "memoryRagCodeGraphPreflight",
+        "answerSynthesis",
+        "clarifyingQuestions",
+        "confidenceThreshold",
         "contextPacking",
-        "targetedVerification"
+        "memoryRagCodeGraphPreflight",
+        "nonGoals",
+        "retrievalEvidence",
+        "scopeBoundary",
+        "sourceEvidence",
+        "targetedVerification",
+        "userOutcome"
       ],
       "ownerExpectation": "Discovery owners must prove user outcome, scope boundary, source evidence, and prior memory before planning or implementation.",
       "rationale": "Spec-driven and idea-refinement skills map to Supervibe intake, PRD, brainstorming, alternatives, and retrieval discipline."
@@ -140,24 +155,25 @@ Policy:
         "planning-and-task-breakdown"
       ],
       "requiredSkills": [
-        "supervibe:writing-plans",
+        "supervibe:code-search",
+        "supervibe:confidence-scoring",
+        "supervibe:documentation-and-adrs",
         "supervibe:executing-plans",
         "supervibe:project-memory",
-        "supervibe:code-search",
         "supervibe:source-driven-development",
-        "supervibe:confidence-scoring",
+        "supervibe:using-supervibe-skills",
         "supervibe:verification",
-        "supervibe:using-supervibe-skills"
+        "supervibe:writing-plans"
       ],
       "coverageExpectations": [
         "acceptanceCriteria",
-        "taskBreakdown",
         "decisionRecord",
-        "scopeBoundary",
+        "ownerCoverage",
         "receiptGate",
-        "targetedVerification",
         "rollbackPlan",
-        "ownerCoverage"
+        "scopeBoundary",
+        "targetedVerification",
+        "taskBreakdown"
       ],
       "ownerExpectation": "Planning owners must encode acceptance criteria, verification, rollback, and owner expectations before durable work starts.",
       "rationale": "Planning and documentation skills map to Supervibe writing, execution, source, and skill-routing policies."
@@ -172,25 +188,26 @@ Policy:
         "test-driven-development"
       ],
       "requiredSkills": [
-        "supervibe:new-feature",
+        "supervibe:ci-cd-and-automation",
+        "supervibe:code-search",
         "supervibe:executing-plans",
+        "supervibe:feature-flag-rollout",
+        "supervibe:new-feature",
         "supervibe:tdd",
         "supervibe:test-strategy",
         "supervibe:using-git-worktrees",
-        "supervibe:feature-flag-rollout",
-        "supervibe:code-search",
         "supervibe:verification"
       ],
       "coverageExpectations": [
-        "thinVerticalSlice",
-        "redGreenRefactor",
         "acceptanceCriteria",
         "atomicCommits",
         "branchHygiene",
-        "qualityGates",
         "failureFeedback",
+        "qualityGates",
+        "redGreenRefactor",
+        "rollbackPlan",
         "targetedVerification",
-        "rollbackPlan"
+        "thinVerticalSlice"
       ],
       "ownerExpectation": "Implementation owners must keep work sliced, tested, reversible, and isolated from unrelated changes.",
       "rationale": "Implementation skills map to Supervibe plan execution, loop work items, TDD, test strategy, worktree safety, feature flags, and verification."
@@ -204,26 +221,26 @@ Policy:
         "frontend-ui-engineering"
       ],
       "requiredSkills": [
-        "supervibe:error-envelope-design",
         "supervibe:auth-flow-design",
-        "supervibe:mock-data-contract",
-        "supervibe:interaction-design-patterns",
-        "supervibe:component-library-integration",
-        "supervibe:ui-review-and-polish",
-        "supervibe:browser-runtime-verification",
         "supervibe:browser-feedback",
+        "supervibe:browser-runtime-verification",
+        "supervibe:component-library-integration",
+        "supervibe:error-envelope-design",
+        "supervibe:interaction-design-patterns",
+        "supervibe:mock-data-contract",
         "supervibe:preview-server",
+        "supervibe:ui-review-and-polish",
         "supervibe:verification"
       ],
       "coverageExpectations": [
-        "contractFirstBoundaries",
-        "hyrumRisk",
-        "errorSemantics",
-        "versioning",
-        "publicInterfaceValidation",
         "apiDataContract",
         "browserRuntimeEvidence",
-        "targetedVerification"
+        "contractFirstBoundaries",
+        "errorSemantics",
+        "hyrumRisk",
+        "publicInterfaceValidation",
+        "targetedVerification",
+        "versioning"
       ],
       "ownerExpectation": "Interface owners must encode API, data, auth, error, and UI behavior contracts before claiming implementation coverage.",
       "rationale": "Baseline API and frontend skills are split locally across interface contracts, UI patterns, component integration, browser evidence, and preview feedback."
@@ -238,24 +255,25 @@ Policy:
         "test-driven-development"
       ],
       "requiredSkills": [
+        "supervibe:browser-feedback",
+        "supervibe:browser-runtime-verification",
+        "supervibe:confidence-scoring",
+        "supervibe:doubt-driven-development",
+        "supervibe:performance-optimization",
+        "supervibe:preview-server",
         "supervibe:tdd",
         "supervibe:test-strategy",
-        "supervibe:verification",
-        "supervibe:browser-runtime-verification",
-        "supervibe:browser-feedback",
-        "supervibe:preview-server",
-        "supervibe:doubt-driven-development",
-        "supervibe:confidence-scoring"
+        "supervibe:verification"
       ],
       "coverageExpectations": [
-        "redGreenRefactor",
-        "targetedVerification",
         "browserRuntimeEvidence",
         "measurementFirst",
         "performanceBudgets",
         "profilingEvidence",
+        "redGreenRefactor",
         "regressionProof",
-        "residualRisk"
+        "residualRisk",
+        "targetedVerification"
       ],
       "ownerExpectation": "Verification owners must prove behavior with targeted tests, browser/runtime evidence when applicable, and residual risk when proof is incomplete.",
       "rationale": "Testing and performance skills are covered through TDD, test strategy, runtime verification, browser feedback, and scoring."
@@ -270,28 +288,29 @@ Policy:
         "security-and-hardening"
       ],
       "requiredSkills": [
-        "supervibe:requesting-code-review",
-        "supervibe:receiving-code-review",
-        "supervibe:code-review",
-        "supervibe:pre-pr-check",
-        "supervibe:strengthen",
-        "supervibe:rule-audit",
-        "supervibe:incident-response",
         "supervibe:auth-flow-design",
+        "supervibe:code-review",
+        "supervibe:code-simplification",
         "supervibe:doubt-driven-development",
+        "supervibe:incident-response",
+        "supervibe:pre-pr-check",
+        "supervibe:receiving-code-review",
+        "supervibe:requesting-code-review",
+        "supervibe:rule-audit",
+        "supervibe:strengthen",
         "supervibe:verification"
       ],
       "coverageExpectations": [
-        "reviewerSeparation",
         "behaviorPreservation",
-        "protectedBlocks",
-        "complexityReduction",
         "callerChecks",
-        "securityPrivacyImpact",
-        "secretSafety",
+        "complexityReduction",
+        "protectedBlocks",
         "qualityGates",
-        "targetedVerification",
-        "residualRisk"
+        "residualRisk",
+        "reviewerSeparation",
+        "secretSafety",
+        "securityPrivacyImpact",
+        "targetedVerification"
       ],
       "ownerExpectation": "Review owners must keep reviewer and worker evidence separate, preserve behavior, and surface security or policy risk.",
       "rationale": "Review, simplification, and hardening skills map to Supervibe review request/receive, strengthen, rule audit, incident response, auth, and verification skills."
@@ -306,26 +325,28 @@ Policy:
         "shipping-and-launch"
       ],
       "requiredSkills": [
-        "supervibe:finishing-a-development-branch",
+        "supervibe:ci-cd-and-automation",
+        "supervibe:confidence-scoring",
+        "supervibe:deprecation-and-migration",
         "supervibe:feature-flag-rollout",
+        "supervibe:finishing-a-development-branch",
+        "supervibe:incident-response",
         "supervibe:pre-pr-check",
         "supervibe:using-git-worktrees",
-        "supervibe:verification",
-        "supervibe:confidence-scoring",
-        "supervibe:incident-response"
+        "supervibe:verification"
       ],
       "coverageExpectations": [
-        "stagedRollout",
-        "monitoringEvidence",
-        "rollbackPlan",
-        "supportOwner",
-        "productionReadiness",
-        "compatibilityPlan",
-        "communicationPlan",
-        "releaseTags",
         "changelogDecision",
+        "communicationPlan",
+        "compatibilityPlan",
+        "monitoringEvidence",
         "noUnrelatedReverts",
-        "qualityGates"
+        "productionReadiness",
+        "qualityGates",
+        "releaseTags",
+        "rollbackPlan",
+        "stagedRollout",
+        "supportOwner"
       ],
       "ownerExpectation": "Release owners must prove staged rollout, support ownership, rollback, and no unrelated reverts before claiming release readiness.",
       "rationale": "Launch skills map to Supervibe update/status guidance, branch finishing, feature flags, pre-PR checks, worktree safety, incident response, and verification."
@@ -341,25 +362,28 @@ Policy:
       ],
       "requiredSkills": [
         "supervibe:adapt",
+        "supervibe:code-search",
+        "supervibe:deprecation-and-migration",
+        "supervibe:documentation-and-adrs",
+        "supervibe:incident-response",
+        "supervibe:performance-optimization",
+        "supervibe:project-memory",
+        "supervibe:rule-audit",
+        "supervibe:source-driven-development",
+        "supervibe:sync-rules",
         "supervibe:systematic-debugging",
         "supervibe:trigger-diagnostics",
-        "supervibe:source-driven-development",
-        "supervibe:rule-audit",
-        "supervibe:sync-rules",
-        "supervibe:project-memory",
-        "supervibe:code-search",
-        "supervibe:verification",
-        "supervibe:incident-response"
+        "supervibe:verification"
       ],
       "coverageExpectations": [
-        "staleContextRecovery",
-        "compatibilityPlan",
         "communicationPlan",
-        "docsVerification",
+        "compatibilityPlan",
         "decisionRecord",
-        "sourceEvidence",
-        "rollbackPlan",
+        "docsVerification",
         "failureFeedback",
+        "rollbackPlan",
+        "sourceEvidence",
+        "staleContextRecovery",
         "targetedVerification"
       ],
       "ownerExpectation": "Maintenance owners must preserve compatibility, record decisions, recover from stale context, and verify repairs.",
@@ -375,23 +399,23 @@ Policy:
       ],
       "requiredSkills": [
         "supervibe:autonomous-agent-loop",
-        "supervibe:subagent-driven-development",
-        "supervibe:dispatching-parallel-agents",
-        "supervibe:using-supervibe-skills",
-        "supervibe:project-memory",
         "supervibe:code-search",
-        "supervibe:verification",
         "supervibe:confidence-scoring",
-        "supervibe:mcp-discovery"
+        "supervibe:dispatching-parallel-agents",
+        "supervibe:mcp-discovery",
+        "supervibe:project-memory",
+        "supervibe:subagent-driven-development",
+        "supervibe:using-supervibe-skills",
+        "supervibe:verification"
       ],
       "coverageExpectations": [
-        "hostNeutralAliases",
-        "receiptGate",
-        "ownerCoverage",
-        "memoryRagCodeGraphPreflight",
         "contextPacking",
+        "hostNeutralAliases",
         "mcpUsage",
+        "memoryRagCodeGraphPreflight",
+        "ownerCoverage",
         "promptSlicing",
+        "receiptGate",
         "targetedVerification"
       ],
       "ownerExpectation": "Orchestration owners must keep host-neutral aliases, callable specialists, receipts, and retrieval evidence aligned.",
@@ -406,14 +430,14 @@ Policy:
         "planning-and-task-breakdown"
       ],
       "localEquivalentSkills": [
-        "supervibe:writing-plans",
-        "supervibe:executing-plans"
+        "supervibe:executing-plans",
+        "supervibe:writing-plans"
       ],
       "coverageExpectations": [
-        "taskBreakdown",
         "acceptanceCriteria",
         "ownerCoverage",
-        "targetedVerification"
+        "targetedVerification",
+        "taskBreakdown"
       ],
       "ownerRationale": "Planning ownership stays on local plan writing and execution skills, with acceptance criteria and owner coverage required before durable work.",
       "verificationFocus": "Plan artifacts must retain task breakdown, acceptance criteria, owner coverage, and targeted verification."
@@ -427,25 +451,25 @@ Policy:
         "idea-refine"
       ],
       "localEquivalentSkills": [
-        "supervibe:error-envelope-design",
         "supervibe:auth-flow-design",
-        "supervibe:interaction-design-patterns",
-        "supervibe:component-library-integration",
-        "supervibe:ui-review-and-polish",
         "supervibe:brainstorming",
-        "supervibe:explore-alternatives"
+        "supervibe:component-library-integration",
+        "supervibe:error-envelope-design",
+        "supervibe:explore-alternatives",
+        "supervibe:interaction-design-patterns",
+        "supervibe:ui-review-and-polish"
       ],
       "coverageExpectations": [
-        "userOutcome",
-        "scopeBoundary",
-        "nonGoals",
-        "contractFirstBoundaries",
-        "hyrumRisk",
-        "errorSemantics",
-        "versioning",
-        "publicInterfaceValidation",
         "apiDataContract",
-        "browserRuntimeEvidence"
+        "browserRuntimeEvidence",
+        "contractFirstBoundaries",
+        "errorSemantics",
+        "hyrumRisk",
+        "nonGoals",
+        "publicInterfaceValidation",
+        "scopeBoundary",
+        "userOutcome",
+        "versioning"
       ],
       "ownerRationale": "Discovery and interface coverage is split across local intake, API contract, interaction, component, and polish skills instead of creating duplicate baseline skills.",
       "verificationFocus": "Owner evidence must connect user outcome, API/data boundaries, UI behavior, and browser/runtime proof when interface behavior is affected."
@@ -461,8 +485,8 @@ Policy:
       ],
       "coverageExpectations": [
         "residualRisk",
-        "targetedVerification",
-        "reviewerSeparation"
+        "reviewerSeparation",
+        "targetedVerification"
       ],
       "ownerRationale": "The baseline doubt-driven behavior has a direct local skill and must keep residual risk explicit.",
       "verificationFocus": "Verification must name the doubt, targeted proof, and residual risk."
@@ -474,14 +498,14 @@ Policy:
         "browser-testing-with-devtools"
       ],
       "localEquivalentSkills": [
-        "supervibe:browser-runtime-verification",
         "supervibe:browser-feedback",
+        "supervibe:browser-runtime-verification",
         "supervibe:preview-server"
       ],
       "coverageExpectations": [
         "browserRuntimeEvidence",
-        "targetedVerification",
-        "regressionProof"
+        "regressionProof",
+        "targetedVerification"
       ],
       "ownerRationale": "Browser testing maps to local runtime verification, preview, and feedback skills without importing baseline host hooks.",
       "verificationFocus": "Browser evidence must include runtime proof, targeted checks, and regression evidence."
@@ -496,9 +520,9 @@ Policy:
         "supervibe:source-driven-development"
       ],
       "coverageExpectations": [
-        "sourceEvidence",
+        "docsVerification",
         "publicApiDocs",
-        "docsVerification"
+        "sourceEvidence"
       ],
       "ownerRationale": "The baseline source-driven behavior has a direct local skill that anchors official source evidence.",
       "verificationFocus": "Source-driven outputs must cite current sources and verify docs or public API claims."
@@ -516,8 +540,8 @@ Policy:
       ],
       "coverageExpectations": [
         "redGreenRefactor",
-        "targetedVerification",
-        "regressionProof"
+        "regressionProof",
+        "targetedVerification"
       ],
       "ownerRationale": "The local TDD, test strategy, and verification skills cover the baseline test-driven behavior.",
       "verificationFocus": "Evidence must preserve red/green/refactor flow, targeted verification, and regression proof."
@@ -534,8 +558,8 @@ Policy:
       ],
       "coverageExpectations": [
         "failureFeedback",
-        "staleContextRecovery",
-        "rollbackPlan"
+        "rollbackPlan",
+        "staleContextRecovery"
       ],
       "ownerRationale": "Debugging coverage stays with local systematic debugging and diagnostics skills.",
       "verificationFocus": "Repairs must capture failure feedback, stale-context recovery, rollback path, and targeted proof."
@@ -547,14 +571,14 @@ Policy:
         "security-and-hardening"
       ],
       "localEquivalentSkills": [
-        "supervibe:incident-response",
         "supervibe:auth-flow-design",
+        "supervibe:incident-response",
         "supervibe:rule-audit"
       ],
       "coverageExpectations": [
-        "securityPrivacyImpact",
+        "qualityGates",
         "secretSafety",
-        "qualityGates"
+        "securityPrivacyImpact"
       ],
       "ownerRationale": "Security behavior is covered through incident response, auth flow design, rule audit, and security-focused agents.",
       "verificationFocus": "Hardening evidence must include privacy/security impact, secret safety, and quality gates."
@@ -569,32 +593,33 @@ Policy:
         "shipping-and-launch"
       ],
       "localEquivalentSkills": [
+        "supervibe:ci-cd-and-automation",
+        "supervibe:executing-plans",
         "supervibe:feature-flag-rollout",
         "supervibe:finishing-a-development-branch",
-        "supervibe:verification",
-        "supervibe:using-git-worktrees",
         "supervibe:new-feature",
-        "supervibe:executing-plans"
+        "supervibe:using-git-worktrees",
+        "supervibe:verification"
       ],
       "coverageExpectations": [
-        "qualityGates",
-        "failureFeedback",
-        "secretSafety",
-        "featureFlags",
-        "pipelineEvidence",
+        "acceptanceCriteria",
         "atomicCommits",
         "branchHygiene",
-        "releaseTags",
         "changelogDecision",
-        "noUnrelatedReverts",
-        "thinVerticalSlice",
-        "acceptanceCriteria",
-        "targetedVerification",
-        "rollbackPlan",
-        "stagedRollout",
+        "failureFeedback",
+        "featureFlags",
         "monitoringEvidence",
+        "noUnrelatedReverts",
+        "pipelineEvidence",
+        "productionReadiness",
+        "qualityGates",
+        "releaseTags",
+        "rollbackPlan",
+        "secretSafety",
+        "stagedRollout",
         "supportOwner",
-        "productionReadiness"
+        "targetedVerification",
+        "thinVerticalSlice"
       ],
       "ownerRationale": "Implementation and launch coverage maps to local feature, execution, worktree, flag, branch finish, and verification skills.",
       "verificationFocus": "Owner evidence must show sliced implementation, branch hygiene, quality gates, rollout controls, rollback, and no unrelated reverts."
@@ -607,21 +632,22 @@ Policy:
         "code-simplification"
       ],
       "localEquivalentSkills": [
-        "supervibe:requesting-code-review",
-        "supervibe:receiving-code-review",
         "supervibe:code-review",
+        "supervibe:code-simplification",
         "supervibe:pre-pr-check",
-        "supervibe:strengthen",
-        "supervibe:rule-audit"
+        "supervibe:receiving-code-review",
+        "supervibe:requesting-code-review",
+        "supervibe:rule-audit",
+        "supervibe:strengthen"
       ],
       "coverageExpectations": [
-        "reviewerSeparation",
-        "qualityGates",
-        "targetedVerification",
         "behaviorPreservation",
-        "protectedBlocks",
-        "complexityReduction",
         "callerChecks",
+        "complexityReduction",
+        "protectedBlocks",
+        "qualityGates",
+        "reviewerSeparation",
+        "targetedVerification",
         "verificationEvidence"
       ],
       "ownerRationale": "Review and simplification stay split across local review request/receive, pre-PR, strengthen, and rule audit skills.",
@@ -629,21 +655,27 @@ Policy:
     },
     {
       "owner": "T016",
-      "capabilityArea": "Requirements and PRD ownership",
+      "capabilityArea": "Requirements, clarification, and PRD ownership",
       "baselineSkills": [
+        "interview-me",
         "spec-driven-development"
       ],
       "localEquivalentSkills": [
-        "supervibe:requirements-intake",
-        "supervibe:prd"
+        "supervibe:brainstorming",
+        "supervibe:interview-me",
+        "supervibe:prd",
+        "supervibe:requirements-intake"
       ],
       "coverageExpectations": [
-        "userOutcome",
+        "acceptanceCriteria",
+        "answerSynthesis",
+        "clarifyingQuestions",
+        "confidenceThreshold",
         "scopeBoundary",
-        "acceptanceCriteria"
+        "userOutcome"
       ],
-      "ownerRationale": "Spec-driven behavior maps to local requirements intake and PRD artifacts.",
-      "verificationFocus": "Requirements evidence must record outcome, scope boundary, and acceptance criteria."
+      "ownerRationale": "Spec-driven and interview behavior map to local one-question clarification, requirements intake, and PRD artifacts.",
+      "verificationFocus": "Requirements evidence must record outcome, scope boundary, clarifying answers, confidence threshold, and acceptance criteria."
     },
     {
       "owner": "T021",
@@ -652,16 +684,16 @@ Policy:
         "context-engineering"
       ],
       "localEquivalentSkills": [
-        "supervibe:project-memory",
         "supervibe:code-search",
-        "supervibe:using-supervibe-skills",
-        "supervibe:mcp-discovery"
+        "supervibe:mcp-discovery",
+        "supervibe:project-memory",
+        "supervibe:using-supervibe-skills"
       ],
       "coverageExpectations": [
         "contextPacking",
-        "retrievalEvidence",
-        "promptSlicing",
         "mcpUsage",
+        "promptSlicing",
+        "retrievalEvidence",
         "staleContextRecovery"
       ],
       "ownerRationale": "Context behavior is local memory, Code RAG, CodeGraph, skill routing, and MCP discovery discipline.",
@@ -676,31 +708,34 @@ Policy:
         "performance-optimization"
       ],
       "localEquivalentSkills": [
+        "supervibe:browser-runtime-verification",
+        "supervibe:deprecation-and-migration",
+        "supervibe:documentation-and-adrs",
         "supervibe:feature-flag-rollout",
         "supervibe:finishing-a-development-branch",
-        "supervibe:source-driven-development",
-        "supervibe:writing-plans",
+        "supervibe:performance-optimization",
         "supervibe:prd",
+        "supervibe:source-driven-development",
         "supervibe:verification",
-        "supervibe:browser-runtime-verification"
+        "supervibe:writing-plans"
       ],
       "coverageExpectations": [
-        "compatibilityPlan",
         "communicationPlan",
-        "stagedRollout",
-        "rollbackPlan",
-        "removalEvidence",
+        "compatibilityPlan",
         "decisionRecord",
-        "publicApiDocs",
-        "inlineCommentPolicy",
         "docsVerification",
+        "inlineCommentPolicy",
         "measurementFirst",
         "performanceBudgets",
         "profilingEvidence",
+        "publicApiDocs",
         "regressionProof",
-        "residualRisk"
+        "removalEvidence",
+        "residualRisk",
+        "rollbackPlan",
+        "stagedRollout"
       ],
-      "ownerRationale": "Migration, docs, and performance remain mapped to existing release, source, planning, verification, and browser evidence skills until a dedicated local skill is justified.",
+      "ownerRationale": "Migration, docs, and performance now have direct local skills while preserving release, source, planning, verification, and browser evidence links.",
       "verificationFocus": "Owner evidence must cover compatibility, communication, decision records, measurement-first performance proof, and residual risk."
     },
     {
@@ -714,8 +749,8 @@ Policy:
       ],
       "coverageExpectations": [
         "hostNeutralAliases",
-        "receiptGate",
-        "ownerCoverage"
+        "ownerCoverage",
+        "receiptGate"
       ],
       "ownerRationale": "Baseline skill usage maps to host-neutral Supervibe skill routing.",
       "verificationFocus": "Routing evidence must keep host-neutral aliases, receipt gates, and owner coverage aligned."
@@ -772,12 +807,13 @@ Policy:
         "release-ship"
       ],
       "localEquivalent": [
+        "supervibe:ci-cd-and-automation",
         "supervibe:feature-flag-rollout",
         "supervibe:finishing-a-development-branch",
         "supervibe:verification"
       ],
-      "gap": "Local release skills cover gates and flags but CI/CD automation needs lifecycle mapping.",
-      "action": "map",
+      "gap": "Direct local automation skill now exists and keeps gates, failure feedback, secret safety, dry-run, and rollback explicit.",
+      "action": "fixed",
       "owner": "T011",
       "coverageExpectations": [
         "qualityGates",
@@ -786,7 +822,7 @@ Policy:
         "featureFlags",
         "pipelineEvidence"
       ],
-      "rationale": "Automation coverage is through flags, branch finish gates, and verification evidence."
+      "rationale": "Automation coverage is now direct and backed by flags, branch finish gates, and verification evidence."
     },
     {
       "baselineSkill": "code-review-and-quality",
@@ -815,12 +851,13 @@ Policy:
         "review-strengthen"
       ],
       "localEquivalent": [
+        "supervibe:code-simplification",
         "supervibe:strengthen",
         "supervibe:code-review",
         "supervibe:rule-audit"
       ],
-      "gap": "No exact simplification skill; local behavior is distributed across strengthen, review, and rule audit.",
-      "action": "deepen",
+      "gap": "Direct local simplification skill now exists and preserves caller evidence, protected-block checks, and behavior verification.",
+      "action": "fixed",
       "owner": "T012",
       "coverageExpectations": [
         "behaviorPreservation",
@@ -829,7 +866,7 @@ Policy:
         "callerChecks",
         "verificationEvidence"
       ],
-      "rationale": "Simplification is allowed only through strengthen, review, and rule-audit evidence that preserves behavior."
+      "rationale": "Simplification has a direct skill and remains guarded by strengthen, review, and rule-audit evidence."
     },
     {
       "baselineSkill": "context-engineering",
@@ -882,11 +919,12 @@ Policy:
         "maintain-adapt"
       ],
       "localEquivalent": [
+        "supervibe:deprecation-and-migration",
         "supervibe:feature-flag-rollout",
         "supervibe:finishing-a-development-branch"
       ],
-      "gap": "Migration/deprecation is not a first-class skill yet; template coverage planned.",
-      "action": "split",
+      "gap": "Direct local migration skill now exists and keeps compatibility, communication, rollout, rollback, and removal evidence explicit.",
+      "action": "fixed",
       "owner": "T022",
       "coverageExpectations": [
         "compatibilityPlan",
@@ -895,7 +933,7 @@ Policy:
         "rollbackPlan",
         "removalEvidence"
       ],
-      "rationale": "Migration behavior is split across feature flags and release branch finish evidence."
+      "rationale": "Migration coverage is now direct and release-backed."
     },
     {
       "baselineSkill": "documentation-and-adrs",
@@ -904,12 +942,13 @@ Policy:
         "maintain-adapt"
       ],
       "localEquivalent": [
+        "supervibe:documentation-and-adrs",
         "supervibe:source-driven-development",
         "supervibe:writing-plans",
         "supervibe:prd"
       ],
-      "gap": "Docs/ADR behavior exists across planning/source skills, not one canonical skill.",
-      "action": "map",
+      "gap": "Direct local documentation and decision-record skill now exists while retaining source, plan, and PRD evidence links.",
+      "action": "fixed",
       "owner": "T022",
       "coverageExpectations": [
         "decisionRecord",
@@ -917,7 +956,7 @@ Policy:
         "inlineCommentPolicy",
         "docsVerification"
       ],
-      "rationale": "Documentation and ADR behavior is represented through source-driven evidence, plans, and PRD artifacts."
+      "rationale": "Documentation coverage is now direct and source-backed."
     },
     {
       "baselineSkill": "doubt-driven-development",
@@ -1020,16 +1059,39 @@ Policy:
       "rationale": "Incremental implementation maps to new-feature and executing-plans skill contracts."
     },
     {
+      "baselineSkill": "interview-me",
+      "coverageSetIds": [
+        "discover-define"
+      ],
+      "localEquivalent": [
+        "supervibe:brainstorming",
+        "supervibe:interview-me",
+        "supervibe:requirements-intake"
+      ],
+      "gap": "Direct local interview skill exists for one-question clarification, hypothesis tracking, confidence threshold, and handoff before requirements or PRD work.",
+      "action": "fixed",
+      "owner": "T016",
+      "coverageExpectations": [
+        "clarifyingQuestions",
+        "answerSynthesis",
+        "confidenceThreshold",
+        "userOutcome",
+        "scopeBoundary"
+      ],
+      "rationale": "Interview coverage is direct and feeds requirements, PRD, or brainstorming only after the blocking question is answered."
+    },
+    {
       "baselineSkill": "performance-optimization",
       "coverageSetIds": [
         "test-verify"
       ],
       "localEquivalent": [
+        "supervibe:performance-optimization",
         "supervibe:verification",
         "supervibe:browser-runtime-verification"
       ],
-      "gap": "Performance is mostly handled by reviewer agents and verification, not a dedicated skill.",
-      "action": "support-skill-exception",
+      "gap": "Direct local performance skill now exists and requires measurement-first evidence, profiling, regression guard, and browser runtime proof when applicable.",
+      "action": "fixed",
       "owner": "T022",
       "coverageExpectations": [
         "measurementFirst",
@@ -1039,7 +1101,7 @@ Policy:
         "residualRisk"
       ],
       "exceptionRationale": "Performance remains a support-skill mapping until a dedicated local skill is created; measurement and regression proof are enforced through verification and browser runtime evidence.",
-      "rationale": "Performance proof is measurement-first verification plus runtime browser evidence."
+      "rationale": "Performance coverage is now direct and remains tied to verification and browser runtime evidence."
     },
     {
       "baselineSkill": "planning-and-task-breakdown",
@@ -1181,8 +1243,8 @@ Policy:
     }
   ],
   "baselineEvidence": {
-    "capturedRevision": "2026-05-13-localized",
-    "refreshedAt": "2026-05-13",
+    "capturedRevision": "2026-05-18-localized",
+    "refreshedAt": "2026-05-18",
     "fixture": "tests/fixtures/skill-anatomy-baseline.json",
     "equivalenceDoc": "references/skill-baseline/skill-equivalence-map.md"
   },

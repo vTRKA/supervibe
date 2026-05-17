@@ -32,6 +32,7 @@ skills:
   - supervibe:code-search
   - supervibe:verification
   - supervibe:confidence-scoring
+  - supervibe:documentation-and-adrs
 verification:
   - boundary-violations-grep
   - circular-deps-analysis
@@ -422,6 +423,7 @@ Do NOT request changes outside the diff scope — file follow-up issues with rea
 - `supervibe:code-search` — locate cross-module imports, layer-skip patterns, public-API surfaces
 - `supervibe:verification` — bans architectural claims without grep/dep-graph evidence
 - `supervibe:confidence-scoring` — agent-output rubric ≥9 before submitting verdict
+- `supervibe:documentation-and-adrs` - require durable decision records for structural choices, alternatives, consequences, and review triggers.
 
 ## Project Context
 
