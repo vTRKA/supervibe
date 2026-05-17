@@ -54,6 +54,7 @@
           "surfaces": [
             "features.hooks",
             "features.codex_hooks",
+            "features.plugin_hooks",
             "hooks",
             "requirements.toml managed hooks"
           ]
@@ -408,8 +409,10 @@
           ]
         },
         "hooks": {
-          "support": "extension-hooks",
+          "support": "settings-and-extension-hooks",
           "surfaces": [
+            "settings.hooks.SessionStart",
+            "settings.hooks.PreCompress",
             "extensions",
             "extension hooks"
           ]
@@ -501,6 +504,10 @@
         },
         {
           "url": "https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/settings.md",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "url": "https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/reference.md",
           "checkedAt": "2026-05-13"
         }
       ]
@@ -698,11 +705,13 @@
         "hooks": {
           "support": "plugin-hooks",
           "surfaces": [
+            "session.created",
+            "session.compacted",
             "tool.execute.before",
             "tool.execute.after",
             "permission.asked",
             "session.*",
-            "file.watcher.updated"
+            "watcher.*"
           ]
         },
         "backgroundExecution": {
@@ -804,6 +813,10 @@
         },
         {
           "url": "https://opencode.ai/docs/agents/",
+          "checkedAt": "2026-05-13"
+        },
+        {
+          "url": "https://opencode.ai/docs/plugins/",
           "checkedAt": "2026-05-13"
         }
       ]

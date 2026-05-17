@@ -6,7 +6,7 @@ non-fatal diagnostics before the first user action in a new or resumed session.
 
 ## User Outcome
 
-Contributors get enough current context to continue work after startup, clear,
+Contributors get enough current context to continue work after startup, resume, clear,
 or compact events without depending on one host's hook names or carrying full
 conversation history forward.
 
@@ -23,7 +23,7 @@ The portable contract is:
 
 - Canonical lifecycle: `session-start`.
 - Bootstrap intent: `context-bootstrap`.
-- Accepted reasons: `startup`, `clear`, and `compact`.
+- Accepted reasons: `startup`, `resume`, `clear`, and `compact`.
 - Required host-neutral plugin root environment: `SUPERVIBE_PLUGIN_ROOT`.
 - Optional project-root overrides: `SUPERVIBE_PROJECT_ROOT` or
   `SUPERVIBE_PROJECT_DIR`.
@@ -80,7 +80,7 @@ If a workflow names delegated work, the real host/tool path must still run and
 ## Adapter Rules
 
 1. Translate the host event into `session-start` with a reason of `startup`,
-   `clear`, or `compact`.
+   `resume`, `clear`, or `compact`.
 2. Set `SUPERVIBE_PLUGIN_ROOT` before invoking shared hook code.
 3. Keep provider-specific environment and settings names inside adapter-owned
    docs or runtime code.

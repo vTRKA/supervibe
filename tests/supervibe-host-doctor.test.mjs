@@ -26,7 +26,7 @@ test("host doctor validates current multi-host package surfaces without local ho
   });
 
   assert.equal(result.pass, true);
-  assert.equal(result.packageVersion, "2.1.42");
+  assert.equal(result.packageVersion, "2.1.43");
   assert.equal(result.hosts.length, 5);
   assert.ok(result.hosts.every((host) => host.pass), "default mode should warn, not fail, when local CLIs are absent");
 
@@ -34,7 +34,7 @@ test("host doctor validates current multi-host package surfaces without local ho
   assert.ok(codex.checks.some((check) => check.id === "manifest-version" && check.status === "pass"));
   assert.ok(codex.checks.some((check) => check.id === "manifest-commands-unsupported" && check.status === "pass"));
   assert.ok(codex.checks.some((check) => check.id === "manifest-agents-unsupported" && check.status === "pass"));
-  assert.ok(codex.checks.some((check) => check.id === "manifest-hooks-unsupported" && check.status === "pass"));
+  assert.ok(codex.checks.some((check) => check.id === "manifest-hooks" && check.status === "pass"));
   assert.ok(codex.checks.some((check) => check.id === "local-registration" && check.status === "warn"));
   assert.ok(codex.checks.some((check) => check.id === "codex-plugin-config" && check.status === "warn"));
   assert.ok(codex.checks.some((check) => check.id === "codex-legacy-plugin-link" && check.status === "info"));
@@ -44,6 +44,8 @@ test("host doctor validates current multi-host package surfaces without local ho
 
   const opencode = result.hosts.find((host) => host.host === "opencode");
   assert.ok(opencode.checks.some((check) => check.id === "opencode-skills-hook" && check.status === "pass"));
+  assert.ok(opencode.checks.some((check) => check.id === "opencode-export-shape" && check.status === "pass"));
+  assert.ok(opencode.checks.some((check) => check.id === "opencode-session-hooks" && check.status === "pass"));
   assert.ok(opencode.checks.some((check) => check.id === "auto-update" && check.status === "info"));
 
   const copilot = result.hosts.find((host) => host.host === "copilot");
@@ -76,6 +78,8 @@ test("strict host doctor accepts complete Codex cache/config/native skill regist
     await writeFile(join(homeDir, ".codex", "config.toml"), [
       "[features]",
       "apps = true",
+      "hooks = true",
+      "plugin_hooks = true",
       "",
       "[apps._default]",
       "enabled = true",
@@ -98,7 +102,37 @@ test("strict host doctor accepts complete Codex cache/config/native skill regist
   const checks = result.hosts[0].checks;
   assert.ok(checks.some((check) => check.id === "local-registration" && check.status === "pass"));
   assert.ok(checks.some((check) => check.id === "codex-plugin-config" && check.status === "pass"));
+  assert.ok(checks.some((check) => check.id === "codex-plugin-hooks" && check.status === "pass"));
   assert.ok(checks.some((check) => check.id === "codex-native-skills" && check.status === "pass"));
+});
+
+test("strict host doctor rejects Codex config without bundled plugin hooks", async () => {
+  const homeDir = await mkdtemp(join(tmpdir(), "supervibe-host-home-"));
+  await mkdir(join(homeDir, ".codex", "plugins", "cache", "supervibe-marketplace", "supervibe", "local"), { recursive: true });
+  await mkdir(join(homeDir, ".agents", "skills", "supervibe"), { recursive: true });
+  await writeFile(join(homeDir, ".codex", "config.toml"), [
+    "[features]",
+    "apps = true",
+    "",
+    "[apps._default]",
+    "enabled = true",
+    "",
+    "[[tool_suggest.discoverables]]",
+    "type = \"plugin\"",
+    "id = \"supervibe@supervibe-marketplace\"",
+    "",
+  ].join("\n"), "utf8");
+
+  const result = await diagnoseHosts({
+    rootDir: ROOT,
+    homeDir,
+    host: "codex",
+    strict: true,
+    commandExists: async () => true,
+  });
+
+  assert.equal(result.pass, false);
+  assert.ok(result.hosts[0].checks.some((check) => check.id === "codex-plugin-hooks" && check.status === "fail"));
 });
 
 test("host doctor accepts Claude manifest agents as path arrays", async () => {

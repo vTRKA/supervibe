@@ -30,7 +30,7 @@ For reproducible installs, pin a specific commit SHA instead of a release tag.
 
 ## How it works
 
-The plugin registers the skills directory via the `config` hook, so OpenCode discovers all Supervibe skills without symlinks or manual config.
+The plugin registers the skills directory via the `config` hook and handles `session.created` / `session.compacted` events through the OpenCode `event` hook to bootstrap Supervibe `code.db` and `memory.db` indexes without manual terminal commands.
 
 ## Troubleshooting
 

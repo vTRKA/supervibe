@@ -564,6 +564,9 @@ try {
   if (error.code !== "ENOENT") throw error;
 }
 text = upsertSectionSetting(text, "[features]", "plugins", "plugins = true");
+text = upsertSectionSetting(text, "[features]", "hooks", "hooks = true");
+text = upsertSectionSetting(text, "[features]", "codex_hooks", "codex_hooks = true");
+text = upsertSectionSetting(text, "[features]", "plugin_hooks", "plugin_hooks = true");
 text = upsertSectionSetting(text, pluginHeader, "enabled", "enabled = true");
 fs.writeFileSync(configPath, `${text.trimEnd()}\n`);
 '@
@@ -593,6 +596,18 @@ function Register-Codex {
   Register-CodexPath -Path $skillLink -TargetPath $skillTarget -Label 'Codex native skills'
 }
 
+function Register-OpenCode {
+  $configPath = if ($env:OPENCODE_CONFIG) { $env:OPENCODE_CONFIG } else { Join-Path $HOME ".config\opencode\opencode.json" }
+  Push-Location $Target
+  try {
+    & node scripts/register-opencode-plugin.mjs --config $configPath --plugin "$PluginName@git+$RepoUrl#main" | Out-Null
+    if ($LASTEXITCODE -ne 0) { Die "OpenCode registration failed" }
+  } finally {
+    Pop-Location
+  }
+  Ok "registered with OpenCode (plugin: $configPath)"
+}
+
 function Register-Gemini {
   New-Item -ItemType Directory -Force -Path $GeminiDir | Out-Null
   $geminiMd = Join-Path $GeminiDir 'GEMINI.md'
@@ -608,7 +623,14 @@ function Register-Gemini {
   } else {
     Add-Content -Path $geminiMd -Value "`r`n$newBlock`r`n" -Encoding UTF8
   }
-  Ok "registered with Gemini CLI (sourced via $geminiMd)"
+  Push-Location $Target
+  try {
+    & node scripts/register-gemini-hooks.mjs --gemini-home $GeminiDir --plugin-root $Target | Out-Null
+    if ($LASTEXITCODE -ne 0) { Die "Gemini hook registration failed" }
+  } finally {
+    Pop-Location
+  }
+  Ok "registered with Gemini CLI (sourced via $geminiMd + settings hooks)"
 }
 
 $RegisteredHosts = @()
@@ -617,6 +639,7 @@ foreach ($cli in $ClisFound) {
     'claude' { Register-Claude; $RegisteredHosts += 'claude' }
     'codex'  { Register-Codex;  $RegisteredHosts += 'codex'  }
     'gemini' { Register-Gemini; $RegisteredHosts += 'gemini' }
+    'opencode' { Register-OpenCode; $RegisteredHosts += 'opencode' }
   }
 }
 

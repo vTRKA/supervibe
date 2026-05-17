@@ -128,6 +128,7 @@ async function inspectHostRegistrations({ rootDir, homeDir, expectedHosts }) {
     claude: await inspectClaudeRegistration({ rootDir, homeDir, required: expected.has("claude") }),
     codex: inspectCodexRegistration({ rootDir, homeDir, required: expected.has("codex") }),
     gemini: await inspectGeminiRegistration({ rootDir, homeDir, required: expected.has("gemini") }),
+    opencode: await inspectOpenCodeRegistration({ rootDir, homeDir, required: expected.has("opencode") }),
   };
 }
 
@@ -165,6 +166,7 @@ function inspectCodexRegistration({ rootDir, homeDir, required }) {
   let pluginOk = false;
   let legacyPluginOk = false;
   let configOk = false;
+  let pluginHooksOk = false;
   let skillsOk = false;
   let mode = "missing";
   let target = null;
@@ -194,7 +196,9 @@ function inspectCodexRegistration({ rootDir, homeDir, required }) {
       }
     }
     if (existsSync(configPath)) {
-      configOk = codexConfigEnablesPlugin(readFileSync(configPath, "utf8"), pluginKey);
+      const config = readFileSync(configPath, "utf8");
+      configOk = codexConfigEnablesPlugin(config, pluginKey);
+      pluginHooksOk = codexConfigEnablesPluginHooks(config);
     }
     if (existsSync(skillsLink)) {
       const stat = lstatSync(skillsLink);
@@ -210,15 +214,17 @@ function inspectCodexRegistration({ rootDir, homeDir, required }) {
     pluginOk = false;
     legacyPluginOk = false;
     configOk = false;
+    pluginHooksOk = false;
     skillsOk = false;
   }
-  const ok = pluginOk && configOk && skillsOk;
+  const ok = pluginOk && configOk && pluginHooksOk && skillsOk;
 
   return {
     required,
     ok,
     pluginOk,
     configOk,
+    pluginHooksOk,
     legacyPluginOk,
     skillsOk,
     mode,
@@ -232,23 +238,88 @@ function inspectCodexRegistration({ rootDir, homeDir, required }) {
     skillsPath: skillsLink,
     skillsTarget,
     rootDir,
-    message: ok ? "Codex official plugin cache/config and native skills registration are present" : "Codex official plugin cache/config or native skills registration is incomplete after install",
-    nextAction: "Re-run install.sh/install.ps1; Codex needs ~/.codex/plugins/cache plus config.toml, while Zed/Codex ACP needs native skills in ~/.agents/skills because plugin slash commands are not advertised by codex-acp.",
+    message: ok ? "Codex official plugin cache/config, bundled hooks, and native skills registration are present" : "Codex official plugin cache/config/hooks or native skills registration is incomplete after install",
+    nextAction: "Re-run install.sh/install.ps1; Codex needs ~/.codex/plugins/cache plus config.toml with features.hooks/plugin_hooks, while Zed/Codex ACP needs native skills in ~/.agents/skills because plugin slash commands are not advertised by codex-acp.",
   };
 }
 
 async function inspectGeminiRegistration({ rootDir, homeDir, required }) {
-  const geminiMd = await readOptional(join(homeDir, ".gemini", "GEMINI.md"));
-  const includeLine = `@${rootDir.replace(/\\/g, "/")}/GEMINI.md`;
-  const ok = geminiMd.includes("supervibe-plugin-include: do-not-edit")
+  const geminiMdPath = join(homeDir, ".gemini", "GEMINI.md");
+  const geminiSettingsPath = join(homeDir, ".gemini", "settings.json");
+  const geminiMd = await readOptional(geminiMdPath);
+  const geminiSettings = await readOptional(geminiSettingsPath);
+  const includeLine = `@${normalizePath(rootDir)}/GEMINI.md`;
+  const includeOk = geminiMd.includes("supervibe-plugin-include: do-not-edit")
     && normalizePath(geminiMd).includes(normalizePath(includeLine));
+  const hooksOk = geminiSettingsIncludesSessionHooks(geminiSettings);
+  const ok = includeOk && hooksOk;
 
   return {
     required,
     ok,
-    message: ok ? "Gemini include is present" : "Gemini include marker is missing after install",
-    nextAction: "Re-run install.sh/install.ps1 so ~/.gemini/GEMINI.md gets the managed include marker.",
+    includeOk,
+    hooksOk,
+    path: geminiMdPath,
+    settingsPath: geminiSettingsPath,
+    message: ok ? "Gemini include and session-start hooks are present" : "Gemini include marker or session-start hooks are missing after install",
+    nextAction: "Re-run install.sh/install.ps1 so ~/.gemini/GEMINI.md includes Supervibe and ~/.gemini/settings.json runs the Supervibe session-start hooks.",
   };
+}
+
+function geminiSettingsIncludesSessionHooks(settingsText = "") {
+  if (!settingsText.trim()) return false;
+  try {
+    const settings = JSON.parse(settingsText);
+    if (settings?.hooksConfig?.enabled === false) return false;
+    const sessionStart = Array.isArray(settings?.hooks?.SessionStart) ? settings.hooks.SessionStart : [];
+    const preCompress = Array.isArray(settings?.hooks?.PreCompress) ? settings.hooks.PreCompress : [];
+    const hasReason = (reason) => sessionStart.some((group) =>
+      group?.matcher === reason && hookGroupUsesGeminiBridge(group, reason),
+    );
+    return ["startup", "resume", "clear"].every(hasReason) &&
+      preCompress.some((group) => hookGroupUsesGeminiBridge(group, "compact"));
+  } catch {
+    return false;
+  }
+}
+
+function hookGroupUsesGeminiBridge(group, reason) {
+  return Array.isArray(group?.hooks) && group.hooks.some((hook) => {
+    const command = String(hook?.command || "");
+    return command.includes("gemini-session-start.mjs") && command.includes(reason);
+  });
+}
+
+async function inspectOpenCodeRegistration({ rootDir, homeDir, required }) {
+  const configPath = process.env.OPENCODE_CONFIG || join(homeDir, ".config", "opencode", "opencode.json");
+  const config = await readJsonOptional(configPath);
+  const plugins = Array.isArray(config?.plugin) ? config.plugin.map(String) : [];
+  const pluginOk = plugins.some((entry) => entry.startsWith("supervibe@") && entry.includes("vTRKA/supervibe"));
+  const entrypointOk = opencodePackageEntrypointOk(rootDir);
+  return {
+    required,
+    ok: pluginOk && entrypointOk,
+    pluginOk,
+    entrypointOk,
+    configPath,
+    message: pluginOk && entrypointOk ? "OpenCode plugin registration and package entrypoint are present" : "OpenCode plugin registration or package entrypoint is missing after install",
+    nextAction: "Re-run install.sh/install.ps1 so OpenCode config includes supervibe@git+https://github.com/vTRKA/supervibe.git#main, and keep package.json main/exports pointed at .opencode/plugins/supervibe.js.",
+  };
+}
+
+function opencodePackageEntrypointOk(rootDir) {
+  const pkg = readJsonSyncOptional(join(rootDir, "package.json"));
+  const mainOk = pkg?.main === ".opencode/plugins/supervibe.js";
+  const exportsValue = pkg?.exports?.["."];
+  return mainOk && exportsValue === "./.opencode/plugins/supervibe.js";
+}
+
+function readJsonSyncOptional(path) {
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    return null;
+  }
 }
 
 async function collectGitStatusLines(rootDir) {
@@ -293,6 +364,11 @@ function codexConfigEnablesPlugin(config = "", pluginKey = "") {
       id: pluginKey,
     });
   return legacyPluginEnabled || schemaBackedAppSuggestion;
+}
+
+function codexConfigEnablesPluginHooks(config = "") {
+  const features = tomlSection(config, "features");
+  return tomlBoolean(features, "hooks") === true && tomlBoolean(features, "plugin_hooks") === true;
 }
 
 function tomlSection(source = "", section = "") {

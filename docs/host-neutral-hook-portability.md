@@ -53,10 +53,12 @@ model. Those details belong in adapter-specific docs and runtime code.
 
 ## Session Start Context Bootstrap
 
-Session start is the shared lifecycle for startup, clear, and compact events.
+Session start is the shared lifecycle for startup, resume, clear, and compact events.
 Portable hook configuration must invoke shared code through
 `SUPERVIBE_PLUGIN_ROOT`; provider-specific hook environment names stay inside
-adapter-owned compatibility code. Missing host-neutral root is a quiet no-op so
+adapter-owned compatibility code. Bundled plugin hooks that receive provider
+variables such as `PLUGIN_ROOT` must translate them to `SUPERVIBE_PLUGIN_ROOT`
+before invoking shared runtime scripts. Missing host-neutral root is a quiet no-op so
 unsupported hosts do not block the user before the adapter can report support.
 
 The bootstrap output must be compact: active graph summary, tracker state,

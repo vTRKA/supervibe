@@ -11,6 +11,7 @@ import {
   createMissingCodeIndexDiagnostic,
   createSessionStartContextBootstrapPlan,
   ensureCodeIndexFresh,
+  ensureMemoryIndexFresh,
   normalizeSessionStartReason,
   shouldRunSessionStartBootstrap,
 } from "../scripts/session-start-check.mjs";
@@ -32,6 +33,7 @@ test("session-start policy docs define compact host-neutral bootstrap", async ()
     "context-bootstrap",
     "SUPERVIBE_PLUGIN_ROOT",
     "startup",
+    "resume",
     "clear",
     "compact",
     "fresh-context handoff packet",
@@ -50,7 +52,7 @@ test("session-start policy docs define compact host-neutral bootstrap", async ()
 test("portable hooks use the host-neutral plugin root and compact session-start prime", async () => {
   const hooks = JSON.parse(await readFile(join(ROOT, "hooks", "hooks.json"), "utf8"));
   const sessionStart = hooks.hooks.SessionStart?.[0];
-  assert.equal(sessionStart.matcher, "startup|clear|compact");
+  assert.equal(sessionStart.matcher, "startup|resume|clear|compact");
   assert.equal(sessionStart.hooks[0].async, false);
   assert.match(sessionStart.hooks[0].command, /scripts\/session-start-check\.mjs/);
   assert.match(sessionStart.hooks[1].command, /scripts\/hooks\/task-tracker-prime\.mjs --text --compact-context/);
@@ -68,14 +70,16 @@ test("portable hooks use the host-neutral plugin root and compact session-start 
   assert.ok(commands.length > 0);
   for (const command of commands) {
     assert.match(command, /process\.env\.SUPERVIBE_PLUGIN_ROOT/);
-    assert.doesNotMatch(command, /CLAUDE.*PLUGIN_ROOT|PLUGIN_ROOT'\]/);
+    assert.match(command, /process\.env\.PLUGIN_ROOT/);
+    assert.match(command, /\['CLAUDE','PLUGIN_ROOT'\]\.join\('_'\)/);
+    assert.match(command, /process\.env\.SUPERVIBE_PLUGIN_ROOT=r/);
   }
 });
 
 test("runtime policy is non-fatal, compact-aware, and receipt-neutral", () => {
   assert.equal(SESSION_START_CONTEXT_POLICY.lifecycle, "session-start");
   assert.equal(SESSION_START_CONTEXT_POLICY.intent, "context-bootstrap");
-  assert.deepEqual([...SESSION_START_CONTEXT_POLICY.acceptedReasons], ["startup", "clear", "compact"]);
+  assert.deepEqual([...SESSION_START_CONTEXT_POLICY.acceptedReasons], ["startup", "resume", "clear", "compact"]);
   assert.equal(SESSION_START_CONTEXT_POLICY.requiredPluginRootEnv, "SUPERVIBE_PLUGIN_ROOT");
   assert.equal(SESSION_START_CONTEXT_POLICY.receipts.issueAtSessionStart, false);
   assert.equal(SESSION_START_CONTEXT_POLICY.receipts.hookOutputIsWorkflowProof, false);
@@ -127,6 +131,33 @@ test("session-start bootstraps a missing code index by default", async () => {
   await rm(root, { recursive: true, force: true });
 });
 
+test("session-start bootstraps a missing memory index by default", async () => {
+  const root = join(tmpdir(), `supervibe-session-memory-${Date.now()}`);
+  const decisionsDir = join(root, ".supervibe", "memory", "decisions");
+  await mkdir(decisionsDir, { recursive: true });
+  await writeFile(join(decisionsDir, "bootstrap.md"), [
+    "---",
+    "id: session-memory-bootstrap",
+    "type: decision",
+    "date: 2026-05-17",
+    "tags: [session, memory]",
+    "agent: test-agent",
+    "confidence: 10",
+    "---",
+    "Session start rebuilds project memory SQLite when it is missing.",
+  ].join("\n"), "utf8");
+
+  const result = await ensureMemoryIndexFresh(root, {
+    allowBuild: true,
+    useEmbeddings: false,
+    now: "2026-05-17T00:00:00.000Z",
+  });
+
+  assert.equal(result.action, "bootstrap");
+  assert.equal(result.entries, 1);
+  assert.ok(existsSync(join(root, ".supervibe", "memory", "memory.db")));
+  await rm(root, { recursive: true, force: true });
+});
 test("task tracker prime has compact-context hook options and trim behavior", () => {
   const options = resolveTaskTrackerPrimeHookOptions({
     argv: ["--text", "--compact-context"],

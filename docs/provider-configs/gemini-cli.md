@@ -114,6 +114,16 @@ development, validating an extension, and updating one or all extensions.
 At runtime, `--extensions` selects extensions for a session and `gemini -e none`
 disables all extensions for that session.
 
+## Hooks
+
+Gemini CLI session bootstrap uses user-scope `~/.gemini/settings.json` hooks,
+not the shared Claude/Codex `hooks/hooks.json` file. Supervibe installers run
+`scripts/register-gemini-hooks.mjs` to add `SessionStart` hooks for
+`startup|resume|clear` plus a `PreCompress` hook for compact handoff. Both
+invoke `scripts/hooks/gemini-session-start.mjs`, which wraps the shared
+session-start runtime and emits Gemini-safe JSON while bootstrapping missing
+`.supervibe/memory/code.db` and `.supervibe/memory/memory.db`.
+
 ## Approval Modes
 
 The default approval mode is `general.defaultApprovalMode`. Supported persisted

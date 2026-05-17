@@ -24,9 +24,35 @@ function registryRace(audit) {
   return audit.issues.length > 0 && audit.issues.every((issue) => issue.code.startsWith("registry") || issue.code === "missing-registry");
 }
 
+test("plugin package audit rejects OpenCode legacy session keys and metadata exports", () => {
+  const audit = auditPluginPackageData({
+    packageJson: { version: "2.1.43", main: ".opencode/plugins/supervibe.js", exports: { ".": "./.opencode/plugins/supervibe.js" } },
+    manifests: {},
+    marketplace: { name: "supervibe-marketplace", plugins: [] },
+    geminiExtension: { version: "2.1.43" },
+    opencodeSource: `
+      export const SupervibePlugin = async () => ({
+        "session.created": async () => {},
+        "session.compacted": async () => {},
+      });
+      export const version = "2.1.43";
+    `,
+    readme: "Supervibe v2.1.43",
+    changelog: "## [2.1.43]",
+    registryYaml: "agents:\nskills:\ngenerated-at:",
+    commandFiles: [],
+    trackedFiles: [],
+    pathExists: {},
+    scripts: {},
+  });
+
+  assert.ok(audit.issues.some((issue) => issue.code === "opencode-invalid-export-shape"));
+  assert.ok(audit.issues.some((issue) => issue.code === "opencode-session-hook-contract"));
+});
+
 test("plugin package audit reports version, path, command, and smoke-check drift with next actions", () => {
   const audit = auditPluginPackageData({
-    packageJson: { version: "1.8.1" },
+    packageJson: { version: "1.8.1", main: ".opencode/plugins/supervibe.js", exports: { ".": "./.opencode/plugins/supervibe.js" } },
     manifests: {
       claude: { name: "supervibe", version: "1.7.0", description: "old", commands: "../commands", skills: "./missing-skills" },
       codex: { name: "wrong", version: "1.8.1", description: "worktree loop", commands: "./commands", skills: "./skills", hooks: "./hooks/hooks.json" },
@@ -67,6 +93,7 @@ test("plugin package audit reports version, path, command, and smoke-check drift
   assert.ok(audit.issues.some((issue) => issue.code === "manifest-path-escapes-package"));
   assert.ok(audit.issues.some((issue) => issue.code === "missing-command-doc"));
   assert.ok(audit.issues.some((issue) => issue.code === "terminal-bin-root-missing"));
+  assert.equal(audit.issues.some((issue) => issue.code === "opencode-entrypoint-missing"), false);
   assert.ok(audit.issues.some((issue) => issue.code === "unix-bin-link-not-wired"));
   assert.ok(audit.issues.some((issue) => issue.code === "codex-unsupported-manifest-field"));
   assert.ok(audit.issues.some((issue) => issue.code === "install-mirror-clean-missing"));
@@ -84,7 +111,7 @@ test("plugin package audit reports version, path, command, and smoke-check drift
 
 test("plugin package audit blocks dev test suite in user install and update paths", () => {
   const audit = auditPluginPackageData({
-    packageJson: { version: "2.0.17" },
+    packageJson: { version: "2.0.17", main: ".opencode/plugins/supervibe.js", exports: { ".": "./.opencode/plugins/supervibe.js" } },
     manifests: {},
     marketplace: { name: "supervibe-marketplace", plugins: [] },
     geminiExtension: { version: "2.0.17" },

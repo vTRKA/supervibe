@@ -21,11 +21,11 @@ const CORE_COMMAND_DOCS = [
 
 const MANIFEST_PATH_FIELDS = {
   claude: ["commands", "skills"],
-  codex: ["skills"],
+  codex: ["skills", "hooks"],
   cursor: ["commands", "skills"],
 };
 
-const UNSUPPORTED_CODEX_FIELDS = ["commands", "agents", "hooks"];
+const UNSUPPORTED_CODEX_FIELDS = ["commands", "agents"];
 
 export async function auditPluginPackage({ rootDir = process.cwd() } = {}) {
   const root = resolve(rootDir);
@@ -56,6 +56,7 @@ export function auditPluginPackageData(data = {}) {
   }
 
   validateMarketplace(data.marketplace, packageVersion, issues);
+  validateOpenCodeEntrypoint(data, issues);
   validateCommandDocs(data, issues);
   validateTerminalCommandSurface(data, issues);
   validatePublicDocs(data, packageVersion, issues);
@@ -206,10 +207,28 @@ function validateManifest(name, manifest, data, issues) {
           issues,
           "codex-unsupported-manifest-field",
           `codex manifest includes unsupported ${field} field`,
-          "Remove Codex commands/agents/hooks manifest fields; Codex currently contributes Supervibe through plugin skills/config, while codex-acp advertises only its own slash commands."
+          "Remove Codex commands/agents manifest fields; Codex currently contributes Supervibe through plugin skills/hooks/config, while codex-acp advertises only its own slash commands."
         );
       }
     }
+  }
+}
+
+function validateOpenCodeEntrypoint(data, issues) {
+  const pkg = data.packageJson || {};
+  if (pkg.main !== ".opencode/plugins/supervibe.js" || pkg.exports?.["."] !== "./.opencode/plugins/supervibe.js") {
+    addIssue(issues, "opencode-entrypoint-missing", "package.json does not expose the OpenCode plugin module", "Set package.json main/exports to .opencode/plugins/supervibe.js so OpenCode git plugins load session hooks.");
+  }
+  const source = data.opencodeSource || "";
+  if (/export\s+const\s+(?:name|version)\s*=/.test(source)) {
+    addIssue(issues, "opencode-invalid-export-shape", "OpenCode package entrypoint exports non-function metadata values", "Keep OpenCode entrypoint exports limited to plugin functions; store metadata in non-exported constants.");
+  }
+  const hasSessionEventHook = /event\s*:\s*async\s*\(\s*\{\s*event\s*\}\s*\)\s*=>/m.test(source);
+  const handlesSessionCreated = /event\?\.type\s*===\s*["\']session\.created["\']/.test(source) || /event\.type\s*===\s*["\']session\.created["\']/.test(source);
+  const handlesSessionCompacted = /event\?\.type\s*===\s*["\']session\.compacted["\']/.test(source) || /event\.type\s*===\s*["\']session\.compacted["\']/.test(source);
+  const hasLegacySessionKey = /["\']session\.(?:created|compacted)["\']\s*:/.test(source);
+  if (!hasSessionEventHook || !handlesSessionCreated || !handlesSessionCompacted || hasLegacySessionKey) {
+    addIssue(issues, "opencode-session-hook-contract", "OpenCode session bootstrap hooks do not use the event hook contract", "Handle session.created/session.compacted inside event: async ({ event }) => ... and avoid direct session.* object keys.");
   }
 }
 
@@ -453,7 +472,7 @@ async function collectPathStatus(root, manifests) {
 }
 
 function parseOpencodeVersion(source = "") {
-  return /version:\s*["']([^"']+)["']/.exec(source)?.[1] || null;
+  return /(?:version\s*:|(?:export\s+)?const\s+(?:SUPERVIBE_)?VERSION\s*=)\s*["\']([^"\']+)["\']/i.exec(source)?.[1] || null;
 }
 
 function pathEscapesPackage(pathRef) {

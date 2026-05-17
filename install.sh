@@ -564,6 +564,9 @@ register_codex() {
       if (error.code !== "ENOENT") throw error;
     }
     text = upsertSectionSetting(text, "[features]", "plugins", "plugins = true");
+text = upsertSectionSetting(text, "[features]", "hooks", "hooks = true");
+text = upsertSectionSetting(text, "[features]", "codex_hooks", "codex_hooks = true");
+text = upsertSectionSetting(text, "[features]", "plugin_hooks", "plugin_hooks = true");
     text = upsertSectionSetting(text, pluginHeader, "enabled", "enabled = true");
     fs.writeFileSync(configPath, `${text.trimEnd()}\n`);
   '
@@ -576,6 +579,12 @@ register_codex() {
   fi
   ln -s "$TARGET/skills" "$skill_link"
   ok "registered with Codex CLI (cache: $cache_link -> $TARGET; config: $codex_config; legacy plugin: $link -> $TARGET; skills: $skill_link -> $TARGET/skills)"
+}
+
+register_opencode() {
+  local config_path="${OPENCODE_CONFIG:-$HOME/.config/opencode/opencode.json}"
+  ( cd "$TARGET" && node scripts/register-opencode-plugin.mjs --config "$config_path" --plugin "$PLUGIN_NAME@git+$REPO_URL#main" >/dev/null )
+  ok "registered with OpenCode (plugin: $config_path)"
 }
 
 register_gemini() {
@@ -596,7 +605,8 @@ register_gemini() {
       printf '\n%s\n%s\n%s\n' "$marker" "$include_line" "$marker"
     } > "$gemini_md.tmp" && mv "$gemini_md.tmp" "$gemini_md"
   fi
-  ok "registered with Gemini CLI (sourced via $gemini_md)"
+  ( cd "$TARGET" && node scripts/register-gemini-hooks.mjs --gemini-home "$GEMINI_DIR" --plugin-root "$TARGET" >/dev/null )
+  ok "registered with Gemini CLI (sourced via $gemini_md + settings hooks)"
 }
 
 for cli in "${CLIS_FOUND[@]}"; do
@@ -604,6 +614,7 @@ for cli in "${CLIS_FOUND[@]}"; do
     claude) register_claude; REGISTERED_HOSTS+=("claude") ;;
     codex)  register_codex;  REGISTERED_HOSTS+=("codex")  ;;
     gemini) register_gemini; REGISTERED_HOSTS+=("gemini") ;;
+    opencode) register_opencode; REGISTERED_HOSTS+=("opencode") ;;
   esac
 done
 

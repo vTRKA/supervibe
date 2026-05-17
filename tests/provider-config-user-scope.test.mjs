@@ -116,6 +116,7 @@ test("provider config apply writes user Codex config, preserves values, and igno
     assert.match(homeConfig, /approval_policy = "on-request"/);
     assert.match(homeConfig, /max_threads = 4/);
     assert.match(homeConfig, /web_search = "live"/);
+    assert.match(homeConfig, /plugin_hooks = true/);
     assert.equal(readFileSync(join(projectRoot, ".codex", "config.toml"), "utf8"), projectCodexBefore);
     assert.equal(readFileSync(join(projectRoot, ".claude", "settings.json"), "utf8"), projectClaudeBefore);
 

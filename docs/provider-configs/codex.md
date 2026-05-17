@@ -58,6 +58,7 @@ memories = true
 shell_snapshot = true
 hooks = true
 codex_hooks = true
+plugin_hooks = true
 goals = true
 
 [agents]
@@ -82,7 +83,7 @@ default_tools_enabled = true
 default_tools_approval_mode = "auto"
 
 [[hooks.SessionStart]]
-matcher = "startup|resume|clear"
+matcher = "startup|resume|clear|compact"
 
 [[hooks.SessionStart.hooks]]
 type = "command"
@@ -166,8 +167,8 @@ compatibility alias for older Codex configs. The managed defaults add two
 runtime-owned hooks:
 
 - `SessionStart` runs `supervibe hook session-start`, which bootstraps a
-  missing Code RAG/CodeGraph index and mtime-scans changed, deleted, or newly
-  discovered source files before agent handoff.
+  missing Code RAG/CodeGraph index plus `memory.db`, then mtime-scans
+  changed, deleted, or newly discovered source and memory files before agent handoff.
 - `PostToolUse` runs `supervibe hook post-edit` after `Bash`, `apply_patch`,
   `Edit`, or `Write`, refreshing touched source/memory files and falling back
   to a cheap mtime-scan after shell commands that may have changed files.
@@ -268,6 +269,11 @@ discovered from the project root down to the current directory, with
 `features.hooks` is documented in current Codex hook configuration.
 `features.codex_hooks` is retained as a compatibility alias only; new managed
 configs should prefer `features.hooks`.
+
+`features.plugin_hooks` is documented in the official Codex config reference
+and is required for lifecycle hooks bundled by enabled plugins. Supervibe also
+writes inline user-level hooks, but plugin hooks provide the Zed/Codex ACP
+installation path with an independent hook discovery surface.
 
 `features.goals` is documented by the official Codex "Follow a goal" use-case
 page as the config-file switch for `/goal`:

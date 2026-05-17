@@ -68,17 +68,17 @@ npm run supervibe:install-bins    # optional on Linux/Mac: links supervibe-* ter
 
 # Linux/Mac:
 mkdir -p ~/.claude/plugins/cache/local
-cp -r ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.1.42
+cp -r ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.1.43
 
 # Windows (PowerShell):
-mkdir $HOME\.claude\plugins\cache\local\supervibe\2.1.42
-xcopy /E /I "C:\path\to\supervibe" "$HOME\.claude\plugins\cache\local\supervibe\2.1.42"
+mkdir $HOME\.claude\plugins\cache\local\supervibe\2.1.43
+xcopy /E /I "C:\path\to\supervibe" "$HOME\.claude\plugins\cache\local\supervibe\2.1.43"
 
 # Or symlink (avoids re-copy on updates):
 # Linux/Mac:
-ln -s ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.1.42
+ln -s ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.1.43
 # Windows (admin shell):
-mklink /D "$HOME\.claude\plugins\cache\local\supervibe\2.1.42" "C:\path\to\supervibe"
+mklink /D "$HOME\.claude\plugins\cache\local\supervibe\2.1.43" "C:\path\to\supervibe"
 
 # 4. Restart Claude Code session
 # Plugin auto-loads from cache.
@@ -103,7 +103,7 @@ supervibe-adapt --help    # Linux/Mac terminal alias, no leading slash
 ```
 
 If `/supervibe` not recognized:
-- Check `~/.claude/plugins/cache/local/supervibe/2.1.42/.claude-plugin/plugin.json` exists
+- Check `~/.claude/plugins/cache/local/supervibe/2.1.43/.claude-plugin/plugin.json` exists
 - Verify `agents` field is array (not string) and paths begin with `./agents/`
 - Run `npm run validate:plugin-json` from plugin dir
 
@@ -305,7 +305,7 @@ python`, `--path src-tauri/src`, or `--file <path>`. For one-file diagnosis use
 
 **Auto-index on changes:** Three runtime-owned paths keep RAG current by default:
 
-1. **SessionStart bootstrap + mtime-scan** - creates `.supervibe/memory/code.db` when missing, then catches files changed between sessions (VS Code, `git pull`, CI). It discovers new source files, removes deleted rows, and reports `[supervibe] mtime-scan: N reindexed, M discovered, R removed` when it had work to do.
+1. **SessionStart bootstrap + mtime-scan** - creates `.supervibe/memory/code.db` and `.supervibe/memory/memory.db` when missing, then catches files changed between sessions (VS Code, `git pull`, CI). It discovers new source files, removes deleted rows, and reports `[supervibe] mtime-scan: N reindexed, M discovered, R removed` when it had work to do.
 2. **Pseudo-watcher (in-session)** - Codex/host `PostToolUse` hook on `Bash|apply_patch|Edit|Write` re-indexes touched files in-process and runs a cheap mtime-scan after shell commands that may have changed files. Covers source code (RAG + Graph in `code.db`) and memory entries (`.supervibe/memory/**/*.md` in `memory.db`). Embeddings are skipped for speed unless explicitly enabled.
 3. **Watcher daemon (optional)** - `npm run memory:watch` for real-time updates while editing in parallel during long sessions. Chokidar reacts to file events immediately and runs a 5-minute safety scan for missed changes.
 
@@ -313,7 +313,7 @@ For normal agent workflows, (1) + (2) plus the `search-code.mjs` preflight are e
 
 Env knobs: `SUPERVIBE_SESSION_START_ALLOW_INDEX_BUILD=0` disables first-run SessionStart bootstrap; `SUPERVIBE_HOOK_NO_BOOTSTRAP=1` prevents PostToolUse from creating a missing `code.db`; `SUPERVIBE_HOOK_SCAN_ON_EMPTY=0` disables the Bash/shell mtime-scan fallback; `SUPERVIBE_HOOK_NO_INDEX=1` disables hook indexing; `SUPERVIBE_HOOK_EMBED=1` enables embeddings in the hook. Project-owned indexing exclusions live in `.supervibe/memory/index-config.json`.
 
-**Storage:** `.supervibe/memory/code.db` (SQLite, gitignored). Hash-based dedup means re-indexing is fast.
+**Storage:** `.supervibe/memory/code.db` and `.supervibe/memory/memory.db` (SQLite, gitignored). Hash-based dedup means re-indexing is fast.
 
 ## Code Graph (structural relationships)
 
@@ -432,7 +432,7 @@ Plugin telemetry watches every subagent dispatch and surfaces degradation automa
 
 ### `/supervibe` not recognized after install
 
-1. Confirm path: `ls ~/.claude/plugins/cache/local/supervibe/2.1.42/.claude-plugin/plugin.json`
+1. Confirm path: `ls ~/.claude/plugins/cache/local/supervibe/2.1.43/.claude-plugin/plugin.json`
 2. Validate manifest: `cd <plugin-dir> && npm run validate:plugin-json`
 3. Restart Claude Code session (plugins load at startup)
 4. Check `~/.claude/plugins/installed_plugins.json` lists supervibe
@@ -507,13 +507,13 @@ rm -rf <project>/<adapter>/skills
 ### v1.1  v1.2
 
 - **Plugin manifest now requires `agents:[]` array** for nested agent dirs to work
-- Manifest auto-updated; ensure your install path has v2.1.42
+- Manifest auto-updated; ensure your install path has v2.1.43
 - **Memory v2: SQLite FTS5** replaces markdown+grep
   - Old v1 markdown files still work as source of truth
   - First search auto-builds SQLite index from existing markdown
   - **Requires Node 22.5+** for `node:sqlite`; installation stops until this runtime is available
 - New: `scripts/search-memory.mjs` CLI
-- **Action**: re-symlink to v2.1.42 dir, restart Claude Code
+- **Action**: re-symlink to v2.1.43 dir, restart Claude Code
 
 ## Where to next
 

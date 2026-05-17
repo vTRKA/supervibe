@@ -17,7 +17,7 @@ import { artifactRel, artifactRoot } from "./lib/supervibe-artifact-roots.mjs";
 export const SESSION_START_CONTEXT_POLICY = Object.freeze({
   lifecycle: "session-start",
   intent: "context-bootstrap",
-  acceptedReasons: Object.freeze(["startup", "clear", "compact"]),
+  acceptedReasons: Object.freeze(["startup", "resume", "clear", "compact"]),
   requiredPluginRootEnv: "SUPERVIBE_PLUGIN_ROOT",
   optionalProjectRootEnv: Object.freeze(["SUPERVIBE_PROJECT_ROOT", "SUPERVIBE_PROJECT_DIR"]),
   failureMode: "non-fatal-diagnostic-or-noop",
@@ -135,6 +135,15 @@ export function createMissingCodeIndexDiagnostic(projectRoot = PROJECT_ROOT) {
   };
 }
 
+export function createMissingMemoryIndexDiagnostic(projectRoot = PROJECT_ROOT) {
+  const dbPath = join(projectRoot, ".supervibe", "memory", "memory.db");
+  return {
+    action: "missing",
+    dbPath,
+    error: "project memory index missing and automatic session-start bootstrap is disabled. Repair with node scripts/build-memory-index.mjs",
+  };
+}
+
 // === Phase D: code RAG + graph index health ===
 export async function ensureCodeIndexFresh(projectRoot, {
   allowBuild = process.env.SUPERVIBE_SESSION_START_ALLOW_INDEX_BUILD !== "0",
@@ -180,6 +189,46 @@ export async function ensureCodeIndexFresh(projectRoot, {
   const stats = store.stats();
   store.close();
   return { action, counts, stats, useEmbeddings };
+}
+
+export async function ensureMemoryIndexFresh(projectRoot, {
+  allowBuild = process.env.SUPERVIBE_SESSION_START_ALLOW_MEMORY_BUILD !== "0" &&
+    process.env.SUPERVIBE_SESSION_START_ALLOW_INDEX_BUILD !== "0",
+  useEmbeddings = false,
+  now = new Date().toISOString(),
+} = {}) {
+  const dbPath = join(projectRoot, ".supervibe", "memory", "memory.db");
+  const indexExists = existsSync(dbPath);
+
+  if (!indexExists) {
+    if (!allowBuild) return createMissingMemoryIndexDiagnostic(projectRoot);
+    const { curateProjectMemory } = await import("./lib/supervibe-memory-curator.mjs");
+    const report = await curateProjectMemory({
+      rootDir: projectRoot,
+      rebuildSqlite: true,
+      useEmbeddings,
+      now,
+    });
+    return {
+      action: "bootstrap",
+      entries: report.sqliteEntries ?? 0,
+      markdownEntries: report.markdownEntries,
+      pass: report.pass,
+      validation: report.validation,
+    };
+  }
+
+  try {
+    const { MemoryStore } = await import("./lib/memory-store.mjs");
+    const { scanMemoryChanges } = await import("./lib/mtime-scan.mjs");
+    const store = new MemoryStore(projectRoot, { useEmbeddings: false });
+    await store.init();
+    const scanCounts = await scanMemoryChanges(store, projectRoot);
+    store.close();
+    return { action: "skip", scanCounts };
+  } catch (err) {
+    return { action: "skip", error: `${err.message}. Repair with node scripts/build-memory-index.mjs` };
+  }
 }
 
 async function reportCodeIndexHealth() {
@@ -391,18 +440,24 @@ export async function main({ env = process.env } = {}) {
   }
   await reportWatcherDiagnostics();
 
-  // Memory mtime-scan: catch external edits to .supervibe/memory/ between sessions.
-  async function reportMemoryScan() {
+  async function reportMemoryIndexHealth() {
     try {
-      const memDbPath = join(PROJECT_ROOT, ".supervibe", "memory", "memory.db");
-      if (!existsSync(memDbPath)) return;
-      const { MemoryStore } = await import("./lib/memory-store.mjs");
-      const { scanMemoryChanges } = await import("./lib/mtime-scan.mjs");
-      const store = new MemoryStore(PROJECT_ROOT, { useEmbeddings: false });
-      await store.init();
-      const counts = await scanMemoryChanges(store, PROJECT_ROOT);
-      store.close();
-      if (counts.reindexed > 0 || counts.removed > 0) {
+      const result = await ensureMemoryIndexFresh(PROJECT_ROOT);
+      if (result.error) {
+        console.log(`[supervibe] memory: WARN ${result.error}`);
+        return;
+      }
+      if (result.action === "bootstrap") {
+        console.log(`[supervibe] memory index built ${result.entries} entr(ies) (bootstrapped)`);
+        if (!result.pass) {
+          const errors = result.validation?.errors?.length || 0;
+          const warnings = result.validation?.warnings?.length || 0;
+          console.log(`[supervibe] memory: WARN ${errors} validation error(s), ${warnings} warning(s)`);
+        }
+        return;
+      }
+      const counts = result.scanCounts;
+      if (counts && (counts.reindexed > 0 || counts.removed > 0)) {
         console.log(
           `[supervibe] memory mtime-scan: ${counts.reindexed} entr(ies) reindexed, ${counts.removed} removed`,
         );
@@ -411,7 +466,7 @@ export async function main({ env = process.env } = {}) {
       // Non-fatal
     }
   }
-  await reportMemoryScan();
+  await reportMemoryIndexHealth();
 
   // Phase E: prune stale runtime state without stopping live processes.
   async function pruneStaleRuntimeState() {

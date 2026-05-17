@@ -155,11 +155,17 @@ test('Codex installer registration includes native skills for Zed ACP sessions',
   assert.match(sh, /plugins\/cache\/\$MARKETPLACE_NAME\/\$PLUGIN_NAME/, 'bash installer must write the Codex official plugin cache');
   assert.match(sh, /SUPERVIBE_CODEX_CONFIG/, 'bash installer must update Codex config.toml through env-based node script');
   assert.match(sh, /\[plugins\."\$\{pluginKey\}"\]/, 'bash installer must enable the plugin key in Codex config.toml');
+  assert.match(sh, /plugin_hooks\", \"plugin_hooks = true/, 'bash installer must enable Codex bundled plugin hooks');
+  assert.match(sh, /register-gemini-hooks\.mjs/, 'bash installer must register Gemini session hooks');
+  assert.match(sh, /register-opencode-plugin\.mjs/, 'bash installer must register OpenCode plugin hooks');
   assert.match(sh, /\.agents\/skills/, 'bash installer must link native skills for Codex/Zed ACP');
   assert.match(ps1, /Join-Path \$CodexDir 'plugins'/, 'PowerShell installer must keep Codex plugin registration');
   assert.match(ps1, /plugins\\cache\\\$MarketplaceName\\\$PluginName/, 'PowerShell installer must write the Codex official plugin cache');
   assert.match(ps1, /SUPERVIBE_CODEX_CONFIG/, 'PowerShell installer must update Codex config.toml through env-based node script');
   assert.match(ps1, /\[plugins\."\$\{pluginKey\}"\]/, 'PowerShell installer must enable the plugin key in Codex config.toml');
+  assert.match(ps1, /plugin_hooks\", \"plugin_hooks = true/, 'PowerShell installer must enable Codex bundled plugin hooks');
+  assert.match(ps1, /register-gemini-hooks\.mjs/, 'PowerShell installer must register Gemini session hooks');
+  assert.match(ps1, /register-opencode-plugin\.mjs/, 'PowerShell installer must register OpenCode plugin hooks');
   assert.match(ps1, /Join-Path \$HOME '\.agents\\skills'/, 'PowerShell installer must link native skills for Codex/Zed ACP');
 });
 
@@ -173,6 +179,9 @@ test('macOS/Linux installer and updater refresh terminal command shims', () => {
   assert.match(sh, /install-unix-bin-links\.mjs/, 'bash installer must link terminal shims');
   assert.match(updateSh, /install-unix-bin-links\.mjs/, 'bash updater must refresh terminal shims');
   assert.match(upgradeMjs, /install-unix-bin-links\.mjs/, 'canonical upgrader must refresh terminal shims on Unix');
+  assert.match(upgradeMjs, /refreshCodexPluginHooksConfig/, 'canonical upgrader must repair Codex plugin hook config after update');
+  assert.match(upgradeMjs, /refreshGeminiSessionHooksConfig/, 'canonical upgrader must repair Gemini session hooks after update');
+  assert.match(upgradeMjs, /refreshTerminalCommands\(\);\s*refreshCodexPluginHooksConfig\(\);\s*refreshGeminiSessionHooksConfig\(\);\s*console\.log\('\[supervibe:upgrade\] npm run supervibe:install-doctor/, 'normal upgrader path must repair provider hook config before install doctor');
   assert.match(sh, /\.local\/bin/, 'bash installer must use a user-writable Unix bin dir');
 });
 

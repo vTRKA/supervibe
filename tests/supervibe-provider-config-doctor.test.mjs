@@ -85,6 +85,7 @@ test("Codex provider config template includes documented goals and excludes unsa
   assert.match(template, /web_search = "live"/);
   assert.match(template, /\[features\][\s\S]*apps = true/);
   assert.match(template, /\[features\][\s\S]*memories = true/);
+  assert.match(template, /\[features\][\s\S]*plugin_hooks = true/);
   assert.match(template, /\[features\][\s\S]*goals = true/);
   assert.match(template, /\[agents\][\s\S]*max_threads = 8/);
   assert.match(template, /\[apps\._default\][\s\S]*enabled = true/);

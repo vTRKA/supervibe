@@ -1,6 +1,6 @@
 {
   "name": "supervibe-framework",
-  "version": "2.1.42",
+  "version": "2.1.43",
   "description": "Dev tooling for the Supervibe Claude Code plugin",
   "private": true,
   "type": "module",
@@ -244,5 +244,9 @@
     "@huggingface/transformers": "^4.2.0",
     "chokidar": "^5.0.0",
     "web-tree-sitter": "^0.26.8"
+  },
+  "main": ".opencode/plugins/supervibe.js",
+  "exports": {
+    ".": "./.opencode/plugins/supervibe.js"
   }
 }

@@ -60,9 +60,10 @@ test("TOML apply adds only missing Codex defaults and preserves user values and 
   assert.match(result.output, /\[features\][\s\S]*apps = true/);
   assert.match(result.output, /\[features\][\s\S]*hooks = true/);
   assert.match(result.output, /\[features\][\s\S]*codex_hooks = true/);
+  assert.match(result.output, /\[features\][\s\S]*plugin_hooks = true/);
   assert.match(result.output, /\[features\][\s\S]*goals = true/);
   assert.match(result.output, /\[agents\][\s\S]*max_depth = 1/);
-  assert.match(result.output, /\[\[hooks\.SessionStart\]\][\s\S]*matcher = "startup\|resume\|clear"/);
+  assert.match(result.output, /\[\[hooks\.SessionStart\]\][\s\S]*matcher = "startup\|resume\|clear\|compact"/);
   assert.match(result.output, /\[\[hooks\.SessionStart\.hooks\]\][\s\S]*command = "supervibe hook session-start"/);
   assert.match(result.output, /\[\[hooks\.PostToolUse\]\][\s\S]*matcher = "Bash\|apply_patch\|Edit\|Write"/);
   assert.match(result.output, /\[\[hooks\.PostToolUse\.hooks\]\][\s\S]*command = "supervibe hook post-edit"/);
@@ -93,6 +94,7 @@ memories = true
 shell_snapshot = true
 hooks = true
 codex_hooks = true
+plugin_hooks = true
 goals = true
 plugins = true
 
@@ -118,7 +120,7 @@ default_tools_enabled = true
 default_tools_approval_mode = "auto"
 
 [[hooks.SessionStart]]
-matcher = "startup|resume|clear"
+matcher = "startup|resume|clear|compact"
 
 [[hooks.SessionStart.hooks]]
 type = "command"
@@ -228,7 +230,7 @@ test("JSONC apply preserves comments and adds missing nested values without over
   assert.equal((result.output.match(/"approval_policy"/g) || []).length, 1);
 });
 
-test("Codex schema validation accepts hooks and documented goals while rejecting unsafe plugin boolean", () => {
+test("Codex schema validation accepts hooks, plugin hooks, and documented goals while rejecting unsafe plugin boolean", () => {
   const manifest = readProviderCapabilities();
   const goalsValidation = validateProviderConfigEntries({
     providerId: "codex",
@@ -240,6 +242,7 @@ test("Codex schema validation accepts hooks and documented goals while rejecting
     manifest,
     entries: [
       { kind: "key", path: ["features", "hooks"], value: true, surface: "features.hooks" },
+      { kind: "key", path: ["features", "plugin_hooks"], value: true, surface: "features.plugin_hooks" },
       { kind: "arrayTable", path: ["hooks", "SessionStart"], surface: "hooks", values: { matcher: "startup|resume|clear" } },
     ],
   });

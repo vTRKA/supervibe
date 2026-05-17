@@ -21,8 +21,8 @@ const HOST_DEFINITIONS = {
     label: "Codex CLI",
     command: "codex",
     manifestPath: ".codex-plugin/plugin.json",
-    requiredManifestPaths: ["skills"],
-    unsupportedManifestPaths: ["commands", "agents", "hooks"],
+    requiredManifestPaths: ["skills", "hooks"],
+    unsupportedManifestPaths: ["commands", "agents"],
     registrationPath: [".codex", "plugins", "cache", "supervibe-marketplace", "supervibe", "local"],
     legacyRegistrationPath: [".codex", "plugins", "supervibe"],
     configPath: [".codex", "config.toml"],
@@ -71,6 +71,7 @@ export async function diagnoseHosts({
       root,
       homeDir,
       packageVersion: packageJson?.version || null,
+      packageJson,
       strict,
       env,
       commandExists,
@@ -229,7 +230,7 @@ async function checkJsonManifest(hostId, definition, context, checks) {
       checks.push(warn(
         `manifest-${field}-unsupported`,
         `${definition.manifestPath} includes unsupported Codex field ${field}`,
-        "Codex currently loads Supervibe through skills and plugin config; command, agent, and hook manifest fields are not advertised to Zed via codex-acp."
+        "Codex currently loads Supervibe commands and agents through native skills and runtime routing; command and agent manifest fields are not advertised to Zed via codex-acp."
       ));
     } else {
       checks.push(pass(`manifest-${field}-unsupported`, `Codex manifest does not publish unsupported ${field} path`));
@@ -245,7 +246,12 @@ async function checkOpencodeSource(context, checks) {
     return;
   }
   checks.push(pass("opencode-plugin", "OpenCode plugin source exists"));
-  const version = /version:\s*["']([^"']+)["']/.exec(source)?.[1] || null;
+  if (context.packageJson?.main !== ".opencode/plugins/supervibe.js" || context.packageJson?.exports?.["."] !== "./.opencode/plugins/supervibe.js") {
+    checks.push(fail("opencode-entrypoint", "package.json does not expose the OpenCode plugin entrypoint", "Set package.json main/exports to .opencode/plugins/supervibe.js."));
+  } else {
+    checks.push(pass("opencode-entrypoint", "package.json exposes the OpenCode plugin entrypoint"));
+  }
+  const version = /(?:version\s*:|(?:export\s+)?const\s+(?:SUPERVIBE_)?VERSION\s*=)\s*["\']([^"\']+)["\']/i.exec(source)?.[1] || null;
   if (context.packageVersion && version !== context.packageVersion) {
     checks.push(fail("opencode-version", `OpenCode version ${version || "missing"} does not match package ${context.packageVersion}`, `Set .opencode/plugins/supervibe.js version to ${context.packageVersion}.`));
   } else {
@@ -255,6 +261,20 @@ async function checkOpencodeSource(context, checks) {
     checks.push(fail("opencode-skills-hook", "OpenCode plugin does not register skills paths", "Keep the config hook that returns skills.paths."));
   } else {
     checks.push(pass("opencode-skills-hook", "OpenCode config hook registers skills paths"));
+  }
+  if (/export\s+const\s+(?:name|version)\s*=/.test(source)) {
+    checks.push(fail("opencode-export-shape", "OpenCode plugin exports non-function metadata values", "Keep package entrypoint exports limited to plugin functions; store version/name as non-exported constants."));
+  } else {
+    checks.push(pass("opencode-export-shape", "OpenCode package entrypoint exports only plugin functions"));
+  }
+  const hasSessionEventHook = /event\s*:\s*async\s*\(\s*\{\s*event\s*\}\s*\)\s*=>/m.test(source);
+  const handlesSessionCreated = /event\?\.type\s*===\s*["\']session\.created["\']/.test(source) || /event\.type\s*===\s*["\']session\.created["\']/.test(source);
+  const handlesSessionCompacted = /event\?\.type\s*===\s*["\']session\.compacted["\']/.test(source) || /event\.type\s*===\s*["\']session\.compacted["\']/.test(source);
+  const hasLegacySessionKey = /["\']session\.(?:created|compacted)["\']\s*:/.test(source);
+  if (!hasSessionEventHook || !handlesSessionCreated || !handlesSessionCompacted || hasLegacySessionKey) {
+    checks.push(fail("opencode-session-hooks", "OpenCode session bootstrap hooks do not use the event hook contract", "Handle session.created/session.compacted inside event: async ({ event }) => ... and avoid legacy direct session.* keys."));
+  } else {
+    checks.push(pass("opencode-session-hooks", "OpenCode event hook handles session bootstrap events"));
   }
   if (!/chat\.messages\.transform/.test(source)) {
     checks.push(warn("opencode-bootstrap", "OpenCode bootstrap context injection was not found", "Keep experimental.chat.messages.transform bootstrap until OpenCode has richer plugin metadata."));
@@ -270,6 +290,11 @@ async function checkGeminiContext(context, checks) {
     return;
   }
   checks.push(pass("gemini-context", "GEMINI.md exists"));
+  if (await pathExists(join(context.root, "scripts", "hooks", "gemini-session-start.mjs"))) {
+    checks.push(pass("gemini-session-hook-bridge", "Gemini session-start hook bridge exists"));
+  } else {
+    checks.push(fail("gemini-session-hook-bridge", "Gemini session-start hook bridge is missing", "Restore scripts/hooks/gemini-session-start.mjs."));
+  }
   if (!/Tool name mapping/i.test(geminiMd)) {
     checks.push(warn("gemini-tool-map", "GEMINI.md does not document tool-name mapping", "Keep Claude-to-Gemini tool mapping in GEMINI.md."));
   } else {
@@ -372,6 +397,13 @@ async function checkCodexRegistration(definition, context, checks) {
       : warn("codex-plugin-config", `${configPath} does not enable ${definition.pluginConfigKey}`, "Re-run install.sh/install.ps1 so Codex config.toml enables the plugin."));
   } else {
     checks.push(pass("codex-plugin-config", `Codex config enables ${definition.pluginConfigKey}`));
+  }
+  if (!codexConfigEnablesPluginHooks(config)) {
+    checks.push(context.strict
+      ? fail("codex-plugin-hooks", `${configPath} does not enable features.hooks and features.plugin_hooks`, "Re-run install.sh/install.ps1 so bundled Supervibe lifecycle hooks can run in Codex/Zed.")
+      : warn("codex-plugin-hooks", `${configPath} does not enable features.hooks and features.plugin_hooks`, "Re-run install.sh/install.ps1 so bundled Supervibe lifecycle hooks can run in Codex/Zed."));
+  } else {
+    checks.push(pass("codex-plugin-hooks", "Codex config enables lifecycle hooks and bundled plugin hooks"));
   }
 
   if (definition.legacyRegistrationPath) {
@@ -511,6 +543,12 @@ function codexConfigEnablesPlugin(config = "", pluginKey = "") {
       id: pluginKey,
     });
   return legacyPluginEnabled || schemaBackedAppSuggestion;
+}
+
+
+function codexConfigEnablesPluginHooks(config = "") {
+  const features = tomlSection(config, "features");
+  return tomlBoolean(features, "hooks") === true && tomlBoolean(features, "plugin_hooks") === true;
 }
 
 function tomlSection(source = "", section = "") {

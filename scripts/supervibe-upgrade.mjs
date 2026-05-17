@@ -15,6 +15,7 @@
 
 import { resolveSupervibePluginRoot } from './lib/supervibe-plugin-root.mjs';
 import { spawnSync } from 'node:child_process';
+import { homedir } from 'node:os';
 import { readFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { partitionTrackedPorcelainLines } from './lib/installer-managed-checkout.mjs';
@@ -203,7 +204,7 @@ function printDryRun() {
   console.log(`DIRTY_LINES: ${status.ok && status.stdout ? statusLines(status.stdout).length : 0}`);
   console.log(`TARGET_REF: ${args.to || 'tracked-upstream'}`);
   console.log(`UPSTREAM_CACHE_BEHIND: ${cache?.behind ?? 'unknown'}`);
-  console.log('WOULD_RUN: restore managed drift -> git clean -> fetch -> pull/checkout -> ensure ONNX -> npm ci -> registry:build -> terminal shim refresh -> install doctor');
+  console.log('WOULD_RUN: restore managed drift -> git clean -> fetch -> pull/checkout -> ensure ONNX -> npm ci -> registry:build -> terminal shim refresh -> provider hook config refresh -> install doctor');
   console.log('MUTATES: false');
 }
 
@@ -231,10 +232,64 @@ function runInstallCycleAfterCheckout(label) {
   console.log(`[supervibe:upgrade] ${label}: npm run registry:build ...`);
   if (!run('npm', ['run', 'registry:build'])) fail('npm run registry:build failed - generated registry.yaml is required before final audit.');
   refreshTerminalCommands();
+  refreshCodexPluginHooksConfig();
+  refreshGeminiSessionHooksConfig();
   console.log(`[supervibe:upgrade] ${label}: npm run supervibe:install-doctor ...`);
   if (!run('npm', ['run', 'supervibe:install-doctor'])) fail('npm run supervibe:install-doctor failed - install lifecycle audit did not pass.');
 }
 
+function refreshCodexPluginHooksConfig() {
+  const codexHome = process.env.CODEX_HOME || join(homedir(), '.codex');
+  const configPath = join(codexHome, 'config.toml');
+  const cachePath = join(codexHome, 'plugins', 'cache', 'supervibe-marketplace', 'supervibe', 'local');
+  const legacyPath = join(codexHome, 'plugins', 'supervibe');
+  const shouldRepair = existsSync(configPath) || existsSync(cachePath) || existsSync(legacyPath);
+  if (!shouldRepair) return;
+
+  mkdirSync(codexHome, { recursive: true });
+  let text = '';
+  try {
+    text = readFileSync(configPath, 'utf8').replace(/^\uFEFF/, '');
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+  text = upsertTomlSectionSetting(text, '[features]', 'plugins', 'plugins = true');
+  text = upsertTomlSectionSetting(text, '[features]', 'hooks', 'hooks = true');
+  text = upsertTomlSectionSetting(text, '[features]', 'codex_hooks', 'codex_hooks = true');
+  text = upsertTomlSectionSetting(text, '[features]', 'plugin_hooks', 'plugin_hooks = true');
+  text = upsertTomlSectionSetting(text, '[plugins."supervibe@supervibe-marketplace"]', 'enabled', 'enabled = true');
+  writeFileSync(configPath, `${text.trimEnd()}\n`, 'utf8');
+  console.log('[supervibe:upgrade] refreshed Codex plugin hook config');
+}
+
+function refreshGeminiSessionHooksConfig() {
+  const ok = run('node', ['scripts/register-gemini-hooks.mjs', '--plugin-root', PLUGIN_ROOT, '--if-registered']);
+  if (!ok) fail('Gemini session hook config refresh failed - run node scripts/register-gemini-hooks.mjs for details.');
+}
+
+function upsertTomlSectionSetting(text, sectionHeader, settingKey, settingLine) {
+  const headerRe = new RegExp(`^${escapeRegExp(sectionHeader)}[ \t]*$`, 'm');
+  const match = headerRe.exec(text);
+  if (!match) {
+    return `${text.trimEnd()}\n\n${sectionHeader}\n${settingLine}\n`;
+  }
+  const bodyStart = match.index + match[0].length;
+  const rest = text.slice(bodyStart);
+  const nextRel = rest.search(/^\s*\[/m);
+  const bodyEnd = nextRel === -1 ? text.length : bodyStart + nextRel;
+  let body = text.slice(bodyStart, bodyEnd);
+  const settingRe = new RegExp(`^\\s*${escapeRegExp(settingKey)}\\s*=.*$`, 'm');
+  if (settingRe.test(body)) {
+    body = body.replace(settingRe, settingLine);
+  } else {
+    body = body.endsWith('\n') || body === '' ? `${body}${settingLine}\n` : `${body}\n${settingLine}\n`;
+  }
+  return text.slice(0, bodyStart) + body + text.slice(bodyEnd);
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 function refreshTerminalCommands() {
   if (process.platform === 'win32') {
     console.log('[supervibe:upgrade] refreshing Windows terminal commands ...');
@@ -356,6 +411,8 @@ console.log('[supervibe:upgrade] npm run registry:build ...');
 if (!run('npm', ['run', 'registry:build'])) fail('npm run registry:build failed - generated registry.yaml is required before final audit.');
 
 refreshTerminalCommands();
+refreshCodexPluginHooksConfig();
+refreshGeminiSessionHooksConfig();
 
 console.log('[supervibe:upgrade] npm run supervibe:install-doctor ...');
 if (!run('npm', ['run', 'supervibe:install-doctor'])) fail('npm run supervibe:install-doctor failed - install lifecycle audit did not pass.');

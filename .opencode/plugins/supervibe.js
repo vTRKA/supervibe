@@ -1,26 +1,59 @@
 // Supervibe plugin for OpenCode
-// Auto-registers skills directory and injects bootstrap context.
-{
-  name: "supervibe",
-  version: "2.1.42",
-  description: "Specialist agents (97), trigger-safe workflow routing, worktree-ready autonomous loops, design intelligence, code graph, semantic RAG, project memory, confidence gates.",
-  hooks: {
-    config: async (context) => {
-      // Register skills directory for OpenCode discovery
-      return {
-        skills: {
-          paths: [context.pluginDir + "/../../skills"]
-        }
-      };
-    },
-    "experimental.chat.messages.transform": async (context) => {
-      // Inject bootstrap as a user message at session start
-      return {
-        messages: [{
-          role: "user",
-          content: "I have Supervibe skills available. Before broad repo search for command-like requests, run node scripts/supervibe-commands.mjs --match \"<user request>\" and hard-stop on missing slash commands. Use the trigger-safe workflow: /supervibe-brainstorm -> /supervibe-plan --from-brainstorm -> /supervibe-loop --atomize-plan <plan-path> --user-approved-plan -> provider-safe execution. Keep scope-safety active: reject or defer extra features that are not tied to approved user value. Claimed command, skill, agent, reviewer, worker, validator, or external-tool invocations need runtime workflow receipts; do not emulate specialist producers from controller text. For security work, route through /supervibe-security-audit. For prompt, system-instruction, agent-instruction, or intent-router work, use prompt-ai-engineer with eval and safety evidence. For router/network work, start with read-only network-router-engineer diagnostics. For design work, route through existing design/audit commands with memory, code, and design-intelligence evidence."
-        }]
-      };
+// Auto-registers skills directory and bootstraps Supervibe indexes on session events.
+import { spawnSync } from "node:child_process";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const PLUGIN_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const SUPERVIBE_VERSION = "2.1.43";
+
+const SupervibePlugin = async ({ client, directory, worktree }) => {
+  const projectRoot = resolve(worktree || directory || process.cwd());
+
+  function runSessionBootstrap(reason = "startup") {
+    const result = spawnSync(process.execPath, [resolve(PLUGIN_ROOT, "scripts", "session-start-check.mjs")], {
+      cwd: projectRoot,
+      env: {
+        ...process.env,
+        SUPERVIBE_PLUGIN_ROOT: PLUGIN_ROOT,
+        SUPERVIBE_PROJECT_ROOT: projectRoot,
+        SUPERVIBE_HOST: "opencode",
+        SUPERVIBE_SESSION_START_REASON: reason,
+      },
+      encoding: "utf8",
+      maxBuffer: 1024 * 1024 * 8,
+    });
+    const message = [result.stdout, result.stderr].map((part) => String(part || "").trim()).filter(Boolean).join("\n");
+    if (message && client?.app?.log) {
+      client.app.log({
+        body: {
+          service: "supervibe",
+          level: result.status === 0 ? "info" : "warn",
+          message,
+        },
+      }).catch(() => {});
     }
   }
+
+  runSessionBootstrap("startup");
+
+  return {
+    config: async () => ({
+      skills: {
+        paths: [resolve(PLUGIN_ROOT, "skills")],
+      },
+    }),
+    event: async ({ event }) => {
+      if (event?.type === "session.created") runSessionBootstrap("startup");
+      if (event?.type === "session.compacted") runSessionBootstrap("compact");
+    },
+    "experimental.chat.messages.transform": async () => ({
+      messages: [{
+        role: "user",
+        content: "I have Supervibe skills available. Before broad repo search for command-like requests, run node scripts/supervibe-commands.mjs --match \"<user request>\" and hard-stop on missing slash commands. Use the trigger-safe workflow: /supervibe-brainstorm -> /supervibe-plan --from-brainstorm -> /supervibe-loop --atomize-plan <plan-path> --user-approved-plan -> provider-safe execution. Claimed command, skill, agent, reviewer, worker, validator, or external-tool invocations need runtime workflow receipts; do not emulate specialist producers from controller text.",
+      }],
+    }),
+  };
 };
+
+export default SupervibePlugin;

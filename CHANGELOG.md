@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.43] - 2026-05-17
+
+### Fixed
+
+- Enabled Codex bundled plugin hooks for Zed/Codex ACP sessions, including installer and updater repair of `features.plugin_hooks`.
+- Bootstrapped missing project `code.db` and `memory.db` indexes from SessionStart, with Gemini and OpenCode provider hook bridges using the shared runtime.
+- Hardened provider doctors, package audit, lifecycle audit, and provider docs so missing hook/index bootstrap support is reported before release.
+
+### Validation
+
+- Rechecked targeted provider hook, installer, host doctor, package audit, provider-config, adapt, and version-surface tests for the 2.1.43 package bump.
+
 ## [2.1.42] - 2026-05-17
 
 ### Fixed
