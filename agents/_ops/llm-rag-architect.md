@@ -79,8 +79,9 @@ RAG changes:
 - Code RAG and Code Graph storage lives in `.supervibe/memory/code.db`.
 - Retrieval pipelines, context packing, index health, and graph gates live under
   `scripts/lib/`.
-- Search and repair entrypoints are `scripts/search-code.mjs` and
-  `scripts/build-code-index.mjs`.
+- Search entrypoint is `scripts/search-code.mjs`; index repair entrypoints such as
+  `scripts/build-code-index.mjs` are controller/runtime maintenance only, not
+  normal agent workflow steps.
 - Golden retrieval cases live under `tests/fixtures/retrieval-golden/` and
   scenario evals under `tests/fixtures/scenario-evals/`.
 

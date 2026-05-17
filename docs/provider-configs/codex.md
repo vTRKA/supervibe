@@ -56,6 +56,7 @@ apps = true
 multi_agent = true
 memories = true
 shell_snapshot = true
+hooks = true
 codex_hooks = true
 goals = true
 
@@ -79,6 +80,24 @@ destructive_enabled = false
 open_world_enabled = true
 default_tools_enabled = true
 default_tools_approval_mode = "auto"
+
+[[hooks.SessionStart]]
+matcher = "startup|resume|clear"
+
+[[hooks.SessionStart.hooks]]
+type = "command"
+command = "supervibe hook session-start"
+timeout = 120
+statusMessage = "Checking Supervibe RAG freshness"
+
+[[hooks.PostToolUse]]
+matcher = "Bash|apply_patch|Edit|Write"
+
+[[hooks.PostToolUse.hooks]]
+type = "command"
+command = "supervibe hook post-edit"
+timeout = 30
+statusMessage = "Refreshing Supervibe RAG"
 
 [[tool_suggest.discoverables]]
 type = "plugin"
@@ -138,6 +157,25 @@ to `false` in the official feature table. After enabling the feature, tune the
   sessions.
 - `disable_on_external_context` keeps threads that used external context such as
   MCP tool calls or web search out of memory generation when set to `true`.
+
+## Hooks
+
+Codex hooks are enabled with the canonical `[features].hooks` flag.
+Supervibe also keeps `[features].codex_hooks` in the template as a
+compatibility alias for older Codex configs. The managed defaults add two
+runtime-owned hooks:
+
+- `SessionStart` runs `supervibe hook session-start`, which bootstraps a
+  missing Code RAG/CodeGraph index and mtime-scans changed, deleted, or newly
+  discovered source files before agent handoff.
+- `PostToolUse` runs `supervibe hook post-edit` after `Bash`, `apply_patch`,
+  `Edit`, or `Write`, refreshing touched source/memory files and falling back
+  to a cheap mtime-scan after shell commands that may have changed files.
+
+Agents must consume RAG/CodeGraph through search commands; they must not run
+index repair as part of normal workflows. If freshness cannot be restored by
+the runtime hook, the controller reports a runtime-owned index blocker and uses
+the explicit repair commands from the status output.
 
 ## History
 
@@ -226,6 +264,10 @@ discovered from the project root down to the current directory, with
 `project_doc_fallback_filenames` adds alternate instruction filenames.
 
 ## Experimental Keys
+
+`features.hooks` is documented in current Codex hook configuration.
+`features.codex_hooks` is retained as a compatibility alias only; new managed
+configs should prefer `features.hooks`.
 
 `features.goals` is documented by the official Codex "Follow a goal" use-case
 page as the config-file switch for `/goal`:

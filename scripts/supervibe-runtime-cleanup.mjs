@@ -32,6 +32,7 @@ export function formatRuntimeCleanupReport(result = {}) {
   const lines = [
     "SUPERVIBE_RUNTIME_CLEANUP",
     `DRY_RUN: ${result.dryRun === true}`,
+    `STALE_ONLY: ${result.staleOnly === true}`,
     `UNUSED_ONLY: ${result.unusedOnly === true}`,
     `OLDER_THAN_MINUTES: ${result.olderThanMinutes ?? 0}`,
     `CHECKED: ${result.checked || 0}`,
@@ -69,10 +70,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       "  node scripts/supervibe-runtime-cleanup.mjs --unused",
       "  node scripts/supervibe-runtime-cleanup.mjs --all --dry-run",
       "  node scripts/supervibe-runtime-cleanup.mjs --unused --older-than-minutes 60 --dry-run",
+      "  node scripts/supervibe-runtime-cleanup.mjs --unused --stale-only",
       "  node scripts/supervibe-runtime-cleanup.mjs --all --confirm-host-closed",
       "",
       "Stops registered runtime processes, preview servers, and managed .supervibe/servers/*.pid orphans.",
       "--unused limits live process stops to entries older than the threshold.",
+      "--stale-only removes dead pid entries and skips live process stops.",
       "--confirm-host-closed prunes completed Codex subagent registry debt after host close_agent/reset was actually run.",
     ].join("\n"));
     process.exit(0);
@@ -94,6 +97,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     dryRun,
     resetCompletedSubagents: options["reset-completed-subagents"] === true,
     confirmHostClosed: options["confirm-host-closed"] === true,
+    staleOnly: options["stale-only"] === true || options.staleOnly === true,
     includeServerPidFiles: options.all === true || options.unused === true || options["pid-files"] === true,
     unusedOnly,
     olderThanMinutes,

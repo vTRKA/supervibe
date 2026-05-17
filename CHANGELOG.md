@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.42] - 2026-05-17
+
+### Fixed
+
+- Hardened fast plan-to-loop execution with dry-run-safe `prepare-loop`, active-plan lifecycle blockers, and non-durable temporary plan filtering.
+- Added runtime-owned Codex hook defaults for SessionStart/PostToolUse RAG refresh and reduced `.supervibe` memory noise from hook fallback scans and cleanup no-ops.
+- Tightened intent routing for matcher, audit, research, and network wording, and narrowed shell hook fallback scans to commands that can actually write files.
+
+### Validation
+
+- Rechecked README/version surfaces, workflow receipts, Code RAG/CodeGraph readiness, reviewer gates, and the full release check for the 2.1.42 package bump.
+
 ## [2.1.41] - 2026-05-17
 
 ### Fixed

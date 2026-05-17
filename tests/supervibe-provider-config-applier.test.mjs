@@ -58,8 +58,14 @@ test("TOML apply adds only missing Codex defaults and preserves user values and 
   assert.match(result.output, /multi_agent = false/);
   assert.match(result.output, /max_threads = 4/);
   assert.match(result.output, /\[features\][\s\S]*apps = true/);
+  assert.match(result.output, /\[features\][\s\S]*hooks = true/);
+  assert.match(result.output, /\[features\][\s\S]*codex_hooks = true/);
   assert.match(result.output, /\[features\][\s\S]*goals = true/);
   assert.match(result.output, /\[agents\][\s\S]*max_depth = 1/);
+  assert.match(result.output, /\[\[hooks\.SessionStart\]\][\s\S]*matcher = "startup\|resume\|clear"/);
+  assert.match(result.output, /\[\[hooks\.SessionStart\.hooks\]\][\s\S]*command = "supervibe hook session-start"/);
+  assert.match(result.output, /\[\[hooks\.PostToolUse\]\][\s\S]*matcher = "Bash\|apply_patch\|Edit\|Write"/);
+  assert.match(result.output, /\[\[hooks\.PostToolUse\.hooks\]\][\s\S]*command = "supervibe hook post-edit"/);
   assert.match(result.output, /\[\[tool_suggest\.discoverables\]\][\s\S]*id = "supervibe@supervibe-marketplace"/);
   assert.ok(result.output.indexOf("approval_policy") < result.output.indexOf("[features]"));
   assert.equal((result.output.match(/^\[features\]$/gm) || []).length, 1);
@@ -85,6 +91,7 @@ apps = true
 multi_agent = true
 memories = true
 shell_snapshot = true
+hooks = true
 codex_hooks = true
 goals = true
 plugins = true
@@ -109,6 +116,24 @@ destructive_enabled = false
 open_world_enabled = true
 default_tools_enabled = true
 default_tools_approval_mode = "auto"
+
+[[hooks.SessionStart]]
+matcher = "startup|resume|clear"
+
+[[hooks.SessionStart.hooks]]
+type = "command"
+command = "supervibe hook session-start"
+timeout = 120
+statusMessage = "Checking Supervibe RAG freshness"
+
+[[hooks.PostToolUse]]
+matcher = "Bash|apply_patch|Edit|Write"
+
+[[hooks.PostToolUse.hooks]]
+type = "command"
+command = "supervibe hook post-edit"
+timeout = 30
+statusMessage = "Refreshing Supervibe RAG"
 
 [[tool_suggest.discoverables]]
 type = "plugin"
@@ -203,12 +228,20 @@ test("JSONC apply preserves comments and adds missing nested values without over
   assert.equal((result.output.match(/"approval_policy"/g) || []).length, 1);
 });
 
-test("Codex schema validation accepts documented goals feature and still rejects unsafe plugin boolean", () => {
+test("Codex schema validation accepts hooks and documented goals while rejecting unsafe plugin boolean", () => {
   const manifest = readProviderCapabilities();
   const goalsValidation = validateProviderConfigEntries({
     providerId: "codex",
     manifest,
     entries: [{ kind: "key", path: ["features", "goals"], value: true, surface: "features.goals" }],
+  });
+  const hooksValidation = validateProviderConfigEntries({
+    providerId: "codex",
+    manifest,
+    entries: [
+      { kind: "key", path: ["features", "hooks"], value: true, surface: "features.hooks" },
+      { kind: "arrayTable", path: ["hooks", "SessionStart"], surface: "hooks", values: { matcher: "startup|resume|clear" } },
+    ],
   });
   const pluginValidation = validateProviderConfigEntries({
     providerId: "codex",
@@ -217,6 +250,7 @@ test("Codex schema validation accepts documented goals feature and still rejects
   });
 
   assert.equal(goalsValidation.valid, true);
+  assert.equal(hooksValidation.valid, true);
   assert.equal(pluginValidation.valid, false);
   assert.ok(pluginValidation.issues.some((entry) => entry.code === "unsafe-surface"));
 });

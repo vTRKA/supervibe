@@ -34,6 +34,9 @@ export const SESSION_START_CONTEXT_POLICY = Object.freeze({
   cleanup: Object.freeze({
     allowedScope: ".supervibe runtime state",
     requireRuntimeApi: true,
+    sessionStartStalePrune: true,
+    staleOnly: true,
+    liveProcessStops: false,
   }),
 });
 
@@ -128,13 +131,15 @@ export function createMissingCodeIndexDiagnostic(projectRoot = PROJECT_ROOT) {
   return {
     action: "missing",
     dbPath,
-    error: "code RAG/graph index missing. Repair with node scripts/build-code-index.mjs --root . --force --health --no-embeddings",
+    error: "code RAG/graph index missing and automatic session-start bootstrap is disabled. Repair with node scripts/build-code-index.mjs --root . --force --health --no-embeddings",
   };
 }
 
 // === Phase D: code RAG + graph index health ===
 export async function ensureCodeIndexFresh(projectRoot, {
-  allowBuild = process.env.SUPERVIBE_SESSION_START_ALLOW_INDEX_BUILD === "1",
+  allowBuild = process.env.SUPERVIBE_SESSION_START_ALLOW_INDEX_BUILD !== "0",
+  useEmbeddings = process.env.SUPERVIBE_SESSION_START_EMBED === "1" ||
+    process.env.SUPERVIBE_SESSION_START_EMBEDDINGS === "1",
 } = {}) {
   const { CodeStore } = await import("./lib/code-store.mjs");
 
@@ -144,10 +149,11 @@ export async function ensureCodeIndexFresh(projectRoot, {
   let action = "skip";
   if (!indexExists) {
     if (!allowBuild) return createMissingCodeIndexDiagnostic(projectRoot);
-    action = "full";
+    action = "bootstrap";
   }
-  // For incremental refresh we rely on the file watcher (memory:watch).
-  // SessionStart hook should be fast — full reindex only if missing.
+  // Runtime owns index freshness. Agents consume RAG/CodeGraph; they do not
+  // repair the index themselves. SessionStart catches first-run bootstrap and
+  // out-of-band edits before any agent handoff.
 
   if (action === "skip") {
     // DB exists — open, run mtime-scan to catch external edits since last session,
@@ -168,12 +174,12 @@ export async function ensureCodeIndexFresh(projectRoot, {
     }
   }
 
-  const store = new CodeStore(projectRoot, { useEmbeddings: true });
+  const store = new CodeStore(projectRoot, { useEmbeddings, useGraph: true });
   await store.init();
   const counts = await store.indexAll(projectRoot);
   const stats = store.stats();
   store.close();
-  return { action, counts, stats };
+  return { action, counts, stats, useEmbeddings };
 }
 
 async function reportCodeIndexHealth() {
@@ -201,13 +207,13 @@ async function reportCodeIndexHealth() {
       }
     } else {
       console.log(
-        `[supervibe] code RAG ✓ ${stats.totalFiles} files / ${stats.totalChunks} chunks (rebuilt)`,
+        `[supervibe] code RAG ✓ ${stats.totalFiles} files / ${stats.totalChunks} chunks (bootstrapped)`,
       );
       console.log(
         `[supervibe] code graph ✓ ${stats.totalSymbols} symbols / ${stats.totalEdges} edges (${resolutionPct}% resolved)`,
       );
       console.log(
-        "[supervibe] full index built — subsequent sessions will be near-instant",
+        "[supervibe] code index bootstrapped — subsequent sessions will be near-instant",
       );
     }
   } catch (err) {
@@ -407,7 +413,36 @@ export async function main({ env = process.env } = {}) {
   }
   await reportMemoryScan();
 
-  // Phase E: prune stale preview-server registry entries
+  // Phase E: prune stale runtime state without stopping live processes.
+  async function pruneStaleRuntimeState() {
+    try {
+      const { cleanupRuntimeTargets, defaultRuntimeCleanupRegistryPath } = await import(
+        "./lib/runtime-cleanup-registry.mjs"
+      );
+      const result = await cleanupRuntimeTargets({
+        path: defaultRuntimeCleanupRegistryPath(PROJECT_ROOT),
+        rootDir: PROJECT_ROOT,
+        dryRun: false,
+        staleOnly: true,
+        unusedOnly: true,
+        olderThanMinutes: 60,
+        includeServerPidFiles: true,
+      });
+      if (result.stale > 0 || result.hostManagedPruned > 0) {
+        const message = "[supervibe] runtime cleanup pruned "
+          + result.stale
+          + " stale target(s), "
+          + result.hostManagedPruned
+          + " closed host-managed target(s)";
+        console.log(message);
+      }
+    } catch {
+      // Non-fatal
+    }
+  }
+  await pruneStaleRuntimeState();
+
+  // Phase E2: prune stale preview-server registry entries
   async function pruneStalePreviewServers() {
     try {
       const { listServers } = await import("./lib/preview-server-manager.mjs");

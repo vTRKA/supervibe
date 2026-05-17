@@ -24,6 +24,12 @@ const SCRIPT_PLUGIN_ROOT = fileURLToPath(new URL("../", import.meta.url));
 const projectRoot = args.project || resolveSupervibeProjectRoot({ env: process.env, cwd: process.cwd() });
 const pluginRoot = args["plugin-root"] || resolveSupervibePluginRoot({ env: process.env, cwd: SCRIPT_PLUGIN_ROOT });
 
+const SEMANTIC_SEARCH_ALLOWED_INTENTS = new Set([
+  "supervibe_audit",
+  "source_truth_research",
+  "prompt_ai_engineering",
+]);
+
 try {
   if (args.help) {
     console.log(formatHelp());
@@ -68,6 +74,7 @@ function shouldUseSemanticPrecedence(match) {
   ].includes(match.intent);
 }
 
+
 function semanticTriggerFallback(request, { pluginRoot, projectRoot } = {}) {
   const route = routeTriggerRequest(request, { pluginRoot, projectRoot });
   if (!route || route.intent === "unknown") return null;
@@ -78,7 +85,7 @@ function semanticTriggerFallback(request, { pluginRoot, projectRoot } = {}) {
     command: route.command,
     confidence: route.confidence,
     reason: `semantic trigger fallback: ${route.reason}`,
-    doNotSearchProject: true,
+    doNotSearchProject: semanticRouteDoNotSearchProject(route),
     directRoute: false,
     mutationRisk: route.mutationRisk || "delegates-to-command",
     nextAction: route.command
@@ -90,6 +97,12 @@ function semanticTriggerFallback(request, { pluginRoot, projectRoot } = {}) {
     agentProfile: route.agentProfile || null,
     followUpCommands: route.followUpCommands || [],
   };
+}
+
+function semanticRouteDoNotSearchProject(route) {
+  if (!route || route.hardStop) return true;
+  if (SEMANTIC_SEARCH_ALLOWED_INTENTS.has(route.intent)) return false;
+  return true;
 }
 
 function activeWorkflowContinuationMatch(request, { projectRoot, closeCandidateMatches = [] } = {}) {

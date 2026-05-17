@@ -98,14 +98,17 @@ export async function cleanupRuntimeTargets({
   includeServerPidFiles = false,
   resetCompletedSubagents = false,
   confirmHostClosed = false,
+  staleOnly = false,
   unusedOnly = false,
   olderThanMinutes = unusedOnly ? 60 : 0,
   now = new Date(),
   platform = process.platform,
 } = {}) {
+  const hadRegistryFile = existsSync(path);
   const registry = await readRuntimeCleanupRegistry(path);
   const registryTargets = registry.targets.map(normalizeRuntimeCleanupTarget);
-  const hostManagedClosedInvocations = normalizeHostManagedClosedInvocations(registry.hostManagedClosedInvocations);
+  const originalHostManagedClosedInvocations = normalizeHostManagedClosedInvocations(registry.hostManagedClosedInvocations);
+  const hostManagedClosedInvocations = [...originalHostManagedClosedInvocations];
   const completedHostTargets = normalizePathForCompare(path) === normalizePathForCompare(defaultRuntimeCleanupRegistryPath(rootDir))
     ? await discoverHostManagedSubagentTargets({
         rootDir,
@@ -129,6 +132,7 @@ export async function cleanupRuntimeTargets({
       dryRun,
       resetCompletedSubagents,
       confirmHostClosed,
+      staleOnly,
       unusedOnly,
       olderThanMinutes,
       now,
@@ -157,16 +161,21 @@ export async function cleanupRuntimeTargets({
         closedAt,
       });
     }
-    await writeRuntimeCleanupRegistry(path, {
-      schemaVersion: registry.schemaVersion || 1,
-      targets: kept,
-      hostManagedClosedInvocations,
-    });
+    const hostManagedClosedChanged = JSON.stringify(hostManagedClosedInvocations) !== JSON.stringify(originalHostManagedClosedInvocations);
+    const shouldPersistRegistry = hadRegistryFile || registryTargets.length > 0 || kept.length > 0 || hostManagedClosedChanged;
+    if (shouldPersistRegistry) {
+      await writeRuntimeCleanupRegistry(path, {
+        schemaVersion: registry.schemaVersion || 1,
+        targets: kept,
+        hostManagedClosedInvocations,
+      });
+    }
   }
 
   return {
     schemaVersion: 1,
     dryRun,
+    staleOnly,
     unusedOnly,
     olderThanMinutes,
     checked: targets.length,
@@ -573,6 +582,7 @@ async function cleanupTarget(target = {}, {
   dryRun = false,
   resetCompletedSubagents = false,
   confirmHostClosed = false,
+  staleOnly = false,
   unusedOnly = false,
   olderThanMinutes = 0,
   now = new Date(),
@@ -622,6 +632,17 @@ async function cleanupTarget(target = {}, {
       status: "stale",
       removedFromRegistry: true,
       message: "pid is not alive",
+    };
+  }
+
+  if (staleOnly) {
+    return {
+      id: target.id,
+      kind: target.kind,
+      pid,
+      status: "kept-active",
+      removedFromRegistry: false,
+      message: "stale-only cleanup skips live targets",
     };
   }
 

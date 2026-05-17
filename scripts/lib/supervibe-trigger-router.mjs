@@ -989,6 +989,7 @@ export function routeTriggerRequest(input, options = {}) {
   if (scored.length > 0) {
     const selected = arbitration.selected && ROUTES[arbitration.selected.intent] ? arbitration.selected : scored[0];
     const route = ROUTES[selected.intent];
+    const rejected = rejectedSemanticAlternatives(scored, selected.intent);
     return withArtifactStatus(
       withRoutingEvidence({
         intent: selected.intent,
@@ -1001,13 +1002,13 @@ export function routeTriggerRequest(input, options = {}) {
         prerequisites: route.prerequisites,
         requiredSafety: requiredSafetyFor(selected.intent),
         nextQuestion: localizedRouteQuestion(route, locale, selected),
-        alternatives: scored.filter((rule) => rule.intent !== selected.intent).slice(0, 3).map((rule) => ({ intent: rule.intent, confidence: rule.confidence })),
+        alternatives: rejected.map((rule) => ({ intent: rule.intent, confidence: rule.confidence })),
         matchedPhrase: null,
         semanticEvidence: selected.semanticEvidence,
         intentArbiter: arbitration.intentArbiter,
         source: selected.source,
         reason: selected.reason,
-      }, evidenceFor(selected), scored.filter((rule) => rule.intent !== selected.intent).slice(0, 3).map((rule) => ({
+      }, evidenceFor(selected), rejected.map((rule) => ({
         intent: rule.intent,
         confidence: rule.confidence,
         originalConfidence: rule.originalConfidence,
@@ -1427,6 +1428,19 @@ function sourcePriority(source) {
   if (source === "semantic-intent-profile") return 2;
   if (source === "keyword-rule") return 1;
   return 0;
+}
+
+function rejectedSemanticAlternatives(scored, selectedIntent, limit = 3) {
+  const rejected = scored.filter((rule) => rule.intent !== selectedIntent);
+  const selected = rejected.slice(0, limit);
+  const selectedIntents = new Set(selected.map((rule) => rule.intent));
+  for (const rule of rejected) {
+    if (selectedIntents.has(rule.intent)) continue;
+    if (!rule.negativeEvidence?.some((entry) => String(entry).includes("suspected wrong route"))) continue;
+    selected.push(rule);
+    selectedIntents.add(rule.intent);
+  }
+  return selected;
 }
 
 function shouldSuppressLocalEvidenceLaneRoute(candidate, text) {

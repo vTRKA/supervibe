@@ -165,6 +165,11 @@ test("hooks.json wires SessionStart, PostToolUse, Stop", async () => {
   assert.ok(data.hooks.SessionStart, "SessionStart hook missing");
   assert.ok(data.hooks.PostToolUse, "PostToolUse hook missing");
   assert.ok(data.hooks.Stop, "Stop hook missing");
+  const postEdit = data.hooks.PostToolUse.find((entry) =>
+    (entry.hooks || []).some((hook) => String(hook.command || "").includes("scripts/post-edit-stack-watch.mjs")),
+  );
+  assert.equal(postEdit.matcher, "Bash|Write|Edit");
+  assert.equal(postEdit.hooks[0].async, false);
 });
 
 test("all 51+ skills have valid trigger-clarity descriptions", async () => {

@@ -183,5 +183,279 @@
         "supervibe-orchestrator"
       ]
     }
+  },
+  {
+    "id": "intent-matcher-audit-en",
+    "phrase": "audit intent matcher and routing system",
+    "expected": {
+      "intent": "supervibe_audit",
+      "command": "/supervibe-audit",
+      "forbiddenIntents": [
+        "trigger_diagnostics",
+        "unknown"
+      ],
+      "notCommand": [
+        "/supervibe --diagnose-trigger"
+      ]
+    }
+  },
+  {
+    "id": "intent-routing-audit-en-short",
+    "phrase": "audit intent routing",
+    "expected": {
+      "intent": "supervibe_audit",
+      "command": "/supervibe-audit",
+      "forbiddenIntents": [
+        "trigger_diagnostics",
+        "unknown"
+      ],
+      "notCommand": [
+        "/supervibe --diagnose-trigger"
+      ]
+    }
+  },
+  {
+    "id": "internet-intent-routing-research-en",
+    "phrase": "find internet solution for intent routing so plugin understands user",
+    "expected": {
+      "intent": "source_truth_research",
+      "command": "/supervibe-audit --source-of-truth",
+      "forbiddenIntents": [
+        "network_ops",
+        "trigger_diagnostics",
+        "unknown"
+      ],
+      "notCommand": [
+        "/supervibe --agent network-router-engineer --read-only",
+        "/supervibe --diagnose-trigger"
+      ]
+    }
+  },
+  {
+    "id": "actual-network-router-still-network-ops",
+    "phrase": "diagnose router vpn wifi network stability",
+    "expected": {
+      "intent": "network_ops",
+      "command": "/supervibe --agent network-router-engineer --read-only",
+      "forbiddenIntents": [
+        "supervibe_audit",
+        "source_truth_research"
+      ]
+    }
+  },
+  {
+    "id": "narrow-routing-question-still-diagnostics",
+    "phrase": "why did intent routing choose prompt-ai-engineer",
+    "expected": {
+      "intent": "trigger_diagnostics",
+      "command": "/supervibe --diagnose-trigger",
+      "forbiddenIntents": [
+        "supervibe_audit",
+        "prompt_ai_engineering"
+      ],
+      "notCommand": [
+        "/supervibe-audit",
+        "/supervibe --agent prompt-ai-engineer"
+      ]
+    }
+  },
+  {
+    "id": "intent-routing-research-best-practices",
+    "phrase": "research intent routing best practices",
+    "expected": {
+      "intent": "source_truth_research",
+      "command": "/supervibe-audit --source-of-truth",
+      "forbiddenIntents": [
+        "trigger_diagnostics",
+        "supervibe_audit",
+        "network_ops"
+      ],
+      "notCommand": [
+        "/supervibe --diagnose-trigger",
+        "/supervibe-audit"
+      ]
+    }
+  },
+  {
+    "id": "intent-routing-improve-is-implementation",
+    "phrase": "improve intent routing",
+    "expected": {
+      "intent": "prompt_ai_engineering",
+      "command": "/supervibe --agent prompt-ai-engineer",
+      "forbiddenIntents": [
+        "trigger_diagnostics",
+        "supervibe_audit"
+      ],
+      "notCommand": [
+        "/supervibe --diagnose-trigger",
+        "/supervibe-audit"
+      ]
+    }
+  },
+  {
+    "id": "intent-matcher-upgrade-is-implementation",
+    "phrase": "upgrade intent matcher",
+    "expected": {
+      "intent": "prompt_ai_engineering",
+      "command": "/supervibe --agent prompt-ai-engineer",
+      "forbiddenIntents": [
+        "trigger_diagnostics",
+        "supervibe_audit"
+      ],
+      "notCommand": [
+        "/supervibe --diagnose-trigger",
+        "/supervibe-audit"
+      ]
+    }
+  },
+  {
+    "id": "intent-matcher-review-implementation-not-audit",
+    "phrase": "review intent matcher implementation",
+    "expected": {
+      "intent": "prompt_ai_engineering",
+      "command": "/supervibe --agent prompt-ai-engineer",
+      "forbiddenIntents": [
+        "supervibe_audit",
+        "trigger_diagnostics"
+      ],
+      "notCommand": [
+        "/supervibe-audit",
+        "/supervibe --diagnose-trigger"
+      ]
+    }
+  },
+  {
+    "id": "intent-matcher-code-review-implementation-not-audit",
+    "phrase": "code review intent matcher implementation",
+    "expected": {
+      "intent": "prompt_ai_engineering",
+      "command": "/supervibe --agent prompt-ai-engineer",
+      "forbiddenIntents": [
+        "supervibe_audit",
+        "trigger_diagnostics"
+      ],
+      "notCommand": [
+        "/supervibe-audit",
+        "/supervibe --diagnose-trigger"
+      ]
+    }
+  },
+  {
+    "id": "router-internet-not-working-network-ops",
+    "phrase": "router internet not working",
+    "expected": {
+      "intent": "network_ops",
+      "command": "/supervibe --agent network-router-engineer --read-only",
+      "forbiddenIntents": [
+        "source_truth_research",
+        "trigger_diagnostics",
+        "supervibe_audit"
+      ],
+      "notCommand": [
+        "/supervibe-audit --source-of-truth",
+        "/supervibe --diagnose-trigger"
+      ]
+    }
+  },
+  {
+    "id": "internet-router-issue-network-ops",
+    "phrase": "internet router issue",
+    "expected": {
+      "intent": "network_ops",
+      "command": "/supervibe --agent network-router-engineer --read-only",
+      "forbiddenIntents": [
+        "source_truth_research",
+        "trigger_diagnostics",
+        "supervibe_audit"
+      ],
+      "notCommand": [
+        "/supervibe-audit --source-of-truth",
+        "/supervibe --diagnose-trigger"
+      ]
+    }
+  },
+  {
+    "id": "home-router-internet-problem-network-ops",
+    "phrase": "home router internet problem",
+    "expected": {
+      "intent": "network_ops",
+      "command": "/supervibe --agent network-router-engineer --read-only",
+      "forbiddenIntents": [
+        "source_truth_research",
+        "trigger_diagnostics",
+        "supervibe_audit"
+      ],
+      "notCommand": [
+        "/supervibe-audit --source-of-truth",
+        "/supervibe --diagnose-trigger"
+      ]
+    }
+  },
+  {
+    "id": "diagnose-internet-router-vpn-network-ops",
+    "phrase": "diagnose internet router vpn",
+    "expected": {
+      "intent": "network_ops",
+      "command": "/supervibe --agent network-router-engineer --read-only",
+      "forbiddenIntents": [
+        "source_truth_research",
+        "trigger_diagnostics",
+        "supervibe_audit"
+      ],
+      "notCommand": [
+        "/supervibe-audit --source-of-truth",
+        "/supervibe --diagnose-trigger"
+      ]
+    }
+  },
+  {
+    "id": "bare-classifier-check-not-audit",
+    "phrase": "check classifier",
+    "expected": {
+      "intent": "trigger_diagnostics",
+      "command": "/supervibe --diagnose-trigger",
+      "forbiddenIntents": [
+        "supervibe_audit"
+      ],
+      "notCommand": [
+        "/supervibe-audit"
+      ]
+    }
+  },
+  {
+    "id": "review-online-best-practices-intent-routing-source-truth",
+    "phrase": "review online best practices for intent routing",
+    "expected": {
+      "intent": "source_truth_research",
+      "command": "/supervibe-audit --source-of-truth",
+      "forbiddenIntents": [
+        "prompt_ai_engineering",
+        "trigger_diagnostics",
+        "supervibe_audit"
+      ],
+      "notCommand": [
+        "/supervibe --agent prompt-ai-engineer",
+        "/supervibe --diagnose-trigger",
+        "/supervibe-audit"
+      ]
+    }
+  },
+  {
+    "id": "review-web-approaches-intent-routing-source-truth",
+    "phrase": "review web approaches for intent routing",
+    "expected": {
+      "intent": "source_truth_research",
+      "command": "/supervibe-audit --source-of-truth",
+      "forbiddenIntents": [
+        "prompt_ai_engineering",
+        "trigger_diagnostics",
+        "supervibe_audit"
+      ],
+      "notCommand": [
+        "/supervibe --agent prompt-ai-engineer",
+        "/supervibe --diagnose-trigger",
+        "/supervibe-audit"
+      ]
+    }
   }
 ]

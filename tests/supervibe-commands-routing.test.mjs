@@ -124,6 +124,24 @@ test("does not route generic reviewer severity blockers to security audit", asyn
   assert.doesNotMatch(output, /COMMAND: \/supervibe-security-audit/);
 });
 
+test("routes matcher intent audit and research requests through semantic command preflight", async () => {
+  const auditOutput = await matchCommand("audit intent matcher and routing system");
+
+  assert.match(auditOutput, /INTENT: supervibe_audit/);
+  assert.match(auditOutput, /COMMAND: \/supervibe-audit/);
+  assert.doesNotMatch(auditOutput, /INTENT: trigger_diagnostics/);
+  assert.doesNotMatch(auditOutput, /MATCH: none/);
+  assert.match(auditOutput, /DO_NOT_SEARCH_PROJECT: false/);
+
+  const researchOutput = await matchCommand("find internet solution for intent routing so plugin understands user");
+
+  assert.match(researchOutput, /INTENT: source_truth_research/);
+  assert.match(researchOutput, /COMMAND: \/supervibe-audit --source-of-truth/);
+  assert.doesNotMatch(researchOutput, /INTENT: network_ops/);
+  assert.doesNotMatch(researchOutput, /INTENT: trigger_diagnostics/);
+  assert.match(researchOutput, /DO_NOT_SEARCH_PROJECT: false/);
+});
+
 test("does not route router misroute complaints to docs audit by cleanup terms", async () => {
   const request = "fix intent routing system. docs-audit wrongly matched by words \u043c\u0443\u0441\u043e\u0440 \u043e\u0447\u0438\u0441\u0442 instead of /supervibe-audit";
   const output = await matchCommand(request);

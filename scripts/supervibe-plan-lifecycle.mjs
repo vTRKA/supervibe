@@ -122,6 +122,7 @@ export function createPlanLifecycleReport({ rootDir = process.cwd(), planPath = 
   const activePlanPath = planPath
     ? normalizeProjectPath(state.rootDir, planPath)
     : state.activePlan?.activePlanPath || null;
+  const activePlanExists = activePlanPath ? existsSync(resolveProjectPath(state.rootDir, activePlanPath)) : false;
   const activeEntry = activePlanPath ? findPlanEntry(state, activePlanPath) : null;
   const closedPlans = state.plans.filter((entry) => ARCHIVE_STATUSES.has(entry.status));
   const staleClosedPlans = state.plans.filter((entry) => (
@@ -156,6 +157,7 @@ export function createPlanLifecycleReport({ rootDir = process.cwd(), planPath = 
     schemaVersion: SCHEMA_VERSION,
     rootDir: state.rootDir,
     activePlanPath,
+    activePlanExists,
     activeStatus: activeEntry?.status || state.activePlan?.status || "missing",
     activePlanSource: state.pointer ? "active-plan-pointer" : state.activePlan?.source || "missing",
     latestReviewedPlan: state.latestReviewedPlan,
@@ -188,6 +190,17 @@ export function createPlanLifecycleStateSummary({ rootDir = process.cwd(), planP
       nextAction: "set active plan pointer before atomization, review, or execution",
       repairCommand: baseRepairCommand,
       releaseImpact: "Plan, graph, and task workflows cannot release deterministically without a canonical active plan.",
+    }));
+  }
+
+  if (report.activePlanPath && report.activePlanExists === false && !report.activeGraphTerminal) {
+    blockers.push(lifecycleSummaryBlocker({
+      code: "policy-hard-stop",
+      message: `Active plan target is missing: ${report.activePlanPath}.`,
+      affectedTaskIds: activeTaskIds,
+      nextAction: "restore the active plan or repair the active plan pointer before dispatch",
+      repairCommand: baseRepairCommand,
+      releaseImpact: "Plan, graph, and task workflows cannot dispatch from a non-terminal graph whose canonical plan target is missing.",
     }));
   }
 
@@ -230,6 +243,7 @@ export function createPlanLifecycleStateSummary({ rootDir = process.cwd(), planP
     kind: "plan-lifecycle-state-summary",
     status: blockers.length ? "blocked" : "ready",
     activePlanPath: report.activePlanPath,
+    activePlanExists: report.activePlanExists,
     activeStatus: report.activeStatus,
     activePlanSource: report.activePlanSource,
     activeGraphPath: report.activeGraphResolver?.graphPath || null,
@@ -429,6 +443,7 @@ export function formatPlanLifecycleReport(report = {}) {
   const lines = [
     "SUPERVIBE_PLAN_LIFECYCLE",
     `ACTIVE_PLAN: ${report.activePlanPath || "none"}`,
+    `ACTIVE_PLAN_EXISTS: ${report.activePlanPath ? report.activePlanExists ? "true" : "false" : "none"}`,
     `ACTIVE_STATUS: ${report.activeStatus || "missing"}`,
     `ACTIVE_SOURCE: ${report.activePlanSource || "missing"}`,
     `LATEST_REVIEWED_PLAN: ${report.latestReviewedPlan || "none"}`,
@@ -436,6 +451,7 @@ export function formatPlanLifecycleReport(report = {}) {
     `ARCHIVE_ACTION: ${report.archiveAction || "none"}`,
     `STALE_ACTIVE_SOURCE: ${report.staleActiveSource ? "true" : "false"}`,
   ];
+  if (report.activePlanPath && report.activePlanExists === false) lines.push(`ACTIVE_PLAN_WARNING: missing active plan target: ${report.activePlanPath}`);
   const hideTerminalSourceDrift = report.activeGraphTerminal && !report.staleActiveSource;
   if (report.activeSource?.sourcePath && !hideTerminalSourceDrift) lines.push(`ACTIVE_GRAPH_SOURCE: ${normalizeProjectPath(report.rootDir || process.cwd(), report.activeSource.sourcePath)}`);
   if (hideTerminalSourceDrift) lines.push("ACTIVE_GRAPH_SOURCE: details hidden for complete graph");
@@ -453,6 +469,7 @@ export function formatPlanLifecycleStateSummary(summary = {}) {
     "SUPERVIBE_PLAN_LIFECYCLE_STATE_SUMMARY",
     `STATUS: ${summary.status || "unknown"}`,
     `ACTIVE_PLAN: ${summary.activePlanPath || "none"}`,
+    `ACTIVE_PLAN_EXISTS: ${summary.activePlanPath ? summary.activePlanExists ? "true" : "false" : "none"}`,
     `ACTIVE_STATUS: ${summary.activeStatus || "missing"}`,
     `ACTIVE_SOURCE: ${summary.activePlanSource || "missing"}`,
     `ACTIVE_GRAPH: ${summary.activeGraphPath || "none"}`,

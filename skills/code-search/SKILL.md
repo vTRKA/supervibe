@@ -42,11 +42,11 @@ This skill replaces blind grep. It surfaces conceptually-related code even when 
 
 Follow `docs/references/skill-expert-operating-standard.md`: start from source of truth, preserve retrieval evidence, apply scope safety, use real producers with runtime receipts for durable delegated outputs, verify before completion claims, and keep confidence below gate when evidence is partial.
 
-## Step 0 — Read source of truth (required)
+## Step 0 - Read source of truth (required)
 
-1. Verify code index exists: `.supervibe/memory/code.db`
-2. If missing → run `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress` from the project root first; after source coverage is healthy, run `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health` when graph data is needed
-3. If memory watcher is running, file changes are auto-indexed; otherwise re-run after edits
+1. Verify index health with `node <resolved-supervibe-plugin-root>/scripts/supervibe-status.mjs --index-health` or rely on the current SessionStart banner.
+2. If `.supervibe/memory/code.db` is missing or the status reports stale/partial source coverage, do not run the indexer from this agent skill. Stop and report a runtime-owned RAG freshness blocker. The controller/runtime should run `supervibe hook session-start` or the explicit repair command printed by status, then retry retrieval.
+3. Agents consume Code RAG/CodeGraph through `search-code.mjs`; runtime hooks and the search-code self-healing preflight own bootstrap, mtime-scan, touched-file refresh, and deleted-row cleanup.
 
 ## Decision tree
 
@@ -75,7 +75,7 @@ What's the search intent?
    - Then graph expand: `--callers "<top-hit-name>"` then `--neighbors "<top-hit-name>" --depth 2`
    - Read top file:line refs in full for context
 8. **Disambiguation**: if a name has multiple definitions, the CLI prints all candidates. Re-run with full ID `path:kind:name:line` to pin down one
-9. If hits stale (file changed since index): run `node <resolved-supervibe-plugin-root>/scripts/supervibe-commands.mjs --match "run code:index"` and execute the printed `COMMAND:` from the project root, or wait for the watcher, then retry
+9. If hits are stale or missing after a file change, retry once through `search-code.mjs` so its self-healing preflight can refresh the index. If still stale, stop and report a runtime-owned RAG freshness blocker. Do not run index repair from the agent; retry only after SessionStart/PostToolUse or the controller maintenance lane refreshes the index.
 
 ## Additional agent modes
 
@@ -142,7 +142,7 @@ Returns:
 ## Guard rails
 
 - DO NOT: skip code-search and rely on agent's pretrained knowledge — that's hallucination risk
-- DO NOT: trust stale index (always check `git status` for uncommitted changes that might not be indexed)
+- DO NOT: trust stale index; check status and `git status`, then hand freshness repair back to runtime/controller instead of running indexers inside the agent workflow
 - DO NOT: return more than 10 hits (signal-to-noise drops)
 - ALWAYS: cite file:line in output so user can navigate
 - ALWAYS: prefer semantic search for concept queries; Grep tool for known exact names

@@ -63,7 +63,7 @@ Follow `docs/references/skill-expert-operating-standard.md`: start from source o
 3. Read recent commits for active patterns
 4. Read `.supervibe/confidence-log.jsonl` for override patterns
 5. Read `.supervibe/memory/effectiveness.jsonl` for agent failure patterns
-6. If audit flagged code index health, run `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --list-missing`, then `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress` for source-readiness repair or `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health` for graph repair, and re-check with `node <resolved-supervibe-plugin-root>/scripts/supervibe-status.mjs --index-health --no-gc-hints`
+6. If audit flagged code index health, do not repair RAG from this strengthening agent. Record a runtime-owned RAG freshness blocker and have the controller/runtime run `supervibe hook session-start` or the explicit status repair command before this skill continues.
 7. Run or consult `node <resolved-supervibe-plugin-root>/scripts/supervibe-status.mjs --capabilities` before editing agents, rules, commands or skills so every strengthened artifact stays linked to a capability and verification hook.
 
 ## Decision tree (researcher consultation)
@@ -98,10 +98,7 @@ Artifact is stale (last-verified >90d)?
    h. Update `last-verified` to today
    i. Update `verified-against` (current commit hash)
    j. If researcher consulted: cite source in artifact footer
-2. For code-index health findings:
-   a. Repair partial source coverage with `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress`; use `--force --health` only for a deliberate full rebuild
-   b. Confirm `SUPERVIBE_INDEX_GATE READY: true`
-   c. If generated leakage or stale rows remain, inspect `--explain-policy` before editing source rules
+2. For code-index health findings, stop artifact strengthening until the runtime/controller maintenance lane restores RAG freshness and confirms `SUPERVIBE_INDEX_GATE READY: true`. This skill may cite the required repair command from status output, but it must not run index repair as part of an agent workflow.
 3. Score each strengthened artifact with confidence-scoring (≥9 required)
 4. Re-run capability registry validation when an artifact link changes and fix missing command, agent, skill, rule or verification references before presenting the diff.
 5. Show diff to user; await approval

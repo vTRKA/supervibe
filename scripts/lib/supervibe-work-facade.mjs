@@ -17,6 +17,7 @@ const ACTION_ROUTES = Object.freeze({
   archive: ["archive"],
   doctor: ["doctor"],
   prime: ["prime"],
+  "prepare-loop": ["--dispatch-wave"],
   atomize: ["--atomize-plan"],
   prepare: ["--atomize-plan"],
   priority: ["--priority"],
@@ -74,7 +75,7 @@ export function routeWorkFacadeArgs(argv = []) {
   return {
     help: false,
     action,
-    commandArgs: [...route, ...args.slice(1)],
+    commandArgs: materializeCommandArgs({ action, route, passthroughArgs: args.slice(1) }),
     output,
     facadeArgs: args,
   };
@@ -86,6 +87,7 @@ export function formatWorkFacadeHelp() {
     "Usage:",
     "  sv work status [--file <graph.json>]",
     "  sv work graph --file <state.json> [--format text|json|mermaid|dot]",
+    "  sv work prepare-loop --file <graph.json> --max-concurrency 4 [--apply]",
     "  sv work prepare <plan.md> --user-approved-plan",
     "  sv work atomize <plan.md> --user-approved-plan",
     "  sv work ready --file <graph.json>",
@@ -105,7 +107,7 @@ export function formatWorkFacadeHelp() {
     "Routes:",
     "  status|summary|list -> supervibe-loop --status",
     "  graph|export|archive|doctor|prime -> supervibe-loop graph/export/archive/doctor/prime",
-    "  prepare|atomize|priority|ready|show|next|claim|claim-ready|run-ready|dispatch -> matching supervibe-loop work graph action",
+    "  prepare-loop|prepare|atomize|priority|ready|show|next|claim|claim-ready|run-ready|dispatch -> matching supervibe-loop work graph action",
     "  complete|close|block|unblock|skip|defer|create|discover|edit|delete|split|reparent|deps|dep-add|dep-remove|why|proof -> matching work-item action or view",
     "  completion-status|validate-completion|close-eligible|final-review|final-review-status|adopt|reconcile -> matching completion or receipt action",
     "",
@@ -165,6 +167,17 @@ function parseWorkFacadeOutputMode(argv = []) {
 
 function normalizeAction(value) {
   return String(value || "").trim().toLowerCase();
+}
+
+function materializeCommandArgs({ action, route = [], passthroughArgs = [] } = {}) {
+  const commandArgs = [...route];
+  if (action === "prepare-loop" && !hasExplicitApply(passthroughArgs)) commandArgs.push("--dry-run");
+  commandArgs.push(...passthroughArgs);
+  return commandArgs;
+}
+
+function hasExplicitApply(args = []) {
+  return args.some((arg) => normalizeAction(arg) === "--apply");
 }
 
 function runCli() {
@@ -267,8 +280,34 @@ function parseJsonPayload(stdout = "") {
   try {
     return JSON.parse(text);
   } catch {
-    return null;
+    return parseLineOrientedPayload(text);
   }
+}
+
+function parseLineOrientedPayload(text = "") {
+  const payload = {};
+  for (const rawLine of String(text || "").split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const keyValue = line.match(/^([A-Z][A-Z0-9_ -]*):\s*(.*?)\s*$/);
+    if (!keyValue) {
+      if (!payload.kind && /^[A-Z][A-Z0-9_ -]+$/.test(line)) payload.kind = toCamelCase(line);
+      continue;
+    }
+    const key = toCamelCase(keyValue[1].replace(/-/g, "_").trim());
+    payload[key] = parseScalarValue(keyValue[2]);
+  }
+  return Object.keys(payload).length > 0 ? payload : null;
+}
+
+function parseScalarValue(value = "") {
+  const text = String(value || "").trim();
+  if (text === "true") return true;
+  if (text === "false") return false;
+  if (text === "none") return null;
+  if (/^-?\d+$/.test(text)) return Number(text);
+  if (text.includes(",")) return text.split(",").map((item) => item.trim()).filter(Boolean);
+  return text;
 }
 
 function countLines(value = "") {

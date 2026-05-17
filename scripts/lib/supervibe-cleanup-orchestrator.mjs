@@ -1,4 +1,8 @@
-import { cleanupRuntimeTargets, defaultRuntimeCleanupRegistryPath } from "./runtime-cleanup-registry.mjs";
+import {
+  cleanupRuntimeTargets,
+  defaultRuntimeCleanupRegistryPath,
+  summarizeHostManagedSubagentDebtSync,
+} from "./runtime-cleanup-registry.mjs";
 import { evaluateMemoryGcSchedule, scanMemoryGc } from "./supervibe-memory-gc.mjs";
 import { evaluateArtifactGcSchedule, scanSupervibeArtifactGc, validateSupervibeGcStrict } from "./supervibe-artifact-gc.mjs";
 import { scanWorkItemGc } from "./supervibe-work-item-gc.mjs";
@@ -14,11 +18,13 @@ export async function runCleanupOrchestrator({
   includeStaleOpen = false,
   staleOpenDays = 90,
   completedGraceHours = 24,
+  scope = {},
+  strictRelease = mode === "manual-apply",
 } = {}) {
   const policy = resolveCleanupPolicy({ mode, now });
   const dryRun = mode !== "manual-apply";
   const runtimeRegistryPath = defaultRuntimeCleanupRegistryPath(rootDir);
-  const terminalSignals = await collectTerminalSignals({ rootDir, now });
+  const terminalSignals = await collectTerminalSignals({ rootDir, now, mode, scope, strictRelease });
   const [runtime, workItems, memory, artifacts, reachability] = await Promise.all([
     cleanupRuntimeTargets({ path: runtimeRegistryPath, rootDir, dryRun: true, unusedOnly: true, now: new Date(now) }),
     scanWorkItemGc({ rootDir, now, retentionDays, includeStaleOpen, staleOpenDays, completedGraceHours }),
@@ -73,6 +79,10 @@ export function formatCleanupOrchestratorReport(report = {}) {
     `POLICY_VERSION: ${report.policy?.policyVersion || "unknown"}`,
     `TERMINAL_READY: ${report.terminalSignals?.ready === true}`,
     `TERMINAL_BLOCKERS: ${(report.terminalSignals?.blocked || []).join(",") || "none"}`,
+    `TERMINAL_DIAGNOSTICS: ${(report.terminalSignals?.diagnostics || []).join(",") || "none"}`,
+    `HOST_MANAGED_BLOCKING: ${report.terminalSignals?.hostManaged?.blockingCount || 0}`,
+    `HOST_MANAGED_DIAGNOSTIC: ${report.terminalSignals?.hostManaged?.diagnosticCount || 0}`,
+    `HOST_MANAGED_GLOBAL: ${report.terminalSignals?.hostManaged?.globalCount || 0}`,
     `RUNTIME_CHECKED: ${components.runtime?.checked || 0}`,
     `WORK_ITEM_CANDIDATES: ${components.workItems?.candidates || 0}`,
     `MEMORY_CANDIDATES: ${components.memory?.candidates || 0}`,
@@ -90,21 +100,39 @@ export function formatCleanupOrchestratorReport(report = {}) {
   ].join("\n");
 }
 
-async function collectTerminalSignals({ rootDir, now }) {
+async function collectTerminalSignals({
+  rootDir,
+  now,
+  mode = "dry-run",
+  scope = {},
+  strictRelease = mode === "manual-apply",
+}) {
   const plan = createPlanLifecycleReport({ rootDir });
+  const runtimeRegistryPath = defaultRuntimeCleanupRegistryPath(rootDir);
   const runtimeDebt = await cleanupRuntimeTargets({
-    path: defaultRuntimeCleanupRegistryPath(rootDir),
+    path: runtimeRegistryPath,
     rootDir,
     dryRun: true,
     unusedOnly: true,
     now: new Date(now),
   });
+  const hostManagedDebt = summarizeHostManagedSubagentDebtSync({
+    rootDir,
+    path: runtimeRegistryPath,
+    scope,
+    strictRelease,
+  });
   const blocked = [];
-  if (runtimeDebt.hostManagedCompleted > 0 || runtimeDebt.wouldPruneHostManagedCompleted > 0) blocked.push("host-managed-subagent-close-state");
+  const diagnostics = [];
+  if (hostManagedDebt.blockingCount > 0) blocked.push("host-managed-subagent-close-state");
+  if (hostManagedDebt.diagnosticCount > 0 || hostManagedDebt.globalCount > hostManagedDebt.blockingCount) {
+    diagnostics.push("host-managed-subagent-close-state");
+  }
   if (plan.staleActiveSource) blocked.push("stale-active-plan-source");
   return {
     ready: blocked.length === 0,
     blocked,
+    diagnostics,
     plan: {
       activePlan: plan.activePlan || null,
       activeStatus: plan.activeStatus || null,
@@ -114,6 +142,14 @@ async function collectTerminalSignals({ rootDir, now }) {
       checked: runtimeDebt.checked,
       hostManagedCompleted: runtimeDebt.hostManagedCompleted,
       wouldPruneHostManagedCompleted: runtimeDebt.wouldPruneHostManagedCompleted,
+    },
+    hostManaged: {
+      strictRelease: hostManagedDebt.strictRelease === true,
+      blockingCount: hostManagedDebt.blockingCount || 0,
+      diagnosticCount: hostManagedDebt.diagnosticCount || 0,
+      globalCount: hostManagedDebt.globalCount || 0,
+      closeRequired: hostManagedDebt.closeRequired || [],
+      diagnostics: hostManagedDebt.diagnostics || [],
     },
   };
 }

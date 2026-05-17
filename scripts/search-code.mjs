@@ -26,6 +26,8 @@ import { buildRepoMap, formatRepoMapContext, selectRepoMapContext } from './lib/
 import { buildCodeGraphContextFromReadSnapshot, openCodeIndexReadSnapshot } from './lib/code-index-health-status.mjs';
 import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 
 const PROJECT_ROOT = process.cwd();
 
@@ -39,6 +41,7 @@ export async function buildLiveCompactContextPack({
 } = {}) {
   const normalizedQuery = String(query || "").trim();
   const evidenceLimit = Math.max(1, Math.trunc(Number(limit) || 8));
+  await ensureSearchIndexFresh({ rootDir, useEmbeddings });
   const omittedEvidence = [];
 
   let memoryResults = [];
@@ -241,6 +244,27 @@ export function formatCompactContextPack(pack = {}) {
   ].join("\n");
 }
 
+async function ensureSearchIndexFresh({ rootDir = PROJECT_ROOT, useEmbeddings = false } = {}) {
+  if (process.env.SUPERVIBE_SEARCH_AUTO_REFRESH === '0') return null;
+  const dbPath = join(rootDir, '.supervibe', 'memory', 'code.db');
+  const bootstrapping = !existsSync(dbPath);
+  let store;
+  try {
+    const { CodeStore } = await import('./lib/code-store.mjs');
+    const { scanCodeChanges } = await import('./lib/mtime-scan.mjs');
+    const embed = process.env.SUPERVIBE_SEARCH_AUTO_EMBED === '1' && useEmbeddings;
+    store = new CodeStore(rootDir, { useEmbeddings: embed, useGraph: true });
+    await store.init();
+    const counts = await scanCodeChanges(store, rootDir);
+    return { bootstrapping, counts, stats: store.stats() };
+  } catch (err) {
+    if (bootstrapping) throw new Error(`code RAG auto-refresh failed before search: ${err.message}`);
+    return { bootstrapping, error: err.message };
+  } finally {
+    try { store?.close?.(); } catch {}
+  }
+}
+
 async function main() {
 const { values, positionals } = parseArgs({
   options: {
@@ -293,6 +317,13 @@ if (!values.query && !values.callers && !values.callees && !values.neighbors && 
 }
 
 const limit = parseInt(values.limit, 10);
+const needsCodeIndex = values.query || values.callers || values.callees || values.neighbors || values['top-symbols'] || values['symbol-search'] || values.impact || values.files || values.context;
+if (needsCodeIndex) {
+  await ensureSearchIndexFresh({
+    rootDir: PROJECT_ROOT,
+    useEmbeddings: !values['no-semantic'],
+  });
+}
 
 if (values['context-pack'] || values.format === 'context-pack') {
   const pack = await buildLiveCompactContextPack({

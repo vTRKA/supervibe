@@ -140,7 +140,7 @@ const SLASH_COMMAND_SHORTCUTS = Object.freeze([
     keywordGroups: [
       ["audit", "check", "review", "rate", "score", "assess", "проверь", "проведи", "сделай", "оцени", "насколько", "на сколько", "аудит"],
       ["project", "health", "agent system", "agents", "maturity", "out of 10", "10 из 10", "качество", "проект", "здоровье", "агент", "агенты", "агентов", "агентской системы", "зрелость", "зрелая"],
-      ["intent", "routing", "router", "receipt", "receipts", "skills", "semantic", "rag", "codegraph", "coverage", "emulation", "invoked", "really invoked", "интент", "роут", "маршрут", "рецепт", "скил", "семантичес", "покрытие", "вызываются", "эмулируются"],
+      ["intent", "routing", "router", "intent matcher", "matcher", "classifier", "receipt", "receipts", "skills", "semantic", "rag", "codegraph", "coverage", "emulation", "invoked", "really invoked", "интент", "роут", "маршрут", "метчер", "матчер", "рецепт", "скил", "семантичес", "покрытие", "вызываются", "эмулируются"],
     ],
   },
   {
@@ -1203,6 +1203,7 @@ function createSlashShortcut(profile) {
     parallelAgentPolicy: copyParallelAgentLaunchPolicy(),
     mutationRisk: "delegates-to-slash-command",
     directRoute,
+    doNotSearchProject: profile.doNotSearchProject,
     requiredGroupIndexes: profile.requiredGroupIndexes || [0, 1],
     nextAction: profile.nextAction || (fastWorkflowCommand
       ? `Run ${profile.command} in the active AI CLI; use the fast owner flow and leave reviewers or quality gates for an explicit later step.`
@@ -1458,7 +1459,7 @@ function copyShortcut(shortcut) {
 function enrichMatch(shortcut, fields = {}) {
   return withParallelAgentPolicy({
     ...shortcut,
-    doNotSearchProject: true,
+    doNotSearchProject: shortcut.doNotSearchProject ?? true,
     ...fields,
   });
 }

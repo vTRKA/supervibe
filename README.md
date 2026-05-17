@@ -9,7 +9,7 @@ Runs locally. No Docker. Windows, macOS, and Linux.
 
 Supervibe keeps the normal brainstorm -> loop-ready plan -> user-approved graph path fast. Specialist agents and scoped receipts are required when Supervibe claims delegated agent output, explicit strict review, verification, release evidence, or design/prototype completion; simple routing and next-action handoffs stay lightweight.
 
-**v2.1** - current plugin `v2.1.41` - MIT - 2316 tests
+**v2.1** - current plugin `v2.1.42` - MIT - 2334 tests
 
 > **Compliance notice:** This tool is designed exclusively for development assistance. By using it, you agree to comply with the Terms of Service (ToS) and Acceptable Use Policy (AUP) of all involved services, including Anthropic. Unauthorized automated usage, OAuth token abuse, or violation of third-party policies is the sole responsibility of the end user.
 
@@ -275,7 +275,7 @@ The installer:
 After restart, you should see something like:
 
 ```text
-[supervibe] welcome  plugin v2.1.41 initialized for this project
+[supervibe] welcome  plugin v2.1.42 initialized for this project
 [supervibe] code RAG  N files / M chunks (fresh)
 [supervibe] code graph  N symbols / M edges (X% resolved)
 ```
@@ -634,9 +634,9 @@ defer tests and validators until the final release or merge gate.
 | Windows install starts in WSL | Use PowerShell `install.ps1` for Windows, or set `SUPERVIBE_ALLOW_WSL_INSTALL=1` only for intentional WSL install |
 | SQLite errors | Install Node.js 22.5+ or re-run installer and approve the Node upgrade prompt |
 | PowerShell execution policy blocks install | Run `Set-ExecutionPolicy -Scope Process Bypass`, then retry |
-| Stale or partial code index | Run the repair command printed by `/supervibe-status` or `npm run supervibe:status` |
+| Stale or partial code index | Runtime hooks and `search-code.mjs` self-heal normal drift; if status still reports a blocker, run the repair command printed by `/supervibe-status` or `npm run supervibe:status` from the controller/maintenance lane |
 
-Index repair from a user project:
+Manual index repair from a user project (maintenance fallback, not an agent workflow step):
 
 ```bash
 node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --list-missing

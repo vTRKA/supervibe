@@ -180,6 +180,33 @@ describe("supervibe trigger router", () => {
     assert.deepEqual(route.safetyBlockers, []);
   });
 
+  it("routes intent matcher audit and research requests away from pure diagnostics", () => {
+    const auditRequests = [
+      "audit intent matcher and routing system",
+      "audit intent routing",
+      "\u043f\u0440\u043e\u0432\u0435\u0434\u0438 \u0430\u0443\u0434\u0438\u0442 intent matcher \u0438 routing system",
+      "\u043f\u0440\u043e\u0432\u0435\u0434\u0438 \u0430\u0443\u0434\u0438\u0442 \u0441\u0438\u0441\u0442\u0435\u043c\u044b \u043c\u0435\u0442\u0447\u0435\u0440\u0430 \u0438 \u0438\u043d\u0442\u0435\u043d\u0442\u0430",
+    ];
+
+    for (const request of auditRequests) {
+      const route = routeTriggerRequest(request);
+
+      assert.equal(route.intent, "supervibe_audit", request);
+      assert.equal(route.command, "/supervibe-audit", request);
+      assert.notEqual(route.intent, "trigger_diagnostics", request);
+      assert.notEqual(route.intent, "unknown", request);
+      assert.equal(route.requiredSafety.includes("semantic-route-coverage"), true, request);
+    }
+
+    const researchRoute = routeTriggerRequest("find internet solution for intent routing so plugin understands user");
+
+    assert.equal(researchRoute.intent, "source_truth_research");
+    assert.equal(researchRoute.command, "/supervibe-audit --source-of-truth");
+    assert.notEqual(researchRoute.intent, "network_ops");
+    assert.notEqual(researchRoute.intent, "trigger_diagnostics");
+    assert.equal(researchRoute.intentArbiter.requestType, "route_research_request");
+  });
+
   it("routes long Russian agent and design-data maturity audits to audit mode, not plan review", () => {
     const request = [
       "Проведи аудит и скажи на 10 из 10, что ты уверен что агенты и скилы сейчас сильно усилены",

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile, utimes } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -47,6 +47,39 @@ test("task-type CodeGraph gate blocks structural work without graph evidence", (
 
   assert.equal(gate.pass, false);
   assert.ok(gate.failures.some((item) => item.includes("graph neighborhood")));
+});
+
+test("search-code auto-refreshes stale files before returning RAG results", async () => {
+  const root = await makeFixture();
+  const cli = join(process.cwd(), "scripts", "search-code.mjs");
+  const target = join(root, "src", "IdeasPage.tsx");
+  try {
+    await writeFile(target, `
+import { useUserVPNConfigQuery } from './hooks/vpn';
+
+export const IdeasPage = () => {
+  const config = useUserVPNConfigQuery();
+  const runtimeFreshnessSentinel = 'fresh-rag-before-agent-query';
+  return config.enabled ? runtimeFreshnessSentinel : null;
+};
+`);
+    const future = new Date(Date.now() + 5000);
+    await utimes(target, future, future);
+
+    const result = await execFileAsync(process.execPath, [cli, "--query", "fresh-rag-before-agent-query", "--no-semantic"], { cwd: root });
+
+    assert.match(result.stdout, /src\/IdeasPage\.tsx/);
+    const refreshed = new CodeStore(root, { useEmbeddings: false });
+    await refreshed.init();
+    try {
+      const rows = refreshed.db.prepare("SELECT chunk_text FROM code_chunks WHERE path = ?").all("src/IdeasPage.tsx");
+      assert.match(rows.map((row) => row.chunk_text).join("\n"), /fresh-rag-before-agent-query/);
+    } finally {
+      refreshed.close();
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
 
 test("search-code exposes context, impact, files, and symbol-search modes for agents", async () => {

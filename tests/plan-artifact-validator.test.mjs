@@ -4,7 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { validatePlanArtifact } from '../scripts/validate-plan-artifacts.mjs';
+import { isNonDurablePlanArtifact, validatePlanArtifact } from '../scripts/validate-plan-artifacts.mjs';
 
 const GOOD_PLAN = `# Billing Export Implementation Plan
 
@@ -252,6 +252,30 @@ test('validate-plan-artifacts treats reviewed phase epic shards as derived plans
     stdio: 'pipe',
   });
   assert.match(output, /OK\s+phase-plan\s+\.supervibe\/artifacts\/plans\/IVAN-SUPER-UPDATE\/2026-05-15-IVAN-SUPER-UPDATE-P0\.md/);
+});
+
+test('validate-plan-artifacts skips non-durable temp plans and review notes in all mode', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'plan-validator-non-durable-'));
+  const plansDir = join(dir, '.supervibe', 'artifacts', 'plans');
+  const reviewDir = join(plansDir, '_reviews', 'fast-loop');
+  await mkdir(reviewDir, { recursive: true });
+  const tempPlan = join(plansDir, 'temp-fast-loop.md');
+  const tempMarkdown = '# Temporary Plan: Fast Loop\n\nStatus: temporary execution plan\n';
+  await writeFile(tempPlan, tempMarkdown, 'utf8');
+  await writeFile(join(reviewDir, 'architect.md'), '# architect review\n\nPASS\n', 'utf8');
+
+  assert.equal(isNonDurablePlanArtifact({ rootDir: dir, file: tempPlan, markdown: tempMarkdown }), true);
+  const output = execFileSync(process.execPath, [
+    join(process.cwd(), 'scripts', 'validate-plan-artifacts.mjs'),
+    '--all',
+  ], {
+    cwd: dir,
+    encoding: 'utf8',
+    stdio: 'pipe',
+  });
+
+  assert.match(output, /OK\s+non-durable-plan\s+\.supervibe\/artifacts\/plans\/temp-fast-loop\.md/);
+  assert.match(output, /OK\s+non-durable-plan\s+\.supervibe\/artifacts\/plans\/_reviews\/fast-loop\/architect\.md/);
 });
 
 test('validate-plan-artifacts strict mode fails active graph with missing source and snapshot', async () => {

@@ -44,6 +44,26 @@ test("runtime cleanup registry removes stale pids and preserves host-managed sub
   }
 });
 
+test("runtime cleanup does not create an empty registry for a no-op prune", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-runtime-cleanup-empty-"));
+  const registryPath = join(root, ".supervibe", "memory", "runtime-cleanup-registry.json");
+  try {
+    const result = await cleanupRuntimeTargets({
+      path: registryPath,
+      rootDir: root,
+      staleOnly: true,
+      unusedOnly: true,
+      olderThanMinutes: 60,
+      includeServerPidFiles: true,
+    });
+
+    assert.equal(result.checked, 0);
+    assert.equal(existsSync(registryPath), false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("runtime cleanup discovers completed Codex subagents and requires host close before pruning", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-runtime-cleanup-subagent-"));
   const registryPath = join(root, ".supervibe", "memory", "runtime-cleanup-registry.json");
@@ -168,6 +188,45 @@ test("runtime cleanup unused mode preserves young live targets and selects old o
     assert.equal(result.active, 1);
     assert.ok(result.results.some((item) => item.id === "old-ui" && item.status === "would-stop"));
     assert.ok(result.results.some((item) => item.id === "fresh-ui" && item.status === "kept-active"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("runtime cleanup stale-only prunes dead targets and skips live targets", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-runtime-cleanup-stale-only-"));
+  const registryPath = join(root, "runtime-cleanup-registry.json");
+  try {
+    await registerRuntimeCleanupTarget({
+      id: "old-live-daemon",
+      kind: "daemon",
+      pid: process.pid,
+      registeredAt: "2026-05-13T10:00:00.000Z",
+      lastSeenAt: "2026-05-13T10:00:00.000Z",
+    }, { path: registryPath });
+    await registerRuntimeCleanupTarget({
+      id: "dead-daemon",
+      kind: "daemon",
+      pid: 99999999,
+      registeredAt: "2026-05-13T10:00:00.000Z",
+      lastSeenAt: "2026-05-13T10:00:00.000Z",
+    }, { path: registryPath });
+
+    const result = await cleanupRuntimeTargets({
+      path: registryPath,
+      staleOnly: true,
+      unusedOnly: true,
+      olderThanMinutes: 60,
+      now: new Date("2026-05-13T12:00:00.000Z"),
+    });
+    const registry = await readRuntimeCleanupRegistry(registryPath);
+
+    assert.equal(result.staleOnly, true);
+    assert.equal(result.stale, 1);
+    assert.equal(result.stopped, 0);
+    assert.equal(result.active, 1);
+    assert.equal(registry.targets.length, 1);
+    assert.equal(registry.targets[0].id, "old-live-daemon");
   } finally {
     await rm(root, { recursive: true, force: true });
   }

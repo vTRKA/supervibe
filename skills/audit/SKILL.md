@@ -122,9 +122,9 @@ Audit finds weak artifacts with valid structure but shallow role guidance?
 - READY: true|false
 - SOURCE_COVERAGE: indexed/eligible (%)
 - FAILED: source-coverage, generated-leakage, stale-rows, symbol-coverage, symbol-quality
-- Repair partial source coverage: `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --list-missing` then `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress`
-- Graph repair: `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health`
-- Full rebuild: use `--force --health` only when incremental repair cannot explain the index state
+- Runtime-owned repair: run `supervibe hook session-start`, then re-check `node <resolved-supervibe-plugin-root>/scripts/supervibe-status.mjs --index-health --no-gc-hints`
+- Maintenance fallback: if status still reports partial source coverage, the controller may run `node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --list-missing` and the explicit repair command from status output
+- Full rebuild: use `--force --health` only in an explicit maintenance lane, never as part of normal agent workflow
 ### Weak Artifacts (N)
 - ...
 ### Stale Verifications (N)

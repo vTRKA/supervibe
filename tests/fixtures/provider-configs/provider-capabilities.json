@@ -52,6 +52,7 @@
         "hooks": {
           "support": "native",
           "surfaces": [
+            "features.hooks",
             "features.codex_hooks",
             "hooks",
             "requirements.toml managed hooks"

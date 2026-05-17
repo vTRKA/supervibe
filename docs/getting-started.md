@@ -68,17 +68,17 @@ npm run supervibe:install-bins    # optional on Linux/Mac: links supervibe-* ter
 
 # Linux/Mac:
 mkdir -p ~/.claude/plugins/cache/local
-cp -r ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.1.41
+cp -r ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.1.42
 
 # Windows (PowerShell):
-mkdir $HOME\.claude\plugins\cache\local\supervibe\2.1.41
-xcopy /E /I "C:\path\to\supervibe" "$HOME\.claude\plugins\cache\local\supervibe\2.1.41"
+mkdir $HOME\.claude\plugins\cache\local\supervibe\2.1.42
+xcopy /E /I "C:\path\to\supervibe" "$HOME\.claude\plugins\cache\local\supervibe\2.1.42"
 
 # Or symlink (avoids re-copy on updates):
 # Linux/Mac:
-ln -s ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.1.41
+ln -s ~/dev/supervibe ~/.claude/plugins/cache/local/supervibe/2.1.42
 # Windows (admin shell):
-mklink /D "$HOME\.claude\plugins\cache\local\supervibe\2.1.41" "C:\path\to\supervibe"
+mklink /D "$HOME\.claude\plugins\cache\local\supervibe\2.1.42" "C:\path\to\supervibe"
 
 # 4. Restart Claude Code session
 # Plugin auto-loads from cache.
@@ -103,7 +103,7 @@ supervibe-adapt --help    # Linux/Mac terminal alias, no leading slash
 ```
 
 If `/supervibe` not recognized:
-- Check `~/.claude/plugins/cache/local/supervibe/2.1.41/.claude-plugin/plugin.json` exists
+- Check `~/.claude/plugins/cache/local/supervibe/2.1.42/.claude-plugin/plugin.json` exists
 - Verify `agents` field is array (not string) and paths begin with `./agents/`
 - Run `npm run validate:plugin-json` from plugin dir
 
@@ -264,20 +264,20 @@ node <resolved-supervibe-plugin-root>/scripts/build-memory-index.mjs
 
 ## Code Search (RAG over your source code)
 
-Beyond markdown memory, Supervibe indexes your source code for semantic search. This runs transparently  agents use it under the hood; you don't manage it directly.
+Beyond markdown memory, Supervibe indexes your source code for semantic search. The runtime owns freshness: SessionStart bootstraps or mtime-scans the index, PostToolUse refreshes touched files, and `search-code.mjs` runs a final self-healing mtime preflight before serving RAG/CodeGraph. Agents only query RAG/CodeGraph; they do not run indexing commands in normal workflows.
 
 ```bash
-# Source RAG readiness after install or on a large existing project
-node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress
+# Status check; also runs from SessionStart
+node <resolved-supervibe-plugin-root>/scripts/supervibe-status.mjs --index-health
 
-# Build or repair Code Graph separately after source coverage is healthy
+# Emergency repair only, for controller/runtime maintenance after status reports a blocker
+node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress
 node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health
 
 # Inspect and batch-repair partial indexes after an abort/timeout
 node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --list-missing
-node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress
 
-# Manual semantic search (optional  agents auto-invoke this)
+# Manual semantic search (optional; agents auto-invoke this)
 node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --query "where authentication is handled"
 
 # Agent-ready context pack (RAG chunks + graph + anchors)
@@ -303,15 +303,15 @@ python`, `--path src-tauri/src`, or `--file <path>`. For one-file diagnosis use
 
 **Why this matters:** Agents (laravel-developer, nextjs-developer, fastapi-developer, react-implementer, repo-researcher) auto-search code before non-trivial tasks. Result: less hallucination, more reuse of existing patterns, faster orientation in unfamiliar parts of the codebase.
 
-**Auto-index on changes:** Three paths, all automatic by default:
+**Auto-index on changes:** Three runtime-owned paths keep RAG current by default:
 
-1. **Pseudo-watcher (in-session)**  `PostToolUse` hook on `Write|Edit` re-indexes touched files in ~50500ms each. Covers source code (RAG + Graph in `code.db`) AND memory entries (`.supervibe/memory/**/*.md`  FTS5 in `memory.db`). Embeddings skipped for speed.
-2. **mtime-scan on SessionStart**  catches files changed BETWEEN sessions (VS Code, `git pull`, CI). Cheap stat() over existing index rows; only reads files whose mtime advanced. Output line: `[supervibe] mtime-scan: N reindexed, M removed`.
-3. **Watcher daemon (optional)**  `npm run memory:watch` for real-time updates while editing in parallel during long sessions. Chokidar reacts to file events immediately and runs a 5-minute safety scan for missed changes. Chokidar long-running with embeddings.
+1. **SessionStart bootstrap + mtime-scan** - creates `.supervibe/memory/code.db` when missing, then catches files changed between sessions (VS Code, `git pull`, CI). It discovers new source files, removes deleted rows, and reports `[supervibe] mtime-scan: N reindexed, M discovered, R removed` when it had work to do.
+2. **Pseudo-watcher (in-session)** - Codex/host `PostToolUse` hook on `Bash|apply_patch|Edit|Write` re-indexes touched files in-process and runs a cheap mtime-scan after shell commands that may have changed files. Covers source code (RAG + Graph in `code.db`) and memory entries (`.supervibe/memory/**/*.md` in `memory.db`). Embeddings are skipped for speed unless explicitly enabled.
+3. **Watcher daemon (optional)** - `npm run memory:watch` for real-time updates while editing in parallel during long sessions. Chokidar reacts to file events immediately and runs a 5-minute safety scan for missed changes.
 
-For ~99% of users (1) + (2) cover everything without any extra setup. Daemon is opt-in.
+For normal agent workflows, (1) + (2) plus the `search-code.mjs` preflight are enough. The daemon and `build-code-index.mjs` commands are maintenance tools, not agent responsibilities.
 
-Env knobs: `SUPERVIBE_HOOK_NO_INDEX=1` disables pseudo-watcher; `SUPERVIBE_HOOK_EMBED=1` enables embeddings in it (slower per Edit). Project-owned indexing exclusions live in `.supervibe/memory/index-config.json`. Without any path: re-run `npm run code:index` after major changes.
+Env knobs: `SUPERVIBE_SESSION_START_ALLOW_INDEX_BUILD=0` disables first-run SessionStart bootstrap; `SUPERVIBE_HOOK_NO_BOOTSTRAP=1` prevents PostToolUse from creating a missing `code.db`; `SUPERVIBE_HOOK_SCAN_ON_EMPTY=0` disables the Bash/shell mtime-scan fallback; `SUPERVIBE_HOOK_NO_INDEX=1` disables hook indexing; `SUPERVIBE_HOOK_EMBED=1` enables embeddings in the hook. Project-owned indexing exclusions live in `.supervibe/memory/index-config.json`.
 
 **Storage:** `.supervibe/memory/code.db` (SQLite, gitignored). Hash-based dedup means re-indexing is fast.
 
@@ -319,7 +319,7 @@ Env knobs: `SUPERVIBE_HOOK_NO_INDEX=1` disables pseudo-watcher; `SUPERVIBE_HOOK_
 
 Beyond semantic similarity, Supervibe builds a **code graph** of symbols (functions, classes, methods, types) and their relationships (calls, imports, inheritance). Agents query this for "who calls X?", "what depends on Y?", "what breaks if I rename Z?".
 
-This is automatic  built on first session via SessionStart hook, kept fresh by the same pseudo-watcher (PostToolUse hook) that updates RAG. Symbols + edges refresh on every `Write`/`Edit` without any daemon.
+This is automatic  built on first session via SessionStart hook, kept fresh by the same pseudo-watcher (PostToolUse hook) that updates RAG. Symbols + edges refresh on `Bash|apply_patch|Edit|Write` changes without requiring agents to run index repair.
 
 ```bash
 # Status check (built into SessionStart, also runnable manually)
@@ -341,9 +341,9 @@ node <resolved-supervibe-plugin-root>/scripts/search-code.mjs --top-symbols 20
 
 **Coverage realism:** same-file, import-map, same-directory, and unique-symbol scoring resolve cross-file calls. Ambiguous same-name edges stay unresolved instead of being guessed, so impact analysis favors lower false confidence over noisy links.
 
-**Large monorepos:** for 10k+ files, use lazy mode:
+**Large monorepos:** controller/runtime maintenance can use lazy mode for 10k+ files:
 ```bash
-npm run code:index -- --since=HEAD~100   # only files changed in last 100 commits
+npm run code:index -- --since=HEAD~100   # maintenance-only: files changed in last 100 commits
 ```
 
 **Discipline (enforced by `rules/use-codegraph-before-refactor.md`):** before any rename / extract / move / delete of a public symbol, agents MUST run `--callers` first. The 3-case Graph evidence template (Case A: callers found / Case B: zero verified / Case C: N/A) is shown in every agent output that touches public surface.
@@ -432,7 +432,7 @@ Plugin telemetry watches every subagent dispatch and surfaces degradation automa
 
 ### `/supervibe` not recognized after install
 
-1. Confirm path: `ls ~/.claude/plugins/cache/local/supervibe/2.1.41/.claude-plugin/plugin.json`
+1. Confirm path: `ls ~/.claude/plugins/cache/local/supervibe/2.1.42/.claude-plugin/plugin.json`
 2. Validate manifest: `cd <plugin-dir> && npm run validate:plugin-json`
 3. Restart Claude Code session (plugins load at startup)
 4. Check `~/.claude/plugins/installed_plugins.json` lists supervibe
@@ -507,13 +507,13 @@ rm -rf <project>/<adapter>/skills
 ### v1.1  v1.2
 
 - **Plugin manifest now requires `agents:[]` array** for nested agent dirs to work
-- Manifest auto-updated; ensure your install path has v2.1.41
+- Manifest auto-updated; ensure your install path has v2.1.42
 - **Memory v2: SQLite FTS5** replaces markdown+grep
   - Old v1 markdown files still work as source of truth
   - First search auto-builds SQLite index from existing markdown
   - **Requires Node 22.5+** for `node:sqlite`; installation stops until this runtime is available
 - New: `scripts/search-memory.mjs` CLI
-- **Action**: re-symlink to v2.1.41 dir, restart Claude Code
+- **Action**: re-symlink to v2.1.42 dir, restart Claude Code
 
 ## Where to next
 

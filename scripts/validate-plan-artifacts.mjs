@@ -116,6 +116,14 @@ function hasPlaceholder(markdown) {
   return PLACEHOLDER_PATTERNS.some(re => re.test(markdown));
 }
 
+export function isNonDurablePlanArtifact({ rootDir = process.cwd(), file, markdown = '' } = {}) {
+  const rel = relative(rootDir, file).split(sep).join('/');
+  return /^\.supervibe\/artifacts\/plans\/_reviews\//i.test(rel)
+    || /^\.supervibe\/artifacts\/plans\/temp-/i.test(rel)
+    || /^#\s+Temporary Plan:/im.test(markdown)
+    || /^Status:\s+temporary execution plan/im.test(markdown);
+}
+
 function isDerivedPhaseEpicPlan({ rootDir, file, markdown }) {
   const rel = relative(rootDir, file).split(sep).join('/');
   if (!/^\.supervibe\/artifacts\/plans\/[^/]+\/[^/]+-P\d+\.md$/i.test(rel)) return false;
@@ -358,7 +366,8 @@ async function main() {
   }
 
   const root = process.cwd();
-  const files = values.file
+  const explicitFile = Boolean(values.file);
+  const files = explicitFile
     ? [values.file]
     : values.all
       ? await walkMarkdown(join(root, '.supervibe', 'artifacts', 'plans'))
@@ -369,6 +378,10 @@ async function main() {
   for (const file of files) {
     const markdown = await readFile(file, 'utf8');
     const rel = relative(root, file).split(sep).join('/');
+    if (!explicitFile && isNonDurablePlanArtifact({ rootDir: root, file, markdown })) {
+      console.log(`OK   non-durable-plan ${rel}`);
+      continue;
+    }
     if (isDerivedPhaseEpicPlan({ rootDir: root, file, markdown })) {
       validatedFiles.set(resolve(root, file), []);
       console.log(`OK   phase-plan ${rel}`);

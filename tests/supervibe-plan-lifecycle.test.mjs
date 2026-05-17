@@ -2,12 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   assertPlanWriteTargetAllowed,
   createPlanLifecycleReport,
+  createPlanLifecycleStateSummary,
   defaultActivePlanPointerPath,
   defaultPlanArchiveIndexPath,
   evaluatePlanSourceAgainstLifecycle,
@@ -122,6 +123,36 @@ test('plan lifecycle flags stale active graph source against canonical pointer',
   assert.ok(evaluation.issues.some((issue) => issue.includes('canonical active plan pointer')));
 });
 
+test('plan lifecycle blocks non-terminal graphs when the active plan target is missing', async () => {
+  const { root, currentPlan } = await makeLifecycleFixture();
+  await repairPlanLifecycle({
+    rootDir: root,
+    currentPlanPath: currentPlan,
+    apply: true,
+    receiptId: 'workflow-test',
+  });
+  const readyGraph = {
+    kind: 'supervibe-work-item-graph',
+    epicId: 'epic-current',
+    source: { type: 'plan', path: currentPlan, snapshotPath: 'source-plan.md' },
+    items: [
+      { itemId: 'epic-current', type: 'epic', status: 'open', title: 'Epic' },
+      { itemId: 't1', type: 'task', status: 'open', title: 'Task' },
+    ],
+  };
+  await writeFile(join(root, '.supervibe', 'memory', 'work-items', 'epic-current', 'graph.json'), `${JSON.stringify(readyGraph, null, 2)}\n`, 'utf8');
+  await rm(join(root, currentPlan), { force: true });
+
+  const report = createPlanLifecycleReport({ rootDir: root });
+  const summary = createPlanLifecycleStateSummary({ rootDir: root });
+
+  assert.equal(report.activeGraphResolver.status, 'ready');
+  assert.equal(report.activeGraphTerminal, false);
+  assert.equal(report.activePlanExists, false);
+  assert.equal(summary.status, 'blocked');
+  assert.ok(summary.blockers.some((blocker) => /Active plan target is missing/.test(blocker.message)));
+});
+
 test('plan lifecycle treats completed active graph as a finish state instead of source repair blocker', async () => {
   const { root, currentPlan, oldPlan } = await makeLifecycleFixture();
   await repairPlanLifecycle({
@@ -140,12 +171,18 @@ test('plan lifecycle treats completed active graph as a finish state instead of 
     ],
   }, null, 2)}\n`, 'utf8');
 
+  await rm(join(root, currentPlan), { force: true });
+
   const report = createPlanLifecycleReport({ rootDir: root });
+  const formatted = formatPlanLifecycleReport(report);
 
   assert.equal(report.activeGraphResolver.status, 'complete');
   assert.equal(report.staleActiveSource, false);
   assert.equal(report.activeGraphTerminal, true);
-  assert.doesNotMatch(formatPlanLifecycleReport(report), /repair active graph source/);
+  assert.equal(report.activePlanExists, false);
+  assert.match(formatted, /ACTIVE_PLAN_EXISTS: false/);
+  assert.match(formatted, /ACTIVE_PLAN_WARNING: missing active plan target/);
+  assert.doesNotMatch(formatted, /repair active graph source/);
 });
 
 test('plan lifecycle CLI prints status and refuses destructive deletion without receipt', async () => {
