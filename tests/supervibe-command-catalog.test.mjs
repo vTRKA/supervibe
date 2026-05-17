@@ -27,6 +27,7 @@ import { validateWorkflowStageId } from "../scripts/lib/workflow-stage-registry.
 const ROOT = process.cwd();
 const COMMANDS_SCRIPT = join(ROOT, "scripts", "supervibe-commands.mjs");
 const AGENT_PLAN_SCRIPT = join(ROOT, "scripts", "command-agent-plan.mjs");
+const FAST_WORKFLOW_COMMANDS = new Set(["/supervibe-brainstorm", "/supervibe-plan", "/supervibe-loop"]);
 
 function installHostAgentFiles(projectRoot, hostFolder, agentIds) {
   const dir = join(projectRoot, ...hostFolder.split("/"));
@@ -48,15 +49,15 @@ test("project command catalog exposes slash commands, npm scripts, and fast shor
   assert.deepEqual(catalog.agentContract.executionModes, ["real-agents"]);
   assert.equal(catalog.agentContract.blockedMode, "agent-required-blocked");
   assert.equal(catalog.parallelAgentPolicy.mode, COMMAND_PARALLEL_AGENT_LAUNCH_POLICY.mode);
-  assert.equal(catalog.parallelAgentPolicy.requiresRealAgentFanout, true);
-  assert.equal(catalog.parallelAgentPolicy.appliesAfterCompactResume, true);
-  assert.equal(catalog.parallelAgentPolicy.appliesToSimpleTasks, true);
+  assert.equal(catalog.parallelAgentPolicy.requiresRealAgentFanout, false);
+  assert.equal(catalog.parallelAgentPolicy.appliesAfterCompactResume, false);
+  assert.equal(catalog.parallelAgentPolicy.appliesToSimpleTasks, false);
   assert.equal(catalog.slashCommands.every((entry) => entry.agentContract?.ownerAgentId === "supervibe-orchestrator"), true);
   assert.equal(catalog.slashCommands.every((entry) => entry.agentProfile?.defaultExecutionMode === "real-agents"), true);
-  assert.equal(catalog.slashCommands.every((entry) => entry.parallelAgentPolicy?.requiresRealAgentFanout === true), true);
+  assert.equal(catalog.slashCommands.every((entry) => entry.parallelAgentPolicy?.requiresRealAgentFanout === false), true);
   const workflowShortcuts = catalog.shortcuts.filter((entry) => String(entry.command || "").startsWith("/supervibe"));
   assert.ok(workflowShortcuts.length >= 10);
-  assert.equal(workflowShortcuts.every((entry) => entry.parallelAgentPolicy?.mode === "parallel-real-agents"), true);
+  assert.equal(workflowShortcuts.every((entry) => FAST_WORKFLOW_COMMANDS.has(String(entry.command || "").split(/\s+/)[0]) || entry.parallelAgentPolicy?.mode === "single-or-parallel-real-agents"), true);
   assert.match(shortcut.command, /build-code-index\.mjs --root \. --resume --source-only --max-files 200 --max-seconds 120 --health --json-progress/);
   assert.ok(shortcut.followUpCommands.some((command) => /--resume --graph --max-files 200 --health/.test(command)));
   const report = formatCommandCatalog(catalog);
@@ -66,10 +67,10 @@ test("project command catalog exposes slash commands, npm scripts, and fast shor
   assert.match(report, /NPM_SCRIPTS:/);
   assert.match(report, /AGENT_OWNER: supervibe-orchestrator/);
   assert.match(report, /AGENT_BLOCKED_MODE: agent-required-blocked/);
-  assert.match(report, /PARALLEL_AGENT_POLICY: mandatory-parallel-agent-launch/);
-  assert.match(report, /PARALLEL_AGENT_MODE: parallel-real-agents/);
-  assert.match(report, /PARALLEL_AGENT_AFTER_COMPACT_RESUME: true/);
-  assert.match(report, /PARALLEL_AGENT_SIMPLE_TASKS: true/);
+  assert.match(report, /PARALLEL_AGENT_POLICY: ready-task-agent-dispatch/);
+  assert.match(report, /PARALLEL_AGENT_MODE: single-or-parallel-real-agents/);
+  assert.match(report, /PARALLEL_AGENT_AFTER_COMPACT_RESUME: false/);
+  assert.match(report, /PARALLEL_AGENT_SIMPLE_TASKS: false/);
 });
 
 test("verify review ship command surfaces publish profiles, stages, and routes", () => {
@@ -143,7 +144,12 @@ test("command resolver resolves every published slash command explicitly without
     assert.equal(match.doNotSearchProject, true, commandId);
     assert.equal(match.command, `${commandId} --help`, commandId);
     assert.equal(match.agentContract.ownerAgentId, COMMAND_AGENT_ORCHESTRATION_CONTRACT.ownerAgentId, commandId);
-    assert.match(match.nextAction, /command-agent-plan\.mjs/, commandId);
+    if (FAST_WORKFLOW_COMMANDS.has(commandId)) {
+      assert.doesNotMatch(match.nextAction, /command-agent-plan\.mjs/, commandId);
+      assert.doesNotMatch(formatCommandMatch(match), /AGENT_PLAN_COMMAND|PARALLEL_AGENT_|AGENT_FANOUT|command-agent-plan\.mjs/, commandId);
+    } else {
+      assert.match(match.nextAction, /command-agent-plan\.mjs/, commandId);
+    }
   }
 });
 
@@ -240,7 +246,7 @@ test("command matches expose the real-agent orchestration contract", () => {
   assert.match(report, /AGENT_EMULATION: Do not emulate specialist agents/);
 });
 
-test("workflow routes expose mandatory parallel-agent policy for simple and resume phrasing", () => {
+test("workflow routes expose ready-task dispatch policy for simple and resume phrasing", () => {
   const cases = [
     ["make a plan", "/supervibe-plan", "supervibe_plan"],
     ["execute reviewed plan", "/supervibe-execute-plan", "supervibe_execute_plan"],
@@ -251,16 +257,21 @@ test("workflow routes expose mandatory parallel-agent policy for simple and resu
     const match = resolveCommandRequest(request, { pluginRoot: ROOT, projectRoot: ROOT });
     assert.equal(match.command, command, request);
     assert.equal(match.intent, intent, request);
-    assert.equal(match.parallelAgentPolicy.mode, "parallel-real-agents", request);
-    assert.equal(match.parallelAgentPolicy.appliesAfterCompactResume, true, request);
-    assert.equal(match.parallelAgentPolicy.appliesToSimpleTasks, true, request);
+    assert.equal(match.parallelAgentPolicy.mode, "single-or-parallel-real-agents", request);
+    assert.equal(match.parallelAgentPolicy.appliesAfterCompactResume, false, request);
+    assert.equal(match.parallelAgentPolicy.appliesToSimpleTasks, false, request);
 
     const output = formatCommandMatch(match);
-    assert.match(output, /PARALLEL_AGENT_MODE: parallel-real-agents/, request);
-    assert.match(output, /PARALLEL_AGENT_AFTER_COMPACT_RESUME: true/, request);
-    assert.match(output, /PARALLEL_AGENT_SIMPLE_TASKS: true/, request);
-    assert.match(output, /AGENT_FANOUT_REQUIRED: true/, request);
-    assert.match(output, /NEXT: .*Launch real parallel host agents/, request);
+    if (FAST_WORKFLOW_COMMANDS.has(command)) {
+      assert.doesNotMatch(output, /PARALLEL_AGENT_|AGENT_FANOUT|AGENT_PLAN_COMMAND|command-agent-plan\.mjs/, request);
+      assert.doesNotMatch(output, /Dispatch the next ready task/, request);
+    } else {
+      assert.match(output, /PARALLEL_AGENT_MODE: single-or-parallel-real-agents/, request);
+      assert.match(output, /PARALLEL_AGENT_AFTER_COMPACT_RESUME: false/, request);
+      assert.match(output, /PARALLEL_AGENT_SIMPLE_TASKS: false/, request);
+      assert.match(output, /AGENT_FANOUT_REQUIRED: true/, request);
+      assert.match(output, /NEXT: .*Dispatch the next ready task/, request);
+    }
   }
 
   const resumeOutput = formatCommandMatch({
@@ -272,10 +283,8 @@ test("workflow routes expose mandatory parallel-agent policy for simple and resu
     reason: "static post-compact resume route",
     nextAction: "Show active workflow/task graph status and the next safe action.",
   });
-  assert.match(resumeOutput, /PARALLEL_AGENT_MODE: parallel-real-agents/);
-  assert.match(resumeOutput, /PARALLEL_AGENT_AFTER_COMPACT_RESUME: true/);
-  assert.match(resumeOutput, /PARALLEL_AGENT_SIMPLE_TASKS: true/);
-  assert.match(resumeOutput, /NEXT: .*Launch real parallel host agents/);
+  assert.doesNotMatch(resumeOutput, /PARALLEL_AGENT_|AGENT_FANOUT|AGENT_PLAN_COMMAND|command-agent-plan\.mjs/);
+  assert.doesNotMatch(resumeOutput, /Dispatch the next ready task/);
 });
 
 test("worktree plan loop request resolves to loop command, not flat plan execution", () => {
@@ -548,7 +557,7 @@ test("command catalog routes workflow-chain maturity audits before explicit slas
   }
 });
 
-test("command catalog routes plan-review complaints to mandatory review instead of audit or execute", () => {
+test("command catalog routes explicit plan-review complaints to review instead of audit or execute", () => {
   for (const request of [
     "запусти ревью плана спец агентами",
     "review plan with specialist agents",
@@ -1570,7 +1579,7 @@ test("command catalog covers primary workflow intents in English and Russian", (
     ["brainstorm the feature", "/supervibe-brainstorm"],
     ["напиши план реализации", "/supervibe-plan"],
     ["create implementation plan", "/supervibe-plan"],
-    ["выполни план", "/supervibe-execute-plan"],
+    ["выполни план", "/supervibe-loop --atomize-plan <plan-path> --user-approved-plan"],
     ["execute reviewed plan", "/supervibe-execute-plan"],
     ["сделай дизайн макет UI", "/supervibe-design"],
     ["build a UI prototype", "/supervibe-design"],

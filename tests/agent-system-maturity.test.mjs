@@ -166,6 +166,97 @@ test("agent-system maturity keeps baseline 10/10 when active command readiness i
   assert.equal(report.score, 10);
 });
 
+test("agent-system global policy observes runtime gaps without blocking inactive workflows", () => {
+  const report = scoreAgentSystemMaturity({
+    roster: {
+      agents: 97,
+      skills: 55,
+      commands: 19,
+      rules: 31,
+      testFiles: 331,
+    },
+    validators: {
+      ...PASSING_VALIDATORS,
+      workflowReceipts: { pass: false, receipts: 0 },
+      agentReceipts: {
+        pass: false,
+        hostAgentReceipts: 0,
+        agentInvocations: 0,
+      },
+    },
+    indexGate: {
+      ready: true,
+      sourceReady: true,
+      warnings: "",
+      retrievalEnforcementPass: true,
+      retrievalTelemetryMaturityScore: 4,
+      retrievalTelemetryStrictPass: false,
+      missingOrStale: 3,
+      evidence: "source=325/325, failed=stale-rows, warnings=none, missingOrStale=3, retrievalEnforcement=true, retrievalTelemetry=4/10",
+    },
+    docs: {
+      hasNegativeQuestionEval: true,
+      hasTenOutOfTenBacklog: true,
+      hasMaturityScriptDocs: true,
+    },
+    policy: {
+      requireRuntimeState: false,
+    },
+  });
+
+  assert.equal(report.pass, true);
+  assert.equal(report.score, 10);
+  assert.equal(report.blockers.some((blocker) => blocker.id === "receipt-reliability"), false);
+  assert.equal(report.blockers.some((blocker) => blocker.id === "host-agent-telemetry"), false);
+  assert.equal(report.blockers.some((blocker) => blocker.id === "code-graph-readiness"), false);
+  assert.match(formatAgentSystemMaturityReport(report), /runtimeState=observed-not-blocking/);
+});
+
+test("agent-system strict runtime policy blocks receipts, host telemetry, and stale CodeGraph", () => {
+  const report = scoreAgentSystemMaturity({
+    roster: {
+      agents: 97,
+      skills: 55,
+      commands: 19,
+      rules: 31,
+      testFiles: 331,
+    },
+    validators: {
+      ...PASSING_VALIDATORS,
+      workflowReceipts: { pass: false, receipts: 0 },
+      agentReceipts: {
+        pass: false,
+        hostAgentReceipts: 0,
+        agentInvocations: 0,
+      },
+    },
+    indexGate: {
+      ready: true,
+      sourceReady: true,
+      warnings: "",
+      retrievalEnforcementPass: true,
+      retrievalTelemetryMaturityScore: 4,
+      retrievalTelemetryStrictPass: false,
+      missingOrStale: 3,
+      evidence: "source=325/325, failed=stale-rows, warnings=none, missingOrStale=3, retrievalEnforcement=true, retrievalTelemetry=4/10",
+    },
+    docs: {
+      hasNegativeQuestionEval: true,
+      hasTenOutOfTenBacklog: true,
+      hasMaturityScriptDocs: true,
+    },
+    policy: {
+      requireRuntimeState: true,
+    },
+  });
+
+  assert.equal(report.pass, false);
+  assert.ok(report.blockers.some((blocker) => blocker.id === "receipt-reliability"));
+  assert.ok(report.blockers.some((blocker) => blocker.id === "host-agent-telemetry"));
+  assert.ok(report.blockers.some((blocker) => blocker.id === "code-graph-readiness"));
+  assert.match(formatAgentSystemMaturityReport(report), /runtimeState=required/);
+});
+
 test("agent-system active command readiness uses plugin root for consumer projects", async () => {
   const root = mkdtempSync(join(tmpdir(), "supervibe-agent-maturity-consumer-"));
   try {

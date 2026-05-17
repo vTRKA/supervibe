@@ -352,10 +352,10 @@ export function classifyCleanupDebt(lease = {}, { scope = {}, strictRelease = fa
   }
   if (!scoped) {
     return {
-      classification: "global-cleanup-debt",
-      blocks: true,
+      classification: "diagnostic-global-cleanup-debt",
+      blocks: false,
       closeRequired: true,
-      reason: "no command or handoff scope supplied",
+      reason: "no command or handoff scope supplied; diagnostic outside strict release",
     };
   }
   const actual = normalizeLeaseScope(lease.scope || lease);

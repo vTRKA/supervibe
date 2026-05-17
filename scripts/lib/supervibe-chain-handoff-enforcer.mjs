@@ -4,26 +4,27 @@ const HANDOFFS = {
   brainstorm: {
     phase: "brainstorm",
     nextPhase: "plan",
-    command: "/supervibe-plan --from-brainstorm",
+    command: "/supervibe-plan --loop-ready --from-brainstorm",
     skill: "supervibe:writing-plans",
     artifact: "approved-spec-or-brainstorm-summary",
     nextQuestion: "Шаг 1/1: написать план реализации по утвержденной спецификации?",
   },
   plan: {
     phase: "plan",
-    nextPhase: "plan_review",
-    command: "/supervibe-plan --review",
-    skill: "supervibe:requesting-code-review",
-    artifact: "implementation-plan",
-    nextQuestion: "Шаг 1/1: запустить review loop по плану перед атомизацией или исполнением?",
+    nextPhase: "atomize",
+    command: "/supervibe-loop --atomize-plan <plan-path> --user-approved-plan",
+    skill: "supervibe:autonomous-agent-loop",
+    artifact: "user-approved-loop-ready-plan",
+    nextQuestion: "Step 1/1: create a work graph from this user-approved loop-ready plan, or revise/review first?",
+    choices: planDecisionChoices(),
   },
   plan_review_passed: {
     phase: "plan_review_passed",
     nextPhase: "atomize",
-    command: "/supervibe-loop --atomize-plan <plan-path> --plan-review-passed",
+    command: "/supervibe-loop --atomize-plan <plan-path> --user-approved-plan",
     skill: "supervibe:writing-plans",
-    artifact: "reviewed-plan",
-    nextQuestion: "Шаг 1/1: разбить reviewed plan на атомарные work items и epic?",
+    artifact: "user-approved-loop-ready-plan",
+    nextQuestion: "Шаг 1/1: разбить user-approved loop-ready plan на атомарные work items и epic?",
   },
   atomized: {
     phase: "atomized",
@@ -134,6 +135,36 @@ export function getHandoffChain() {
   return Object.keys(HANDOFFS).map((phase) => getRequiredHandoff(phase));
 }
 
+function planDecisionChoices() {
+  return [
+    {
+      id: "create-graph",
+      label: "Create graph from this plan",
+      command: "/supervibe-loop --atomize-plan <plan-path> --user-approved-plan",
+      description: "Atomize the approved loop-ready plan into an epic and ready tasks without an extra review ritual.",
+      recommended: true,
+    },
+    {
+      id: "revise-plan",
+      label: "Revise plan",
+      command: "/supervibe-plan --loop-ready <plan-path>",
+      description: "Change scope, tasks, dependencies, risks, or file ownership before graph creation.",
+    },
+    {
+      id: "run-deeper-review",
+      label: "Run deeper review",
+      command: "/supervibe-plan --review <plan-path>",
+      description: "Use explicit specialist review for high-risk or user-requested plan hardening.",
+    },
+    {
+      id: "stop-with-plan",
+      label: "Keep plan and stop",
+      command: "",
+      description: "Save the plan without creating a graph or starting execution.",
+    },
+  ];
+}
+
 function releaseDecisionChoices(recommendedCommand) {
   const canShip = recommendedCommand === "/supervibe-ship";
   return [
@@ -163,7 +194,7 @@ function releaseDecisionChoices(recommendedCommand) {
         id: "continue-loop",
         label: "Continue loop",
         command: "/supervibe-loop --resume-dispatch",
-        description: "Resume implementation with the next ready parallel agent wave when completion evidence still has gaps.",
+        description: "Resume implementation with the next ready task dispatch when completion evidence still has gaps.",
       },
     {
       id: "revise-goals",

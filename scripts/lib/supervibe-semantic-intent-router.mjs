@@ -83,6 +83,7 @@ const SEMANTIC_INTENT_PROFILES = Object.freeze([
     intent: "security_audit",
     baseConfidence: 0.88,
     minGroups: 2,
+    requiredGroups: [0],
     concepts: [
       ["security", "sec", "appsec", "vulnerability", "vulnerabilities", "owasp", "cve", "secret", "secrets", "секьюрити", "безопасность", "уязвимость", "уязвимости"],
       ["audit", "scan", "review", "check", "проверить", "аудит", "проверка", "просканировать"],

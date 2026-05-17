@@ -15,10 +15,10 @@ test("command docs cover plan-to-work-graph-to-production-close happy path", asy
   const plan = await read("commands/supervibe-plan.md");
 
   for (const text of [readme, loop, plan]) {
-    assert.match(text, /reviewed plan/i);
+    assert.match(text, /loop-ready plan/i);
     assert.match(text, /atomize/i);
     assert.match(text, /work[- ]item graph|work graph|native graph/i);
-    assert.match(text, /--plan-review-passed/);
+    assert.match(text, /--user-approved-plan/);
   }
 
   assert.match(readme, /--validate-completion/);

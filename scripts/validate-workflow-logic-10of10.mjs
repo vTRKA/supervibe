@@ -51,9 +51,9 @@ export const WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS = Object.freeze({
     }),
     multiAgent: Object.freeze({
       minAgentInvocations: 1,
-      minParallelAgents: 2,
-      requireMandatoryFanoutAfterCompaction: true,
-      requireMandatoryFanoutForSimpleTasks: true,
+      minParallelAgents: 1,
+      requireCompactResumePrimeDispatch: true,
+      requireSingleReadyTaskDispatch: true,
     }),
     retrievalMemoryFreshness: Object.freeze({
       minMemoryEntries: 1,
@@ -121,9 +121,9 @@ export const WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS = Object.freeze({
     }),
     multiAgent: Object.freeze({
       minAgentInvocations: 1,
-      minParallelAgents: 2,
-      requireMandatoryFanoutAfterCompaction: true,
-      requireMandatoryFanoutForSimpleTasks: true,
+      minParallelAgents: 1,
+      requireCompactResumePrimeDispatch: true,
+      requireSingleReadyTaskDispatch: true,
     }),
     retrievalMemoryFreshness: Object.freeze({
       minMemoryEntries: 5,
@@ -520,7 +520,7 @@ function collectGraphProofEvidence(rootDir, profile) {
   });
   const sourceSnapshot = (taskGraph.dimensions || []).find((item) => item.id === "source-plan-snapshots");
   const strictEvidence = (taskGraph.dimensions || []).find((item) => item.id === "strict-completion-evidence");
-  const currentGraph = (taskGraph.dimensions || []).find((item) => item.id === "current-graph");
+  const currentGraph = (taskGraph.dimensions || []).find((item) => item.id === "current-active-graph" || item.id === "current-graph");
   const graphThresholds = profile.thresholds?.graph || WORKFLOW_LOGIC_10OF10_RUBRIC_THRESHOLDS.development.graph;
   const graphScorePass = Number(taskGraph.score || 0) >= graphThresholds.minTaskGraphScore;
   const pass = taskGraph.pass === true
@@ -585,14 +585,14 @@ function collectRoutingEvidence(rootDir, options = {}) {
   const taskGraph = buildTaskGraphMaturityReport(rootDir, { requireActiveGraph: false });
   const routing = (taskGraph.dimensions || []).find((item) => item.id === "routing");
   const commandShortcuts = (taskGraph.dimensions || []).find((item) => item.id === "command-shortcuts");
-  const fanoutPolicy = collectMandatoryFanoutPolicyEvidence(rootDir);
+  const fanoutPolicy = collectReadyTaskDispatchPolicyEvidence(rootDir);
   const pass = commandAgent.pass === true
     && routing?.pass === true
     && commandShortcuts?.pass === true
     && fanoutPolicy.pass === true;
   return {
     pass,
-    summary: `commandAgent=${commandAgent.pass === true}, routing=${routing?.pass === true}, commandShortcuts=${commandShortcuts?.pass === true}, mandatoryFanout=${fanoutPolicy.pass === true}`,
+    summary: `commandAgent=${commandAgent.pass === true}, routing=${routing?.pass === true}, commandShortcuts=${commandShortcuts?.pass === true}, readyTaskDispatch=${fanoutPolicy.pass === true}`,
     details: { commandAgent, routing, commandShortcuts, fanoutPolicy },
     nextAction: pass
       ? null
@@ -602,24 +602,24 @@ function collectRoutingEvidence(rootDir, options = {}) {
   };
 }
 
-function collectMandatoryFanoutPolicyEvidence(rootDir) {
+function collectReadyTaskDispatchPolicyEvidence(rootDir) {
   const contractSource = readOptional(join(rootDir, "scripts", "lib", "command-agent-orchestration-contract.mjs"));
   const catalogSource = readOptional(join(rootDir, "scripts", "lib", "supervibe-command-catalog.mjs"));
   const workflowRouterSource = readOptional(join(rootDir, "scripts", "lib", "supervibe-workflow-router.mjs"));
   const triggerRouterSource = readOptional(join(rootDir, "scripts", "lib", "supervibe-trigger-router.mjs"));
   const checks = [
-    ["contract-agent-fanout", /agentFanoutPolicy/.test(contractSource) && /minParallelAgents:\s*2/.test(contractSource)],
-    ["compact-fanout", /requiredAfterContextCompaction:\s*true/.test(contractSource) && contractSource.includes("after compact/resume/context transition")],
-    ["simple-task-fanout", /requiredForSimpleTasks:\s*true/.test(contractSource) && /simple or low-risk tasks still require/.test(contractSource)],
-    ["catalog-parallel-policy", /COMMAND_PARALLEL_AGENT_LAUNCH_POLICY/.test(catalogSource) && /PARALLEL_AGENT_SIMPLE_TASKS/.test(catalogSource)],
-    ["workflow-router-agent-wave", /agentWavePolicy/.test(workflowRouterSource) && /requiredForSimpleTasks/.test(workflowRouterSource)],
+    ["contract-ready-task-dispatch", /agentFanoutPolicy/.test(contractSource) && /minParallelAgents:\s*1/.test(contractSource)],
+    ["compact-prime-continuation", /requiredAfterContextCompaction:\s*false/.test(contractSource) && /resume-from-prime-context/.test(contractSource)],
+    ["simple-task-single-agent", /requiredForSimpleTasks:\s*false/.test(contractSource) && /single-ready-agent/.test(contractSource)],
+    ["catalog-ready-task-policy", /COMMAND_PARALLEL_AGENT_LAUNCH_POLICY/.test(catalogSource) && /single-or-parallel-real-agents/.test(catalogSource)],
+    ["workflow-router-ready-task", /agentWavePolicy/.test(workflowRouterSource) && /ready-task-agent-dispatch/.test(workflowRouterSource)],
     ["resume-dispatch-route", /--resume-dispatch/.test(triggerRouterSource)],
   ];
   const failed = checks.filter(([, pass]) => !pass).map(([id]) => id);
   const pass = failed.length === 0;
   return {
     pass,
-    summary: `fanoutChecks=${checks.length - failed.length}/${checks.length}, failed=${failed.join(",") || "none"}`,
+    summary: `readyTaskDispatchChecks=${checks.length - failed.length}/${checks.length}, failed=${failed.join(",") || "none"}`,
     failed,
     evidencePaths: [
       "scripts/lib/command-agent-orchestration-contract.mjs",
@@ -627,7 +627,7 @@ function collectMandatoryFanoutPolicyEvidence(rootDir) {
       "scripts/lib/supervibe-workflow-router.mjs",
       "scripts/lib/supervibe-trigger-router.mjs",
     ],
-    nextAction: pass ? null : "Restore mandatory real parallel-agent fan-out for compact continuation and simple workflow tasks.",
+    nextAction: pass ? null : "Restore ready-task dispatch policy: minParallelAgents=1, compact resume primes context, and simple tasks may run as one agent.",
   };
 }
 
@@ -1129,7 +1129,7 @@ function formatRubricThresholdSummary(thresholds = {}) {
     `receipts.minTrusted=${thresholds.receipts?.minTrustedReceipts ?? "unknown"}`,
     `receipts.minHostAgent=${thresholds.receipts?.minTrustedHostAgentReceipts ?? "unknown"}`,
     `multiAgent.minInvocations=${thresholds.multiAgent?.minAgentInvocations ?? "unknown"}`,
-    `multiAgent.minParallel=${thresholds.multiAgent?.minParallelAgents ?? "unknown"}`,
+    `multiAgent.minReadyAgents=${thresholds.multiAgent?.minParallelAgents ?? "unknown"}`,
     `retrieval.minMemory=${thresholds.retrievalMemoryFreshness?.minMemoryEntries ?? "unknown"}`,
     `retrieval.maxMissingOrStale=${thresholds.retrievalMemoryFreshness?.maxMissingOrStaleRows ?? "unknown"}`,
     `retrieval.sourceSignals=${thresholds.retrievalMemoryFreshness?.requireSourceReadinessSignals === true}`,

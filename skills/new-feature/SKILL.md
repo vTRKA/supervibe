@@ -46,7 +46,7 @@ state and next command.
 
 The feature chain must preserve the plan/pre-plan question gate at every stage. Brainstorm-to-plan, plan-to-review, review-to-atomization, atomization-to-execution, execution-to-review, and finish/merge handoffs each require a visible Step N/M question and a current explicit user answer after the question is shown.
 
-Plan-derived execution also requires the mandatory plan-review loop with reviewer coverage and a Next User Decision before atomic tasks, epics, autonomous loops, subagent waves, version bumps, commits, pushes, or cleanup. Do not let this orchestration skill skip those gates just because the user requested an end-to-end feature.
+Plan-derived execution requires loop-ready plan approval, an accepted graph/atomization step, reviewer coverage for final review/release, and a Next User Decision before autonomous loops, subagent waves, version bumps, commits, pushes, or cleanup. Do not let this orchestration skill skip those gates just because the user requested an end-to-end feature.
 
 ## Feature Definition Of Ready
 

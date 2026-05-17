@@ -26,48 +26,49 @@ test("affirming after brainstorm routes to plan", () => {
     lastCompletedPhase: "brainstorm",
     artifacts: { brainstorm: true },
   });
-  assert.equal(route.command, "/supervibe-plan --from-brainstorm");
+  assert.equal(route.command, "/supervibe-plan --loop-ready --from-brainstorm");
   assert.equal(route.skill, "supervibe:writing-plans");
   assert.match(route.nextPromptText, /\u043f\u043b\u0430\u043d/i);
 });
 
-test("execution request after plan is forced through mandatory plan review", () => {
+test("execution request after plan creates graph from user-approved loop-ready plan", () => {
   const route = routeWorkflowIntent({
     userPhrase: "run it",
     lastCompletedPhase: "plan",
     artifacts: { plan: true },
   });
-  assert.equal(route.intent, "plan_review");
-  assert.equal(route.command, "/supervibe-plan --review");
-  assert.match(route.reason, /mandatory plan review/);
+  assert.equal(route.intent, "atomize_plan");
+  assert.equal(route.command, "/supervibe-loop --atomize-plan <plan-path> --user-approved-plan");
+  assert.equal(route.source, "plan-approval-gate");
+  assert.match(route.reason, /user-approved loop-ready plan/);
   assert.ok(route.questionChoices.some((choice) => choice.id === "revise-scope"));
   assert.ok(route.questionChoices.some((choice) => choice.id === "exclude-or-defer"));
-  assert.deepEqual(validateAgenticQuestion(routeQuestion(route), { surface: "plan review route", minChoices: 5 }), []);
+  assert.deepEqual(validateAgenticQuestion(routeQuestion(route), { surface: "plan approval route", minChoices: 5 }), []);
 });
 
-test("reviewed plan can be atomized into work items", () => {
+test("user-approved loop-ready plan can be atomized into work items", () => {
   const route = routeWorkflowIntent({
     userPhrase: "\u0440\u0430\u0437\u0431\u0435\u0439 \u043f\u043b\u0430\u043d \u043d\u0430 \u0430\u0442\u043e\u043c\u0430\u0440\u043d\u044b\u0435 \u0437\u0430\u0434\u0430\u0447\u0438",
     artifacts: { plan: true, planReviewPassed: true },
   });
   assert.equal(route.intent, "atomize_plan");
-  assert.equal(route.command, "/supervibe-loop --atomize-plan <plan-path> --plan-review-passed");
+  assert.equal(route.command, "/supervibe-loop --atomize-plan <plan-path> --user-approved-plan");
 });
 
-test("plan-phase loop request cannot bypass mandatory review", () => {
+test("plan-phase loop request goes directly to graph creation", () => {
   const route = routeWorkflowIntent({
     userPhrase: "запусти loop по плану",
     lastCompletedPhase: "plan",
     artifacts: { plan: true },
   });
 
-  assert.equal(route.intent, "plan_review");
-  assert.equal(route.command, "/supervibe-plan --review");
-  assert.equal(route.source, "plan-review-gate");
-  assert.match(route.reason, /blocked until mandatory plan review passes/);
+  assert.equal(route.intent, "atomize_plan");
+  assert.equal(route.command, "/supervibe-loop --atomize-plan <plan-path> --user-approved-plan");
+  assert.equal(route.source, "plan-approval-gate");
+  assert.match(route.reason, /user-approved loop-ready plan/);
 });
 
-test("plan-phase revision request routes to plan repair before review", () => {
+test("plan-phase revision request routes to plan repair before graph creation", () => {
   const route = routeWorkflowIntent({
     userPhrase: "хочу поменять план перед ревью",
     lastCompletedPhase: "plan",
@@ -104,7 +105,7 @@ test("reviewed plan worktree request requires atomization before worktree run", 
   });
 
   assert.equal(route.intent, "atomize_plan");
-  assert.equal(route.command, "/supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --plan-review-passed");
+  assert.equal(route.command, "/supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --user-approved-plan");
   assert.equal(route.source, "atomization-gate");
   assert.match(route.reason, /atomized into an epic and work-item graph/i);
 });
@@ -161,9 +162,9 @@ test("affirming explicit handoff reuses its command and skill", () => {
     userPhrase: "yes",
     recentAssistantOutput,
   });
-  assert.equal(route.intent, "plan_review");
-  assert.equal(route.command, "/supervibe-plan --review");
-  assert.equal(route.skill, "supervibe:requesting-code-review");
+  assert.equal(route.intent, "atomize_plan");
+  assert.equal(route.command, "/supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --user-approved-plan");
+  assert.equal(route.skill, "supervibe:autonomous-agent-loop");
   assert.equal(route.source, "recent-handoff");
 });
 
@@ -179,7 +180,7 @@ test("topic drift with a saved handoff asks for resume choice instead of droppin
   });
 
   assert.equal(route.intent, "workflow_resume_choice");
-  assert.equal(route.command, "/supervibe-plan --from-brainstorm");
+  assert.equal(route.command, "/supervibe-plan --loop-ready --from-brainstorm");
   assert.equal(route.source, "recent-handoff-topic-drift");
   assert.match(route.nextQuestion, /Continue it, skip\/delegate safe decisions/i);
   assert.ok(route.requiredSafety.includes("no-silent-workflow-drop"));
@@ -198,7 +199,7 @@ test("topic drift with a saved handoff asks for resume choice instead of droppin
   ]);
 });
 
-test("topic drift after plan handoff preserves mandatory review gate", () => {
+test("topic drift after explicit review handoff preserves that gate", () => {
   const recentAssistantOutput = formatNextStepBlock({
     phase: "plan",
     artifactPath: ".supervibe/artifacts/plans/example.md",

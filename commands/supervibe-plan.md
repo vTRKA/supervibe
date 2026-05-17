@@ -1,233 +1,217 @@
 ---
 description: >-
-  Use AFTER approved spec OR WHEN planning is ready TO write a phased plan,
-  require review loop, then atomic task split and epic handoff before execution.
-  Triggers: 'plan', 'review plan', 'atomize', 'сделал план', 'план', 'ревью',
-  'эпик'.
-last-verified: "2026-05-10"
+  Use AFTER approved brainstorm/spec OR WHEN planning is ready TO write one
+  implementation plan. By default the plan should be loop-ready: epics, tasks,
+  dependencies, acceptance checks, optional deeper review, and direct
+  /supervibe-loop atomize handoff are in the plan artifact itself. A TODO-only
+  draft is allowed only when the user chooses it explicitly.
+last-verified: "2026-05-16"
 ---
 
 # /supervibe-plan
 
-Direct trigger for the `supervibe:writing-plans` skill. Use after `/supervibe-brainstorm` (or any other producer of an approved spec) to lay out exactly how the work gets done.
+Direct trigger for `supervibe:writing-plans`. The command turns an approved
+brief/spec into one user-readable plan that can immediately become a loop graph
+after user approval.
 
-## Work Graph Command Compatibility
+The normal path is simple:
 
-| Command | Planning responsibility | Graph mutation allowed | Handoff | Exit states |
-| --- | --- | --- | --- | --- |
-| `/supervibe-plan` | Resolve approved spec, write durable plan, run mandatory review, and hand off only after explicit user gates. | No | `/supervibe-loop --atomize-plan <plan> --plan-review-passed` after review passes. | `plan-draft`, `review-required`, `plan-reviewed`, `replan-required`, `blocked` |
-| `/supervibe-loop` | Atomize reviewed plans into the native work graph, then execute or mutate work only after the next visible user gate. | Yes, after review and atomization gates pass. | `/supervibe-status --file <graph.json>` for read-only inspection or loop execution commands for mutations. | `ready`, `running`, `blocked`, `awaiting-user-acceptance`, `completed-awaiting-archive`, `failed` |
-| `/supervibe-status` | Read plan/graph state and report the next safe action without changing task state. | No | Back to plan review, loop atomization, loop repair, or no action. | `ok`, `warnings`, `blocked`, `failed` |
+```text
+brainstorm/spec -> /supervibe-plan --loop-ready -> user approves -> /supervibe-loop --atomize-plan <plan> --user-approved-plan
+```
+
+Strict plan review still exists as an explicit strengthening step, but it is not
+the default blocker for ordinary development.
+
+## Planning Shape
+
+Plan Scope Approval Gate: ask one `plan_delivery` question when the plan shape or delivery choice is ambiguous. Record the Current explicit user answer before saving a durable plan, atomizing work items, or offering execution. The visible choices must map to `NEXT_USER_ACTIONS[]`: create graph from this plan, revise plan, run deeper review, or keep draft and stop.
+
+## Scope Safety Gate
+
+Every plan must classify scope lines as include, defer, reject, or spike. Keep the loop-ready graph focused on included work, explain the tradeoff or concrete harm behind deferred/rejected scope, and avoid scope expansion unless the user accepts the cost.
+
+`/supervibe-plan` uses one workflow with two output shapes, not two products.
+If the user does not specify a shape, offer the choice once and recommend
+loop-ready.
+
+- `--loop-ready` (recommended): the plan includes epics, tasks, dependencies,
+  write scopes, acceptance checks, risk notes, and the exact loop handoff.
+- `--todo-only`: the plan is a lightweight TODO draft for discussion. It is not
+  ready for loop until converted or rewritten as loop-ready.
+
+Do not add extra review, atomization, execution, or handoff rituals between a
+user-approved loop-ready plan and graph creation. If architecture/security/data
+risk is high, run specialist review while drafting the same plan or offer an
+explicit deeper review choice after the plan is shown.
+
+## Work Graph Compatibility
+
+| Command | Responsibility | Graph mutation | Normal handoff |
+| --- | --- | --- | --- |
+| `/supervibe-plan --loop-ready` | Write one approved implementation plan with epics/tasks ready for graph creation. | No | `/supervibe-loop --atomize-plan <plan> --user-approved-plan` |
+| `/supervibe-plan --todo-only` | Write a lightweight discussion plan or TODO list. | No | Revise or convert to `--loop-ready` before loop. |
+| `/supervibe-plan --review <plan>` | Optional strict/deeper plan review for risky or user-requested cases. | No | Either revise, stop, or atomize after user approval. |
+| `/supervibe-loop` | Create and run the active work graph. | Yes | Dispatch the next ready task, including a single ready task. |
 
 Command contract notes:
-- A plan is not an executable graph. The plan command may produce a reviewed plan and review evidence, but only the loop command can create or mutate `graph.json`.
-- The review pass state must include current-run reviewer receipts before the atomization handoff is offered as actionable.
-- Each planning exit must preserve a resume cursor: plan path, review artifact path when known, next command, user gate, and stop reason.
-- If atomization or execution is requested before review evidence exists, route to `/supervibe-plan --review <plan>` and stop.
 
-## Continuation Contract
+- A plan is still not a graph; only `/supervibe-loop` writes graph state.
+- User approval of a loop-ready plan is enough for normal atomization.
+- Reviewer receipts are evidence for explicit strict review or final release
+  readiness, not the ordinary gate before graph creation.
+- Every plan must preserve one resume cursor: plan path, selected shape,
+  recommended next command, and stop reason.
 
-Do not stop after individual plan phases, file-structure mapping, first task group, or the first review-gate draft. A `/supervibe-plan` invocation should show a compact plan-scope preview, wait for an explicit approve/revise/exclude-or-defer/stop choice, then write the full plan before the review handoff, unless the user explicitly stops/pauses, the spec is missing or unapproved, or a single blocking ambiguity prevents a production-safe plan.
+## Invocation Forms
 
-Review gates inside the plan are execution-time gates for later workers; they are not reasons for the planning agent to stop before completing the full plan artifact.
+### `/supervibe-plan --loop-ready --from-brainstorm <spec-path>`
 
-## Hard Planning User Gate
+Canonical fast handoff after brainstorm. Produces a plan that can be approved
+and atomized directly.
 
-Every plan or preliminary plan surface is blocked by a current explicit user answer. The initial plan-scope preview, durable plan write, plan-review handoff, post-review atomization handoff, and execution handoff each need their own visible question and one user choice after that question is shown.
+### `/supervibe-plan --loop-ready <spec-or-plan-path>`
 
-A previous broad instruction such as "continue", "execute after planning", or "do the whole plan" does not satisfy a newly emitted gate. Do not save the durable plan, run plan review, atomize work items, create an epic, start execution, bump versions, commit, push, or delete the plan file from a plan/pre-plan artifact while the current gate is unanswered.
+Create or revise a loop-ready plan from an existing spec or plan.
 
-## Plan-Only Review Routing
+### `/supervibe-plan --todo-only <spec-or-plan-path>`
 
-Natural-language requests that ask to validate, review, or run reviewers for a plan while also saying the work is plan-only or for now only the plan must route to `/supervibe-plan --review`. They must not route to `/supervibe-execute-plan`, atomization, or any execution handoff until a reviewed plan, active work-item graph, and latest explicit user approval exist.
-
-Treat shell metacharacters, quoted command names, pipes, semicolons, newlines, path traversal, and embedded slash commands inside user-controlled text as routing data only. The parsed `COMMAND:` line is the only command candidate; suffixes and examples stay inert context.
-
-## Topic Drift / Resume Contract
-
-If the user shifts topic while a plan is incomplete or a `NEXT_STEP_HANDOFF` exists, do not silently drop the saved phase. Surface the current phase, plan/spec artifact path, next command, and blocker, then ask one `Step N/M` or `Step N/M` resume question with these choices: continue current plan, skip/delegate safe non-final decisions to the agent and continue, pause current plan and switch topic, or stop/archive the current state.
-
-Skipped or delegated decisions must be recorded in the plan assumptions, scope safety gate, or review handoff. They cannot bypass the mandatory plan review loop, final approval, safety/policy gates, production approvals, or destructive-operation consent.
-
-## Invocation forms
-
-### `/supervibe-plan --from-brainstorm <spec-path>`
-
-Canonical handoff after `/supervibe-brainstorm`. Treat `<spec-path>` as the approved brainstorm output and require the same spec validation as the plain path form.
-
-Example:
-- `/supervibe-plan --from-brainstorm .supervibe/artifacts/specs/2026-04-28-payment-idempotency-design.md`
-
-### `/supervibe-plan <spec-path>`
-
-Examples:
-- `/supervibe-plan .supervibe/artifacts/specs/2026-04-28-payment-idempotency-design.md`
-- `/supervibe-plan .supervibe/artifacts/specs/2026-04-28-mocks-preview-server-design.md`
+Create a lightweight planning draft only. Do not offer loop execution until it
+is converted to loop-ready.
 
 ### `/supervibe-plan --review <plan-path>`
 
-Canonical mandatory review loop after a durable plan is written. This review must pass before `/supervibe-loop --atomize-plan <plan-path> --plan-review-passed` can write work items, epic state, or execution handoff artifacts.
-
-The review loop must produce a durable plan-review artifact, not only diagnostic notes. The artifact follows `docs/templates/plan-review-template.md` and must pass `node scripts/validate-plan-review-artifacts.mjs --file <review-artifact>`. It records:
-- Review Summary with verdict, score, and stop reason
-- Reviewer Coverage with the baseline reviewers `supervibe-orchestrator`, `systems-analyst`, `architect-reviewer`, and `quality-gate-reviewer`
-- Risk Trigger Matrix for database, cache, queue, security, API, infrastructure, and frontend risk
-- Plan Review Scorecard against `confidence-rubrics/plan-review.yaml`
-- Findings, Convergence Ledger, Residual Risks, Next User Decision, and Evidence
-
-Every reviewer output and the consolidated plan-review artifact require scoped runtime-issued receipts from real host-agent invocations. Each receipt must include `hostInvocation.source`, `hostInvocation.invocationId`, the exact plan path, and the current handoff id. Command receipts, skill receipts, controller-authored summaries, or old global receipts cannot satisfy the reviewer coverage gate.
-Until those required reviewer receipts exist for the current handoff, `/supervibe-loop --atomize-plan ... --plan-review-passed` and any execution path remain blocked.
-
-The loop can stop with pass only when there are zero open critical findings, zero open major findings, a stop reason, one explicit next user decision, and trusted real-agent reviewer receipts for the current run. If database, cache, queue, API, security, infrastructure, or frontend risks are present, the corresponding specialist reviewer set must be selected and represented in the coverage section. MVP anti-bloat, scope safety, architecture fit, topology, security/privacy, observability, release, rollback, provider policy, and verification coverage are blocking dimensions.
+Optional strict review. Use only when the user asks for reviewers, a regulated
+or high-risk surface needs extra proof, or release governance requires it. This
+path can still produce plan-review artifacts and runtime receipts, but it must
+not be silently inserted into the normal plan-to-loop path.
 
 ### `/supervibe-plan` (no args)
 
-Auto-detect the most recent spec in `.supervibe/artifacts/specs/` and use it. If none, fall back to:
-- Show user the list of recent specs and ask which to plan
-- If no specs exist at all → tell user to run `/supervibe-brainstorm` first and stop
+Resolve the latest approved brainstorm/spec. If multiple candidates exist, ask
+one short question. If no source exists, route to `/supervibe-brainstorm`.
 
 ## Procedure
 
-1. **Resolve the spec.** Use `--from-brainstorm <spec-path>`, an explicit path, the freshest file in `.supervibe/artifacts/specs/`, or stop with a redirect to `/supervibe-brainstorm`.
+1. Resolve the source brief/spec/plan.
+2. Check whether the user requested `--loop-ready`, `--todo-only`, or strict
+   `--review`. If ambiguous, ask one choice and recommend loop-ready.
+3. Read relevant project memory, code search, and CodeGraph readiness when the
+   plan claims architecture maturity. If no index evidence exists, record that
+   limitation in the plan instead of blocking ordinary planning.
+4. Draft one plan artifact. For loop-ready plans, include:
+   - goal and non-goals
+   - implementation phases
+   - epics and tasks with stable ids
+   - dependencies and blocked reasons
+   - write scopes and likely files/modules
+   - acceptance checks per task
+   - risk notes and rollback notes
+   - final verification and release gates as optional user outcomes
+   - the exact atomization command
+5. Show the user the plan, risk summary, and one next-choice card:
+   - create graph from this plan
+   - revise plan
+   - run deeper review
+   - keep TODO/draft and stop
+6. When the user chooses graph creation, hand off to:
 
-2. **Validate the spec.** Read it. Check for:
-   - Approved status (frontmatter or first H2 indicating user signed off)
-   - Goals / non-goals / success criteria sections
-   If gaps → ask user to confirm before planning incomplete requirements.
-
-3. **Search project memory** for similar past plans (`supervibe:project-memory --query <topic>`). If a near-identical implementation exists, propose adapting it instead of re-planning from scratch.
-
-3a. **Pre-plan summary and Plan Scope Approval Gate.** Before saving the durable implementation plan, produce the durable `pre-plan` summary using `scripts/lib/supervibe-post-stage-actions.mjs`: approved scope, rejected/deferred scope, constraints, planning assumptions, risks, evidence status, markdown table, ASCII lifecycle map, and stable approve/revise/stop choices. Then print a compact plan-scope preview:
-   - Proposed phases and task groups
-   - Files/modules expected to change
-   - Approved, deferred, rejected, and explicitly excluded scope
-   - Risks, production gates, and verification strategy
-   - What will not be implemented in this plan
-
-   Ask one `plan_delivery` question with these visible choices:
-   - **Approve plan for review** - write the durable plan and proceed only to the mandatory review loop.
-   - **Revise plan scope** - remove, rewrite, split, or defer named phases/tasks/files before writing.
-   - **Exclude or defer items** - record out-of-scope work so it cannot enter execution silently.
-   - **Audit plan deeper** - run more coverage/dependency/risk review before approval.
-   - **Keep plan draft** - stop without atomization, execution, or approved-scope claims.
-
-   Free-form answers such as "exclude analytics", "defer phase 3", or "split mobile into a later plan" must update the preview and be recorded in the Scope Safety Gate. Do not save the durable plan, atomize work items, or offer execution until this gate is answered.
-
-4. **Invoke `supervibe:writing-plans` skill.** It produces:
-   - File structure (which files to create / modify, with paths)
-   - Critical path
-   - Scope Safety Gate (approved/deferred/rejected scope, tradeoffs, and stop condition for unapproved additions)
-   - Development Contract Map covering behavior, architecture, data/schema, API/event, UI state, security/privacy, performance, observability, rollout/rollback, and docs/support
-   - Retrieval, CodeGraph, and text-first visual summary contract. Browser evidence is required only when the plan touches actual browser/UI/prototype behavior.
-   - Delivery strategy from MVP to production
-   - Production readiness contract (tests, security/privacy, performance, observability, rollback, release)
-   - Phased tasks (≤5 minutes each, with verification commands)
-   - Per-phase confidence gates
-   - Receipt-backed real-agent waves (which tasks can run concurrently only with disjoint write scopes and scoped receipts)
-   - Risk register + rollback plan per phase
-   - Final 10/10 acceptance gate with no open blockers
-   - Self-review checklist
-
-5. **Save the plan.** Output goes to `.supervibe/artifacts/plans/YYYY-MM-DD-<topic-slug>.md`.
-
-6. **Machine-validate the plan.** Run `node scripts/validate-plan-artifacts.mjs --file <plan>`. Any failure blocks execution handoff.
-
-7. **Score against `plan.yaml` rubric before review, then `plan-review.yaml` inside review mode.** Gate remains 9/10 or higher, and any open critical or major plan-review finding blocks the pass state.
-   Delivery confidence is also capped below 9 when required evidence gates fail,
-   producer or reviewer provenance lacks a real host-agent invocation id,
-   scoped runtime receipt, or trusted output artifact. These caps are blockers,
-   not stylistic warnings.
-
-8. **Post-plan summary before review.** After the durable plan is saved, validated, and scored, produce the durable `post-plan` summary using `scripts/lib/supervibe-post-stage-actions.mjs`: plan path, source artifact hash, markdown table, ASCII lifecycle map, phases, critical path, included scope, deferred/rejected scope, what was added and why, highest risks, validation result, score, and the next review choices.
-
-8a. **Mandatory review handoff before execution.** Print a human-first Decision Card using `scripts/lib/supervibe-post-stage-actions.mjs` before any raw machine state, then print the command output block and wait for one user choice. In normal conversational summaries, translate the available choices into a short human-readable next-step sentence instead of exposing the raw `NEXT_USER_ACTIONS[]` marker. Print:
-   ```
-   Plan saved to <path>.
-   Step N/M: run the plan review loop?
-   ```
-
-8b. **Secondary machine-readable review handoff.** Include the raw block only after the Decision Card. The raw `NEXT_STEP_HANDOFF` block is resume state, not the primary user-facing UX:
-
-   ```text
-   NEXT_STEP_HANDOFF
-   Current phase: plan
-   Artifact: <plan-path>
-   Next phase: plan-review
-   Next command: /supervibe-plan --review <plan-path>
-   Next skill: supervibe:requesting-code-review
-   Stop condition: ask-before-plan-review
-   Why: Execution and atomization are blocked until plan review passes.
-   Question: Step N/M: the plan review loop?
-   Choices:
-   - Run plan review - invoke `/supervibe-plan --review <plan-path>` with specialist reviewers.
-   - Revise plan first - reopen `/supervibe-plan <plan-path>` and update scope/tasks/risks.
-   - Audit plan deeper - add coverage/dependency/risk review before the review loop.
-   - Exclude or defer items - record out-of-scope work before review.
-   - Keep plan draft and stop - no review, atomization, or execution starts.
-   END_NEXT_STEP_HANDOFF
-   ```
-
-9. **After review passes.** Hand off to atomization and epic creation:
-   ```
-   Step N/M: split the plan into atomic work items and an epic?
-   ```
-
-After review passes, the concrete atomization command is `/supervibe-loop --atomize-plan <plan-path> --plan-review-passed`. Atomization is fail-closed: a reviewed plan without parseable atomic work items, epics, gates, or dependencies must not produce durable loop artifacts until the plan is revised or explicitly handled by a diagnostic override.
-After atomization, run tracker sync as the default next step whenever an adapter is configured: `/supervibe-loop --tracker-sync-push --file .supervibe/memory/work-items/<epic-id>/graph.json`. The native work-item graph remains canonical if no tracker adapter is available; a configured adapter lets `/supervibe-loop` reconcile ready work, mirror claims, prime agent context, and close mapped tasks with verification evidence.
-Atomized items are templated by work type and preserve labels, severity, owner/component/stack, required gates, verification hints, comments, and repo/package/workspace/subproject routing metadata for status queries.
-
-## Output contract
-
+```text
+/supervibe-loop --atomize-plan <plan-path> --user-approved-plan
 ```
+
+Do not run tests, validators, receipt validation, or release checks during the
+normal plan/graph development path. These expand later only if the user chooses
+verification or release handoff.
+
+Do not stop after individual plan phases: continue through source resolution, loop-ready drafting, user next choices, and exact graph handoff unless the user chooses stop, revision, or deeper review.
+
+## Continuation Contract
+
+Start with a pre-plan summary (`pre-plan` / `pre-plan-summary.json` when persisted), then show a compact plan-scope preview and one approve/revise/exclude-or-defer/stop choice when scope is ambiguous. After the user answers, write the full plan before handoff, then show a Post-plan summary with added-and-why, deferred-and-why, risk, table or ASCII map, and text-first summary. Include Exclude or defer items as an explicit option when scope is too broad. Expose `NEXT_USER_ACTIONS[]` as create graph from this plan, revise plan, run deeper review, or keep draft and stop. Emit `NEXT_STEP_HANDOFF` only as secondary resume state.
+
+## Topic Drift / Resume Contract
+
+If a saved plan, `NEXT_STEP_HANDOFF`, or workflow state exists and the user changes topic, surface the saved phase and ask whether to continue, skip/delegate safe non-final decisions, pause and switch topic, or stop/archive.
+
+## Loop-Ready Plan Contract
+
+A loop-ready plan must be parseable enough for graph creation without another
+planning ritual. Use stable headings and ids:
+
+If the plan cannot produce parseable epics and tasks, the handoff must
+fail-closed instead of creating a vague fallback graph.
+
+```text
+## Epic E01: <title>
+Goal: <outcome>
+Depends on: <ids or none>
+
+### Task T01: <title>
+Parent: E01
+Status: ready|blocked
+Depends on: <ids or none>
+Write scope: <paths/modules>
+Acceptance: <checkable result>
+Verification hint: <targeted command or manual check, deferred until requested>
+Risk: <plain risk or none>
+```
+
+The plan can include reviewers as advisory contributors, but their output is
+folded into the same plan unless the user explicitly asks for strict review.
+
+## Output Contract
+
+```text
 === Supervibe Plan ===
-Spec:        <path>
+Shape:       loop-ready | todo-only
+Source:      <path-or-summary>
 Plan:        .supervibe/artifacts/plans/YYYY-MM-DD-<slug>.md
-Phases:      <count>
-Tasks:       <count>  (receipt-backed real-agent waves: <count>)
-Critical path: <N> tasks
-Production readiness: test/security/perf/observability/rollback/release covered
-Development contracts: behavior/architecture/data/API/UI/security/perf/observability/rollout/docs mapped
-Scope safety: approved scope mapped; deferred/rejected extras documented
-Retrieval/graph: required memory, RAG, CodeGraph, citations, fallback and graph-quality checks mapped
-Pre-plan summary: durable pre-plan summary shown before plan write, with approved scope, constraints, markdown table, ASCII lifecycle map, source prompt hash, and latest-user approval gate
-Visual evidence: source-bound text-first summary, markdown table, and ASCII stage map; browser preview only for actual UI/prototype/browser evidence; Mermaid fallback includes accessible title and description when used
-Post-plan summary: source-bound concise human summary, plan path, source artifact hash, added-and-why, deferred-and-why, validation result, table, ASCII map, and next review actions shown after plan validation
-Decision Card: human-first recommendation, `Step N/M` question, choices, resume cursor, and next command before any raw handoff block
-Final gate:  10/10 acceptance + no open blockers
-Score:       <N>/10  Rubric: plan
-Validator:   validate-plan-artifacts PASS
-
-Next:        review loop -> atomic work items -> epic -> provider-safe execution preflight
-NEXT_USER_ACTIONS[]: run plan review | revise plan first | audit plan deeper | exclude or defer items | keep plan draft and stop
-Handoff:    NEXT_STEP_HANDOFF with command `/supervibe-plan --review <plan-path>`
-Source mode: `--from-brainstorm` when the plan came from a brainstorm spec
+Epics:       <count or n/a>
+Tasks:       <count or n/a>
+Ready:       <count or n/a>
+Blocked:     <count or n/a>
+Risks:       <top risks>
+Next:        create graph | revise | deeper review | stop
+Handoff:     /supervibe-loop --atomize-plan <plan-path> --user-approved-plan
 ```
 
-`NEXT_USER_ACTIONS[]` is a machine-readable command/artifact marker. Outside the command output block, summarize it as natural language and do not leave the raw marker in the user-facing prose.
+Keep raw handoff markers, receipt mechanics, validator commands, Code RAG /
+CodeGraph maintenance, and internal artifact details out of normal user-facing
+prose unless the user asks for details.
 
-## When NOT to invoke
+## When Not To Invoke
 
-- Spec doesn't exist or isn't approved — go to `/supervibe-brainstorm` first
-- One-line trivial change — skip planning, just implement
-- The work is exploratory ("let's see what happens if...") — that's brainstorming, not planning
+- Requirements are not understood enough to plan: route to `/supervibe-brainstorm`.
+- The change is a trivial one-file edit: implement directly.
+- The user asked only for exploratory alternatives: brainstorm first.
 
 ## Related
 
-- `supervibe:writing-plans` skill — the methodology
-- `supervibe:project-memory` — pre-flight similarity check
-- `/supervibe-brainstorm` — what produces the spec
-- `supervibe:executing-plans` — execution skill after review and atomization
-- `docs/templates/plan-template.md` — plan format
+- `supervibe:writing-plans`
+- `/supervibe-brainstorm`
+- `/supervibe-loop`
+- `docs/templates/plan-template.md`
 
 ## Agent Orchestration Contract
 
-This command must load its executable profile from `scripts/lib/command-agent-orchestration-contract.mjs` and follow `rules/command-agent-orchestration.md`. The profile is the source of truth for `ownerAgentId`, `agentPlan`, `requiredAgentIds`, dynamic specialist selection, default `real-agents` mode, and `agent-required-blocked` behavior.
+Load the executable profile from
+`scripts/lib/command-agent-orchestration-contract.mjs`. For the default plan
+path, start with the owner agent and add specialists only when the plan risk or
+user request needs them. In Codex, active specialist work must still use real
+host invocation ids and runtime receipts when a specialist output is claimed.
 
-Before durable work or completion claims, run `node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /supervibe-plan` and follow the printed `SUPERVIBE_COMMAND_AGENT_PLAN`. The plan must show host dispatch support, proof source, `AGENT_SELECTION_MODE`, required agents, `REQUIRED_AGENT_SOURCES`, `CALLABLE_AGENT_SOURCES`, `CALLABLE_AGENTS_READY`, `SCOPED_RECEIPT_GATE`, `MISSING_CALLABLE_AGENTS`, and durable-write permission before any agent-owned artifact is produced. Role sources must distinguish definition availability from host-callable availability: `REQUIRED_AGENT_SOURCES` may include `plugin-only`, but `CALLABLE_AGENT_SOURCES`, `CALLABLE_AGENTS_READY`, and `MISSING_CALLABLE_AGENTS` decide whether the selected host can actually invoke the role. Plugin-only definitions are not enough for a real-agent completion claim.
+Plan review is optional strict work unless the user or risk gate asks for it.
+Command, skill, agent, reviewer, validator, or external-tool invocation claims
+must still be backed by runtime-issued workflow receipts; old global receipts
+are diagnostic only.
 
-Invoke the real host agents named by the plan and issue runtime receipts with `hostInvocation.source` and `hostInvocation.invocationId`. For active workflows, build the plan with `--active --slug <slug> --handoff-id <handoff-id>`; `SCOPED_RECEIPT_GATE` must be trusted for the current run before durable agent-owned outputs are allowed. Old global receipts are diagnostic only and do not unlock a new command/handoff. In Codex, invoke with `spawn_agent` using the `CODEX_SPAWN_PAYLOAD_RULES` and `CODEX_SPAWN_PAYLOADS` printed by `command-agent-plan.mjs`: forked payloads must set `fork_context=true`, must omit `agent_type`, `model`, and `reasoning_effort`, and must encode the Supervibe logical role in `message` instead of Codex `agent_type`. Record each returned Codex agent id with `node <resolved-supervibe-plugin-root>/scripts/agent-invocation.mjs log ...` before receipts are issued. `inline` is diagnostic/dry-run only. Do not emulate specialist agents, and do not let command or skill receipts substitute for agent, worker, or reviewer output.
+<!-- supervibe-release-operational-markers:start -->
+Release-gate operational markers: before durable agent-owned work or completion claims, run `node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /supervibe-plan` and follow the printed `SUPERVIBE_COMMAND_AGENT_PLAN`. The executable `scripts/lib/command-agent-orchestration-contract.mjs` profile and `rules/command-agent-orchestration.md` remain the source of truth for `ownerAgentId`, `agentPlan`, `requiredAgentIds`, dynamic specialist selection, default `real-agents` mode, and `agent-required-blocked` behavior. The plan must show `CALLABLE_AGENT_SOURCES`, `CALLABLE_AGENTS_READY`, `SCOPED_RECEIPT_GATE`, and `MISSING_CALLABLE_AGENTS` before any agent-owned artifact is claimed.
 
-Plan review is reviewer-owned durable work. `/supervibe-plan --review <plan-path>` must block atomization and execution until the required reviewer agents have real host invocation ids and scoped runtime receipts bound to the plan path, handoff id, review artifact, and each reviewer output.
+Invoke real host agents when specialist output is claimed and issue runtime receipts with `hostInvocation.source` and `hostInvocation.invocationId`. For Codex, use `spawn_agent` according to `CODEX_SPAWN_PAYLOAD_RULES` and `CODEX_SPAWN_PAYLOADS`: forked payloads must set `fork_context=true`, must omit `agent_type`, `model`, and `reasoning_effort`, and must encode the Supervibe logical role in the message. Record each returned Codex agent id with `node <resolved-supervibe-plugin-root>/scripts/agent-invocation.mjs log ...` before receipts are issued. `inline` is diagnostic/dry-run only. Do not emulate specialist agents, and command or skill receipts must not substitute for agent, worker, or reviewer output.
+<!-- supervibe-release-operational-markers:end -->
+
 ## Workflow Invocation Receipts
 
-Any claim that this command invoked another Supervibe command, skill, agent, reviewer, worker, validator, or external tool must be backed by a runtime-issued workflow receipt created with `node <resolved-supervibe-plugin-root>/scripts/workflow-receipt.mjs issue ...`. Hand-written receipts are untrusted. Agent, worker, and reviewer receipts must include `hostInvocation.source` and `hostInvocation.invocationId` from a real host dispatch; command or skill receipts must not substitute for specialist output. Scoped current-run receipts are required for active command/handoff claims; old global receipts are diagnostic only and cannot authorize a new agent-owned output. Durable artifacts produced by this command must stay linked through `.supervibe/memory/workflow-invocation-ledger.jsonl` and `artifact-links.json`; run `npm run validate:workflow-receipts` and `npm run validate:agent-producer-receipts` before claiming the command, delegated stage, or produced artifact is complete.
+Any claim that this command invoked another Supervibe command, skill, agent, reviewer, worker, validator, or external tool must be backed by a runtime-issued workflow receipt created with `node <resolved-supervibe-plugin-root>/scripts/workflow-receipt.mjs issue ...`. Hand-written receipts are untrusted. Agent, worker, and reviewer receipts must include `hostInvocation.source` and `hostInvocation.invocationId` from a real host dispatch; command or skill receipts must not substitute for specialist output. Scoped current-run receipts are required for active command/handoff claims; old global receipts are diagnostic only and cannot authorize a new agent-owned output. Durable artifacts produced by this command must stay linked through `.supervibe/memory/workflow-invocation-ledger.jsonl` and `artifact-links.json`; run `npm run validate:workflow-receipts` and `npm run validate:agent-producer-receipts` only at explicit verification, strict review, or release gates before claiming the command, delegated stage, or produced artifact is complete.

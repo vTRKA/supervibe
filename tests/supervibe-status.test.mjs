@@ -9,6 +9,7 @@ import { join } from 'node:path';
 const ROOT = process.cwd();
 const STATUS_SCRIPT = join(ROOT, 'scripts', 'supervibe-status.mjs');
 let cachedDefaultStatus = null;
+let cachedIndexStatus = null;
 
 function runStatus() {
   if (cachedDefaultStatus !== null) return cachedDefaultStatus;
@@ -20,14 +21,25 @@ function runStatus() {
   return cachedDefaultStatus;
 }
 
-test('supervibe-status: prints index health summary header', () => {
+function runIndexStatus() {
+  if (cachedIndexStatus !== null) return cachedIndexStatus;
+  cachedIndexStatus = execSync('node scripts/supervibe-status.mjs --no-color --index-health', {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+    stdio: ['pipe', 'pipe', 'pipe']
+  });
+  return cachedIndexStatus;
+}
+
+test('supervibe-status: prints lightweight status header by default', () => {
   const out = runStatus();
-  assert.match(out, /Supervibe Index Status/);
+  assert.match(out, /Supervibe Status/);
   assert.match(out, /Project root:/);
+  assert.doesNotMatch(out, /Code RAG|Code Graph|File watcher|SUPERVIBE_GC_HINTS/);
 });
 
 test('supervibe-status: reports Code RAG state', () => {
-  const out = runStatus();
+  const out = runIndexStatus();
   // Either initialized (lists files/chunks) or not-built warning
   assert.ok(/Code RAG/.test(out), 'should mention Code RAG');
   assert.ok(
@@ -37,12 +49,12 @@ test('supervibe-status: reports Code RAG state', () => {
 });
 
 test('supervibe-status: reports source coverage directly', () => {
-  const out = runStatus();
+  const out = runIndexStatus();
   assert.ok(/Source coverage: \d+\/\d+ source files indexed, \d+\.\d+% coverage/.test(out) || /not-built/.test(out) || /NOT INITIALIZED/.test(out));
 });
 
 test('supervibe-status: reports Code Graph state', () => {
-  const out = runStatus();
+  const out = runIndexStatus();
   // Either lists symbols/edges or not-built (graph lives in same DB as RAG)
   assert.ok(
     /Code Graph: \d+ symbols, \d+ edges/.test(out) || /Code Graph: not built/.test(out) || /not-built/.test(out) || /NOT INITIALIZED/.test(out),
@@ -51,7 +63,7 @@ test('supervibe-status: reports Code Graph state', () => {
 });
 
 test('supervibe-status: reports grammar / language coverage', () => {
-  const out = runStatus();
+  const out = runIndexStatus();
   assert.match(out, /Language coverage:/);
 });
 
@@ -65,7 +77,7 @@ test('supervibe-status: reports Memory state', () => {
 });
 
 test('supervibe-status: reports watcher state', () => {
-  const out = runStatus();
+  const out = runIndexStatus();
   // Three possible states: running heartbeat, stale heartbeat, or not running
   assert.ok(
     /File watcher: running/.test(out)
@@ -196,7 +208,7 @@ test('supervibe-status reports active work graph ready, blocked, stale, orphan, 
   }
 });
 
-test('supervibe-status labels completed active graph as archive candidate', () => {
+test('supervibe-status keeps completed active graph default handoff lightweight', () => {
   const projectRoot = mkdtempSync(join(tmpdir(), 'supervibe-status-archive-candidate-'));
   try {
     const graphDir = join(projectRoot, '.supervibe', 'memory', 'work-items', 'epic-archive');
@@ -237,8 +249,9 @@ test('supervibe-status labels completed active graph as archive candidate', () =
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 
-    assert.match(out, /ARCHIVE_CANDIDATE: true/);
-    assert.match(out, /LIFECYCLE: completed-awaiting-archive/);
+    assert.match(out, /STATE: complete/);
+    assert.match(out, /NEXT_ACTION: finish here | verify the work | prepare release handoff/);
+    assert.doesNotMatch(out, /ARCHIVE_CANDIDATE|completed-awaiting-archive/);
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }
@@ -264,7 +277,7 @@ test('supervibe-status reports atomize and runtime gate guidance with no active 
     });
 
     assert.match(out, /Work graph: none active/);
-    assert.match(out, /ATOMIZE_COMMAND: \/supervibe-loop --atomize-plan <plan-path> --plan-review-passed/);
+    assert.match(out, /ATOMIZE_COMMAND: \/supervibe-loop --atomize-plan <plan-path> --user-approved-plan/);
     assert.match(out, /RUNTIME_GATE: node scripts\/supervibe-task-graph-maturity\.mjs --require-active-graph/);
     assert.match(out, /UI_COMMAND: \/supervibe-ui/);
   } finally {
@@ -290,7 +303,7 @@ test('supervibe-status warns when agents are installed but no invocations are lo
       '',
     ].join('\n'));
 
-    const out = execFileSync(process.execPath, [STATUS_SCRIPT, '--no-color', '--no-gc-hints'], {
+    const out = execFileSync(process.execPath, [STATUS_SCRIPT, '--no-color', '--no-gc-hints', '--details'], {
       cwd: projectRoot,
       env: {
         ...process.env,
@@ -307,8 +320,12 @@ test('supervibe-status warns when agents are installed but no invocations are lo
   }
 });
 
-test('supervibe-status: reports GC hints', () => {
-  const out = runStatus();
+test('supervibe-status: reports GC hints when requested', () => {
+  const out = execSync('node scripts/supervibe-status.mjs --no-color --gc-hints', {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+    stdio: ['pipe', 'pipe', 'pipe']
+  });
   assert.ok(/SUPERVIBE_GC_HINTS/.test(out), 'should mention GC hints');
 });
 

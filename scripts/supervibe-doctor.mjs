@@ -3,12 +3,22 @@
 import { diagnoseHosts, formatHostDoctorReport, HOST_IDS } from "./lib/supervibe-host-doctor.mjs";
 import { buildRuntimeWorkflowReadiness } from "./lib/supervibe-workflow-readiness-runtime.mjs";
 import { formatWorkflowReadinessModel } from "./lib/supervibe-workflow-readiness-model.mjs";
+import { buildWorkflowDoctorReport, formatWorkflowDoctorReport } from "./lib/supervibe-workflow-doctor.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 
 if (args.help) {
   printHelp();
   process.exit(0);
+}
+
+if (args._?.[0] === "workflow" || args.workflow === true) {
+  const report = buildWorkflowDoctorReport({
+    rootDir: args.root || process.cwd(),
+    activeGraphPath: args["active-graph"] || null,
+  });
+  console.log(args.json ? JSON.stringify(report, null, 2) : formatWorkflowDoctorReport(report));
+  process.exit(report.pass ? 0 : 1);
 }
 
 try {
@@ -45,7 +55,7 @@ try {
 }
 
 function parseArgs(argv) {
-  const parsed = {};
+  const parsed = { _: [] };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === "--help" || arg === "-h") parsed.help = true;
@@ -53,6 +63,8 @@ function parseArgs(argv) {
     else if (arg === "--strict") parsed.strict = true;
     else if (arg === "--no-color") parsed["no-color"] = true;
     else if (arg === "--workflow-readiness") parsed["workflow-readiness"] = true;
+    else if (arg === "--workflow") parsed.workflow = true;
+    else if (arg === "workflow") parsed._.push(arg);
     else if (arg.startsWith("--host=")) parsed.host = arg.slice("--host=".length);
     else if (arg === "--host") parsed.host = argv[++i];
     else if (arg.startsWith("--root=")) parsed.root = arg.slice("--root=".length);
@@ -62,6 +74,7 @@ function parseArgs(argv) {
     else if (arg === "--command") parsed.command = argv[++i];
     else if (arg.startsWith("--command=")) parsed.command = arg.slice("--command=".length);
     else if (arg === "--profile") parsed.profile = argv[++i];
+    else if (arg === "--active-graph") parsed["active-graph"] = argv[++i];
     else if (arg.startsWith("--profile=")) parsed.profile = arg.slice("--profile=".length);
   }
   return parsed;
@@ -75,6 +88,7 @@ function printHelp() {
     "  npm run supervibe:doctor -- --host all",
     "  npm run supervibe:doctor -- --host codex --strict",
     "  npm run supervibe:doctor -- --host codex,cursor,opencode --json",
+    "  sv doctor workflow [--json]",
     "",
     "Hosts:",
     `  ${HOST_IDS.join(", ")}, all`,
@@ -86,6 +100,7 @@ function printHelp() {
     "  --root <path>         Plugin root. Default: current directory.",
     "  --home <path>         Home directory for local registration checks.",
     "  --workflow-readiness  Also print one canonical workflow next action.",
+    "  workflow              Details-only .supervibe storage/noise diagnostic.",
     "  --command <id>         Workflow command for readiness scope. Default: /supervibe-audit.",
     "  --profile <id>         Readiness profile: development or release.",
     "  --no-color            Disable ANSI color.",

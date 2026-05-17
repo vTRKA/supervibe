@@ -179,16 +179,16 @@ If the gate fails: STOP and repair or escalate before Phase B.
 NEXT_STEP_HANDOFF
 Current phase: plan
 Artifact: .supervibe/artifacts/plans/YYYY-MM-DD-<slug>.md
-Next phase: plan-review
-Next command: /supervibe-plan --review .supervibe/artifacts/plans/YYYY-MM-DD-<slug>.md
-Next skill: supervibe:requesting-code-review
-Stop condition: ask-before-plan-review
-Why: Execution and atomization are blocked until plan review passes.
-Question: Step 1/1: run the plan review loop?
+Next phase: atomize
+Next command: /supervibe-loop --atomize-plan .supervibe/artifacts/plans/YYYY-MM-DD-<slug>.md --user-approved-plan
+Next skill: supervibe:autonomous-agent-loop
+Stop condition: ask-before-graph-creation
+Why: A user-approved loop-ready plan can become the active work graph without another planning or review ritual.
+Question: Step 1/1: create the work graph from this plan?
 Choices:
-- Run plan review
+- Create graph from this plan
 - Revise plan first
-- Audit plan deeper
+- Run deeper review
 - Exclude/defer items
 - Keep plan draft and stop
 END_NEXT_STEP_HANDOFF
@@ -208,7 +208,7 @@ conversation, translate the same choices into one short next-step sentence.
 - Production Readiness covers test, security/privacy, performance, observability,
   rollback, release notes, migration/runbook, and support owner.
 - Critical path and parallelization opportunities are marked.
-- Mandatory review and atomization handoffs are present.
+- Graph creation handoff is present; deeper review handoff appears only when explicitly requested or risk-gated.
 
 ## Anti-Patterns
 
@@ -219,4 +219,4 @@ conversation, translate the same choices into one short next-step sentence.
 - Estimates with false precision.
 - No rollback plan.
 - Empty self-review.
-- Execution offered before review and atomization gates pass.
+- Execution offered before a user-approved work graph exists, or before an explicit strict review gate is resolved when one was requested.

@@ -10,7 +10,7 @@ This document is the durable coverage contract for audit, research, planning, so
 | External research or public-source audit | `/supervibe-audit --source-of-truth` | `supervibe:audit`, `supervibe:strengthen`, `supervibe:confidence-scoring` | `repo-researcher`, `best-practices-researcher`, `quality-gate-reviewer` | source hierarchy, freshness check, source conflict log, citation check | `external-research-source-truth` |
 | Source-of-truth conflict resolution | `/supervibe-audit --source-of-truth` | `supervibe:audit`, `supervibe:explore-alternatives` | `repo-researcher`, `quality-gate-reviewer` | authority tier selection, conflict decision, validation command or cited primary source | `source-of-truth-conflict-resolution` |
 | Raw task prevention before agents start | `/supervibe-plan --intake` | `supervibe:requirements-intake`, `supervibe:writing-plans` | `supervibe-orchestrator`, `product-owner`, `quality-gate-reviewer` | intake completeness, assumptions, acceptance criteria, atomic work split, readiness score | `raw-task-prevention` |
-| Plan review and execution readiness | `/supervibe-plan --review`, `/supervibe-loop --atomize-plan`, `/supervibe-execute-plan` | `supervibe:writing-plans`, `supervibe:executing-plans` | `supervibe-orchestrator`, `repo-researcher`, `qa-test-engineer`, `quality-gate-reviewer` | mandatory review loop, atomization, verification plan, confidence gate | `plan-review-required-before-execution` |
+| Loop-ready plan and execution readiness | `/supervibe-plan --loop-ready`, `/supervibe-loop --atomize-plan --user-approved-plan`, optional `/supervibe-plan --review` | `supervibe:writing-plans`, `supervibe:autonomous-agent-loop`, `supervibe:executing-plans` | `supervibe-orchestrator`, `repo-researcher`, `qa-test-engineer`, `quality-gate-reviewer` | loop-ready plan, user approval, graph atomization, optional deeper review, verification plan, confidence gate | `loop-ready-plan-execution-readiness` |
 | Workflow-chain maturity audit for brainstorm, plan, execute-plan, and loop | `/supervibe-audit --workflow-chain` | `supervibe:audit`, `supervibe:project-memory`, `supervibe:code-search`, `supervibe:confidence-scoring` | `supervibe-orchestrator`, `repo-researcher`, `memory-curator`, `quality-gate-reviewer` | end-to-end user-case coverage, agent handoff checks, feature-bloat guard, pitfall review, validation and receipt gates | `workflow-chain-maturity-audit` |
 | Multi-plugin host instruction coexistence | `/supervibe-genesis`, `/supervibe-adapt` dry-run context migration | `supervibe:genesis`, `supervibe:adapt`, `supervibe:verification` | `supervibe-orchestrator`, `quality-gate-reviewer` | preserve user sections, preserve external managed blocks, preserve other Supervibe adapter blocks, no overwrite outside target managed block | `multi-plugin-host-instruction-coexistence` |
 | Brainstorm summary before documentation | `/supervibe-brainstorm --summary-gate` | `supervibe:brainstorming`, `supervibe:project-memory`, `supervibe:confidence-scoring` | `supervibe-orchestrator`, `systems-analyst`, `quality-gate-reviewer` | pre-documentation summary, Documentation Approval Gate, no durable spec write before explicit choice, post-documentation summary | `documentation-summary-before-docs` |
@@ -90,7 +90,7 @@ Text-first visual summary: compact stage map or table, no color-only status, and
 ```mermaid
 flowchart TD
   accTitle: Supervibe audit and task readiness flow
-  accDescr: Request moves through intent routing, source selection, evidence validation, planning, review, and agent execution only after readiness gates pass.
+  accDescr: Request moves through intent routing, source selection, evidence validation, loop-ready planning, user-approved graph creation, and agent execution after readiness gates pass.
   A[User request] --> B{Intent and source type}
   B -->|internal/private| C[Project memory + Code RAG + CodeGraph]
   B -->|external/public| D[Primary source research]
@@ -100,12 +100,12 @@ flowchart TD
   E --> F
   F --> G{Task readiness >= 9/10}
   G -->|no| H[Intake or focused question]
-  G -->|yes| I[Plan review + atomic work items]
+  G -->|yes| I[Loop-ready plan + atomic work items]
   I --> J[Agent execution with receipts]
   J --> K[Verification + confidence score]
 ```
 
-Text fallback: request -> source type -> evidence -> source-of-truth decision -> readiness gate -> plan review -> agent execution -> verification.
+Text fallback: request -> source type -> evidence -> source-of-truth decision -> readiness gate -> loop-ready plan -> user-approved graph -> agent execution -> verification.
 
 ## Negative Source Patterns
 

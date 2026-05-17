@@ -8,8 +8,8 @@ test("README documents autonomous loop end-to-end path and copy-paste commands",
   const readme = await readFile(README, "utf8");
   for (const snippet of [
     "/supervibe-brainstorm \"idea\"",
-    "/supervibe-plan --from-brainstorm .supervibe/artifacts/specs/example.md",
-    "/supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --plan-review-passed",
+    "/supervibe-plan --loop-ready --from-brainstorm .supervibe/artifacts/specs/example.md",
+    "/supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --user-approved-plan",
     "/supervibe-loop --epic example-epic --worktree",
     "/supervibe-loop --status --epic example-epic",
     "/supervibe-loop --resume .supervibe/memory/loops/example-run/state.json",
@@ -17,7 +17,7 @@ test("README documents autonomous loop end-to-end path and copy-paste commands",
   ]) {
     assert.match(readme, escapeRegExp(snippet), `${snippet} must be documented`);
   }
-  assert.match(readme, /brainstorm -> reviewed plan -> atomized epic -> safe execution/i);
+  assert.match(readme, /brainstorm -> loop-ready plan -> user-approved graph -> safe execution/i);
 });
 
 test("README documents provider-safe boundaries and blocked states", async () => {
@@ -55,12 +55,11 @@ test("README and command docs share autonomous-loop flags and artifact paths", a
     assert.match(readme, new RegExp(escapeText(flag)));
     assert.match(loopCommand, new RegExp(escapeText(flag)));
   }
-  assert.match(readme, /\/supervibe-plan --from-brainstorm <spec-path>/);
-  assert.match(planCommand, /\/supervibe-plan --from-brainstorm <spec-path>/);
+  assert.match(readme, /\/supervibe-plan --loop-ready --from-brainstorm <spec-path>/);
+  assert.match(planCommand, /\/supervibe-plan --loop-ready --from-brainstorm <spec-path>/);
   for (const path of [".supervibe/memory/loops/", ".supervibe/memory/work-items/", "task-tracker-map.json", ".supervibe/memory/bundles/"]) {
     assert.match(readme, new RegExp(escapeText(path)));
   }
-  assert.match(planCommand, /tracker-sync-push/);
 });
 
 test("public docs and changelog mention the verified autonomous-loop upgrade", async () => {

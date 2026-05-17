@@ -76,6 +76,9 @@ export async function buildAgentSystemMaturityReport(rootDir = process.cwd(), op
   const retrievalTelemetry = await collectRetrievalTelemetryGate(rootDir);
   const indexGate = await collectCodeGraphGate(rootDir, { retrievalTelemetry });
   const routeReplay = collectRouteReplayGate(rootDir);
+  const requireRuntimeState = options.requireRuntimeState === true
+    || options.runtimeTenOfTenProof === true
+    || Boolean(options.activeCommand);
   const activeCommandReadiness = options.activeCommand
     ? collectActiveCommandReadiness(rootDir, {
       command: options.activeCommand,
@@ -110,6 +113,9 @@ export async function buildAgentSystemMaturityReport(rootDir = process.cwd(), op
       minHostAgentReceipts: options.minHostAgentReceipts ?? 1,
       minAgentInvocations: options.minAgentInvocations ?? 10,
     },
+    policy: {
+      requireRuntimeState,
+    },
   });
 }
 
@@ -119,7 +125,12 @@ export function scoreAgentSystemMaturity({
   indexGate = {},
   docs = {},
   thresholds = {},
+  policy = {},
 } = {}) {
+  const requireRuntimeState = policy.requireRuntimeState !== false;
+  const runtimePolicyEvidence = requireRuntimeState
+    ? "runtimeState=required"
+    : "runtimeState=observed-not-blocking";
   const dimensions = [];
   const add = (id, max, score, evidence, nextAction = null) => {
     const normalized = Math.max(0, Math.min(max, Number(score) || 0));
@@ -163,12 +174,15 @@ export function scoreAgentSystemMaturity({
     workflowContinuationEvidence(validators.continuation),
     workflowContinuationNextAction(validators.continuation),
   );
+  const workflowReceiptsPass = validators.workflowReceipts?.pass === true;
   add(
     "receipt-reliability",
     1.25,
-    validators.workflowReceipts?.pass ? 1.25 : 0,
-    `workflow receipts pass=${validators.workflowReceipts?.pass === true}, receipts=${validators.workflowReceipts?.receipts || 0}`,
-    "Run workflow-receipt recovery-status, reissue drifted receipts, or prune stale entries.",
+    workflowReceiptsPass || !requireRuntimeState ? 1.25 : 0,
+    `workflow receipts pass=${workflowReceiptsPass}, receipts=${validators.workflowReceipts?.receipts || 0}, ${runtimePolicyEvidence}`,
+    workflowReceiptsPass || !requireRuntimeState
+      ? null
+      : "Run workflow-receipt recovery-status, reissue drifted receipts, or prune stale entries.",
   );
 
   const hostReceipts = validators.agentReceipts?.trustedHostAgentReceipts
@@ -188,15 +202,18 @@ export function scoreAgentSystemMaturity({
   const telemetryScore = distribution.blocking
     ? Math.min(telemetryBaseScore, 0.55)
     : telemetryBaseScore;
+  const runtimeTelemetryScore = requireRuntimeState ? telemetryScore : 1.25;
   const distributionEvidence = distribution.evidence ? `, ${distribution.evidence}` : "";
   add(
     "host-agent-telemetry",
     1.25,
-    telemetryScore,
-    `strictPass=${agentReceiptTrustPass}, trustedHostAgentReceipts=${hostReceipts}/${minHostReceipts}, receiptBoundAgentInvocations=${invocations}/${minInvocations}${distributionEvidence}`,
-    distribution.blocking
-      ? "Agent invocation distribution is too concentrated while required specialist subjects are missing; run the missing specialists and issue scoped receipts."
-      : "Complete real host-agent stages and log each with node scripts/agent-invocation.mjs log ... --issue-receipt.",
+    runtimeTelemetryScore,
+    `strictPass=${agentReceiptTrustPass}, trustedHostAgentReceipts=${hostReceipts}/${minHostReceipts}, receiptBoundAgentInvocations=${invocations}/${minInvocations}${distributionEvidence}, ${runtimePolicyEvidence}`,
+    requireRuntimeState
+      ? (distribution.blocking
+        ? "Agent invocation distribution is too concentrated while required specialist subjects are missing; run the missing specialists and issue scoped receipts."
+        : "Complete real host-agent stages and log each with node scripts/agent-invocation.mjs log ... --issue-receipt.")
+      : null,
   );
 
   const retrievalTelemetryReady = (
@@ -207,17 +224,24 @@ export function scoreAgentSystemMaturity({
     && indexGate.retrievalEnforcementPass === true
     && Number(indexGate.missingOrStale ?? Number.NaN) === 0
     && !String(indexGate.warnings || "").includes("symbol-coverage");
-  const codeGraphEvidence = retrievalTelemetryReady
+  const staticGraphReady = indexGate.sourceReady === true
+    && indexGate.retrievalEnforcementPass === true
+    && !String(indexGate.warnings || "").includes("symbol-coverage");
+  const effectiveGraphReady = requireRuntimeState ? graphReady : staticGraphReady;
+  const codeGraphEvidenceBase = retrievalTelemetryReady
     ? (indexGate.evidence || "index status unavailable")
     : `${indexGate.evidence || "index status unavailable"}, retrievalTelemetryStrictPass=false (tracked outside code-graph-readiness)`;
+  const codeGraphEvidence = `${codeGraphEvidenceBase}, ${runtimePolicyEvidence}`;
   add(
     "code-graph-readiness",
     1.0,
-    graphReady ? 1.0 : indexGate.sourceReady ? 0.5 : 0,
+    effectiveGraphReady ? 1.0 : indexGate.sourceReady ? 0.5 : 0,
     codeGraphEvidence,
-    graphReady
+    effectiveGraphReady
       ? null
-      : "Run node scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health, confirm node scripts/build-code-index.mjs --root . --list-missing reports MISSING_OR_STALE: 0, then rerun node scripts/supervibe-agent-maturity.mjs.",
+      : requireRuntimeState
+        ? "Run node scripts/build-code-index.mjs --root . --resume --graph --max-files 200 --health, confirm node scripts/build-code-index.mjs --root . --list-missing reports MISSING_OR_STALE: 0, then rerun node scripts/supervibe-agent-maturity.mjs."
+        : "Rebuild the source index because global capability cannot be scored without source/index coverage.",
   );
   add(
     "eval-coverage",

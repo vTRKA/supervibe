@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.41] - 2026-05-17
+
+### Fixed
+
+- Simplified the plan-to-loop workflow so loop-ready plans create task graphs directly through `/supervibe-loop --atomize-plan <plan-path> --user-approved-plan`.
+- Removed the default plan-review detour from command docs, host bootstrap guidance, router prompts, and workflow summary next actions while keeping strict review available for explicit high-risk gates.
+- Tightened `.supervibe` artifact guidance so agent-facing runtime state stays useful without extra plan drafts or stale workflow noise.
+
+### Validation
+
+- Rechecked workflow receipts, trusted reviewer receipts, Code RAG/CodeGraph readiness, workflow logic maturity, and release-facing version surfaces for the 2.1.41 package bump.
+
 ## [2.1.40] - 2026-05-16
 
 ### Fixed

@@ -403,33 +403,36 @@ function routeUpstreamArtifactRequest({ text, locale, artifacts }) {
       intent: "plan_review",
       locale,
       confidence: 0.94,
-      reason: "Plan-only validation or reviewer request is blocked at the mandatory plan review gate before execution.",
+      reason: "Plan-only validation or reviewer request routes to the optional strict plan review gate before execution.",
       source: "plan-only-review-gate",
+      command: "/supervibe-plan --review",
+      skill: "supervibe:requesting-code-review",
+      stopCondition: "ask-before-plan-review",
     });
   }
 
-  if (!artifacts.planReviewPassed && looksLikePlanBeforeExecution(text)) {
+  if (!hasPlanApprovalForAtomization(artifacts) && looksLikePlanBeforeExecution(text)) {
     if (hasPlanArtifact(artifacts)) {
       return fromWorkflowStep("plan", {
-        intent: "plan_review",
+        intent: "atomize_plan",
         locale,
         confidence: 0.94,
-        reason: "Execution request with an existing plan is blocked until mandatory plan review passes.",
-        source: "plan-review-gate",
+        reason: "Execution request with an existing plan should create the work graph from the user-approved loop-ready plan before dispatch.",
+        source: "plan-approval-gate",
       });
     }
     return fromWorkflowStep("brainstorm", {
       intent: "brainstorm_to_plan",
       locale,
       confidence: 0.9,
-      reason: "Plan and implementation were requested together; write or confirm the plan before review and execution.",
+      reason: "Plan and implementation were requested together; write or confirm the loop-ready plan before graph creation and execution.",
       source: "upstream-artifact-precedence",
-      command: "/supervibe-plan",
+      command: "/supervibe-plan --loop-ready",
       skill: "supervibe:writing-plans",
       stopCondition: "ask-before-plan",
       question: locale === "ru"
-        ? "\u0428\u0430\u0433 1/1: \u0441\u043d\u0430\u0447\u0430\u043b\u0430 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u0442\u044c \u043f\u043b\u0430\u043d \u043f\u0435\u0440\u0435\u0434 review loop \u0438 \u0438\u0441\u043f\u043e\u043b\u043d\u0435\u043d\u0438\u0435\u043c?"
-        : "Step 1/1: prepare the plan before review and execution?",
+        ? "\u0428\u0430\u0433 1/1: \u0441\u043d\u0430\u0447\u0430\u043b\u0430 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u0438\u0442\u044c loop-ready \u043f\u043b\u0430\u043d \u043f\u0435\u0440\u0435\u0434 \u0441\u043e\u0437\u0434\u0430\u043d\u0438\u0435\u043c \u0433\u0440\u0430\u0444\u0430?"
+        : "Step 1/1: prepare the loop-ready plan before graph creation?",
     });
   }
 
@@ -438,6 +441,10 @@ function routeUpstreamArtifactRequest({ text, locale, artifacts }) {
 
 function hasPlanArtifact(artifacts = {}) {
   return Boolean(artifacts.plan || artifacts.planPath || artifacts.planContent || artifacts.implementationPlan || artifacts.reviewedPlanPath);
+}
+
+function hasPlanApprovalForAtomization(artifacts = {}) {
+  return Boolean(artifacts.userApprovedPlan || artifacts.approvedPlan || artifacts.loopReadyPlan || artifacts.planReviewPassed || artifacts.reviewedPlan);
 }
 
 function looksLikeSpecBeforePlanOrExecution(text) {
@@ -545,24 +552,24 @@ function routeFromWorkflowContext({ text, locale, lastCompletedPhase, artifacts 
       intent: "plan_revision",
       locale,
       confidence: 0.92,
-      reason: "User asked to revise the implementation plan before review or execution.",
+      reason: "User asked to revise the implementation plan before graph creation or execution.",
       source: "plan-revision-gate",
       command: "/supervibe-plan",
       skill: "supervibe:writing-plans",
       stopCondition: "ask-before-plan-revision",
       question: locale === "ru"
-        ? "Шаг 1/1: изменить план перед обязательным review loop?"
-        : "Step 1/1: revise the plan before the mandatory review loop?",
+        ? "\u0428\u0430\u0433 1/1: \u0438\u0437\u043c\u0435\u043d\u0438\u0442\u044c \u043f\u043b\u0430\u043d \u043f\u0435\u0440\u0435\u0434 \u0441\u043e\u0437\u0434\u0430\u043d\u0438\u0435\u043c work graph?"
+        : "Step 1/1: revise the plan before creating the work graph?",
     });
   }
 
-  if (phase === "plan" && !artifacts.planReviewPassed && containsAny(text, PLAN_CONTINUATION_WITHOUT_REVIEW_PHRASES)) {
+  if (phase === "plan" && !hasPlanApprovalForAtomization(artifacts) && containsAny(text, PLAN_CONTINUATION_WITHOUT_REVIEW_PHRASES)) {
     return fromWorkflowStep("plan", {
-      intent: "plan_review",
+      intent: "atomize_plan",
       locale,
       confidence: 0.93,
-      reason: "Plan continuation, loop, atomization, worktree, or execution is blocked until mandatory plan review passes.",
-      source: "plan-review-gate",
+      reason: "Plan continuation, loop, atomization, worktree, or execution needs a user-approved loop-ready plan and graph creation first.",
+      source: "plan-approval-gate",
     });
   }
 
@@ -577,21 +584,21 @@ function routeFromWorkflowContext({ text, locale, lastCompletedPhase, artifacts 
   }
 
   if (containsAny(text, WORKTREE_PHRASES)) {
-    if (artifacts.plan && !artifacts.planReviewPassed) {
+    if (artifacts.plan && !hasPlanApprovalForAtomization(artifacts)) {
       return fromWorkflowStep("plan", {
-        intent: "plan_review",
+        intent: "atomize_plan",
         locale,
         confidence: 0.93,
-        reason: "Worktree execution is blocked until mandatory plan review passes.",
-        source: "plan-review-gate",
+        reason: "Worktree execution needs a user-approved loop-ready plan to be atomized first.",
+        source: "plan-approval-gate",
       });
     }
-    if (artifacts.planReviewPassed && !artifacts.workItemsReady && !artifacts.epicId && !artifacts.epic) {
-      return fromWorkflowStep("plan-review", {
+    if (hasPlanApprovalForAtomization(artifacts) && !artifacts.workItemsReady && !artifacts.epicId && !artifacts.epic) {
+      return fromWorkflowStep("plan", {
         intent: "atomize_plan",
         locale,
         confidence: 0.91,
-        reason: "Worktree execution requires a reviewed plan to be atomized into an epic and work-item graph first.",
+        reason: "Worktree execution requires the approved loop-ready plan to be atomized into an epic and work-item graph first.",
         source: "atomization-gate",
         artifactOverride: artifacts.planPath ?? artifacts.reviewedPlanPath ?? undefined,
       });
@@ -612,21 +619,21 @@ function routeFromWorkflowContext({ text, locale, lastCompletedPhase, artifacts 
   }
 
   if (containsAny(text, PLAN_EXECUTION_PHRASES)) {
-    if (!artifacts.planReviewPassed) {
+    if (!hasPlanApprovalForAtomization(artifacts)) {
       return fromWorkflowStep("plan", {
-        intent: "plan_review",
+        intent: "atomize_plan",
         locale,
         confidence: 0.92,
-        reason: "Execution request is blocked until mandatory plan review passes.",
-        source: "plan-review-gate",
+        reason: "Execution request needs a user-approved loop-ready plan and graph creation first.",
+        source: "plan-approval-gate",
       });
     }
     if (!artifacts.workItemsReady && !artifacts.epicId && !artifacts.epic) {
-      return fromWorkflowStep("plan-review", {
+      return fromWorkflowStep("plan", {
         intent: "atomize_plan",
         locale,
         confidence: 0.9,
-        reason: "Execution request has a reviewed plan but no atomic work items or epic.",
+        reason: "Execution request has an approved loop-ready plan but no atomic work items or epic.",
         source: "atomization-gate",
         artifactOverride: artifacts.planPath ?? artifacts.reviewedPlanPath ?? undefined,
       });
@@ -635,26 +642,26 @@ function routeFromWorkflowContext({ text, locale, lastCompletedPhase, artifacts 
       intent: "single_session_epic_run",
       locale,
       confidence: 0.88,
-      reason: "Reviewed and atomized work can enter goal-until-complete current-session execution; worktree is only used when explicitly requested.",
+      reason: "Approved and atomized work can enter goal-until-complete current-session execution; worktree is only used when explicitly requested.",
       source: "execution-rule",
     });
   }
 
   if (containsAny(text, ATOMIZE_PHRASES)) {
-    if (!artifacts.planReviewPassed) {
+    if (!hasPlanApprovalForAtomization(artifacts)) {
       return fromWorkflowStep("plan", {
-        intent: "plan_review",
+        intent: "atomize_plan",
         locale,
         confidence: 0.9,
-        reason: "Atomization is blocked until mandatory plan review passes.",
-        source: "plan-review-gate",
+        reason: "Atomization needs a user-approved loop-ready plan.",
+        source: "plan-approval-gate",
       });
     }
-    return fromWorkflowStep("plan-review", {
+    return fromWorkflowStep("plan", {
       intent: text.includes("epic") || text.includes("эпик") ? "create_epic" : "atomize_plan",
       locale,
       confidence: 0.9,
-      reason: "Reviewed plan can be atomized into durable work items.",
+      reason: "Approved loop-ready plan can be atomized into durable work items.",
       source: "atomize-rule",
       artifactOverride: artifacts.planPath ?? artifacts.reviewedPlanPath ?? undefined,
     });
@@ -675,8 +682,11 @@ function routeFromWorkflowContext({ text, locale, lastCompletedPhase, artifacts 
       intent: "plan_review",
       locale,
       confidence: 0.92,
-      reason: "Plan is ready and requires review before atomization or execution.",
+      reason: "User explicitly asked for plan review before atomization or execution.",
       source: "phase-artifact-rule",
+      command: "/supervibe-plan --review",
+      skill: "supervibe:requesting-code-review",
+      stopCondition: "ask-before-plan-review",
     });
   }
 
@@ -937,7 +947,7 @@ function normalizeRouteQuestionPayload(route = {}) {
   const agentWavePolicy = buildRouteAgentWavePolicy(route);
   const requiredSafety = uniqueRouteStrings([
     ...(route.requiredSafety || []),
-    ...(agentWavePolicy.required ? ["real-parallel-agent-wave-required", "tests-deferred-until-release-gate"] : []),
+    ...(agentWavePolicy.required ? ["ready-task-dispatch-required", "tests-deferred-until-release-gate"] : []),
   ]);
   const normalized = {
     ...route,
@@ -970,13 +980,13 @@ function buildRouteAgentWavePolicy(route = {}) {
   const command = String(route.command || "").trim();
   const workflowLike = command.startsWith("/supervibe") && route.intent !== "unknown" && route.hardStop !== true;
   return {
-    id: "mandatory-parallel-agent-wave",
+    id: "ready-task-agent-dispatch",
     required: workflowLike,
-    minParallelAgents: workflowLike ? 2 : 0,
-    requiredAfterContextCompaction: workflowLike,
-    requiredForSimpleTasks: workflowLike,
-    launchTiming: "before-durable-work",
-    resumeMode: command.includes("--resume-dispatch") ? "fresh-parallel-agent-wave" : "route-owned-agent-wave",
+    minParallelAgents: workflowLike ? 1 : 0,
+    requiredAfterContextCompaction: false,
+    requiredForSimpleTasks: false,
+    launchTiming: "when-ready-work-exists",
+    resumeMode: command.includes("--resume-dispatch") ? "resume-from-prime-context" : "route-owned-ready-task",
     testExecutionPolicy: "plan/graph/task tests and validators run only at final release gate",
   };
 }
@@ -1049,7 +1059,7 @@ function applySafetyState(route, { dirtyGitState, artifacts }) {
 function phaseForRoute(route) {
   if (route.intent === "brainstorm_to_plan") return "brainstorm";
   if (route.intent === "plan_review" || route.intent === "execute_plan") return "plan";
-  if (route.intent === "atomize_plan" || route.intent === "create_epic") return "plan-review";
+  if (route.intent === "atomize_plan" || route.intent === "create_epic") return "plan";
   if (route.intent === "worktree_autonomous_run") return "worktree-setup";
   if (route.intent === "autonomous_epic_run") return "work-item-atomization";
   return "intake";
@@ -1137,7 +1147,7 @@ function safetyForCommand(command) {
   const base = ["confirm-before-mutation", "no-provider-bypass", "no-hidden-background-work"];
   if (value.includes("--worktree")) return [...base, "worktree-cleanup", "stop-command", "goal-stop-condition"];
   if (value.includes("--epic") || value.includes("execute-plan") || value.includes("--guided") || value.includes("--manual") || value.includes("--fresh-context")) return [...base, "readiness-gate", "stop-command", "goal-stop-condition"];
-  if (value.includes("--atomize") || value.includes("--create-epic")) return [...base, "plan-review-pass-required"];
+  if (value.includes("--atomize") || value.includes("--create-epic")) return [...base, "user-approved-loop-ready-plan-required"];
   if (value.includes("--review")) return [...base, "review-evidence-required"];
   return base;
 }

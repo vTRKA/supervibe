@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import {
   WORKFLOW_LOGIC_10OF10_DIMENSIONS,
   WORKFLOW_LOGIC_GATE_PROFILES,
+  buildWorkflowLogicTenOfTenReport,
   formatWorkflowLogicTenOfTenReport,
   scoreWorkflowLogicTenOfTen,
 } from "../scripts/validate-workflow-logic-10of10.mjs";
@@ -16,7 +20,7 @@ function passingEvidence(overrides = {}) {
     receipts: { pass: true, summary: "trustedReceipts=3/1, trustedHostAgentReceipts=2/1" },
     graphProof: { pass: true, summary: "taskGraph=10/10, sourceSnapshot=true, strictEvidence=true" },
     agentLease: { pass: true, summary: "sourceChecks=6/6, staleActiveClaims=0" },
-    routing: { pass: true, summary: "commandAgent=true, routing=true, commandShortcuts=true, mandatoryFanout=true" },
+    routing: { pass: true, summary: "commandAgent=true, routing=true, commandShortcuts=true, readyTaskDispatch=true" },
     review: { pass: true, summary: "reviewGate=true, artifacts=1, validator=true" },
     gateProfile: { pass: true, summary: "profile=development, finalOnlyPolicy=true" },
     ...overrides,
@@ -97,6 +101,20 @@ test("release profile exposes release-only proof requirements and blocks missing
   assert.equal(report.gateProfile.developmentValidatorsAllowed, false);
   assert.equal(report.gateProfile.releaseFinalValidationRequired, true);
   assert.ok(report.blockers.some((blocker) => blocker.id === "gate-profile"));
+});
+
+test("release graph proof reads current active graph dimension", async () => {
+  const root = mkdtempSync(join(tmpdir(), "supervibe-workflow-logic-graph-proof-"));
+  try {
+    writeFileSync(join(root, "package.json"), JSON.stringify({ scripts: {} }), "utf8");
+    const report = await buildWorkflowLogicTenOfTenReport(root, { profile: "release" });
+    const graphProof = report.dimensions.find((dimension) => dimension.id === "graph-proof");
+
+    assert.equal(graphProof.details.currentGraph.id, "current-active-graph");
+    assert.equal(graphProof.details.currentGraph.pass, false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("terminal formatter reports profile, score, required evidence, dimensions, and blockers", () => {

@@ -10,13 +10,13 @@ import {
 describe("supervibe chain handoff enforcer", () => {
   it("requires brainstorm output to hand off to planning", () => {
     const handoff = getRequiredHandoff("brainstorm");
-    assert.equal(handoff.command, "/supervibe-plan --from-brainstorm");
+    assert.equal(handoff.command, "/supervibe-plan --loop-ready --from-brainstorm");
     assert.equal(handoff.nextQuestion, "Шаг 1/1: написать план реализации по утвержденной спецификации?");
     assert.ok(handoff.questionChoices.every((choice) => choice.label && choice.label !== choice.id && choice.tradeoff));
     assert.ok(handoff.questionChoices.some((choice) => /approved-spec-or-brainstorm-summary/.test(choice.label)));
   });
 
-  it("detects missing review loop handoff after plan output", () => {
+  it("detects missing graph creation handoff after plan output", () => {
     const result = assertRequiredHandoff("plan", "Plan saved at .supervibe/artifacts/plans/example.md\nNext: execute");
 
     assert.equal(result.pass, false);
@@ -26,12 +26,15 @@ describe("supervibe chain handoff enforcer", () => {
     );
   });
 
-  it("passes when the required next command, skill, artifact, and question are present", () => {
-    const output = formatHandoff("plan_review_passed");
-    const result = assertRequiredHandoff("plan_review_passed", output);
+  it("passes when the default plan handoff creates a graph directly", () => {
+    const output = formatHandoff("plan");
+    const result = assertRequiredHandoff("plan", output);
 
     assert.equal(result.pass, true);
-    assert.match(output, /Next command: \/supervibe-loop --atomize-plan <plan-path> --plan-review-passed/);
+    assert.match(output, /Create graph from this plan/);
+    assert.match(output, /Run deeper review/);
+    assert.match(output, /Next command: \/supervibe-loop --atomize-plan <plan-path> --user-approved-plan/);
+    assert.doesNotMatch(output, new RegExp(["mandatory review", "loop"].join(" "), "i"));
   });
 
   it("formats loop completion as a human-first decision card", () => {

@@ -1,7 +1,7 @@
 ---
 description: >-
-  Use WHEN an approved implementation plan has passed review and atomic tasks
-  are ready TO execute the plan with explicit readiness and completion gates.
+  Use WHEN an approved loop-ready implementation plan has atomic tasks
+  ready TO execute the plan with explicit readiness and completion gates.
   Triggers: 'execute plan', 'сделай по плану', 'review passed', 'atomic tasks
   ready', 'epic ready', '/supervibe-execute-plan'.
 last-verified: "2026-05-08"
@@ -15,7 +15,7 @@ This is the safety-critical sibling of `/supervibe-plan` — that one writes the
 
 ## Continuation Contract
 
-Do not stop after the first phase, task, or green check while the reviewed plan
+Do not stop after the first phase, task, or green check while the approved loop-ready plan
 still has ready work, budget, and no blocker. A review gate, readiness audit,
 or phase verification is a checkpoint unless it fails or requires explicit user
 approval. If execution pauses, report the exact stop reason, last completed
@@ -27,7 +27,7 @@ silently skip failed tasks.
 
 ## Plan User-Decision Gate
 
-Before readiness audit or execution, verify that the latest plan/pre-plan `NEXT_STEP_HANDOFF` has a current explicit user answer for this phase. A prior instruction to plan-and-execute is not enough after a new plan preview, review handoff, atomization handoff, or execution handoff has been shown. If the current gate is unanswered, stop and ask the visible next-step question; do not execute, atomize, mutate tasks, delete the plan file, bump versions, commit, or push.
+Before readiness audit or execution, verify that the latest plan/pre-plan `NEXT_STEP_HANDOFF` has a current explicit user answer for this phase. A prior instruction to plan-and-execute is not enough after a new plan preview, next-action handoff, atomization handoff, or execution handoff has been shown. If the current gate is unanswered, stop and ask the visible next-step question; do not execute, atomize, mutate tasks, delete the plan file, bump versions, commit, or push.
 
 ## Invocation forms
 
@@ -115,14 +115,14 @@ Default: A.
 
 ### 0a. Mandatory workflow gates before readiness
 
-Before any execution audit, confirm the plan has:
-- A validated plan-review artifact with `evidenceGatePass:true`, Reviewer Coverage for required reviewers, trusted reviewer receipts bound to the current artifact, and a Next User Decision. A bare `planReviewPassed` state or boolean flag is not sufficient.
-- Atomic work items or an epic generated from the reviewed plan
+Before any execution audit, confirm the Next User Decision and that the plan has:
+- Explicit user approval for the loop-ready plan or an already-active work graph generated from that approval. Strict review receipts are optional before execution and move to risk/final gates unless the user requested deeper review.
+- Atomic work items or an epic generated from the approved loop-ready plan
 - Execution mode selected (`dry-run`, `guided`, `manual`, or `fresh-context`)
 - Stop, status, resume, and cleanup controls for long or worktree-backed runs
 - Worktree session selected or created when `--worktree`, `--worktree-existing`, or `--resume-session` is used
 
-If review has not passed, route to `/supervibe-plan --review <plan-path>` and stop. If review has not passed with a trusted artifact, route to `/supervibe-plan --review <plan-path>` and stop. If atomic work items or an epic do not exist, route to `/supervibe-loop --atomize-plan <plan-path> --plan-review-passed` only after the review artifact validator and receipt trust gate pass.
+If the plan has not been approved as loop-ready, route to `/supervibe-plan --loop-ready <plan-path>` and stop. If atomic work items or an epic do not exist, route to `/supervibe-loop --atomize-plan <plan-path> --user-approved-plan` after the user approves the loop-ready plan. Strict `/supervibe-plan --review <plan-path>` remains available only when the user asks for deeper review or release governance requires it.
 
 For long autonomous execution, prefer `/supervibe-loop --epic <epic-id> --worktree` so the run has an active session registry, heartbeat, and cleanup-safe worktree path. Add `--max-duration` only when the user wants an explicit time budget; otherwise the loop continues until goals are complete or a real stop gate blocks progress.
 For atomized epics, use `/supervibe-loop --status --epic <epic-id>`, `/supervibe-loop --resume .supervibe/memory/loops/<run-id>/state.json`, and `/supervibe-loop --stop <run-id>` for visibility and cancellation before any further execution.

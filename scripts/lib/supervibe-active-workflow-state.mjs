@@ -653,8 +653,8 @@ function defaultNextFieldsForStage(stage = "", command = "", state = {}) {
       return { nextCommand: currentCommand || "/supervibe-plan", nextAction: "revise plan and rerun review" };
     case "plan-review-passed":
       return {
-        nextCommand: `/supervibe-loop --atomize-plan ${findPlanArtifactPath(state) || "<plan-path>"} --plan-review-passed`,
-        nextAction: "atomize reviewed plan",
+        nextCommand: `/supervibe-loop --atomize-plan ${findPlanArtifactPath(state) || "<plan-path>"} --user-approved-plan`,
+        nextAction: "atomize user-approved loop-ready plan",
       };
     case "work-item-atomization":
       return { nextCommand: "/supervibe-ui", nextAction: "open active epic/task UI before execution" };

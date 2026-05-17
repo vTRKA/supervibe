@@ -391,6 +391,8 @@ function resolveProviderLimitPolicy({ adapterId = "generic-shell-stub", options 
     manifestDefaultMaxThreads: manifestMaxThreads,
     hostManagedCleanupRequired: cleanupDebt.count,
     hostManagedCleanupIds: cleanupDebt.closeRequired.map((item) => item.hostInvocationId).filter(Boolean),
+    hostManagedCleanupDiagnostic: cleanupDebt.diagnosticCount || 0,
+    hostManagedCleanupDiagnosticIds: (cleanupDebt.diagnostics || []).map((item) => item.hostInvocationId).filter(Boolean),
     availableProviderThreads: availableThreads,
     requestedMaxConcurrentAgents: requested,
     effectiveMaxConcurrentAgents: Math.max(0, effective),

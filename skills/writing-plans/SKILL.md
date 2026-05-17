@@ -2,10 +2,10 @@
 name: writing-plans
 namespace: process
 description: >-
-  Use after an approved spec or approved requirements intake to write a reviewed
-  implementation plan, preserve scope safety, require user gates, and hand off
-  to review before atomic atomization or execution for epic-scale work; covers
-  plan and review expectations. Triggers: 'план', 'ревью'.
+  Use after an approved spec or approved requirements intake to write one
+  loop-ready implementation plan with epics, tasks, dependencies, acceptance
+  checks, and direct user-approved graph handoff; strict review is optional for
+  risky or user-requested cases. Triggers: 'plan', 'review'.
 allowed-tools:
   - Read
   - Grep
@@ -28,8 +28,8 @@ last-verified: 2026-05-14T00:00:00.000Z
 
 This skill turns an approved spec or approved requirements-intake outcome into a
 durable implementation plan. The planner owns scope control, retrieval evidence,
-visual/text-first explanation, review handoff, and the stop conditions that block
-atomization or execution until review passes.
+visual/text-first explanation, direct graph handoff, and the stop conditions that block
+atomization or execution until the current user decision is recorded.
 Plan output stays source-bound: every included task must trace to approved scope,
 current repository evidence, and final-gate verification. Runtime receipts are
 required for any delegated producer, reviewer, validator, worker, command, or
@@ -74,11 +74,11 @@ binds the output.
 
 ## Continuation Contract
 
-Do not stop after individual plan phases. Produce a durable pre-plan summary with table, ASCII map, source prompt hash, and approve/revise/stop choices, then show a compact plan-scope preview, ask the approve/revise/exclude-or-defer/stop choice through `plan_delivery`, then continue to a source-bound Post-plan summary with added-and-why, deferred-and-why, validation result, table, ASCII map, and text-first summary. Let the user exclude or defer items, then write the full plan before handoff. Expose a human-first Decision Card with recommendation, `Step N/M` question, choices, resume cursor, and next command; expose `NEXT_USER_ACTIONS[]` with run plan review and revise plan first, then emit the raw `NEXT_STEP_HANDOFF` only as secondary resume state.
+Do not stop after individual plan phases. Produce a durable pre-plan summary with table, ASCII map, source prompt hash, and approve/revise/stop choices, then show a compact plan-scope preview, ask the approve/revise/exclude-or-defer/stop choice through `plan_delivery`, then continue to a source-bound Post-plan summary with added-and-why, deferred-and-why, validation result, table, ASCII map, and text-first summary. Let the user exclude or defer items, then write the full plan before handoff. Expose a human-first Decision Card with recommendation, `Step N/M` question, choices, resume cursor, and next command; expose `NEXT_USER_ACTIONS[]` with create graph from this plan, revise plan, run deeper review, or keep draft and stop, then emit the raw `NEXT_STEP_HANDOFF` only as secondary resume state.
 
 ## Plan Scope Approval Gate
 
-Ask one `plan_delivery` question. Do not save the durable plan, atomize work items, or offer execution until this gate is answered. Record Current explicit user answer, then continue from plan to review until the user chooses the next action. Delegated decisions cannot satisfy the final user gate.
+Ask one `plan_delivery` question. Do not save the durable plan, atomize work items, or offer execution until this gate is answered. Record Current explicit user answer, then continue from plan to graph creation or optional deeper review until the user chooses the next action. Delegated decisions cannot satisfy the final user gate.
 
 ## Topic Drift / Resume Contract
 
@@ -94,7 +94,7 @@ One coherent subsystem, <=10 tasks
   -> single-phase plan with task-level verification and rollback.
 
 Two to four phases, roughly 20-60 tasks
-  -> multi-phase plan with review gates and critical path.
+  -> multi-phase loop-ready plan with critical path and optional deeper review.
 
 Five or more phases, broad production path, or high regression risk
   -> mega-plan format with compact late phases, owner gates, and risk controls.
@@ -133,19 +133,19 @@ Five or more phases, broad production path, or high regression risk
 9. Save the durable plan only after the save gate is answered. Then summarize
    artifact path, phases, critical path, scope decisions, top risks, validation,
    confidence, and next actions.
-10. Emit a Decision Card for plan review using `scripts/lib/supervibe-post-stage-actions.mjs`, then emit the secondary raw `NEXT_STEP_HANDOFF` for resume state and ask one user question. Review is mandatory before atomization. After review passes, ask one separate question before splitting into atomic work items and an epic.
+10. Emit a Decision Card using `scripts/lib/supervibe-post-stage-actions.mjs`, then emit the secondary raw `NEXT_STEP_HANDOFF` for resume state and ask one user question. The normal recommended action is to create graph from this plan. Run deeper review only when the user selects it or the plan records high-risk scope that needs explicit review before graph creation. If the user selects revision, revise plan first and return to the same Decision Card.
 
 ## User Gates
 
 Each gate requires a current explicit answer after the question is shown:
-pre-plan summary, plan-scope preview, durable save, post-plan review handoff, post-review
-atomization handoff, and execution handoff. Earlier broad consent never answers a
-later gate.
+pre-plan summary, plan-scope preview, durable save, post-plan next-action
+handoff, and execution handoff. Earlier broad consent never answers a later
+gate.
 
 If the user changes topic while a plan is incomplete or a `NEXT_STEP_HANDOFF`
 exists, surface the saved phase, artifact path, next command, and blocker, then
 ask one resume/pause/switch/stop question. Delegated decisions must be recorded
-in assumptions, scope safety, or review handoff.
+in assumptions, scope safety, or the next-action handoff.
 
 ## When not to use
 
@@ -162,7 +162,7 @@ in assumptions, scope safety, or review handoff.
 
 - "The spec is obvious, so a source read is unnecessary" - reject; plans start
   from approved artifacts and current repo evidence.
-- "The user said continue, so save/review/atomize in one pass" - reject; each
+- "The user said continue, so save/atomize/execute in one pass" - reject; each
   gate needs its own current answer.
 - "This polish task is harmless" - reject unless it maps to approved scope or a
   recorded scope-change tradeoff.
@@ -171,7 +171,7 @@ in assumptions, scope safety, or review handoff.
 
 - A plan adds files, features, providers, migrations, or launch steps not present
   in approved scope.
-- `NEXT_STEP_HANDOFF` is missing, points to execution, or skips mandatory review.
+- `NEXT_STEP_HANDOFF` is missing, points to execution without user-approved graph creation, or hides the create/revise/deeper-review/stop choice.
 - Critical path, rollback, verification, or final acceptance evidence is absent.
 - Real-agent waves are described without runtime receipt requirements.
 - Plan verification asks executors to run development tests or validators before
@@ -184,7 +184,7 @@ in assumptions, scope safety, or review handoff.
 - Memory, Code RAG, CodeGraph, and visual/text-first evidence requirements set.
 - Every task has files, steps, final-gate verification, rollback, and stop
   condition.
-- Review handoff blocks atomization and execution until review passes.
+- The next-action handoff blocks graph creation and execution until the current user choice is recorded.
 
 ## Failure modes
 
@@ -200,7 +200,7 @@ Returns a plan file with these fields/sections: `Goal`, `Architecture`,
 `Tech Stack`, `Constraints`, `File Structure`, `Retrieval, CodeGraph, And Visual
 Evidence`, `Critical Path`, `Scope Safety Gate`, `Delivery Strategy`,
 `Production Readiness`, numbered tasks, `Final Acceptance Gate`, `Self-Review`,
-final-only validation schedule, source-bound post-plan summary with table and ASCII map, mandatory review handoff, post-review atomization handoff,
+final-only validation schedule, source-bound post-plan summary with table and ASCII map, user-approved graph handoff, optional deeper-review handoff,
 a human-first Decision Card and a secondary machine-readable `NEXT_STEP_HANDOFF`.
 
 The handoff must name: `Current phase`, `Artifact`, `Next phase`, `Next command`,
@@ -209,8 +209,8 @@ The handoff must name: `Current phase`, `Artifact`, `Next phase`, `Next command`
 ## Guard rails
 
 - Do not write placeholders such as `TBD`, `implement later`, or `similar to`.
-- Do not offer execution before review passes and atomic work items exist.
-- Do not continue from plan to review until the current user choice is recorded.
+- Do not offer execution before a user-approved graph exists.
+- Do not continue from plan to graph creation or optional deeper review until the current user choice is recorded.
 - Always include rollback safety, task-level verification, and approved-scope
   mapping.
 - Only the owning command or runtime producer may write durable production
@@ -238,5 +238,5 @@ The handoff must name: `Current phase`, `Artifact`, `Next phase`, `Next command`
 
 - `supervibe:brainstorming` - produces the approved input spec.
 - `supervibe:requirements-intake` - alternate entry point for complexity 3-6.
-- `supervibe:executing-plans` - consumes reviewed, atomized, receipt-backed work.
+- `supervibe:executing-plans` - consumes user-approved graph work after atomization.
 - `supervibe:confidence-scoring` - plan confidence gate.

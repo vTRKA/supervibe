@@ -122,6 +122,32 @@ test('plan lifecycle flags stale active graph source against canonical pointer',
   assert.ok(evaluation.issues.some((issue) => issue.includes('canonical active plan pointer')));
 });
 
+test('plan lifecycle treats completed active graph as a finish state instead of source repair blocker', async () => {
+  const { root, currentPlan, oldPlan } = await makeLifecycleFixture();
+  await repairPlanLifecycle({
+    rootDir: root,
+    currentPlanPath: currentPlan,
+    apply: true,
+    receiptId: 'workflow-test',
+  });
+  await writeFile(join(root, '.supervibe', 'memory', 'work-items', 'epic-current', 'graph.json'), `${JSON.stringify({
+    kind: 'supervibe-work-item-graph',
+    epicId: 'epic-current',
+    source: { type: 'plan', path: oldPlan, snapshotPath: 'source-plan.md' },
+    items: [
+      { itemId: 'epic-current', type: 'epic', status: 'closed', title: 'Epic' },
+      { itemId: 't1', type: 'task', status: 'done', title: 'Task' },
+    ],
+  }, null, 2)}\n`, 'utf8');
+
+  const report = createPlanLifecycleReport({ rootDir: root });
+
+  assert.equal(report.activeGraphResolver.status, 'complete');
+  assert.equal(report.staleActiveSource, false);
+  assert.equal(report.activeGraphTerminal, true);
+  assert.doesNotMatch(formatPlanLifecycleReport(report), /repair active graph source/);
+});
+
 test('plan lifecycle CLI prints status and refuses destructive deletion without receipt', async () => {
   const { root } = await makeLifecycleFixture();
   const output = execFileSync(process.execPath, [

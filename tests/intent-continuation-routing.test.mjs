@@ -63,7 +63,7 @@ test("bare continuation phrases route to safe workflow resume dispatch without a
   });
 });
 
-test("active plan continuation routes to mandatory plan review", () => {
+test("active plan continuation follows an explicit review next command", () => {
   withTempProject((root) => {
     writeActiveState(root, {
       stage: "plan-review",
@@ -92,7 +92,7 @@ test("active reviewed plan continuation routes to atomization", () => {
 
     assert.match(output, /MATCH: active-workflow-continuation/);
     assert.match(output, /INTENT: atomize_plan/);
-    assert.match(output, /COMMAND: \/supervibe-loop --atomize-plan \.supervibe\/artifacts\/plans\/example\.md --plan-review-passed/);
+    assert.match(output, /COMMAND: \/supervibe-loop --atomize-plan \.supervibe\/artifacts\/plans\/example\.md --user-approved-plan/);
   });
 });
 

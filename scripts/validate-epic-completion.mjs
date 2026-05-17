@@ -128,8 +128,8 @@ async function main() {
   node scripts/validate-epic-completion.mjs --all
   node scripts/validate-epic-completion.mjs --fixture-dir tests/fixtures/completed-work-item-graphs
 
-Completion validation is stricter than graph-shape validation: required tasks must be terminal,
-dependencies must be terminal, the epic must be closed, and production completion needs non-dry-run evidence.
+Completion validation is stricter than graph-shape validation when scoped or strict: required tasks must be terminal,
+dependencies must be terminal, the epic must be closed, and production completion needs non-dry-run evidence. Default --all is a broad historical inventory and does not require evidence/closed epics unless strict or trusted flags are used.
 
 Trusted mode:
   --require-trusted-evidence requires structured evidence to cite a runtime-issued trusted workflow receipt.
@@ -153,7 +153,7 @@ Trusted mode:
     console.log("STATUS: no work-item graph files found");
     console.log("NO_COVERAGE: true");
     console.log(`PASS: ${values["strict-coverage"] ? "false" : "neutral"}`);
-    console.log("NEXT_ACTION: atomize a reviewed plan before production completion validation");
+    console.log("NEXT_ACTION: atomize a user-approved loop-ready plan before production completion validation");
     if (values["strict-coverage"]) process.exit(1);
     return;
   }
@@ -164,12 +164,18 @@ Trusted mode:
   const activePreCloseGraphIds = await activePreCloseGraphIdsForValidation(root, {
     enabled: Boolean(values["allow-active-preclose"]),
   });
+  const broadHistoricalInventoryMode = Boolean(values.all)
+    && !values.file
+    && !values["fixture-dir"]
+    && !values["strict-coverage"]
+    && !values["require-trusted-evidence"]
+    && !values["disallow-legacy-evidence"];
 
   const report = await validateEpicCompletionFiles({
     rootDir: root,
     files,
     production: !values["non-production"],
-    requireEvidence: !values["no-evidence-required"],
+    requireEvidence: broadHistoricalInventoryMode ? false : !values["no-evidence-required"],
     allowSkipped: values["allow-skipped"] !== false,
     allowDryRunEvidence: values["allow-dry-run-evidence"],
     requireTrustedEvidence: values["require-trusted-evidence"],
@@ -179,7 +185,7 @@ Trusted mode:
     activePreCloseGraphIds,
     disallowLegacyEvidence: values["disallow-legacy-evidence"],
     allowLegacyEvidence: values["allow-legacy-evidence"],
-    requireEpicClosed: !values["allow-open-epic"],
+    requireEpicClosed: broadHistoricalInventoryMode ? false : !values["allow-open-epic"],
     requireFollowups: values["require-followups"],
   });
 

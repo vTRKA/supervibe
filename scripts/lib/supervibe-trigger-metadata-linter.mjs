@@ -13,7 +13,7 @@ const FILE_REQUIREMENTS = [
   },
   {
     file: "commands/supervibe-plan.md",
-    required: ["plan", "план", "review", "ревью", "atomic", "эпик"],
+    required: ["plan", "loop-ready", "review", "atomize", "epic"],
   },
   {
     file: "commands/supervibe-loop.md",
@@ -29,7 +29,7 @@ const FILE_REQUIREMENTS = [
   },
   {
     file: "skills/writing-plans/SKILL.md",
-    required: ["plan", "план", "review", "ревью", "atomic", "epic"],
+    required: ["plan", "loop-ready", "review", "graph", "epic"],
   },
   {
     file: "skills/requesting-code-review/SKILL.md",
@@ -50,7 +50,7 @@ const FILE_REQUIREMENTS = [
 ];
 
 const README_REQUIRED = [
-  "Brainstorm -> Plan -> Review -> Atomize -> Safe Run",
+  "Brainstorm -> Loop-ready plan -> Atomize -> Safe run -> Optional verify/review",
   "current session",
   "worktree is optional",
   "why-trigger",

@@ -61,6 +61,7 @@ USAGE:
   node scripts/workflow-receipt.mjs issue --command /supervibe-design --agent creative-director --host-invocation-id <id> --stage <stage> --reason <text> --input <path> --output <path> --slug <prototype-slug>
   node scripts/workflow-receipt.mjs issue --command /supervibe-design --skill supervibe:brandbook --stage <stage> --reason <text> --output <path> --handoff <id>
   node scripts/workflow-receipt.mjs issue --command /supervibe-loop --stage <stage> --reason <text> --output <path> --handoff <id> --graph-id <epic-id> --task-id <work-item-id>
+  node scripts/workflow-receipt.mjs status
   node scripts/workflow-receipt.mjs inspect
   node scripts/workflow-receipt.mjs lookup-work-item --task-id <work-item-id> [--graph-id <graph-id>] [--artifact <path>] [--json]
   node scripts/workflow-receipt.mjs diagnose-work-item-drift --task-id <work-item-id> [--graph-id <graph-id>] [--artifact <path>] [--json]
@@ -223,6 +224,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (result.receipt.evidenceSnapshot?.path) {
       console.log(`EVIDENCE_SNAPSHOT: ${result.receipt.evidenceSnapshot.path}`);
     }
+    process.exit(0);
+  }
+
+  if (options.operation === "status" || options.operation === "receipt-status") {
+    const result = inspectWorkflowReceiptDrift(rootDir, { secret: options.secret || null });
+    console.log(formatWorkflowReceiptStatus(result));
     process.exit(0);
   }
 
@@ -622,7 +629,10 @@ function inspectWorkflowReceiptDrift(rootDir, options = {}) {
   const staleItems = [];
   for (const receipt of receipts) {
     const trust = validateWorkflowReceiptTrust(rootDir, receipt, { secret: options.secret || null });
-    const driftIssues = trust.issues.filter(isReceiptDriftIssue);
+    const driftIssues = [
+      ...trust.issues.filter(isReceiptDriftIssue),
+      ...(trust.diagnostics || []).filter(isReceiptDriftIssue),
+    ];
     if (driftIssues.length === 0) continue;
     staleItems.push({
       receiptId: receipt.receiptId || "unknown",
@@ -644,6 +654,33 @@ function inspectWorkflowReceiptDrift(rootDir, options = {}) {
   };
 }
 
+function formatWorkflowReceiptStatus(result = {}) {
+  const splitBrain = hasReceiptSplitBrain(result);
+  const lines = [
+    "SUPERVIBE_WORKFLOW_RECEIPT_STATUS",
+    "APPLY: false",
+    "MUTATION: none",
+    "USER_BLOCKING: false",
+    "CHECKED: " + (result.checked || 0),
+    "STALE: " + (result.stale || 0),
+    "SPLIT_BRAIN: " + splitBrain,
+  ];
+  for (const item of result.items || []) {
+    lines.push("WARNING_RECEIPT: " + item.receiptId);
+    lines.push("RECEIPT_PATH: " + item.receiptPath);
+    lines.push("DRIFT_SOURCE: " + (uniqueStrings(item.driftSources).join(",") || "unknown"));
+    for (const issue of item.issues || []) lines.push("WARNING_ISSUE: " + issue);
+  }
+  lines.push("NEXT_SAFE_ACTION: " + (result.stale ? "continue development; repair receipts from details if evidence is needed" : "continue development"));
+  lines.push("DETAILS_COMMAND: node scripts/workflow-receipt.mjs inspect");
+  lines.push("REPAIR_COMMAND: node scripts/workflow-receipt.mjs prune-stale --apply");
+  return lines.join("\n");
+}
+
+function hasReceiptSplitBrain(result = {}) {
+  return (result.items || []).some((item) => (item.issues || []).some((issue) => /artifact link|output artifact missing|live-output-missing|live-output-changed|hash mismatch|ledger entry missing|ledger .*mismatch/i.test(String(issue || ""))));
+}
+
 function formatWorkflowReceiptDriftInspection(result = {}) {
   const lines = [
     "SUPERVIBE_WORKFLOW_RECEIPT_INSPECT",
@@ -651,6 +688,7 @@ function formatWorkflowReceiptDriftInspection(result = {}) {
     "MUTATION: none",
     `CHECKED: ${result.checked || 0}`,
     `STALE: ${result.stale || 0}`,
+    `SPLIT_BRAIN: ${hasReceiptSplitBrain(result)}`,
   ];
   for (const item of result.items || []) {
     lines.push(`STALE_RECEIPT: ${item.receiptId}`);
@@ -668,7 +706,7 @@ function formatWorkflowReceiptDriftInspection(result = {}) {
 }
 
 function isReceiptDriftIssue(issue = "") {
-  return /output artifact (?:missing|hash mismatch)|artifact link .*missing|artifact link .*hash mismatch/i.test(String(issue || ""));
+  return /output artifact (?:missing|hash mismatch)|live-output-(?:missing|changed)|artifact link .*missing|artifact link .*hash mismatch|ledger entry missing|ledger .*mismatch/i.test(String(issue || ""));
 }
 
 function extractReceiptDriftSource(issue = "") {

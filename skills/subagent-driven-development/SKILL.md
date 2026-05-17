@@ -29,11 +29,11 @@ It keeps the work evidence-first, scope-bounded, confidence-scored, and verified
 
 WHEN executing a plan AND subagent dispatch is available AND plan has 5+ independent tasks. Preferred over `supervibe:executing-plans` (inline) when both apply.
 
-## Plan Review And User Gate
+## Plan Approval And User Gate
 
-Subagent-driven execution can only start from a reviewed plan or reviewed work-item graph with a current explicit user answer for the latest handoff question. `--plan-review-passed`, a plan path, or a worker assignment is not permission to execute by itself; it only establishes one prerequisite.
+Subagent-driven execution can only start from a user-approved loop-ready plan or accepted work-item graph with a current explicit user answer for the latest handoff question. `--user-approved-plan`, a plan path, or a worker assignment is not permission to execute by itself; it only establishes one graph-creation prerequisite.
 
-Before dispatching workers, verify the plan-review reviewer coverage, zero open critical/major findings, an accepted atomization/work graph, and a Next User Decision that authorizes this execution phase. If any gate is missing or an unanswered `NEXT_STEP_HANDOFF` exists, stop and ask rather than spawning workers.
+Before dispatching workers, verify the accepted atomization/work graph, zero open critical/major blockers, and a Next User Decision that authorizes this execution phase. If any gate is missing or an unanswered `NEXT_STEP_HANDOFF` exists, stop and ask rather than spawning workers.
 
 ## Continuation Contract
 
@@ -49,7 +49,7 @@ write sets and dependencies are disjoint.
 
 ## Definition Of Ready
 
-A subagent task is ready only when it has a reviewed plan reference, dependency
+A subagent task is ready only when it has an approved plan reference, dependency
 state, declared write set, expected files, acceptance criteria, verification
 command, rollback plan, scope id, risk level, stop condition, and final-sweep
 review policy. If any field is missing, split or repair the task before dispatch.

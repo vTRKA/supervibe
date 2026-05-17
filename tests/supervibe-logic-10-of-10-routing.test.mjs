@@ -31,7 +31,7 @@ test("workflow router preserves upstream precedence before execution", () => {
   assert.equal(specRoute.source, "upstream-artifact-precedence");
 
   const planRoute = routeWorkflowIntent("create a plan then execute it");
-  assert.equal(planRoute.command, "/supervibe-plan");
+  assert.equal(planRoute.command, "/supervibe-plan --loop-ready");
   assert.equal(planRoute.intent, "brainstorm_to_plan");
   assert.notEqual(planRoute.command, "/supervibe-execute-plan");
 });
@@ -50,10 +50,10 @@ test("Russian plan-only validation and reviewer requests route to plan review", 
   assert.equal(workflowRoute.source, "plan-only-review-gate");
 });
 
-test("reviewed and atomized plans are the only direct workflow execution path", () => {
-  const blocked = routeWorkflowIntent("execute plan", { artifacts: { plan: true } });
-  assert.equal(blocked.command, "/supervibe-plan --review");
-  assert.equal(blocked.intent, "plan_review");
+test("approved loop-ready plans atomize before direct workflow execution", () => {
+  const graphCreation = routeWorkflowIntent("execute plan", { artifacts: { plan: true } });
+  assert.equal(graphCreation.command, "/supervibe-loop --atomize-plan <plan-path> --user-approved-plan");
+  assert.equal(graphCreation.intent, "atomize_plan");
 
   const executable = routeWorkflowIntent("execute plan", { artifacts: { planReviewPassed: true, workItemsReady: true } });
   assert.equal(executable.intent, "single_session_epic_run");

@@ -5,11 +5,11 @@ export const COMMAND_AGENT_ORCHESTRATION_CONTRACT = Object.freeze({
   blockedMode: "agent-required-blocked",
   agentFanoutPolicy: Object.freeze({
     required: true,
-    minParallelAgents: 2,
-    requiredAfterContextCompaction: true,
-    requiredForSimpleTasks: true,
-    compactContinuationMode: "fresh-parallel-agent-wave",
-    simpleTaskMode: "owner-plus-reviewer-or-quality-gate",
+    minParallelAgents: 1,
+    requiredAfterContextCompaction: false,
+    requiredForSimpleTasks: false,
+    compactContinuationMode: "resume-from-prime-context",
+    simpleTaskMode: "single-ready-agent",
   }),
   requiredPlanFields: Object.freeze(["agentPlan", "requiredAgentIds"]),
   requiredReceiptFields: Object.freeze(["hostInvocation.source", "hostInvocation.invocationId"]),
@@ -432,8 +432,8 @@ const CODEX_SPAWN_PAYLOAD_RULES = Object.freeze([
   "encode Supervibe logical agent role in message, not Codex agent_type.",
   "capture the returned Codex agent id as receipt evidence before issuing workflow receipts.",
   "use fork_context=false only for compact-context spawns that intentionally need agent_type/model/reasoning_effort overrides.",
-  "after compact/resume/context transition, start a fresh parallel agent wave before durable workflow work continues.",
-  "simple or low-risk tasks still require owner plus reviewer/quality-gate fan-out; low risk may reduce roles but must not become single-threaded durable work.",
+  "after compact/resume/context transition, prime compact context and dispatch only the next ready task(s) instead of requiring a fresh fan-out wave.",
+  "simple or low-risk tasks may run as a single ready agent; reviewer/quality-gate work is deferred to the final graph/release gate unless risk requires it now.",
 ]);
 
 const CODEX_WORKER_AGENT_PATTERNS = Object.freeze([
@@ -505,8 +505,6 @@ const COMMAND_AGENT_PROFILES = Object.freeze(Object.fromEntries([
   }),
   profile("/supervibe-brainstorm", [
     "supervibe-orchestrator",
-    "product-manager",
-    "systems-analyst",
     "quality-gate-reviewer",
   ], { dynamicAgentSelectors: ["domain-specialists"] }),
   profile("/supervibe-design", [
@@ -554,14 +552,10 @@ const COMMAND_AGENT_PROFILES = Object.freeze(Object.fromEntries([
   ], { dynamicAgentSelectors: ["detected-stack-specialists"] }),
   profile("/supervibe-loop", [
     "supervibe-orchestrator",
-    "ai-agent-orchestrator",
-    "repo-researcher",
     "quality-gate-reviewer",
-  ], { dynamicAgentSelectors: ["task-wave-specialists", "reviewers"] }),
+  ], { dynamicAgentSelectors: ["task-wave-specialists", "risk-reviewers"] }),
   profile("/supervibe-plan", [
     "supervibe-orchestrator",
-    "systems-analyst",
-    "architect-reviewer",
     "quality-gate-reviewer",
   ], { dynamicAgentSelectors: ["stack-architects", "domain-specialists", "reviewers"] }),
   profile("/supervibe-preview", [
@@ -921,7 +915,7 @@ export function buildCommandAgentPlan(commandId, {
     ? (scopedReceiptGateActive ? "scoped-runtime-agent-receipts" : "runtime-agent-receipts")
     : "blocked";
   const agentFanoutPolicy = copyAgentFanoutPolicy(profile.agentFanoutPolicy);
-  const minimumParallelAgents = Number(agentFanoutPolicy.minParallelAgents || 2);
+  const minimumParallelAgents = Number(agentFanoutPolicy.minParallelAgents || 1);
   const parallelAgentDispatchRequired = agentFanoutPolicy.required === true
     && !bootstrapOnly
     && !dryRunAgentless
@@ -1283,7 +1277,7 @@ export function formatCommandAgentPlan(plan = {}) {
     `AGENT_FANOUT_REQUIRED: ${plan.agentFanoutPolicy?.required === true}`,
     `AGENT_FANOUT_AFTER_COMPACT: ${plan.agentFanoutPolicy?.requiredAfterContextCompaction === true}`,
     `AGENT_FANOUT_SIMPLE_TASKS: ${plan.agentFanoutPolicy?.requiredForSimpleTasks === true}`,
-    `AGENT_MIN_PARALLEL: ${plan.minimumParallelAgents || plan.agentFanoutPolicy?.minParallelAgents || 2}`,
+    `AGENT_MIN_PARALLEL: ${plan.minimumParallelAgents || plan.agentFanoutPolicy?.minParallelAgents || 1}`,
     `PARALLEL_AGENT_DISPATCH_REQUIRED: ${plan.parallelAgentDispatchRequired === true}`,
     `COMPACT_CONTINUATION_AGENT_DISPATCH_REQUIRED: ${plan.compactContinuationAgentDispatchRequired === true}`,
     `SIMPLE_TASK_AGENT_DISPATCH_REQUIRED: ${plan.simpleTaskAgentDispatchRequired === true}`,
@@ -1328,6 +1322,8 @@ export function formatCommandAgentPlan(plan = {}) {
     `HOST_EVIDENCE: ${plan.hostDispatch?.evidencePath || "unspecified"}`,
     `CODEX_COMPLETED_SUBAGENT_CLEANUP_REQUIRED: ${plan.hostManagedCleanupDebt?.count || 0}`,
     `CODEX_CLOSE_COMPLETED_SUBAGENTS: ${(plan.hostManagedCleanupDebt?.closeRequired || []).map((item) => item.hostInvocationId).filter(Boolean).join(", ") || "none"}`,
+    `CODEX_COMPLETED_SUBAGENT_CLEANUP_DIAGNOSTIC: ${plan.hostManagedCleanupDebt?.diagnosticCount || 0}`,
+    `CODEX_DIAGNOSTIC_COMPLETED_SUBAGENTS: ${(plan.hostManagedCleanupDebt?.diagnostics || []).map((item) => item.hostInvocationId).filter(Boolean).join(", ") || "none"}`,
     `QUALITY_IMPACT: ${plan.qualityImpact || "none"}`,
     `EMULATION_ALLOWED: false`,
   ];
@@ -1681,6 +1677,7 @@ function selectStageReviewers(context = normalizeSelectorContext()) {
   const agents = [];
   if (["review", "gate", "quality-gate", "release"].some((token) => stage.includes(token))) {
     agents.push("code-reviewer", "quality-gate-reviewer");
+    if (artifactType.includes("plan") || stage.includes("review")) agents.push("architect-reviewer");
   }
   if (stage.includes("release") || stage.includes("deploy")) {
     agents.push("release-governance-reviewer", "devops-sre");

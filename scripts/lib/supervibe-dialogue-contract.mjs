@@ -245,58 +245,58 @@ const POST_DELIVERY_CONTEXTS = Object.freeze({
   },
   plan_delivery: {
     en: {
-      prompt: 'Step 1/1: approve this implementation plan for review, or adjust scope first?',
-      recommendation: 'Recommended path: approve only when phases, file scope, risks, and deferred or rejected extras match the agreed scope.',
-      freeFormPath: 'You can answer in your own words, for example: "exclude analytics", "defer phase 3", or "split mobile into a later plan".',
-      stopCondition: 'Keep plan draft: I will not atomize, execute, or treat the plan as approved scope.',
+      prompt: 'Step 1/1: create a work graph from this loop-ready plan, or adjust scope first?',
+      recommendation: 'Recommended path: create graph only when epics, tasks, dependencies, file scope, risks, and deferred or rejected extras match the agreed scope.',
+      freeFormPath: 'You can answer in your own words, for example: "create graph", "exclude analytics", "defer phase 3", or "run deeper review first".',
+      stopCondition: 'Keep plan draft: I will not atomize, execute, or treat the plan as approved graph scope.',
       actions: {
         approve: {
-          label: 'Approve plan for review',
-          tradeoff: 'Keep this plan as candidate scope and start the mandatory review loop before atomization.',
+          label: 'Create graph from this plan',
+          tradeoff: 'Atomize the user-approved loop-ready plan into an epic and tasks without an extra review ritual.',
         },
         refine: {
           label: 'Revise plan scope',
-          tradeoff: 'Name phases, tasks, files, assumptions, or extras to remove, rewrite, split, or defer before review.',
+          tradeoff: 'Name phases, tasks, files, assumptions, or extras to remove, rewrite, split, or defer before graph creation.',
         },
         alternative: {
           label: 'Exclude or defer items',
           tradeoff: 'List items to move out of current scope so they cannot become executable work silently.',
         },
         'deeper-review': {
-          label: 'Audit plan deeper',
-          tradeoff: 'Run extra coverage, dependency, risk, or readiness review before approval.',
+          label: 'Run deeper review',
+          tradeoff: 'Use explicit specialist review for high-risk or user-requested plan hardening before graph creation.',
         },
         stop: {
           label: 'Keep plan draft',
-          tradeoff: 'Save the current draft state only; no review, atomization, or execution starts.',
+          tradeoff: 'Save the current draft state only; no graph creation, review, or execution starts.',
         },
       },
     },
     ru: {
-      prompt: 'Шаг 1/1: утвердить план реализации для review или сначала изменить scope?',
-      recommendation: 'Рекомендуемый путь: утверждать только когда фазы, файлы, риски и deferred/rejected extras совпадают с согласованным scope.',
-      freeFormPath: 'Можно ответить своими словами, например: "исключи аналитику", "отложи фазу 3" или "вынеси mobile в отдельный план".',
-      stopCondition: 'Оставить план draft: я не буду атомизировать, исполнять или считать план утвержденным scope.',
+      prompt: '\u0428\u0430\u0433 1/1: \u0441\u043e\u0437\u0434\u0430\u0442\u044c \u0433\u0440\u0430\u0444 \u0440\u0430\u0431\u043e\u0442 \u0438\u0437 loop-ready \u043f\u043b\u0430\u043d\u0430 \u0438\u043b\u0438 \u0441\u043d\u0430\u0447\u0430\u043b\u0430 \u0438\u0437\u043c\u0435\u043d\u0438\u0442\u044c scope?',
+      recommendation: '\u0420\u0435\u043a\u043e\u043c\u0435\u043d\u0434\u0443\u0435\u043c\u044b\u0439 \u043f\u0443\u0442\u044c: \u0441\u043e\u0437\u0434\u0430\u0432\u0430\u0442\u044c \u0433\u0440\u0430\u0444 \u0442\u043e\u043b\u044c\u043a\u043e \u043a\u043e\u0433\u0434\u0430 \u044d\u043f\u0438\u043a\u0438, \u0437\u0430\u0434\u0430\u0447\u0438, \u0437\u0430\u0432\u0438\u0441\u0438\u043c\u043e\u0441\u0442\u0438, \u0444\u0430\u0439\u043b\u044b \u0438 \u0440\u0438\u0441\u043a\u0438 \u0441\u043e\u0432\u043f\u0430\u0434\u0430\u044e\u0442 \u0441 scope.',
+      freeFormPath: '\u041c\u043e\u0436\u043d\u043e \u043e\u0442\u0432\u0435\u0442\u0438\u0442\u044c \u0441\u0432\u043e\u0438\u043c\u0438 \u0441\u043b\u043e\u0432\u0430\u043c\u0438: "\u0441\u043e\u0437\u0434\u0430\u0439 \u0433\u0440\u0430\u0444", "\u0438\u0441\u043a\u043b\u044e\u0447\u0438 \u0430\u043d\u0430\u043b\u0438\u0442\u0438\u043a\u0443", "\u043e\u0442\u043b\u043e\u0436\u0438 \u0444\u0430\u0437\u0443 3" \u0438\u043b\u0438 "\u0441\u043d\u0430\u0447\u0430\u043b\u0430 \u0433\u043b\u0443\u0431\u043e\u043a\u043e\u0435 \u0440\u0435\u0432\u044c\u044e".',
+      stopCondition: '\u041e\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u043f\u043b\u0430\u043d draft: \u044f \u043d\u0435 \u0431\u0443\u0434\u0443 \u0430\u0442\u043e\u043c\u0438\u0437\u0438\u0440\u043e\u0432\u0430\u0442\u044c, \u0438\u0441\u043f\u043e\u043b\u043d\u044f\u0442\u044c \u0438\u043b\u0438 \u0441\u0447\u0438\u0442\u0430\u0442\u044c \u043f\u043b\u0430\u043d \u0443\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u043d\u044b\u043c scope \u0433\u0440\u0430\u0444\u0430.',
       actions: {
         approve: {
-          label: 'Утвердить план для review',
-          tradeoff: 'Фиксирует этот план как candidate scope и запускает обязательный review loop перед атомизацией.',
+          label: '\u0421\u043e\u0437\u0434\u0430\u0442\u044c \u0433\u0440\u0430\u0444 \u0438\u0437 \u043f\u043b\u0430\u043d\u0430',
+          tradeoff: '\u0410\u0442\u043e\u043c\u0438\u0437\u0438\u0440\u0443\u0435\u0442 user-approved loop-ready plan \u0432 epic \u0438 \u0437\u0430\u0434\u0430\u0447\u0438 \u0431\u0435\u0437 \u043b\u0438\u0448\u043d\u0435\u0433\u043e review-\u0440\u0438\u0442\u0443\u0430\u043b\u0430.',
         },
         refine: {
-          label: 'Изменить scope плана',
-          tradeoff: 'Назовите фазы, задачи, файлы, допущения или extras, которые нужно убрать, переписать, разделить или отложить.',
+          label: '\u0418\u0437\u043c\u0435\u043d\u0438\u0442\u044c scope \u043f\u043b\u0430\u043d\u0430',
+          tradeoff: '\u041d\u0430\u0437\u043e\u0432\u0438 \u0444\u0430\u0437\u044b, \u0437\u0430\u0434\u0430\u0447\u0438, \u0444\u0430\u0439\u043b\u044b \u0438\u043b\u0438 extras, \u043a\u043e\u0442\u043e\u0440\u044b\u0435 \u043d\u0443\u0436\u043d\u043e \u0443\u0431\u0440\u0430\u0442\u044c, \u043f\u0435\u0440\u0435\u043f\u0438\u0441\u0430\u0442\u044c, \u0440\u0430\u0437\u0434\u0435\u043b\u0438\u0442\u044c \u0438\u043b\u0438 \u043e\u0442\u043b\u043e\u0436\u0438\u0442\u044c.',
         },
         alternative: {
-          label: 'Исключить или отложить пункты',
-          tradeoff: 'Переносит пункты за пределы текущего scope, чтобы они не стали executable work молча.',
+          label: '\u0418\u0441\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u0438\u043b\u0438 \u043e\u0442\u043b\u043e\u0436\u0438\u0442\u044c \u043f\u0443\u043d\u043a\u0442\u044b',
+          tradeoff: '\u041f\u0435\u0440\u0435\u043d\u043e\u0441\u0438\u0442 \u043f\u0443\u043d\u043a\u0442\u044b \u0437\u0430 \u043f\u0440\u0435\u0434\u0435\u043b\u044b \u0442\u0435\u043a\u0443\u0449\u0435\u0433\u043e scope.',
         },
         'deeper-review': {
-          label: 'Проверить план глубже',
-          tradeoff: 'Запускает дополнительную проверку покрытия, зависимостей, рисков или readiness перед approval.',
+          label: '\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u043f\u043b\u0430\u043d \u0433\u043b\u0443\u0431\u0436\u0435',
+          tradeoff: '\u0417\u0430\u043f\u0443\u0441\u043a\u0430\u0435\u0442 \u044f\u0432\u043d\u043e\u0435 specialist review \u0434\u043b\u044f high-risk \u0438\u043b\u0438 user-requested hardening \u043f\u0435\u0440\u0435\u0434 \u0441\u043e\u0437\u0434\u0430\u043d\u0438\u0435\u043c \u0433\u0440\u0430\u0444\u0430.',
         },
         stop: {
-          label: 'Оставить план draft',
-          tradeoff: 'Сохраняет только текущий draft; review, атомизация и execution не начинаются.',
+          label: '\u041e\u0441\u0442\u0430\u0432\u0438\u0442\u044c \u043f\u043b\u0430\u043d draft',
+          tradeoff: '\u0421\u043e\u0445\u0440\u0430\u043d\u044f\u0435\u0442 \u0442\u0435\u043a\u0443\u0449\u0438\u0439 draft; graph creation, review \u0438 execution \u043d\u0435 \u043d\u0430\u0447\u0438\u043d\u0430\u044e\u0442\u0441\u044f.',
         },
       },
     },
@@ -539,7 +539,7 @@ const POST_DELIVERY_SPECIALISTS = Object.freeze({
   genesis_setup: 'supervibe-orchestrator',
   prototype_delivery: 'prototype-builder',
   requirements_delivery: 'product-strategist',
-  plan_delivery: 'architect-reviewer',
+  plan_delivery: 'supervibe-orchestrator',
   adaptation_delivery: 'supervibe-orchestrator',
   strengthening_delivery: 'quality-gate-reviewer',
   design_delivery: 'ux-ui-designer',
@@ -981,7 +981,7 @@ function hasSingleQuestion(text) {
 
 function hasPostDeliveryMenu(text) {
   const lower = text.toLowerCase();
-  const approve = /approve|approved|apply|apply scaffold|применить|утверд|соглас/.test(lower);
+  const approve = /approve|approved|apply|apply scaffold|create graph|atomize|\u043f\u0440\u0438\u043c\u0435\u043d\u0438\u0442\u044c|\u0443\u0442\u0432\u0435\u0440\u0434|\u0441\u043e\u0433\u043b\u0430\u0441|\u0441\u043e\u0437\u0434\u0430\u0442\u044c \u0433\u0440\u0430\u0444|\u0430\u0442\u043e\u043c\u0438\u0437/.test(lower);
   const refine = /refine|revise|revision|adjust [a-z -]*plan|adjust [a-z -]*diff|доработ|изменить [а-яa-z -]*(план|diff)|исправ|уточн/.test(lower);
   const alternative = /alternative|try another option|another option|compare another|другой вариант|сравнить друг|альтернатив/.test(lower);
   const stop = /stop|stop here|останов|стоп/.test(lower);

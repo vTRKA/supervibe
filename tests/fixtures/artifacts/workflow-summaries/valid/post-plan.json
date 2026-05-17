@@ -65,13 +65,13 @@
       },
       {
         "label": "Next",
-        "value": "/supervibe-plan --review <plan-path>"
+        "value": "/supervibe-loop --atomize-plan <plan-path> --user-approved-plan"
       }
     ],
     "asciiMap": [
       "request/source",
       "  -> post-plan summary (.supervibe/artifacts/summaries/workflow-summary-fixture/post-plan-summary.json)",
-      "    -> /supervibe-plan --review <plan-path>"
+      "    -> /supervibe-loop --atomize-plan <plan-path> --user-approved-plan"
     ]
   },
   "decisionSummary": {
@@ -82,10 +82,10 @@
       "Release execution remains outside fixture scope."
     ],
     "validationResult": "fixture source artifact is current",
-    "nextRecommendedCommand": "/supervibe-plan --review <plan-path>",
+    "nextRecommendedCommand": "/supervibe-loop --atomize-plan <plan-path> --user-approved-plan",
     "nextUserActions": [
-      "approve-post-plan-summary: Approve plan summary and review",
-      "revise-plan-before-review: Revise plan first",
+      "approve-post-plan-summary: Approve plan summary and create graph",
+      "revise-plan-before-graph: Revise plan first",
       "stop-after-plan: Stop after plan"
     ]
   },
@@ -99,15 +99,15 @@
   "choices": [
     {
       "id": "approve-post-plan-summary",
-      "label": "Approve plan summary and review",
-      "description": "Allows the workflow to move into plan review with the current plan summary.",
+      "label": "Approve plan summary and create graph",
+      "description": "Allows the workflow to atomize the user-approved loop-ready plan into graph work items.",
       "recommended": true,
       "ordinal": 1
     },
     {
-      "id": "revise-plan-before-review",
+      "id": "revise-plan-before-graph",
       "label": "Revise plan first",
-      "description": "Keeps the workflow on the implementation plan before review starts.",
+      "description": "Keeps the workflow on the implementation plan before graph creation.",
       "recommended": false,
       "ordinal": 2
     },
@@ -129,7 +129,7 @@
       "approve-post-plan-summary"
     ],
     "sourcePromptHash": "sha256:a596de8f26f82f4d23e81a1369fef5f5976bb50c99656b26c32966e5dd6d1a3b",
-    "artifactHash": "sha256:cda5976a3b538ecae7f746d2c1ed0f295ec03241ef4b9f9df3ab2c144ae655d6",
+    "artifactHash": "sha256:9c3736a1c02ae4a4655278d5e9e294a1f1eba5801368822335b9fbb4433d58d6",
     "expiresAt": "2026-05-22T00:00:00.000Z"
   },
   "evidenceAppendix": {
@@ -138,8 +138,8 @@
     "storagePath": ".supervibe/artifacts/summaries/workflow-summary-fixture/post-plan-summary.json",
     "sourcePromptHash": "sha256:a596de8f26f82f4d23e81a1369fef5f5976bb50c99656b26c32966e5dd6d1a3b",
     "sourceArtifactHash": "sha256:59307407feccd820fb70cba76980538c48d988407b82b0f3f9f4da943af3300e",
-    "artifactHash": "sha256:cda5976a3b538ecae7f746d2c1ed0f295ec03241ef4b9f9df3ab2c144ae655d6",
+    "artifactHash": "sha256:9c3736a1c02ae4a4655278d5e9e294a1f1eba5801368822335b9fbb4433d58d6",
     "items": []
   },
-  "artifactHash": "sha256:cda5976a3b538ecae7f746d2c1ed0f295ec03241ef4b9f9df3ab2c144ae655d6"
+  "artifactHash": "sha256:9c3736a1c02ae4a4655278d5e9e294a1f1eba5801368822335b9fbb4433d58d6"
 }

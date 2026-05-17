@@ -11,7 +11,7 @@ export function createHappyPathPlan({
   const source = planPath || prdPath || request || "<request>";
   const graph = graphPath || `.supervibe/memory/work-items/${epicId}/graph.json`;
   const atomizeCommand = planPath
-    ? `npm run supervibe:loop -- --atomize-plan ${planPath} ${dryRun ? "--dry-run" : "--plan-review-passed"}`
+    ? `npm run supervibe:loop -- --atomize-plan ${planPath} ${dryRun ? "--dry-run" : "--user-approved-plan"}`
     : prdPath
       ? `npm run supervibe:loop -- --from-prd ${prdPath} --dry-run`
       : `npm run supervibe:loop -- --request "${escapeCommandText(request || "describe the feature")}" --dry-run`;
@@ -21,7 +21,7 @@ export function createHappyPathPlan({
     source,
     dryRun,
     phases: [
-      phase("prd-plan", "PRD/Plan", "Start from an accepted PRD, reviewed plan, or request.", source),
+      phase("prd-plan", "PRD/Plan", "Start from an accepted PRD, user-approved loop-ready plan, or request.", source),
       phase("atomize", "Atomize", "Preview or write the native work-item graph.", atomizeCommand),
       phase("inspect", "Inspect", "Open the universal visual control plane.", `npm run supervibe:ui -- --file ${graph}`),
       phase("context", "Context", "Preview the compact task context before execution.", `npm run supervibe:context-pack -- --file ${graph} --item T1`),

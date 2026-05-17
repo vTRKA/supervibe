@@ -301,10 +301,12 @@ export function buildRuntimeCommandAgentPlan({
     ? summarizeHostManagedSubagentDebtSync({
         rootDir: resolvedProjectRoot,
         path: defaultRuntimeCleanupRegistryPath(resolvedProjectRoot),
-        strictRelease: true,
+        strictRelease: false,
       })
     : { count: 0, closeRequired: [] };
-  const codexSpawnBlockedByCleanup = codexCleanupDebt.count > 0 && Array.isArray(plan.codexSpawnPayloads) && plan.codexSpawnPayloads.length > 0;
+  const codexSpawnCleanupWarning = Number(codexCleanupDebt.globalCount || codexCleanupDebt.diagnosticCount || 0) > 0
+    && Array.isArray(plan.codexSpawnPayloads)
+    && plan.codexSpawnPayloads.length > 0;
   const codexKnowledgeContexts = buildAgentKnowledgeContexts({
     agentIds: (plan.codexSpawnPayloads || []).map((payload) => payload.agentId),
     projectRoot: resolvedProjectRoot,
@@ -313,22 +315,19 @@ export function buildRuntimeCommandAgentPlan({
   });
   const enrichedPlan = {
     ...plan,
-    ...(codexCleanupDebt.count > 0 ? {
+    ...(Number(codexCleanupDebt.globalCount || codexCleanupDebt.count || codexCleanupDebt.diagnosticCount || 0) > 0 ? {
       hostManagedCleanupDebt: codexCleanupDebt,
     } : {}),
-    ...(codexSpawnBlockedByCleanup ? {
-      executionMode: "agent-required-blocked",
-      codexSpawnBlockedByCleanup: true,
-      codexSpawnPayloads: [],
-      codexSpawnPayloadRules: [],
+    ...(codexSpawnCleanupWarning ? {
+      codexSpawnCleanupWarning: true,
       qualityImpact: [
         plan.qualityImpact,
-        `completed Codex subagents must be closed/reset before new spawn payloads: ${codexCleanupDebt.closeRequired.map((item) => item.hostInvocationId).filter(Boolean).join(", ")}`,
+        `completed Codex subagent cleanup debt is diagnostic for this plan and does not block new spawn payloads: ${(codexCleanupDebt.diagnostics || []).map((item) => item.hostInvocationId).filter(Boolean).join(", ") || "none"}`,
       ].filter(Boolean).join("; "),
     } : {}),
     evidencePacket: packet,
     verificationPolicy,
-    ...(!codexSpawnBlockedByCleanup && plan.codexSpawnPayloads
+    ...(plan.codexSpawnPayloads
       ? {
         codexSpawnPayloads: plan.codexSpawnPayloads.map((payload) => enrichCodexSpawnPayloadWithKnowledgeContext({
           spawnPayload: payload,

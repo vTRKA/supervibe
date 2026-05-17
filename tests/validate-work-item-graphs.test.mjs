@@ -52,7 +52,7 @@ test("strict work item graph validation requires adjacent source plan snapshot",
       planReviewPassed: true,
       dryRun: true,
     });
-    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: temp });
+    const { graphPath } = await writeWorkItemGraph(graph, { rootDir: temp, writeSourcePlan: true });
 
     const passing = await validateWorkItemGraphFiles({
       rootDir: temp,

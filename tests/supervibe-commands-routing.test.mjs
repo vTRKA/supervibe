@@ -31,26 +31,24 @@ async function matchCommand(request) {
   }
 }
 
-test("static route formatting requires parallel real agents after compact resume and simple requests", () => {
+test("static route formatting keeps fast plan and loop output lightweight", () => {
   const simple = resolveCommandRequest("make a plan", { pluginRoot: ROOT, projectRoot: ROOT });
   const simpleOutput = formatCommandMatch(simple);
   assert.match(simpleOutput, /COMMAND: \/supervibe-plan/);
-  assert.match(simpleOutput, /PARALLEL_AGENT_MODE: parallel-real-agents/);
-  assert.match(simpleOutput, /PARALLEL_AGENT_SIMPLE_TASKS: true/);
-  assert.match(simpleOutput, /NEXT: .*Launch real parallel host agents/);
+  assert.doesNotMatch(simpleOutput, /PARALLEL_AGENT_|AGENT_FANOUT|AGENT_PLAN_COMMAND|command-agent-plan\.mjs/);
+  assert.doesNotMatch(simpleOutput, /Dispatch the next ready task/);
 
   const resumeOutput = formatCommandMatch({
     id: "active-workflow-continuation",
     intent: "continue_plan",
-    command: "/supervibe-plan --from-brainstorm",
+    command: "/supervibe-plan --loop-ready --from-brainstorm",
     confidence: 0.99,
     doNotSearchProject: true,
     reason: "static compact-chat resume route",
     nextAction: "Resume active workflow: continue plan.",
   });
-  assert.match(resumeOutput, /PARALLEL_AGENT_MODE: parallel-real-agents/);
-  assert.match(resumeOutput, /PARALLEL_AGENT_AFTER_COMPACT_RESUME: true/);
-  assert.match(resumeOutput, /PARALLEL_AGENT_PROOF: hostInvocation\.source, hostInvocation\.invocationId/);
+  assert.doesNotMatch(resumeOutput, /PARALLEL_AGENT_|AGENT_FANOUT|AGENT_PLAN_COMMAND|command-agent-plan\.mjs/);
+  assert.match(resumeOutput, /NEXT: Resume active workflow: continue plan./);
 });
 
 test("routes plain planning workflow phrases to plan command", async () => {
@@ -67,14 +65,33 @@ test("routes plain planning workflow phrases to plan command", async () => {
   }
 });
 
+test("routes loop-ready planning phrases to plan loop-ready", async () => {
+  const output = await matchCommand("\u0441\u0434\u0435\u043b\u0430\u0439 \u043f\u043b\u0430\u043d \u0433\u043e\u0442\u043e\u0432\u044b\u0439 \u043a loop \u0441 \u044d\u043f\u0438\u043a\u0430\u043c\u0438 \u0438 \u0437\u0430\u0434\u0430\u0447\u0430\u043c\u0438");
+  assert.match(output, /INTENT: supervibe_plan_loop_ready/);
+  assert.match(output, /COMMAND: \/supervibe-plan --loop-ready/);
+  assert.match(output, /\/supervibe-loop --atomize-plan <plan-path> --user-approved-plan/);
+  assert.doesNotMatch(output, /AGENT_PLAN_COMMAND|PARALLEL_AGENT_|AGENT_FANOUT|command-agent-plan\.mjs/);
+});
+
+test("routes approved ready plan directly to loop atomization", async () => {
+  const output = await matchCommand("\u043f\u043b\u0430\u043d \u0433\u043e\u0442\u043e\u0432, \u043d\u0430\u0447\u043d\u0438 \u0440\u0430\u0431\u043e\u0442\u0443");
+
+  assert.match(output, /INTENT: task_graph_create_from_plan/);
+  assert.match(output, /COMMAND: \/supervibe-loop --atomize-plan <plan-path> --user-approved-plan/);
+  assert.doesNotMatch(output, /COMMAND: \/supervibe-execute-plan/);
+  assert.doesNotMatch(output, /NEXT: .*command-agent-plan\.mjs/);
+  assert.doesNotMatch(output, /AGENT_PLAN_COMMAND|PARALLEL_AGENT_|AGENT_FANOUT|command-agent-plan\.mjs/);
+  assert.match(output, /NEXT: .*Create the active work graph/);
+});
+
 test("routes plan then execute requests to planning without review-only hijack", async () => {
   const output = await matchCommand("Давай все 40+ задач в детальный план, после этого начни работу по плану, сначала проверь что все задачи выполнены из плана");
 
   assert.match(output, /INTENT: plan_then_execute/);
-  assert.match(output, /COMMAND: \/supervibe-plan/);
+  assert.match(output, /COMMAND: \/supervibe-plan --loop-ready/);
   assert.doesNotMatch(output, /COMMAND: \/supervibe-plan --review/);
-  assert.match(output, /\/supervibe-loop --atomize-plan <plan-path> --plan-review-passed/);
-  assert.match(output, /\/supervibe-execute-plan <reviewed-plan-path>/);
+  assert.match(output, /\/supervibe-loop --atomize-plan <plan-path> --user-approved-plan/);
+  assert.match(output, /\/supervibe-loop --resume-dispatch/);
 });
 
 test("routes temporary plan review and reviewed plan execution distinctly", async () => {
@@ -97,6 +114,13 @@ test("routes broken design workflow audits before plan-review", async () => {
   assert.match(output, /COMMAND: \/supervibe-audit/);
   assert.doesNotMatch(output, /INTENT: plan_review/);
   assert.doesNotMatch(output, /COMMAND: \/supervibe-plan --review/);
+  assert.doesNotMatch(output, /COMMAND: \/supervibe-security-audit/);
+});
+
+test("does not route generic reviewer severity blockers to security audit", async () => {
+  const output = await matchCommand("reviewers returned major severity blockers, continue validation");
+
+  assert.doesNotMatch(output, /INTENT: supervibe_security_audit/);
   assert.doesNotMatch(output, /COMMAND: \/supervibe-security-audit/);
 });
 
@@ -166,7 +190,7 @@ test("routes ready claim and epic completion validation requests", async () => {
 test("routes task graph creation, split, reparent, skip, defer, and block controls", async () => {
   const createOutput = await matchCommand("create epic tasks from plan");
   assert.match(createOutput, /INTENT: task_graph_create_from_plan/);
-  assert.match(createOutput, /COMMAND: \/supervibe-loop --atomize-plan <plan-path> --plan-review-passed/);
+  assert.match(createOutput, /COMMAND: \/supervibe-loop --atomize-plan <plan-path> --user-approved-plan/);
 
   const splitOutput = await matchCommand("split task into subtasks");
   assert.match(splitOutput, /INTENT: task_graph_split/);
@@ -192,11 +216,11 @@ test("routes task graph creation, split, reparent, skip, defer, and block contro
 test("routes real Russian task graph complaint phrases", async () => {
   const createOutput = await matchCommand("создай задачи и эпик из плана");
   assert.match(createOutput, /INTENT: task_graph_create_from_plan/);
-  assert.match(createOutput, /COMMAND: \/supervibe-loop --atomize-plan <plan-path> --plan-review-passed/);
+  assert.match(createOutput, /COMMAND: \/supervibe-loop --atomize-plan <plan-path> --user-approved-plan/);
 
   const atomizeOutput = await matchCommand("атомизируй план");
   assert.match(atomizeOutput, /INTENT: atomize_plan/);
-  assert.match(atomizeOutput, /COMMAND: \/supervibe-loop --atomize-plan <plan-path> --plan-review-passed/);
+  assert.match(atomizeOutput, /COMMAND: \/supervibe-loop --atomize-plan <plan-path> --user-approved-plan/);
 
   const createSubtasksOutput = await matchCommand("создай подзадачи");
   assert.match(createSubtasksOutput, /INTENT: task_graph_split/);
@@ -284,7 +308,7 @@ test("routes explicit summary gates before generic plan shortcuts", async () => 
     ["show pre-spec summary before requirements spec approval", /INTENT: pre_spec_summary_gate/, /COMMAND: \/supervibe-brainstorm --summary-gate --stage pre-spec/],
     ["show post-spec summary after spec creation with table and ascii map", /INTENT: post_spec_summary_gate/, /COMMAND: \/supervibe-brainstorm --summary-gate --stage post-spec/],
     ["show pre-plan summary before implementation plan approval", /INTENT: pre_plan_summary_gate/, /COMMAND: \/supervibe-plan --summary-gate --stage pre-plan/],
-    ["show post-plan summary after plan creation before review", /INTENT: post_plan_summary_gate/, /COMMAND: \/supervibe-plan --summary-gate --stage post-plan/],
+    ["show post-plan summary after plan creation before graph creation", /INTENT: post_plan_summary_gate/, /COMMAND: \/supervibe-plan --summary-gate --stage post-plan/],
   ];
   for (const [request, intentRe, commandRe] of cases) {
     const output = await matchCommand(request);

@@ -42,7 +42,8 @@ loop, long worktree session, or multi-step delivery that must keep working until
 done or safely stopped.
 
 Do not use for one small local edit, a read-only explanation, or non-dry
-execution of a plan that has not passed review and user handoff gates.
+execution of a plan that is not user-approved as loop-ready or already atomized
+into an accepted work graph with the current user handoff answered.
 
 ## Expert Operating Standard
 
@@ -65,7 +66,7 @@ repair or dry-run instead of dispatch.
 Scope, stop condition, user gate, or verification target is missing
   -> readiness repair or one focused user question.
 
-Reviewed graph has independent tasks with disjoint write sets
+Accepted graph has independent tasks with disjoint write sets
   -> dispatch a small parallel wave with explicit worker packets.
 
 Tasks share files, public contracts, migrations, or release state
@@ -85,11 +86,11 @@ Before dispatch or resume, classify each task, subtask, or emergent issue as
 until the tradeoff, complexity cost, concrete harm, owner, verification,
 rollback, and user approval are recorded.
 
-## Plan Review And User Gate
+## Plan Approval And User Gate
 
 When a loop starts from a plan, pre-plan, epic, or atomized graph, require a
-reviewed plan or reviewed work-item graph plus a current explicit user answer for
-the latest handoff. Unanswered plan-scope, review, atomization, or execution
+user-approved loop-ready plan or accepted work-item graph plus a current explicit user answer for
+the latest handoff. Unanswered plan-scope, optional review, atomization, or execution
 handoffs block non-dry execution. Surface Next User Decision before execution or resume.
 
 Reviewer coverage is mandatory before production or release completion. The loop
@@ -171,7 +172,7 @@ ready action instead of relying on hidden chat memory.
 
 ## Procedure
 
-1. Normalize the request or read the reviewed plan/work graph.
+1. Normalize the request or read the user-approved loop-ready plan/work graph.
 2. Run preflight for scope, autonomy level, explicit budgets, environment, MCP or
    tool permissions, secrets, provider permissions, approvals, and rollback.
 3. Apply `docs/references/scope-safety-standard.md`; reject, defer, or ask about
@@ -198,7 +199,7 @@ ready action instead of relying on hidden chat memory.
 
 ## Examples
 
-- Valid: a reviewed plan has five independent documentation fixes and two shared
+- Valid: a user-approved loop-ready plan has five independent documentation fixes and two shared
   validator changes. Dispatch the doc fixes as one receipt-backed wave, serialize
   the validator tasks, then run a final reviewer sweep before closing the graph.
 - Invalid: a worker reports `npm test` passed but the graph still has open

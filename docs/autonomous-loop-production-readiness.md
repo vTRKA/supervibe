@@ -130,7 +130,7 @@ Continuation trigger phrases in Russian and English must read
 before the command catalog. If active state is valid, the router must execute the
 recorded next command. If active state is absent or invalid, it must route to
 `/supervibe-loop --resume-dispatch` so the runtime either dispatches the next
-parallel agent wave or reports that no active graph exists, instead of guessing a
-producer command. After plan review passes, the default next command is
+next ready task dispatch or reports that no active graph exists, instead of guessing a
+producer command. After a loop-ready plan is approved, the default next command is
 atomization; after atomization, the default next command is `/supervibe-ui` so
 the user can inspect epic and task progress before execution continues.

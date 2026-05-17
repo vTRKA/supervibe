@@ -193,7 +193,7 @@ export function buildGraphExecutabilityScore(rootDir = process.cwd(), options = 
         ? "Multiple active work-item graph candidates require an explicit user choice before execution."
         : "No active work-item graph is selected for execution.",
       affectedTaskIds: [],
-      nextAction: resolution.nextAction || "select or atomize one active reviewed graph before execution",
+      nextAction: resolution.nextAction || "select an active work-item graph or atomize a user-approved loop-ready plan before execution",
       repairCommand,
       releaseImpact: "Plan, graph, and task workflows cannot dispatch deterministically without exactly one active graph.",
     }));
@@ -548,7 +548,7 @@ function currentGraphDimension(rootDir, { required }) {
       : resolution.status === "ambiguous"
         ? String((resolution.candidates || []).length) + " active graph candidate(s) require user choice"
         : "no active work-item graph selected",
-    blockers: pass ? [] : [resolution.nextAction || "choose or atomize one active reviewed graph before execution"],
+    blockers: pass ? [] : [resolution.nextAction || "choose an active work-item graph or atomize a user-approved loop-ready plan before execution"],
     evidence,
     activeGraphResolution: {
       status: resolution.status,
@@ -582,7 +582,7 @@ function activeGraphReceiptPolicyDimension(rootDir) {
       summary: resolution.status === "ambiguous"
         ? String((resolution.candidates || []).length) + " active graph candidate(s) require user choice"
         : "no active graph selected",
-      blockers: [resolution.nextAction || "choose or atomize one active reviewed graph before execution"],
+      blockers: [resolution.nextAction || "choose an active work-item graph or atomize a user-approved loop-ready plan before execution"],
       evidence: (resolution.candidates || []).slice(0, 5).map((file) => relative(rootDir, file).split(sep).join("/")),
     };
   }
@@ -622,7 +622,7 @@ function activeTraceabilityDimension(rootDir) {
       summary: resolution.status === "ambiguous"
         ? String((resolution.candidates || []).length) + " active graph candidate(s) require user choice"
         : "no active graph selected",
-      blockers: [resolution.nextAction || "choose or atomize one active reviewed graph before strict traceability"],
+      blockers: [resolution.nextAction || "choose an active work-item graph or atomize a user-approved loop-ready plan before strict traceability"],
       evidence: (resolution.candidates || []).slice(0, 5).map((file) => relative(rootDir, file).split(sep).join("/")),
     };
   }
@@ -671,7 +671,7 @@ function activeTrustedCompletionDimension(rootDir) {
       summary: resolution.status === "ambiguous"
         ? String((resolution.candidates || []).length) + " active graph candidate(s) require user choice"
         : "no active graph selected",
-      blockers: [resolution.nextAction || "choose or atomize one active reviewed graph before trusted completion"],
+      blockers: [resolution.nextAction || "choose an active work-item graph or atomize a user-approved loop-ready plan before trusted completion"],
       evidence: (resolution.candidates || []).slice(0, 5).map((file) => relative(rootDir, file).split(sep).join("/")),
     };
   }

@@ -149,38 +149,34 @@ test('requirements post-delivery question uses requirements-specific actions', (
   assert.match(formatPostDeliveryQuestion(question), /Recommended option:\n- \*\*Approve requirements\*\* \(recommended\)/);
 });
 
-test('plan post-delivery question exposes approval and scope editing choices before review', () => {
+test('plan post-delivery question exposes graph creation and optional review choices', () => {
   const question = buildPostDeliveryQuestion({
     intent: 'plan_delivery',
-    nextQuestion: 'Plan review',
+    nextQuestion: 'Plan next action',
   });
   const labels = question.choices.map((choice) => choice.label);
   const formatted = formatPostDeliveryQuestion(question);
 
   assert.equal(question.context, 'plan_delivery');
-  assert.equal(question.specialist, 'architect-reviewer');
+  assert.equal(question.specialist, 'supervibe-orchestrator');
   assert.deepEqual(labels, [
-    'Approve plan for review',
+    'Create graph from this plan',
     'Revise plan scope',
     'Exclude or defer items',
-    'Audit plan deeper',
+    'Run deeper review',
     'Keep plan draft',
   ]);
-  assert.match(question.freeFormPath, /exclude analytics/);
+  assert.match(question.freeFormPath, /create graph/);
   assert.match(question.freeFormPath, /defer phase 3/);
-  assert.match(formatted, /Recommended option:\n- \*\*Approve plan for review\*\* \(recommended\)/);
-  assert.match(formatted, /Other options:[\s\S]*Exclude or defer items/);
+  assert.match(formatted, /Recommended option:\n- \*\*Create graph from this plan\*\* \(recommended\)/);
+  assert.match(formatted, /Other options:[\s\S]*Run deeper review/);
+  assert.doesNotMatch(formatted, new RegExp(["mandatory review", "loop|Approve plan for review"].join(" "), "i"));
   assert.deepEqual(validateAgenticQuestion(question, { surface: 'plan delivery gate', minChoices: 5 }), []);
 
   const localized = buildPostDeliveryQuestion({ intent: 'plan_delivery' }, { locale: 'ru' });
-  assert.deepEqual(localized.choices.map((choice) => choice.label), [
-    'Утвердить план для review',
-    'Изменить scope плана',
-    'Исключить или отложить пункты',
-    'Проверить план глубже',
-    'Оставить план draft',
-  ]);
-  assert.doesNotMatch(formatPostDeliveryQuestion(localized), /Approve plan for review/);
+  assert.notEqual(localized.choices[0].label, 'Approve plan for review');
+  assert.notEqual(localized.choices[3].label, 'Audit plan deeper');
+  assert.doesNotMatch(formatPostDeliveryQuestion(localized), new RegExp(["Approve plan for review|mandatory review", "loop"].join(" "), "i"));
 });
 
 test('adaptation, strengthening and design post-delivery contexts localize visible labels', () => {

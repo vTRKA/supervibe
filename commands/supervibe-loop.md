@@ -21,7 +21,7 @@ gate, rollback, support owner, and post-release learning.
 Primary path:
 
 ```bash
-/supervibe-loop --atomize-plan .supervibe/artifacts/plans/payment-integration.md --plan-review-passed
+/supervibe-loop --atomize-plan .supervibe/artifacts/plans/payment-integration.md --user-approved-plan
 /supervibe-loop --from-plan .supervibe/artifacts/plans/payment-integration.md --atomize --dry-run
 /supervibe-loop --file .supervibe/memory/work-items/<epic-id>/graph.json --guided
 /supervibe-loop --validate-completion --file .supervibe/memory/work-items/<epic-id>/graph.json
@@ -117,27 +117,27 @@ Plan atomization:
 
 ```bash
 /supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --dry-run
-/supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --plan-review-passed
+/supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --user-approved-plan
 ```
 
-Atomization converts one reviewed plan into one epic, child work items, blocker edges, soft related links, gate items, and follow-ups. Writes require `--plan-review-passed` plus a validated plan-review artifact with `evidenceGatePass:true`, real-agent reviewer coverage, scoped runtime receipts carrying `hostInvocation.source` and `hostInvocation.invocationId`, and a Next User Decision; `--dry-run` previews the graph without writing. A reviewed plan with no parseable task/work-item structure must fail closed: the command exits non-zero and does not write `graph.json`, previews, registry entries, or tracker sync state unless an explicit invalid-graph override is used by a diagnostic tool.
+Atomization converts one user-approved loop-ready plan into one epic, child work items, blocker edges, soft related links, gate items, and follow-ups. Normal writes require `--user-approved-plan` and a parseable loop-ready plan; strict `--plan-review-passed` remains available for explicit deep-review or release-governed paths. A plan with no parseable task/work-item structure must fail closed: the command exits non-zero and does not write `graph.json`, registry entries, or tracker sync state unless an explicit invalid-graph override is used by a diagnostic tool.
 Generated work items use reusable templates for feature, bugfix, refactor, UI story, integration, migration, documentation, release-prep, production-prep, and research spike work. Items carry labels, severity, owner/component/stack fields, required gates, verification hints, comments, and optional repo/package/workspace/subproject routing metadata.
 Production-oriented plans also generate release, observability, rollback,
 security/privacy, and post-release learning work items so the loop does not
 stop after a code-only slice.
 
-After atomization or a dry-run preview, print `NEXT_USER_ACTIONS[]` and wait for one choice before execution:
-- **Inspect generated epic/work items** - show graph status, blockers, owners, and verification gates.
-- **Revise atomization** - change task boundaries, dependencies, labels, or excluded scope before execution.
-- **Run another review** - send the reviewed plan or generated work graph back through specialist review.
-- **Start guided execution** - run `/supervibe-loop --guided` only after review and atomization evidence is accepted.
+After atomization or a dry-run preview, show one user-facing choice card labeled Next User Decision. These choices are the normal `NEXT_USER_ACTIONS[]`; keep any raw resume marker secondary:
+- **Start next ready task** - dispatch safe ready work, including a single ready task.
+- **Inspect generated graph** - show graph status, blockers, owners, and verification gates.
+- **Revise graph** - change task boundaries, dependencies, labels, or excluded scope before execution.
+- **Run deeper review** - explicitly send the plan or generated graph through specialist review.
 - **Keep work graph and stop** - save the result without starting execution.
 
-Do not treat `--plan-review-passed` as permission to execute. It only permits atomization from a reviewed plan with trusted current-run reviewer receipts. Starting guided, manual, fresh-context, worktree, version bump, commit, push, cleanup, or plan deletion still requires the current visible user-choice gate to be answered after the generated work graph is shown. Manual and guided modes are queue-control modes, not durable producer/reviewer/worker evidence. Subagent batches or inline controller summaries are diagnostic only unless they are bound to real host-agent invocation ids and scoped runtime receipts for the current run.
+Do not treat `--user-approved-plan` as permission for release. It permits graph creation from an approved loop-ready plan. Tests, validators, receipt validation, index refresh, and release evidence stay behind the later verify/release choices unless the user asks for them.
 
 Repair paths:
 
-- Invalid plan repair: when atomization cannot derive a valid epic/task/subtask graph, revise the reviewed plan or rerun `--atomize-plan <plan> --preview`; do not write `graph.json` until the plan has parseable work items and `--plan-review-passed`.
+- Invalid plan repair: when atomization cannot derive a valid epic/task/subtask graph, revise the loop-ready plan or rerun `--atomize-plan <plan> --preview`; do not write `graph.json` until the plan has parseable work items and user approval.
 - Graph drift repair: run `/supervibe-status --ready --blocked --stale --orphan --file <graph.json>`, then repair dependency cycles, stale claims, orphaned evidence, ownership gaps, or worktree assignment drift before continuing.
 - Completion blocker repair: run `/supervibe-loop --validate-completion --file <graph.json>` or `/supervibe-loop --close-eligible --file <graph.json>` to list blockers, attach production or dry-run evidence, then rerun close validation. `--require-trusted-evidence --trusted-receipts <id,id>` requires runtime-issued receipts; `--allow-dry-run-evidence` and `--no-evidence-required` are explicit diagnostic overrides, not default completion.
 - Task graph maturity repair: run `npm run supervibe:task-graph-maturity` for capability maturity, or `node scripts/supervibe-task-graph-maturity.mjs --require-active-graph` when the current project must already have an active graph. The generic agent maturity gate does not replace this task-graph-specific score.
@@ -205,11 +205,10 @@ the safe mode for tests, headless sessions, and operator review. `--no-auto-ui`
 is an explicit opt-out and suppresses UI output even when `--auto-ui` was added
 by a preset or wrapper.
 
-Closed work graphs are reported as `ARCHIVE_CANDIDATE: true` and
-`LIFECYCLE: completed-awaiting-archive` when all required work is terminal and
-the graph has not already been archived. That label is an operational lifecycle
-signal; production completion still depends on the completion validator and
-trusted evidence gates.
+Closed work graphs are reported as `LIFECYCLE: complete` with one visible
+completion handoff: finish here, verify the work, or prepare release handoff.
+Archive, index refresh, and receipt cleanup are automatic or details-only
+maintenance; they are not normal user choices before development can finish.
 
 Interactive mode is opt-in. `/supervibe-loop --create-work-item --interactive`
 uses guided terminal forms when a real TTY exists; otherwise it prints a
@@ -315,8 +314,7 @@ allow-spawn requirement. Cursor and Copilot are package/docs-supported but
 degrade to guided or manual execution until portable fresh-context adapters
 exist. Codex can use native goal workflows when available, Claude can use
 supported hook continuations, and every host keeps the
-Supervibe state files, receipt gates, quality gates, and stop/resume/status
-commands as the portable baseline.
+Supervibe state files plus stop/resume/status commands as the portable baseline. Receipt and quality gates are strict delegation, verification, or release evidence paths, not prerequisites for ordinary graph work.
 
 Bare loop execution defaults to the selected provider's recommended real mode.
 For Codex, Claude, Gemini, and OpenCode this is fresh-context execution; without
@@ -330,35 +328,27 @@ true headless loop needs a configured provider CLI command (`codex`, `claude`,
 adapter process tracking, and the permission-prompt bridge so non-interactive
 execution preserves provider permission prompts instead of bypassing them. Bare
 provider loops enable those runtime defaults; the flags remain available for
-explicit scripts and diagnostics. Each spawned worker must also emit runtime
-workflow receipts for the external adapter and any delegated
-agent/reviewer/validator output. If policy or configuration is incomplete the
-command must stop with the provider permission status and print a status/resume
-artifact instead of pretending to run autonomously.
+explicit scripts and diagnostics. For explicit fresh-context delegation, each spawned worker emits runtime workflow receipts for the external adapter and any delegated agent/reviewer/validator output. If policy or configuration is incomplete the command stops with provider permission status and prints a status/resume artifact instead of pretending to run autonomously.
 
-Durable loop work is real-agent owned. A worker, reviewer, validator, epic, task
-graph, completion, or external-adapter output cannot be satisfied by a manual
-note, controller-authored summary, command receipt, skill receipt, or stale
-global receipt; it needs the current run's scoped runtime receipt bound to the
-named host-agent invocation and output artifact.
+Strict delegated loop output is real-agent owned. Worker, reviewer, validator, external-adapter, strict completion, or release evidence cannot be satisfied by a manual note, controller-authored summary, command receipt, skill receipt, or stale global receipt; it needs the current run's scoped runtime receipt bound to the named host-agent invocation and output artifact. Ordinary user-approved graph creation, status, claim, close, and completion handoff do not expose this gate.
 
 ## Work Graph Command Compatibility
 
 | Command | Work graph role | Writes graph state | Main handoff | Exit states |
 | --- | --- | --- | --- | --- |
-| `/supervibe-plan` | Produces and reviews the plan that can be atomized into a graph. | No graph writes. | `/supervibe-loop --atomize-plan <plan> --plan-review-passed` after review passes. | `plan-ready`, `review-required`, `replan-required`, `blocked` |
-| `/supervibe-loop` | Owns atomization, queue control, claims, execution, completion checks, tracker sync, and archive candidates. | Yes, for explicit graph mutations and execution state. | `/supervibe-status --file <graph.json>` for read-only inspection, or verification/review gates before shipping. | `ready`, `running`, `blocked`, `awaiting-user-acceptance`, `completed-awaiting-archive`, `failed` |
-| `/supervibe-status` | Reads the active graph, loop state, receipts, stale claims, blockers, and reports the next safe action. | No, except explicitly requested local dashboard/report/view artifacts. | Back to `/supervibe-loop` for mutations or `/supervibe-plan --review` when review evidence is missing. | `ok`, `warnings`, `blocked`, `failed` |
+| `/supervibe-plan` | Produces a loop-ready plan with epics/tasks, or optional strict review when requested. | No graph writes. | `/supervibe-loop --atomize-plan <plan> --user-approved-plan` after user approval. | `plan-ready`, `replan-required`, `blocked` |
+| `/supervibe-loop` | Owns atomization, queue control, claims, execution, completion checks, tracker sync, and archive candidates. | Yes, for explicit graph mutations and execution state. | `/supervibe-status --file <graph.json>` for read-only inspection, or verification/review gates before shipping. | `ready`, `running`, `blocked`, `awaiting-user-acceptance`, `complete`, `failed` |
+| `/supervibe-status` | Reads the active graph, loop state, receipts, stale claims, blockers, and reports the next safe action. | No, except explicitly requested local dashboard/report/view artifacts. | Back to `/supervibe-loop` for mutations, or `/supervibe-plan --review` only when the user explicitly wants deeper review. | `ok`, `warnings`, `blocked`, `failed` |
 
 Compatibility contract notes:
 - The native `graph.json` is canonical once atomization succeeds; plan and status commands must not mutate it.
-- Each command must print one recommended next action and preserve the current user gate instead of silently crossing from planning, review, atomization, execution, verification, or archive.
-- Exit states must distinguish missing evidence, no ready work, blocked dependencies, user acceptance, and completed-awaiting-archive so another command can resume without guessing.
+- Each command must print one recommended next action and preserve the current user gate instead of silently crossing from planning, graph creation, execution, verification, or archive.
+- Exit states must distinguish missing evidence, no ready work, blocked dependencies, user acceptance, and complete so another command can resume without guessing.
 - Status-compatible output must include enough graph identity to continue safely: graph path, epic or run id when known, current phase, ready/blocked/terminal counts, evidence gaps, and the exact mutation command when mutation is needed.
 
 ## Contract
 
-- Build a task queue from a reviewed work-item graph or request. Direct plan execution is legacy diagnostic-only; reviewed plans must atomize into a graph before guided, manual, fresh-context, or worktree execution.
+- Build a task queue from a user-approved loop-ready plan, active work-item graph, or request. Direct plan execution is legacy diagnostic-only; approved plans must atomize into a graph before guided, manual, fresh-context, or worktree execution.
 - Run preflight for scope, autonomy, optional explicit budgets, environment, MCP/tool permissions,
   access needs, and approval boundaries.
 - Apply Scope Safety Gate before atomization or execution: each task must map
@@ -367,7 +357,7 @@ Compatibility contract notes:
 - Run provider permission audit before non-dry execution. The audit records the
   effective permission mode, denied tools, prompt-required tools, rate-limit
   state, network/MCP approval state, and next safe action.
-- Dispatch named real-agent specialist chains by task type and bind their outputs to runtime receipts.
+- Dispatch the next ready task by task type; bind real-agent outputs to runtime receipts when specialist output is claimed, but do not expose receipt mechanics in normal user output.
 - Keep structured handoffs, scores, audit events, side-effect ledger entries,
   and a final report under `.supervibe/memory/loops/<run-id>/`.
 - Include `contextPack.workflowSignal` in each handoff and fresh-context prompt
@@ -469,9 +459,15 @@ npm run supervibe:gc -- --all --dry-run
 
 This command must load its executable profile from `scripts/lib/command-agent-orchestration-contract.mjs` and follow `rules/command-agent-orchestration.md`. The profile is the source of truth for `ownerAgentId`, `agentPlan`, `requiredAgentIds`, dynamic specialist selection, default `real-agents` mode, and `agent-required-blocked` behavior.
 
-Before durable work or completion claims, run `node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /supervibe-loop` and follow the printed `SUPERVIBE_COMMAND_AGENT_PLAN`. The plan must show host dispatch support, proof source, `AGENT_SELECTION_MODE`, required agents, `REQUIRED_AGENT_SOURCES`, `CALLABLE_AGENT_SOURCES`, `CALLABLE_AGENTS_READY`, `SCOPED_RECEIPT_GATE`, `MISSING_CALLABLE_AGENTS`, and durable-write permission before any agent-owned artifact is produced. Role sources must distinguish definition availability from host-callable availability: `REQUIRED_AGENT_SOURCES` may include `plugin-only`, but `CALLABLE_AGENT_SOURCES`, `CALLABLE_AGENTS_READY`, and `MISSING_CALLABLE_AGENTS` decide whether the selected host can actually invoke the role. Plugin-only definitions are not enough for a real-agent completion claim.
+Normal user-approved loop-ready graph work starts from the active graph and the next ready work item; it must not expose command-agent plans, scoped receipt gates, validator rituals, or plugin-only role diagnostics as a prerequisite. Run `node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /supervibe-loop` only for explicit strict delegation/release evidence paths or when claiming that named specialist agents produced durable output.
 
-Invoke the real host agents named by the plan and issue runtime receipts with `hostInvocation.source` and `hostInvocation.invocationId`. For active workflows, build the plan with `--active --slug <slug> --handoff-id <handoff-id>`; `SCOPED_RECEIPT_GATE` must be trusted for the current run before durable agent-owned outputs are allowed. Old global receipts are diagnostic only and do not unlock a new command/handoff. In Codex, invoke with `spawn_agent` using the `CODEX_SPAWN_PAYLOAD_RULES` and `CODEX_SPAWN_PAYLOADS` printed by `command-agent-plan.mjs`: forked payloads must set `fork_context=true`, must omit `agent_type`, `model`, and `reasoning_effort`, and must encode the Supervibe logical role in `message` instead of Codex `agent_type`. Record each returned Codex agent id with `node <resolved-supervibe-plugin-root>/scripts/agent-invocation.mjs log ...` before receipts are issued. `inline` is diagnostic/dry-run only. Do not emulate specialist agents, and do not let command or skill receipts substitute for agent, worker, or reviewer output.
+When specialist output is claimed, invoke the real host agents and issue runtime receipts with `hostInvocation.source` and `hostInvocation.invocationId`. In Codex, use `spawn_agent` for those explicit reviewer/worker claims and record the returned Codex agent id before issuing receipts. `inline` remains diagnostic/dry-run only; command or skill receipts do not substitute for agent, worker, or reviewer output.
 ## Workflow Invocation Receipts
 
-Any claim that this command invoked another Supervibe command, skill, agent, reviewer, worker, validator, or external tool must be backed by a runtime-issued workflow receipt created with `node <resolved-supervibe-plugin-root>/scripts/workflow-receipt.mjs issue ...`. Hand-written receipts are untrusted. Agent, worker, and reviewer receipts must include `hostInvocation.source` and `hostInvocation.invocationId` from a real host dispatch; command or skill receipts must not substitute for specialist output. Scoped current-run receipts are required for active command/handoff claims; old global receipts are diagnostic only and cannot authorize a new agent-owned output. Durable artifacts produced by this command must stay linked through `.supervibe/memory/workflow-invocation-ledger.jsonl` and `artifact-links.json`; run `npm run validate:workflow-receipts` and `npm run validate:agent-producer-receipts` before claiming the command, delegated stage, or produced artifact is complete.
+Any claim that this command invoked another Supervibe command, skill, agent, reviewer, worker, validator, or external tool must be backed by a runtime-issued workflow receipt created with `node <resolved-supervibe-plugin-root>/scripts/workflow-receipt.mjs issue ...`. Hand-written receipts are untrusted. Agent, worker, and reviewer receipts must include `hostInvocation.source` and `hostInvocation.invocationId` from a real host dispatch; command or skill receipts must not substitute for specialist output. Scoped current-run receipts are required for active command/handoff claims; old global receipts are diagnostic only and cannot authorize a new agent-owned output. Durable specialist/release artifacts produced by this command stay linked through `.supervibe/memory/workflow-invocation-ledger.jsonl` and `artifact-links.json`; run `npm run validate:workflow-receipts` and `npm run validate:agent-producer-receipts` only in explicit verification, strict review, or release gates, not as a normal prerequisite for starting or finishing ordinary graph work.
+
+<!-- supervibe-release-operational-markers:start -->
+Release-gate operational markers: before durable agent-owned work or completion claims, run `node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /supervibe-loop` and follow the printed `SUPERVIBE_COMMAND_AGENT_PLAN`. The executable `scripts/lib/command-agent-orchestration-contract.mjs` profile and `rules/command-agent-orchestration.md` remain the source of truth for `ownerAgentId`, `agentPlan`, `requiredAgentIds`, dynamic specialist selection, default `real-agents` mode, and `agent-required-blocked` behavior. The plan must show `CALLABLE_AGENT_SOURCES`, `CALLABLE_AGENTS_READY`, `SCOPED_RECEIPT_GATE`, and `MISSING_CALLABLE_AGENTS` before any agent-owned artifact is claimed.
+
+Invoke real host agents when specialist output is claimed and issue runtime receipts with `hostInvocation.source` and `hostInvocation.invocationId`. For Codex, use `spawn_agent` according to `CODEX_SPAWN_PAYLOAD_RULES` and `CODEX_SPAWN_PAYLOADS`: forked payloads must set `fork_context=true`, must omit `agent_type`, `model`, and `reasoning_effort`, and must encode the Supervibe logical role in the message. Record each returned Codex agent id with `node <resolved-supervibe-plugin-root>/scripts/agent-invocation.mjs log ...` before receipts are issued. `inline` is diagnostic/dry-run only. Do not emulate specialist agents, and command or skill receipts must not substitute for agent, worker, or reviewer output.
+<!-- supervibe-release-operational-markers:end -->

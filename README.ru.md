@@ -6,11 +6,11 @@ Supervibe превращает Claude Code, Codex, Gemini, Cursor и OpenCode в
 
 Работает локально. Docker не нужен. Windows, macOS и Linux.
 
-Supervibe-команды по умолчанию gated: каждый `/supervibe-*` workflow требует нужных специалистов, активная durable-работа блокируется до scoped runtime receipts, а inline/controller-only вывод остается диагностикой. Design и prototype flows дополнительно требуют producer и reviewer agents перед заявлением о завершении.
+Supervibe ускоряет путь brainstorm -> loop-ready plan -> user-approved graph. Агентские scoped receipts нужны только для делегированной работы, строгого review, verification, release evidence и design/prototype; обычные handoff остаются легкими.
 
-**v2.1** - текущий плагин `v2.1.39` - MIT - 2276 тестов
+**v2.1** - текущий плагин `v2.1.41` - MIT - 2316 тестов
 
-> **Compliance notice:** Supervibe предназначен только для помощи в разработке. Используя его, вы отвечаете за соблюдение Terms of Service (ToS) и Acceptable Use Policy (AUP) всех сервисов, включая Anthropic. Неразрешенная автоматизация, злоупотребление OAuth-токенами или нарушение правил сторонних сервисов остаются ответственностью пользователя.
+> **Уведомление о соблюдении правил:** Supervibe предназначен только для помощи в разработке. Используя его, вы отвечаете за соблюдение Terms of Service (ToS) и Acceptable Use Policy (AUP) всех сервисов, включая Anthropic. Неразрешенная автоматизация, злоупотребление OAuth-токенами или нарушение правил сторонних сервисов остаются ответственностью пользователя.
 
 ## С чего начать
 
@@ -23,7 +23,8 @@ Supervibe-команды по умолчанию gated: каждый `/supervibe
 | Обновить сам плагин | [Обновление](#обновление) | `/supervibe-update` |
 | Обновить уже настроенный проект | [Обновление](#обновление) | `/supervibe-adapt` |
 | Проверить здоровье или починить установку | [Частые ошибки](#частые-ошибки) | Найдите свой симптом |
-$1## Простая карта
+
+## Простая карта
 
 Если непонятно, куда идти, смотрите сюда.
 
@@ -101,7 +102,7 @@ flowchart LR
 | Terminal dispatcher | В терминале после установки bin links | `supervibe commands`, `supervibe doctor` |
 | Команды установки | В терминале вашей ОС | `irm ... | iex` |
 
-$1Компас команд:
+Компас команд:
 
 ```text
 Начинается с /supervibe-...  -> вводите в AI chat
@@ -110,7 +111,7 @@ $1Компас команд:
 Начинается с curl или irm    -> вводите в terminal вашей ОС
 ```
 
-`supervibe-stage` и `supervibe-validate` - terminal/bin aliases для runtime tooling. Это не slash-команды, пока под них нет файла в `commands/`.
+`supervibe-stage` и `supervibe-validate` - терминальные/bin-алиасы для runtime-инструментов. Это не slash-команды, пока под них нет файла в `commands/`.
 
 ## Memory-safe запуск Node
 
@@ -130,7 +131,7 @@ npm run node:memory-safe -- --max-old-space-size 6144 -- npm run check
 ```
 
 Обертка добавляет только те `NODE_OPTIONS`, которые поддерживает текущий
-runtime Node.js через `process.allowedNodeEnvironmentFlags`. Неподдерживаемые
+текущая версия Node.js через `process.allowedNodeEnvironmentFlags`. Неподдерживаемые
 флаги печатаются как skipped и не ломают запуск на версии Node.js пользователя.
 По умолчанию используются `--max-old-space-size=4096` и
 `--heapsnapshot-near-heap-limit=3`.
@@ -169,7 +170,7 @@ npm run supervibe:gc -- --lifecycle --mode review
 npm run supervibe:gc -- --artifacts --dry-run --archive-keep-last 5 --archive-retention-days 90
 ```
 
-Reachability важнее возраста: active roots, trusted receipts, receipt-linked outputs, compact manifests и protected provenance не становятся кандидатами на cleanup только потому, что они старые. Подробнее: [cleanup lifecycle](docs/supervibe-cleanup-lifecycle.md).
+Связность важнее возраста: active roots, trusted receipts, receipt-linked outputs, compact manifests и protected provenance не становятся кандидатами на cleanup только потому, что они старые. Подробнее: [cleanup lifecycle](docs/supervibe-cleanup-lifecycle.md).
 
 ## Установка
 
@@ -179,7 +180,7 @@ Reachability важнее возраста: active roots, trusted receipts, rece
 - Git
 - доступ к сети для загрузки ONNX-модели с HuggingFace
 
-$1Схема установки:
+Схема установки:
 
 ```text
 Terminal вашей ОС
@@ -223,7 +224,7 @@ irm https://raw.githubusercontent.com/vTRKA/supervibe/main/install.ps1 | iex
 После перезапуска вы должны увидеть примерно такое:
 
 ```text
-[supervibe] welcome  plugin v2.1.39 initialized for this project
+[supervibe] welcome  plugin v2.1.41 initialized for this project
 [supervibe] code RAG  N files / M chunks (fresh)
 [supervibe] code graph  N symbols / M edges (X% resolved)
 ```
@@ -264,7 +265,7 @@ Dry-run должен показать:
 | Цель | Команда | Что произойдет |
 |---|---|---|
 | Понять, что делать дальше | `/supervibe` | Выберет безопасный следующий workflow |
-| Новая идея | `/supervibe-brainstorm "idea"` затем `/supervibe-plan --from-brainstorm <spec-path>` | Превратит идею в spec и plan |
+| Новая идея | `/supervibe-brainstorm "idea"` затем `/supervibe-plan --loop-ready --from-brainstorm <spec-path>` | Превратит идею в spec и plan |
 | UI, landing page или экран продукта | `/supervibe-design <brief>` | Сделает направление, prototype, preview, feedback loop и handoff |
 | Выполнить готовый plan | `/supervibe-execute-plan <plan-path>` | Выполнит шаги с verification gates |
 | Длинная задача с видимым состоянием | `/supervibe-loop --guided --file <graph.json>` | Запустит видимый и отменяемый loop |
@@ -280,32 +281,27 @@ Dry-run должен показать:
 Нормальный путь:
 
 ```text
-brainstorm -> reviewed plan -> atomized epic -> safe execution
+brainstorm -> loop-ready plan -> user-approved graph -> safe execution
 ```
 
 Text-first summary - режим по умолчанию для схем workflow: компактные таблицы, stage maps или ASCII-style объяснения прямо в summary. Browser previews нужны только для реальных UI/prototype/browser проверок.
 
-Workflow summary gates - durable artifacts, а не только текст в чате. У summary-flow есть стадии `pre-spec`, `post-spec`, `pre-plan` и `post-plan` под `.supervibe/artifacts/summaries/`; release gate проверяет их через `npm run validate:workflow-summary-artifacts`.
+`Workflow summary gates` - это durable artifacts, а не только текст в чате. У summary-flow есть стадии `pre-spec`, `post-spec`, `pre-plan` и `post-plan` в `.supervibe/artifacts/summaries/`; release gate проверяет их через `npm run validate:workflow-summary-artifacts`.
 
-Plan - contract artifact, не свободный список задач. Production-ready plan должен иметь Development Contract Map для behavior, architecture, data/schema, API/event, UI state, security/privacy, performance, observability, rollout/rollback и docs/support.
+`Plan` - это contract artifact, а не свободный список задач. Production-ready plan должен иметь Development Contract Map для behavior, architecture, data/schema, API/event, UI state, security/privacy, performance, observability, rollout/rollback и docs/support.
 
-Plan review - обязательный gate перед atomization. `/supervibe-plan --review <plan-path>` должен создать durable review artifact с baseline reviewer coverage, risk-triggered reviewers при необходимости, нулем unresolved critical/major findings и scoped real-agent receipts. Maintainers могут проверить его через `node scripts/validate-plan-review-artifacts.mjs --file <review-artifact>` или `node scripts/validate-plan-review-artifacts.mjs --plan <plan> --require-active-review`.
+Plan review перед atomization опционален. Нормальный путь: user-approved loop-ready plan, затем `/supervibe-loop --atomize-plan <plan-path> --user-approved-plan`. `/supervibe-plan --review <plan-path>` используйте только для глубокого review, high-risk plans или release governance.
 
 Пример для копирования:
 
 ```text
 /supervibe-brainstorm "idea"
-/supervibe-plan --from-brainstorm .supervibe/artifacts/specs/example.md
-/supervibe-plan --review .supervibe/artifacts/plans/example.md
-/supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --plan-review-passed
+/supervibe-plan --loop-ready --from-brainstorm .supervibe/artifacts/specs/example.md
+/supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --user-approved-plan
 /supervibe-loop --guided --file .supervibe/memory/work-items/example-epic/graph.json
-/supervibe-loop --epic example-epic --worktree
-/supervibe-loop --validate-completion --epic example-epic
-/supervibe-loop --close-eligible --epic example-epic
-/supervibe-loop --status --epic example-epic
-/supervibe-loop --resume .supervibe/memory/loops/example-run/state.json
-/supervibe-loop --stop example-run
 ```
+
+После завершения работы по графу можно отдельно запустить: `/supervibe-loop --status --epic example-epic`, `/supervibe-loop --resume .supervibe/memory/loops/example-run/state.json`, `/supervibe-loop --stop example-run` или `/supervibe-loop --epic example-epic --worktree`.
 
 ## Как работает безопасность
 
@@ -320,7 +316,7 @@ Supervibe старается сначала показать план, а уже
 | Agent dispatch и receipt proof | Durable command work использует реальных specialist agents и runtime receipts |
 | Границы провайдера | Provider prompts, rate limits, network/MCP approvals, secrets, billing, production mutations и credential changes не обходятся |
 
-Autonomous execution is opt-in, not the default. По умолчанию Supervibe помогает с planning, review, status, diagnostics и dry-run artifacts.
+Автономное выполнение включается явно и не является поведением по умолчанию. По умолчанию Supervibe помогает с planning, review, status, diagnostics и dry-run artifacts.
 
 Для command-owned workflow work сначала проверьте выбранных agents:
 
@@ -354,7 +350,7 @@ flowchart TD
   C --> D["Откройте каждый проект"]
   D --> E["Запустите /supervibe-adapt"]
   E --> F["Проверьте diff"]
-$1Та же схема в ASCII:
+Та же схема в ASCII:
 
 ```text
 Обновить plugin
@@ -435,7 +431,7 @@ irm https://raw.githubusercontent.com/vTRKA/supervibe/main/update.ps1 | iex
 | `/supervibe-status` | Здоровье проекта, indexes, memory, workflow state, delegated inbox и tracker visibility |
 | `/supervibe-audit` | Read-only audit agents, rules, memory, indexes, routing и stale artifacts |
 | `/supervibe-brainstorm <topic>` | Превращает идею в spec |
-| `/supervibe-plan [<spec-path>]` | Делает reviewed implementation plan; поддерживает docs-sync и summary-gate flows |
+| `/supervibe-plan [<spec-path>]` | Делает loop-ready implementation plan; поддерживает docs-sync и summary-gate flows |
 | `/supervibe-execute-plan [<plan-path>]` | Выполняет plan с gates |
 | `/supervibe-loop --request/--file/--epic` | Видимый loop по native work graphs со status, resume, stop и completion gates |
 | `/supervibe-verify` | Tester-style verification по explicit goals и evidence |
@@ -461,7 +457,7 @@ irm https://raw.githubusercontent.com/vTRKA/supervibe/main/update.ps1 | iex
 | `npm run supervibe:commands` | Детерминированный catalog shortcuts, slash commands, npm scripts и command matching |
 | `npm run supervibe:agent-plan -- --command /supervibe-plan --strict` | Показывает required agents, host dispatch readiness и receipt gate для команды |
 | `npm run supervibe:doctor -- --host all` | Диагностика host registration |
-| `npm run supervibe:install-doctor` | Post-install audit |
+| `npm run supervibe:install-doctor` | Аудит после установки |
 | `npm run supervibe:upgrade` | Ручное обновление plugin checkout |
 | `npm run supervibe:upgrade-check` | Проверка новых commits upstream |
 | `npm run supervibe:ui -- --file <graph.json>` | Открывает local control plane из graph file |
@@ -496,7 +492,7 @@ Release-only или maintainer gates: `npm run validate:workflow-summary-artifac
 | PowerShell блокирует install | Выполните `Set-ExecutionPolicy -Scope Process Bypass`, затем повторите install |
 | Stale или partial code index | Запустите repair command, который печатает `/supervibe-status` или `npm run supervibe:status` |
 
-Index repair из user project:
+Восстановление индекса из проекта пользователя:
 
 ```bash
 node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --list-missing
@@ -506,7 +502,7 @@ node <resolved-supervibe-plugin-root>/scripts/build-code-index.mjs --root . --re
 
 `--force --health` используйте только для намеренного full rebuild.
 
-Receipt diagnostics из plugin checkout:
+Диагностика receipts из checkout плагина:
 
 ```bash
 node scripts/workflow-receipt.mjs inspect
@@ -519,9 +515,9 @@ npm run validate:workflow-receipts
 
 ## Удаление
 
-Удаление plugin и удаление данных проекта - разные вещи.
+Удаление плагина и удаление данных проекта - разные вещи.
 
-### Удалить plugin
+### Удалить плагин
 
 macOS / Linux:
 

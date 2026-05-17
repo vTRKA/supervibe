@@ -32,8 +32,8 @@ Same Supervibe project context, adapted for Gemini CLI:
 - 58 process skills in `./skills/`, validated by `npm run validate:skill-operational-contracts` and `npm run validate:skill-content-quality`
 - 31 project rules in `./rules/`
 - 19 confidence rubrics in `./confidence-rubrics/`
-- Trigger-safe workflow routing for brainstorm -> plan -> review -> atomize -> worktree run
-- Idea-to-production routing starts with `/supervibe-brainstorm`, then `/supervibe-plan --from-brainstorm`, `/supervibe-plan --review`, `/supervibe-loop --atomize-plan`, and only then provider-safe execution.
+- Trigger-safe workflow routing for brainstorm -> loop-ready plan -> user-approved graph -> optional review/verification -> worktree run
+- Idea-to-production routing starts with `/supervibe-brainstorm`, then `/supervibe-plan --loop-ready --from-brainstorm`, then `/supervibe-loop --atomize-plan <plan> --user-approved-plan`; `/supervibe-plan --review` is optional for explicit deeper review, high-risk plans, or release governance.
 - Worktree-ready autonomous loops with scoped session ownership and status/resume/stop
 - Security audit, prompt AI engineering, network/router diagnostics, and Kanban work-control routing
 - Code graph + semantic RAG via `./scripts/search-code.mjs`

@@ -64,13 +64,13 @@
     "phrase": "I finished brainstorm, write the implementation plan next",
     "expected": {
       "intent": "brainstorm_to_plan",
-      "command": "/supervibe-plan --from-brainstorm",
+      "command": "/supervibe-plan --loop-ready --from-brainstorm",
       "minConfidence": 0.85
     }
   },
   {
     "id": "plan-review-before-exec",
-    "phrase": "after this plan, run the mandatory review loop before execution",
+    "phrase": "after this plan, run an explicit deeper review before execution",
     "expected": {
       "intent": "plan_review",
       "command": "/supervibe-plan --review",
@@ -82,7 +82,7 @@
     "phrase": "create an epic from this approved plan and atomize it into work items",
     "expected": {
       "intent": "create_epic",
-      "command": "/supervibe-loop --from-plan --create-epic",
+      "command": "/supervibe-loop --atomize-plan <plan-path> --user-approved-plan",
       "minConfidence": 0.85
     }
   },

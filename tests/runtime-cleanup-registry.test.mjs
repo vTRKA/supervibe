@@ -69,10 +69,16 @@ test("runtime cleanup discovers completed Codex subagents and requires host clos
     assert.equal(dryRun.results[0].status, "host-managed-close-required");
 
     const debt = summarizeHostManagedSubagentDebtSync({ rootDir: root, path: registryPath, includeInvocationLog: true });
-    assert.equal(debt.count, 1);
-    assert.deepEqual(debt.closeRequired.map((item) => item.hostInvocationId), ["codex-worker-1"]);
+    assert.equal(debt.count, 0);
+    assert.equal(debt.diagnosticCount, 1);
+    assert.equal(debt.globalCount, 1);
+    assert.deepEqual(debt.diagnostics.map((item) => item.hostInvocationId), ["codex-worker-1"]);
+    const strictDebt = summarizeHostManagedSubagentDebtSync({ rootDir: root, path: registryPath, includeInvocationLog: true, strictRelease: true });
+    assert.equal(strictDebt.count, 1);
+    assert.deepEqual(strictDebt.closeRequired.map((item) => item.hostInvocationId), ["codex-worker-1"]);
     const defaultDebt = summarizeHostManagedSubagentDebtSync({ rootDir: root, path: registryPath });
-    assert.equal(defaultDebt.count, 1);
+    assert.equal(defaultDebt.count, 0);
+    assert.equal(defaultDebt.diagnosticCount, 1);
     assert.equal(defaultDebt.discovered, 1);
 
     const pruned = await cleanupRuntimeTargets({
@@ -119,8 +125,11 @@ test("runtime cleanup discovery deduplicates repeated completed Codex invocation
     assert.equal(discovered.length, 1);
 
     const debt = summarizeHostManagedSubagentDebtSync({ rootDir: root, path: registryPath });
-    assert.equal(debt.count, 1);
+    assert.equal(debt.count, 0);
+    assert.equal(debt.diagnosticCount, 1);
     assert.equal(debt.discovered, 1);
+    const strictDebt = summarizeHostManagedSubagentDebtSync({ rootDir: root, path: registryPath, strictRelease: true });
+    assert.equal(strictDebt.count, 1);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

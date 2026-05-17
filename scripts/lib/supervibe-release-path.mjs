@@ -122,7 +122,7 @@ export function buildLoopCompletionDecision(input = {}) {
       id: "continue-loop",
       label: "Continue loop",
       command: "/supervibe-loop --resume-dispatch",
-      description: "Resume implementation with the next ready parallel agent wave when completion evidence still has gaps.",
+      description: "Resume implementation with the next ready task dispatch when completion evidence still has gaps.",
       recommended: nextCommand === "/supervibe-loop --resume-dispatch" || nextCommand === "/supervibe-loop --status",
     },
     {

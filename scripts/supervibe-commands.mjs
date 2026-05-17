@@ -52,6 +52,11 @@ try {
   process.exit(1);
 }
 
+function isFastWorkflowCommand(command = "") {
+  const commandName = String(command || "").trim().split(/\s+/)[0];
+  return ["/supervibe-brainstorm", "/supervibe-plan", "/supervibe-loop"].includes(commandName);
+}
+
 function shouldUseSemanticPrecedence(match) {
   if (!match) return false;
   return [
@@ -77,7 +82,9 @@ function semanticTriggerFallback(request, { pluginRoot, projectRoot } = {}) {
     directRoute: false,
     mutationRisk: route.mutationRisk || "delegates-to-command",
     nextAction: route.command
-      ? `Run ${route.command} through the routed workflow; use command-agent-plan.mjs when this is a Supervibe slash command.`
+      ? isFastWorkflowCommand(route.command)
+        ? `Run ${route.command} through the fast owner workflow; defer strict agent evidence to explicit review, verification, or release gates.`
+        : `Run ${route.command} through the routed workflow; use command-agent-plan.mjs when this is a Supervibe slash command.`
       : "Report the routed diagnostic and avoid broad repository search.",
     agentContract: route.agentContract || null,
     agentProfile: route.agentProfile || null,
@@ -118,7 +125,7 @@ function activeWorkflowContinuationMatch(request, { projectRoot, closeCandidateM
       command: "/supervibe-loop --resume-dispatch",
       confidence: 0.93,
       reason: `Continuation phrase found but active workflow state is invalid: ${current.issues.map((issue) => issue.code).join(", ")}.`,
-      nextAction: "Repair active workflow state, then dispatch the next ready parallel agent wave before durable work.",
+      nextAction: "Repair active workflow state, then dispatch the next ready task before durable work.",
       diagnostics: {
         selectedBecause: "continuation-state-invalid",
         closeCandidates,
@@ -132,8 +139,8 @@ function activeWorkflowContinuationMatch(request, { projectRoot, closeCandidateM
     intent: "task_graph_resume",
     command: "/supervibe-loop --resume-dispatch",
     confidence: 0.88,
-    reason: "Continuation phrase found without active workflow state; routing to resume-dispatch so the next ready parallel agent wave is preferred over status-only guessing.",
-    nextAction: "Dispatch the next ready parallel agent wave for the active workflow/task graph, with no-active-graph fallback.",
+    reason: "Continuation phrase found without active workflow state; routing to resume-dispatch so the next ready task is preferred over status-only guessing.",
+    nextAction: "Dispatch the next ready task for the active workflow/task graph, with no-active-graph fallback.",
     diagnostics: {
       selectedBecause: "bare-continuation-no-active-state",
       closeCandidates,

@@ -64,7 +64,7 @@ test("multistage user-gate validator rejects overlay and delegated approval subs
   assert.ok(result.issues.some((issue) => issue.code === "delegated-substitutes-user-gate"));
 });
 
-test("multistage user-gate validator rejects plan surfaces without current user and reviewer gates", async () => {
+test("multistage user-gate validator rejects plan surfaces without current user and next-action gates", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-plan-user-gates-"));
   const relPath = "commands/supervibe-plan.md";
   const absPath = join(root, ...relPath.split("/"));
@@ -89,7 +89,7 @@ test("multistage user-gate validator rejects plan surfaces without current user 
   assert.ok(result.issues.some((issue) => (
     issue.file === relPath &&
     issue.code === "missing-user-gate-contract" &&
-    /Reviewer Coverage/.test(issue.message)
+    /create graph from this plan/.test(issue.message)
   )));
 });
 

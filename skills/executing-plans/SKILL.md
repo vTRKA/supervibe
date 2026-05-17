@@ -67,7 +67,7 @@ are recorded.
 
 ## Plan User-Decision Gate
 
-Before executing any plan work, confirm the current plan/pre-plan handoff has an explicit user answer for this exact phase. An unanswered `NEXT_STEP_HANDOFF`, plan-scope preview, review handoff, atomization handoff, or execution handoff is a blocker. STOP and ask the handoff question instead of treating older broad consent as approval to continue.
+Before executing any plan work, confirm the current plan/pre-plan handoff has an explicit user answer for this exact phase. An unanswered `NEXT_STEP_HANDOFF`, plan-scope preview, next-action handoff, atomization handoff, or execution handoff is a blocker. STOP and ask the handoff question instead of treating older broad consent as approval to continue.
 
 ## Continuation Contract
 

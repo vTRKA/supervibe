@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { access, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -173,6 +173,99 @@ test("terminal actions retire active claims for the closed work item", () => {
   assert.equal(closed.graph.claims[0].completionStatus, "complete");
   assert.deepEqual(closed.retiredClaims.map((claim) => claim.claimId), [claimed.claim.claimId]);
   assert.deepEqual(closed.graph.events.at(-1).retiredClaims, [claimed.claim.claimId]);
+});
+
+test("terminal child completion auto-closes only its real parent epic chain", () => {
+  const graph = {
+    kind: "supervibe-work-item-graph",
+    graph_id: "epic-root",
+    epicId: "epic-root",
+    items: [
+      { itemId: "epic-root", type: "epic", status: "open", title: "Root", parentId: null, blocks: [], blockedBy: [] },
+      { itemId: "epic-a", type: "epic", status: "open", title: "A", parentId: "epic-root", blocks: [], blockedBy: [] },
+      { itemId: "epic-b", type: "epic", status: "open", title: "B", parentId: "epic-root", blocks: [], blockedBy: [] },
+      { itemId: "task-a", type: "task", status: "open", title: "A task", parentId: "epic-a", blocks: [], blockedBy: [] },
+      { itemId: "task-b", type: "task", status: "open", title: "B task", parentId: "epic-b", blocks: [], blockedBy: [] },
+      { itemId: "task-root", type: "task", status: "open", title: "Root task", parentId: "epic-root", epicId: "epic-b", blocks: [], blockedBy: [] },
+      { itemId: "follow-up", type: "followup", status: "open", title: "Deferred follow-up", parentId: "epic-a", blocks: [], blockedBy: [] },
+    ],
+    tasks: [
+      { id: "epic-root", status: "open" },
+      { id: "epic-a", status: "open" },
+      { id: "epic-b", status: "open" },
+      { id: "task-a", status: "open", parentId: "epic-a", dependencies: [] },
+      { id: "task-b", status: "open", parentId: "epic-b", dependencies: [] },
+      { id: "task-root", status: "open", parentId: "epic-root", epicId: "epic-b", dependencies: [] },
+    ],
+    claims: [],
+  };
+
+  const first = mutateWorkItemGraph(graph, {
+    type: "complete",
+    itemId: "task-a",
+    actor: "agent-a",
+    now: "2026-05-07T00:00:00.000Z",
+  });
+
+  assert.deepEqual(first.autoClosedEpics, ["epic-a"]);
+  assert.equal(first.graph.items.find((item) => item.itemId === "epic-a").status, "closed");
+  assert.equal(first.graph.items.find((item) => item.itemId === "epic-root").status, "open");
+  assert.equal(first.graph.items.find((item) => item.itemId === "epic-b").status, "open");
+  assert.equal(first.graph.items.find((item) => item.itemId === "follow-up").status, "open");
+
+  const second = mutateWorkItemGraph(first.graph, {
+    type: "complete",
+    itemId: "task-root",
+    actor: "agent-a",
+    now: "2026-05-07T00:01:00.000Z",
+  });
+
+  assert.deepEqual(second.autoClosedEpics, []);
+  assert.equal(second.graph.items.find((item) => item.itemId === "epic-b").status, "open");
+  assert.equal(second.graph.items.find((item) => item.itemId === "epic-root").status, "open");
+
+  const third = mutateWorkItemGraph(second.graph, {
+    type: "complete",
+    itemId: "task-b",
+    actor: "agent-a",
+    now: "2026-05-07T00:02:00.000Z",
+  });
+
+  assert.deepEqual(third.autoClosedEpics.sort(), ["epic-b", "epic-root"]);
+  assert.equal(third.graph.items.find((item) => item.itemId === "epic-b").status, "closed");
+  assert.equal(third.graph.items.find((item) => item.itemId === "epic-root").status, "closed");
+});
+
+test("terminal task completion auto-closes metadata semantic epics", () => {
+  const graph = baseGraph();
+  graph.items.find((item) => item.itemId === "epic-claims").status = "closed";
+  graph.items.find((item) => item.itemId === "task-2").status = "complete";
+  graph.tasks.find((task) => task.id === "task-2").status = "complete";
+  graph.items.find((item) => item.itemId === "task-1").executionHints = { semanticEpicId: "semantic-epic-dev" };
+  graph.items.find((item) => item.itemId === "task-2").executionHints = { semanticEpicId: "semantic-epic-dev" };
+  graph.metadata = {
+    semanticEpicGrouping: { version: 1, taskCount: 2, epicCount: 1 },
+    semanticEpics: [{
+      id: "semantic-epic-dev",
+      type: "epic",
+      status: "open",
+      taskIds: ["task-1", "task-2"],
+      taskCount: 2,
+      confidence: 0.82,
+    }],
+  };
+
+  const result = mutateWorkItemGraph(graph, {
+    type: "complete",
+    itemId: "task-1",
+    actor: "agent-a",
+    now: "2026-05-07T00:03:00.000Z",
+  });
+
+  assert.deepEqual(result.autoClosedEpics, ["semantic-epic-dev"]);
+  assert.equal(result.graph.metadata.semanticEpics[0].status, "closed");
+  assert.equal(result.graph.metadata.semanticEpics[0].closedAt, "2026-05-07T00:03:00.000Z");
+  assert.equal(result.graph.items.find((item) => item.itemId === "epic-claims").status, "closed");
 });
 
 test("closing a parent auto-closes covered plan-step subtasks", () => {
@@ -537,6 +630,51 @@ test("work-item graph file mutations use lock file and remove it after write", a
   await assert.rejects(access(`${graphPath}.lock`));
 });
 
+test("idempotent graph file replay skips graph, backup, and registry writes", async () => {
+  const rootDir = await mkdtemp(join(tmpdir(), "supervibe-actions-idempotent-"));
+  const graphDir = join(rootDir, ".supervibe", "memory", "work-items", "epic-claims");
+  const graphPath = join(graphDir, "graph.json");
+  const registryPath = join(rootDir, ".supervibe", "memory", "work-items", "index.json");
+  await mkdir(graphDir, { recursive: true });
+  await writeFile(graphPath, JSON.stringify(baseGraph(), null, 2) + "\n", "utf8");
+
+  const first = await mutateWorkItemGraphFile(graphPath, {
+    type: "claim",
+    itemId: "task-1",
+    actor: "agent-a",
+    now: "2026-05-07T00:00:00.000Z",
+    operationId: "claim-task-1-once",
+    rootDir,
+  });
+  assert.equal(first.changed, true);
+  assert.equal(first.backupMode, "skipped-default");
+  await assert.rejects(access(graphPath + ".bak"), /ENOENT/);
+
+  const graphAfterFirst = await stat(graphPath);
+  const registryAfterFirst = await stat(registryPath);
+  await new Promise((resolve) => setTimeout(resolve, 25));
+
+  const second = await mutateWorkItemGraphFile(graphPath, {
+    type: "claim",
+    itemId: "task-1",
+    actor: "agent-a",
+    now: "2026-05-07T00:01:00.000Z",
+    operationId: "claim-task-1-once",
+    rootDir,
+  });
+  const saved = JSON.parse(await readFile(graphPath, "utf8"));
+  const graphAfterSecond = await stat(graphPath);
+  const registryAfterSecond = await stat(registryPath);
+
+  assert.equal(second.action, "idempotent-replay");
+  assert.equal(second.changed, false);
+  assert.equal(second.backupPath, null);
+  assert.equal(second.backupMode, "skipped-idempotent-replay");
+  assert.equal(saved.events.length, 1);
+  assert.equal(graphAfterSecond.mtimeMs, graphAfterFirst.mtimeMs);
+  assert.equal(registryAfterSecond.mtimeMs, registryAfterFirst.mtimeMs);
+});
+
 test("work-item graph file mutation refuses active lock", async () => {
   const rootDir = await mkdtemp(join(tmpdir(), "supervibe-actions-locked-"));
   const graphPath = join(rootDir, "graph.json");
@@ -645,6 +783,8 @@ test("loop status does not display completed claims as active owners", async () 
 
   assert.match(status.stdout, /CLAIMED: 0/);
   assert.match(status.stdout, /TASK: task-1 STATUS: done .* CLAIM: none /);
+  assert.doesNotMatch(status.stdout, /SUPERVIBE_RELEASE_FULL_CHECK_GATE/);
+  assert.doesNotMatch(status.stdout, /SUPERVIBE_FINAL_REVIEWER_SWEEP/);
 });
 
 test("command palette claim action points at implemented loop action", () => {

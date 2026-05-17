@@ -178,6 +178,83 @@ test("workflow receipt validation treats live work-item graph drift as snapshot-
   }
 });
 
+test("sv receipts status reports split-brain as non-blocking warning", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-receipt-status-"));
+  try {
+    const outputRel = ".supervibe/artifacts/plans/status/plan.md";
+    await writeUtf8(root, outputRel, "# Plan\n");
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-plan",
+      subjectType: "command",
+      subjectId: "supervibe:writing-plans",
+      stage: "stage-1-plan",
+      invocationReason: "status warning fixture",
+      outputArtifacts: [outputRel],
+      startedAt: "2026-05-07T00:00:00.000Z",
+      completedAt: "2026-05-07T00:01:00.000Z",
+      handoffId: "status-warning",
+      secret: "test-secret",
+    });
+    await rm(join(root, ...outputRel.split("/")), { force: true });
+
+    const { stdout } = await execFileAsync(process.execPath, [
+      join(REPO_ROOT, "bin", "supervibe.mjs"),
+      "receipts",
+      "status",
+      "--secret",
+      "test-secret",
+    ], { cwd: root, maxBuffer: 1024 * 1024 });
+
+    assert.match(stdout, /SUPERVIBE_WORKFLOW_RECEIPT_STATUS/);
+    assert.match(stdout, /USER_BLOCKING: false/);
+    assert.match(stdout, /STALE: 1/);
+    assert.match(stdout, /SPLIT_BRAIN: true/);
+    assert.match(stdout, /WARNING_RECEIPT: workflow-/);
+    assert.ok(stdout.includes("DETAILS_COMMAND: node scripts/workflow-receipt.mjs inspect"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("sv receipts status reports ledger split-brain as non-blocking warning", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-receipt-ledger-status-"));
+  try {
+    const outputRel = ".supervibe/artifacts/plans/status-ledger/plan.md";
+    await writeUtf8(root, outputRel, "# Plan\n");
+    await issueWorkflowInvocationReceipt({
+      rootDir: root,
+      command: "/supervibe-plan",
+      subjectType: "command",
+      subjectId: "supervibe:writing-plans",
+      stage: "stage-1-plan",
+      invocationReason: "ledger warning fixture",
+      outputArtifacts: [outputRel],
+      startedAt: "2026-05-07T00:00:00.000Z",
+      completedAt: "2026-05-07T00:01:00.000Z",
+      handoffId: "status-ledger-warning",
+      secret: "test-secret",
+    });
+    await rm(defaultWorkflowReceiptLedgerPath(root), { force: true });
+
+    const { stdout } = await execFileAsync(process.execPath, [
+      join(REPO_ROOT, "bin", "supervibe.mjs"),
+      "receipts",
+      "status",
+      "--secret",
+      "test-secret",
+    ], { cwd: root, maxBuffer: 1024 * 1024 });
+
+    assert.match(stdout, /SUPERVIBE_WORKFLOW_RECEIPT_STATUS/);
+    assert.match(stdout, /USER_BLOCKING: false/);
+    assert.match(stdout, /STALE: 1/);
+    assert.match(stdout, /SPLIT_BRAIN: true/);
+    assert.match(stdout, /ledger entry missing for receipt/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("workflow receipt runtime accepts compact agent-output manifest when archived gzip preserves original digest", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-workflow-compact-manifest-"));
   try {

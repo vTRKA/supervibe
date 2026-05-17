@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFile } from "node:child_process";
@@ -649,7 +649,7 @@ test("native write and external adapter failure preserve native graph", async ()
   }
 });
 
-test("atomization records and writes an adjacent source plan snapshot", async () => {
+test("atomization records source plan hash without writing snapshot files by default", async () => {
   const temp = await mkdtemp(join(tmpdir(), "supervibe-work-items-source-plan-"));
   try {
     const graph = atomizePlanToWorkItems(PLAN, {
@@ -660,15 +660,50 @@ test("atomization records and writes an adjacent source plan snapshot", async ()
     const expectedHash = createHash("sha256").update(PLAN).digest("hex");
 
     assert.equal(graph.source.sha256, expectedHash);
+    assert.equal(graph.source.snapshotPath, null);
     assert.equal(graph.metadata.sourcePlanSnapshot.sha256, expectedHash);
+    assert.equal(graph.metadata.sourcePlanSnapshot.storedPath, null);
+    assert.equal(graph.metadata.sourcePlanSnapshot.content, PLAN);
 
     const writeResult = await writeWorkItemGraph(graph, { rootDir: temp });
     const saved = JSON.parse(await readFile(writeResult.graphPath, "utf8"));
+
+    await assert.rejects(() => access(join(writeResult.outDir, "source-plan.md")), /ENOENT/);
+    await assert.rejects(() => access(join(writeResult.outDir, "preview.txt")), /ENOENT/);
+    assert.equal(saved.source.snapshotPath, null);
+    assert.equal(saved.metadata.sourcePlanSnapshot.sha256, expectedHash);
+    assert.equal(saved.metadata.sourcePlanSnapshot.storedPath, null);
+    assert.equal("content" in saved.metadata.sourcePlanSnapshot, false);
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+test("source plan and preview snapshots are opt-in write artifacts", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-work-items-source-plan-write-"));
+  try {
+    const graph = atomizePlanToWorkItems(PLAN, {
+      planPath: ".supervibe/artifacts/plans/payment.md",
+      epicId: "epic-payment",
+      planReviewPassed: true,
+    });
+    const expectedHash = createHash("sha256").update(PLAN).digest("hex");
+
+    const writeResult = await writeWorkItemGraph(graph, {
+      rootDir: temp,
+      writePreview: true,
+      writeSourcePlan: true,
+    });
+    const saved = JSON.parse(await readFile(writeResult.graphPath, "utf8"));
     const snapshot = await readFile(join(writeResult.outDir, "source-plan.md"), "utf8");
+    const preview = await readFile(join(writeResult.outDir, "preview.txt"), "utf8");
 
     assert.equal(snapshot, PLAN);
+    assert.match(preview, /SUPERVIBE_WORK_ITEMS_PREVIEW/);
     assert.equal(saved.source.snapshotPath, "source-plan.md");
     assert.equal(saved.metadata.sourcePlanSnapshot.sha256, expectedHash);
+    assert.equal(saved.metadata.sourcePlanSnapshot.storedPath, "source-plan.md");
+    assert.equal(saved.metadata.sourcePlanSnapshot.contentLength, Buffer.byteLength(PLAN, "utf8"));
     assert.equal("content" in saved.metadata.sourcePlanSnapshot, false);
   } finally {
     await rm(temp, { recursive: true, force: true });
@@ -723,6 +758,62 @@ test("loop CLI atomizes a reviewed plan into graph artifacts", async () => {
     const mapping = JSON.parse(await readFile(join(temp, ".supervibe", "memory", "loops", "task-tracker-map.json"), "utf8"));
     assert.equal(saved.kind, "supervibe-work-item-graph");
     assert.equal(Object.keys(mapping.items).length, saved.items.length);
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+test("loop CLI atomizes a user-approved plan with review deferred to final gate", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-user-approved-cli-"));
+  try {
+    const planPath = join(temp, "plan.md");
+    const scriptPath = join(process.cwd(), "scripts", "supervibe-loop.mjs");
+    await writeFile(planPath, PLAN);
+    const { stdout } = await execFileAsync(process.execPath, [
+      scriptPath,
+      "--atomize-plan",
+      planPath,
+      "--user-approved-plan",
+      "--out",
+      join(temp, "out"),
+    ], { cwd: temp });
+
+    assert.match(stdout, /SUPERVIBE_WORK_ITEMS/);
+    assert.match(stdout, /PLAN_REVIEW_STATUS: deferred-to-final-gate/);
+    const saved = JSON.parse(await readFile(join(temp, "out", "graph.json"), "utf8"));
+    assert.equal(saved.metadata.planReviewPassed, false);
+    assert.equal(saved.metadata.planReviewDeferred, true);
+  } finally {
+    await rm(temp, { recursive: true, force: true });
+  }
+});
+
+test("loop CLI only writes preview and source-plan artifacts when requested", async () => {
+  const temp = await mkdtemp(join(tmpdir(), "supervibe-loop-preview-cli-"));
+  try {
+    const planPath = join(temp, "plan.md");
+    const outDir = join(temp, "out");
+    const scriptPath = join(process.cwd(), "scripts", "supervibe-loop.mjs");
+    await writeFile(planPath, PLAN);
+    const { stdout } = await execFileAsync(process.execPath, [
+      scriptPath,
+      "--atomize-plan",
+      planPath,
+      "--user-approved-plan",
+      "--write-preview",
+      "--write-source-plan",
+      "--out",
+      outDir,
+    ], { cwd: temp });
+
+    assert.match(stdout, /SUPERVIBE_WORK_ITEMS/);
+    assert.match(stdout, /VALID: true/);
+    const saved = JSON.parse(await readFile(join(outDir, "graph.json"), "utf8"));
+    const preview = await readFile(join(outDir, "preview.txt"), "utf8");
+    const sourcePlan = await readFile(join(outDir, "source-plan.md"), "utf8");
+    assert.match(preview, /SUPERVIBE_WORK_ITEMS_PREVIEW/);
+    assert.equal(sourcePlan, PLAN);
+    assert.equal(saved.source.snapshotPath, "source-plan.md");
   } finally {
     await rm(temp, { recursive: true, force: true });
   }

@@ -15,7 +15,7 @@ import {
   WORKFLOW_PHASES,
 } from "../scripts/lib/supervibe-skill-chain.mjs";
 
-test("workflow phase graph forces brainstorm to plan to review to atomization", () => {
+test("workflow phase graph routes brainstorm to loop-ready plan to atomization", () => {
   assert.ok(WORKFLOW_PHASES.includes("brainstorm"));
   assert.equal(PHASE_ALIASES.plan_review_passed, "plan-review");
   assert.ok(PLAN_REVIEW_DIMENSIONS.includes("provider-policy"));
@@ -23,9 +23,9 @@ test("workflow phase graph forces brainstorm to plan to review to atomization", 
   assert.ok(PLAN_REVIEW_DIMENSIONS.includes("architecture-fit"));
   assert.ok(PLAN_REVIEW_DIMENSIONS.includes("cache-queue-topology"));
   assert.ok(PLAN_REVIEW_DIMENSIONS.includes("convergence-decision"));
-  assert.equal(getNextWorkflowStep("brainstorm").command, "/supervibe-plan --from-brainstorm");
-  assert.equal(getNextWorkflowStep("plan").command, "/supervibe-plan --review");
-  assert.equal(getNextWorkflowStep("plan-review").command, "/supervibe-loop --atomize-plan <plan-path> --plan-review-passed");
+  assert.equal(getNextWorkflowStep("brainstorm").command, "/supervibe-plan --loop-ready --from-brainstorm");
+  assert.equal(getNextWorkflowStep("plan").command, "/supervibe-loop --atomize-plan <plan-path> --user-approved-plan");
+  assert.equal(getNextWorkflowStep("plan-review").command, "/supervibe-loop --atomize-plan <plan-path> --user-approved-plan");
   assert.equal(getNextWorkflowStep("work-item-atomization").command, "/supervibe-loop --guided");
   assert.equal(getNextWorkflowStep("worktree-setup").command, "/supervibe-loop --epic --worktree");
   assert.match(getNextWorkflowStep("worktree-setup").why, /explicit timeboxes are optional/);
@@ -39,8 +39,8 @@ test("next-step handoff block is parseable and prevents silent producer stops", 
   });
 
   const parsed = parseNextStepBlock(output);
-  assert.equal(parsed.nextCommand, "/supervibe-plan --review");
-  assert.equal(parsed.nextSkill, "supervibe:requesting-code-review");
+  assert.equal(parsed.nextCommand, "/supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --user-approved-plan");
+  assert.equal(parsed.nextSkill, "supervibe:autonomous-agent-loop");
   assert.match(output, /Choices:\n- Continue \.supervibe\/artifacts\/plans\/example\.md \(recommended\)/);
   assert.match(output, /Revise scope for \.supervibe\/artifacts\/plans\/example\.md/);
   assert.match(output, /Exclude or defer items from \.supervibe\/artifacts\/plans\/example\.md/);
@@ -55,7 +55,7 @@ test("next-step handoff block is parseable and prevents silent producer stops", 
   assert.equal(assertion.pass, true);
 });
 
-test("plan review handoff resolves atomization command with reviewed plan path and proof flag", () => {
+test("plan review handoff resolves atomization command with approved plan path", () => {
   const output = formatNextStepBlock({
     phase: "plan-review",
     artifactPath: ".supervibe/artifacts/plans/example.md",
@@ -63,9 +63,9 @@ test("plan review handoff resolves atomization command with reviewed plan path a
   });
 
   const parsed = parseNextStepBlock(output);
-  assert.equal(parsed.nextCommand, "/supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --plan-review-passed");
+  assert.equal(parsed.nextCommand, "/supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --user-approved-plan");
   assert.match(output, /Continue \.supervibe\/artifacts\/plans\/example\.md \(recommended\)/);
-  assert.match(output, /--plan-review-passed/);
+  assert.match(output, /--user-approved-plan/);
 
   const assertion = assertNoSilentStop({
     phase: "plan-review",

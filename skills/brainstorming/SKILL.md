@@ -130,7 +130,7 @@ If a saved brainstorm, `NEXT_STEP_HANDOFF`, or workflow state exists and the use
 
 - New feature: decompose the problem, compare minimal/standard/ambitious
   options, pick an MVP path, write the spec after approval, validate it, then
-  hand off to `/supervibe-plan --from-brainstorm <spec>`.
+  hand off to `/supervibe-plan --loop-ready --from-brainstorm <spec>`.
 - Design workflow: clarify audience, trust posture, information density,
   reference borrow/avoid, and acceptance evidence, then route visual-system
   material to `supervibe:brandbook` after the spec is approved.

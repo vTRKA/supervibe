@@ -28,7 +28,7 @@ export function validateDocsTaskFlow(rootDir = process.cwd()) {
   const brainstorm = docs.get("commands/supervibe-brainstorm.md") || "";
 
   for (const [file, text] of [["README.md", readme], ["README.ru.md", readmeRu]]) {
-    for (const term of ["/supervibe-plan --review", "--atomize-plan", "--plan-review-passed", "/supervibe-ui"]) {
+    for (const term of ["/supervibe-plan --loop-ready", "--atomize-plan", "--user-approved-plan", "/supervibe-ui"]) {
       if (!text.includes(term)) issues.push(`${file}: missing canonical task flow term ${term}`);
     }
   }

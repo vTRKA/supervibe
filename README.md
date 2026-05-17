@@ -7,9 +7,9 @@ It helps your AI coding tool inspect a project, plan changes, design UI, review 
 
 Runs locally. No Docker. Windows, macOS, and Linux.
 
-Supervibe commands are agent-gated by default: every `/supervibe-*` workflow has required specialist agents, active durable work is blocked until scoped runtime receipts exist, and inline/controller-only output stays diagnostic. Design and prototype flows additionally require their producer and reviewer agents before completion can be claimed.
+Supervibe keeps the normal brainstorm -> loop-ready plan -> user-approved graph path fast. Specialist agents and scoped receipts are required when Supervibe claims delegated agent output, explicit strict review, verification, release evidence, or design/prototype completion; simple routing and next-action handoffs stay lightweight.
 
-**v2.1** - current plugin `v2.1.40` - MIT - 2298 tests
+**v2.1** - current plugin `v2.1.41` - MIT - 2316 tests
 
 > **Compliance notice:** This tool is designed exclusively for development assistance. By using it, you agree to comply with the Terms of Service (ToS) and Acceptable Use Policy (AUP) of all involved services, including Anthropic. Unauthorized automated usage, OAuth token abuse, or violation of third-party policies is the sole responsibility of the end user.
 
@@ -21,7 +21,7 @@ Most Supervibe work follows one simple loop:
 flowchart LR
   A["Install or refresh"] --> B["Connect the project"]
   B --> C["Discover context"]
-  C --> D["Create a reviewed plan"]
+  C --> D["Create a loop-ready plan"]
   D --> E["Run gated execution"]
   E --> F["Verify and review"]
   F --> G["Record memory and status"]
@@ -32,8 +32,8 @@ flowchart LR
 | Install or refresh | `/supervibe-update`, `/supervibe-adapt` | Installer or adapt dry-run, host registration, managed-block diff |
 | Connect the project | `/supervibe-genesis` | Stack detection, selected agents/rules/skills, memory and index setup |
 | Discover context | `/supervibe`, `/supervibe-brainstorm <topic>`, `/supervibe-design <brief>` | Project memory, Code RAG, Code Graph readiness, domain evidence when needed |
-| Create a reviewed plan | `/supervibe-plan [<source-artifact>]` | Acceptance criteria, risk map, verification matrix, command-owned agent proof |
-| Run gated execution | `/supervibe-execute-plan <plan-path>` or `/supervibe-loop --guided --file <graph.json>` | Work item state, scoped write set, receipts, targeted verification |
+| Create a loop-ready plan | `/supervibe-plan [<source-artifact>]` | Acceptance criteria, risk map, verification matrix, epics/tasks ready for graph creation |
+| Create graph and run | `/supervibe-loop --atomize-plan <plan-path> --user-approved-plan` then `/supervibe-loop --guided --file <graph.json>` | Work item state, scoped write set, targeted verification |
 | Verify and review | `/supervibe-status`, `/supervibe-security-audit`, reviewer agents | Validator output, reviewer findings, confidence gate status, residual risks |
 | Record memory and status | `/supervibe-status` | Durable memory, context-pack citations, close or resume action |
 
@@ -275,7 +275,7 @@ The installer:
 After restart, you should see something like:
 
 ```text
-[supervibe] welcome  plugin v2.1.40 initialized for this project
+[supervibe] welcome  plugin v2.1.41 initialized for this project
 [supervibe] code RAG  N files / M chunks (fresh)
 [supervibe] code graph  N symbols / M edges (X% resolved)
 ```
@@ -329,9 +329,9 @@ Approve only after the dry-run looks right. Supervibe managed blocks are updated
 | Goal | Use this | What happens |
 |---|---|---|
 | Ask what to do next | `/supervibe` | Routes to the safest next workflow |
-| New feature idea | `/supervibe-brainstorm "idea"` then `/supervibe-plan --from-brainstorm <spec-path>` | Turns a vague idea into a spec and plan |
+| New feature idea | `/supervibe-brainstorm "idea"` then `/supervibe-plan --loop-ready --from-brainstorm <spec-path>` | Turns a vague idea into a spec and plan |
 | UI, landing page, or product screen | `/supervibe-design <brief>` | Creates brand direction, prototype, preview, feedback loop, and handoff |
-| Execute an approved plan | `/supervibe-execute-plan <plan-path>` | Runs plan steps with verification gates |
+| Execute an approved plan | `/supervibe-loop --atomize-plan <plan-path> --user-approved-plan` | Creates the graph and starts claimable work without an extra review ritual |
 | Long task with visible state | `/supervibe-loop --guided --file <graph.json>` | Runs a visible, cancellable loop from an atomized work graph |
 | Verify, review, or ship completed work | `/supervibe-verify`, `/supervibe-review`, then `/supervibe-ship` | Maps evidence to goals, runs production-readiness review, then checks release readiness |
 | Security review | `/supervibe-security-audit` | Produces read-only findings first |
@@ -345,7 +345,7 @@ Approve only after the dry-run looks right. Supervibe managed blocks are updated
 The normal path is:
 
 ```text
-brainstorm -> reviewed plan -> atomized epic -> safe execution
+brainstorm -> loop-ready plan -> user-approved graph -> safe execution
 ```
 
 Text-first summaries are the default for workflow schemes: Supervibe should explain stages with compact tables, stage maps, or improvised ASCII diagrams. Browser previews are reserved for actual UI/prototype/browser verification work, not ordinary planning summaries.
@@ -353,7 +353,7 @@ Text-first summaries are the default for workflow schemes: Supervibe should expl
 Validator label:
 
 ```text
-Brainstorm -> Plan -> Review -> Atomize -> Safe Run
+Brainstorm -> Loop-ready plan -> Atomize -> Safe run -> Optional verify/review
 ```
 
 Workflow summary gates are durable artifacts, not chat-only prose. The summary
@@ -363,28 +363,20 @@ under `.supervibe/artifacts/summaries/`, validated at release with
 
 Plans are contract artifacts, not loose task lists. A production-ready plan should carry a Development Contract Map for behavior, architecture, data/schema, API/event, UI state, security/privacy, performance, observability, rollout/rollback, and docs/support, then pass `node scripts/validate-plan-artifacts.mjs --file <plan>`.
 
-Plan review is a gate before atomization. `/supervibe-plan --review <plan-path>`
-must produce a durable review artifact with baseline reviewer coverage,
-risk-triggered reviewers when needed, zero critical or major unresolved
-findings, and scoped real-agent receipts. Maintainers can inspect it with
-`node scripts/validate-plan-review-artifacts.mjs --file <review-artifact>` or
-`node scripts/validate-plan-review-artifacts.mjs --plan <plan> --require-active-review`.
+Plan review is optional before atomization. The normal path is a user-approved loop-ready plan followed by `/supervibe-loop --atomize-plan <plan-path> --user-approved-plan`. Use `/supervibe-plan --review <plan-path>` only when the user asks for deeper review, the plan touches high-risk areas, or release governance requires it. Maintainers can inspect strict review evidence with `node scripts/validate-plan-review-artifacts.mjs --file <review-artifact>` or `node scripts/validate-plan-review-artifacts.mjs --plan <plan> --require-active-review`.
 
-Copy-paste example:
+Copy-paste default path:
 
 ```text
 /supervibe-brainstorm "idea"
-/supervibe-plan --from-brainstorm .supervibe/artifacts/specs/example.md
-/supervibe-plan --review .supervibe/artifacts/plans/example.md
-/supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --plan-review-passed
+/supervibe-plan --loop-ready --from-brainstorm .supervibe/artifacts/specs/example.md
+/supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --user-approved-plan
 /supervibe-loop --guided --file .supervibe/memory/work-items/example-epic/graph.json
-/supervibe-loop --epic example-epic --worktree
-/supervibe-loop --validate-completion --epic example-epic
-/supervibe-loop --close-eligible --epic example-epic
-/supervibe-loop --status --epic example-epic
-/supervibe-loop --resume .supervibe/memory/loops/example-run/state.json
-/supervibe-loop --stop example-run
 ```
+
+Default flow: brainstorm -> loop-ready plan -> user-approved graph -> safe execution.
+
+After the graph work is complete, choose the next action explicitly: inspect status, run verification/review, prepare release evidence, archive, resume, or stop. These are not prerequisites for starting normal development. Optional controls are `/supervibe-loop --status --epic example-epic`, `/supervibe-loop --resume .supervibe/memory/loops/example-run/state.json`, `/supervibe-loop --stop example-run`, and `/supervibe-loop --epic example-epic --worktree` when isolated or parallel work is worth the overhead.
 
 For command routing diagnostics, use `/supervibe --diagnose-trigger` when a phrase did not route as expected and `/supervibe --why-trigger` when you want to see the selected command, selected skill, confidence, missing artifacts, and safety blockers. Long-running work stays visible through stop/resume/status controls.
 
@@ -392,14 +384,14 @@ The guided loop runs in the current session. Worktree is optional: add `--worktr
 
 Repair path:
 
-- Invalid plan repair: revise the reviewed plan, rerun atomization with `--preview`, and write only after `--plan-review-passed`.
+- Invalid plan repair: revise the loop-ready plan, rerun atomization with `--preview`, and write only after user approval.
 - Graph drift repair: inspect `/supervibe-status --ready --blocked --stale --orphan`, then fix dependencies, claims, or ownership before execution.
 - Completion blocker repair: run `/supervibe-loop --validate-completion`, attach missing evidence, then rerun `/supervibe-loop --close-eligible`.
 
 Also supported:
 
 ```text
-/supervibe-plan --from-brainstorm <spec-path>
+/supervibe-plan --loop-ready --from-brainstorm <spec-path>
 /supervibe-loop --tracker-sync-push --file .supervibe/memory/work-items/example-epic/graph.json
 ```
 
@@ -582,7 +574,7 @@ Run these in the AI CLI chat.
 | `/supervibe-status` | Project health, indexes, memory, workflow state, delegated inbox, and tracker visibility |
 | `/supervibe-audit` | Read-only audit for agents, rules, memory, indexes, routing, and stale artifacts |
 | `/supervibe-brainstorm <topic>` | Turn an idea into an approved spec |
-| `/supervibe-plan [<spec-path>]` | Turn a spec into a reviewed implementation plan; also supports docs-sync and summary-gate flows |
+| `/supervibe-plan [<spec-path>]` | Turn a spec into a loop-ready implementation plan; optional review stays explicit |
 | `/supervibe-execute-plan [<plan-path>]` | Execute a plan with gates |
 | `/supervibe-loop --request/--file/--epic` | Visible goal-until-complete loop over native work graphs with status, resume, stop, and completion gates |
 | `/supervibe-verify` | Tester-style verification against explicit goals and evidence |

@@ -302,15 +302,15 @@ function createNoActiveGraphModel({ rootDir = process.cwd() } = {}) {
         status: "no-active-graph",
         archiveCandidate: false,
         archivedAt: null,
-        nextAction: "atomize a reviewed plan before archive readiness",
+        nextAction: "atomize a user-approved loop-ready plan before archive readiness",
       },
       readyQueue: [],
       blockers: [{
         id: "no-active-graph",
         title: "No active work graph",
         status: "blocked",
-        reason: "a reviewed plan has not been atomized into epics and tasks",
-        nextAction: "run /supervibe-loop --atomize-plan <plan-path> --plan-review-passed",
+        reason: "a user-approved loop-ready plan has not been atomized into epics and tasks",
+        nextAction: "run /supervibe-loop --atomize-plan <plan-path> --user-approved-plan",
       }],
       staleClaims: [],
       completion: {
@@ -319,7 +319,7 @@ function createNoActiveGraphModel({ rootDir = process.cwd() } = {}) {
           code: "no-active-graph",
           itemId: null,
           reason: "completion validation needs a work-item graph",
-          nextAction: "atomize a reviewed plan before production completion validation",
+          nextAction: "atomize a user-approved loop-ready plan before production completion validation",
         }],
         warnings: [],
       },
@@ -333,7 +333,7 @@ function createNoActiveGraphModel({ rootDir = process.cwd() } = {}) {
       unmapped: 0,
       stale: 0,
       lastSync: null,
-      nextAction: "atomize a reviewed plan before tracker sync",
+      nextAction: "atomize a user-approved loop-ready plan before tracker sync",
     },
     savedViews: {
       remaining: [],
@@ -346,9 +346,9 @@ function createNoActiveGraphModel({ rootDir = process.cwd() } = {}) {
       columns: [],
     },
     flow: createWorkflowFlowModel(),
-    nextAction: "atomize a reviewed plan into a work graph",
+    nextAction: "atomize a user-approved loop-ready plan into a work graph",
     commands: {
-      atomizeReviewedPlan: "/supervibe-loop --atomize-plan <plan-path> --plan-review-passed",
+      atomizeReviewedPlan: "/supervibe-loop --atomize-plan <plan-path> --user-approved-plan",
       inspectStatus: "/supervibe-status --ready --blocked --stale --orphan",
       runtimeMaturity: "node scripts/supervibe-task-graph-maturity.mjs --require-active-graph",
       inspectPlans: `dir ${planGlob}`,
@@ -1500,7 +1500,7 @@ function sourceSnapshotPanel(graph = {}) {
     sha256,
     nextAction: storedPath && sha256
       ? "source plan snapshot is traceable"
-      : "atomize the reviewed plan again to capture a source-plan.md snapshot",
+      : "atomize the user-approved loop-ready plan again to capture a source-plan.md snapshot",
   };
 }
 

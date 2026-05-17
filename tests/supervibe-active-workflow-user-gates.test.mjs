@@ -135,8 +135,8 @@ test("next-step handoff question is durable runtime state, not only markdown", (
     assert.equal(state.handoffId, "handoff-plan-review-example");
     assert.equal(state.question.id, "handoff-plan-review-example");
     assert.equal(state.question.stage, "work-item-atomization");
-    assert.match(state.question.prompt, /atomize the reviewed plan/i);
-    assert.equal(state.nextCommand, "/supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --plan-review-passed");
+    assert.match(state.question.prompt, /atomize the reviewed or user-approved plan/i);
+    assert.equal(state.nextCommand, "/supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --user-approved-plan");
     assert.equal(state.acceptedAnswer, null);
     assert.equal(state.artifacts[0].path, ".supervibe/artifacts/plans/example.md");
     assert.ok(state.choices.some((choice) => choice.id === "continue-supervibe-artifacts-plans-example-md"));
@@ -153,7 +153,7 @@ test("next-step handoff questions include full UI-safe title, reason, and choice
     });
 
     assert.match(state.question.title, /Atomize/);
-    assert.match(state.question.reason, /reviewed plan/i);
+    assert.match(state.question.reason, /reviewed or user-approved loop-ready plan/i);
     assert.match(state.question.prompt, /Step 1\/1/);
     assert.deepEqual(state.question.choices, state.choices);
     for (const choice of state.question.choices) {

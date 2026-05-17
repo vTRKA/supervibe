@@ -244,6 +244,7 @@ node --test tests/supervibe-loop-scheduler.test.mjs
     "--allow-untrusted-final-review",
     "--allow-open-epic",
     "--no-auto-ui",
+    "--details",
   ], { cwd: dir, maxBuffer: 1024 * 1024 });
 
   assert.match(cli.stdout, /SUPERVIBE_FINAL_REVIEWER_SWEEP/);
@@ -290,6 +291,7 @@ test("release full-check gate is visible and child task handoff stays targeted",
     "--file",
     graphPath,
     "--no-auto-ui",
+    "--details",
   ], { cwd: dir, maxBuffer: 1024 * 1024 });
   assert.match(pending.stdout, /SUPERVIBE_RELEASE_FULL_CHECK_GATE/);
   assert.match(pending.stdout, /RELEASE_FULL_CHECK_GATE: pending/);
@@ -308,6 +310,7 @@ test("release full-check gate is visible and child task handoff stays targeted",
     "--file",
     graphPath,
     "--no-auto-ui",
+    "--details",
   ], { cwd: dir, maxBuffer: 1024 * 1024 });
   assert.match(childOnly.stdout, /RELEASE_FULL_CHECK_GATE: pending/);
   assert.match(childOnly.stdout, /CHILD_TASK_REQUIRES_FULL_CHECK: false/);
@@ -326,6 +329,7 @@ test("release full-check gate is visible and child task handoff stays targeted",
     "--file",
     graphPath,
     "--no-auto-ui",
+    "--details",
   ], { cwd: dir, maxBuffer: 1024 * 1024 });
   assert.match(passed.stdout, /RELEASE_FULL_CHECK_GATE: passed/);
   assert.match(passed.stdout, /FULL_CHECK_EVIDENCE: npm run check/);
@@ -393,6 +397,7 @@ test("workflow receipt drift inspect reports stale source and dry-run repair sta
     statusPath,
     "--no-color",
     "--no-gc-hints",
+    "--receipt-recovery",
   ], {
     cwd: dir,
     env: { ...process.env, SUPERVIBE_HOST: "codex", SUPERVIBE_PLUGIN_ROOT: ROOT },
@@ -682,7 +687,7 @@ test("plan-waves keeps non-Codex providers on the local fallback when max_thread
   assert.match(cli.stdout, /TASK: plan-t13 DECISION: serialized REASON: max concurrency 12 reached/);
 });
 
-test("dispatch-wave blocks new Codex spawns when completed subagent cleanup exhausts provider threads", async () => {
+test("dispatch-wave treats historical Codex cleanup debt as diagnostic outside release gate", async () => {
   const dir = await mkdtemp(join(tmpdir(), "supervibe-dispatch-cleanup-debt-"));
   const graphPath = join(dir, "graph.json");
   const registryPath = join(dir, ".supervibe", "memory", "runtime-cleanup-registry.json");
@@ -739,14 +744,15 @@ test("dispatch-wave blocks new Codex spawns when completed subagent cleanup exha
   ], { cwd: dir, maxBuffer: 1024 * 1024 });
   const report = JSON.parse(cli.stdout);
 
-  assert.equal(report.schedulerPolicy.hostManagedCleanupRequired, 1);
-  assert.equal(report.schedulerPolicy.effectiveMaxConcurrency, 0);
-  assert.deepEqual(report.assignedTaskIds, []);
-  assert.equal(report.dispatches[0].status, "blocked");
-  assert.match(report.dispatches[0].blockedReason, /cleanup is required/);
+  assert.equal(report.schedulerPolicy.hostManagedCleanupRequired, 0);
+  assert.equal(report.schedulerPolicy.hostManagedCleanupDiagnostic, 1);
+  assert.equal(report.schedulerPolicy.effectiveMaxConcurrency, 1);
+  assert.deepEqual(report.assignedTaskIds, ["task-1"]);
+  assert.equal(report.dispatches[0].status, "assigned");
+  assert.doesNotMatch(report.dispatches[0].blockedReason || "", /cleanup is required/);
 });
 
-test("plan-waves honors invocation-log cleanup debt and keeps zero-slot waves empty", async () => {
+test("plan-waves reports invocation-log cleanup debt as diagnostic and keeps scheduling", async () => {
   const dir = await mkdtemp(join(tmpdir(), "supervibe-plan-waves-log-cleanup-debt-"));
   const planPath = join(dir, "cleanup-debt-plan.md");
   const invocationLog = join(dir, ".supervibe", "memory", "agent-invocations.jsonl");
@@ -797,11 +803,12 @@ test("plan-waves honors invocation-log cleanup debt and keeps zero-slot waves em
     "1",
   ], { cwd: dir, maxBuffer: 1024 * 1024 });
 
-  assert.match(cli.stdout, /HOST_MANAGED_CLEANUP_REQUIRED: 1/);
-  assert.match(cli.stdout, /EFFECTIVE_MAX_CONCURRENCY: 0/);
-  assert.match(cli.stdout, /CURRENT_TASKS: none/);
-  assert.doesNotMatch(cli.stdout, /DECISION: parallel/);
-  assert.match(cli.stdout, /DECISION: serialized REASON: max concurrency 0 reached/);
+  assert.match(cli.stdout, /HOST_MANAGED_CLEANUP_REQUIRED: 0/);
+  assert.match(cli.stdout, /HOST_MANAGED_CLEANUP_DIAGNOSTIC: 1/);
+  assert.match(cli.stdout, /EFFECTIVE_MAX_CONCURRENCY: 1/);
+  assert.match(cli.stdout, /TASK: plan-t01 DECISION: parallel/);
+  assert.match(cli.stdout, /TASK: plan-t02 DECISION: serialized REASON: max concurrency 1 reached/);
+  assert.doesNotMatch(cli.stdout, /CURRENT_TASKS: none/);
 });
 
 test("dispatch-wave subtracts active graph claims from provider thread capacity", async () => {
@@ -859,12 +866,11 @@ test("dispatch-wave subtracts active graph claims from provider thread capacity"
   assert.equal(report.schedulerPolicy.activeGraphClaimedSlots, 2);
   assert.equal(report.schedulerPolicy.availableProviderThreads, 1);
   assert.equal(report.schedulerPolicy.effectiveMaxConcurrency, 1);
-  assert.equal(report.minimumParallelAgents, 2);
-  assert.equal(report.parallelDispatchBlocked, true);
-  assert.deepEqual(report.assignedTaskIds, []);
-  const blockedReady = report.dispatches.find((dispatch) => dispatch.taskId === "task-ready-1");
-  assert.equal(blockedReady.status, "blocked");
-  assert.match(blockedReady.blockedReason, /minimumParallelAgents=2, assigned=1/);
+  assert.equal(report.minimumParallelAgents, 1);
+  assert.equal(report.parallelDispatchBlocked, false);
+  assert.deepEqual(report.assignedTaskIds, ["task-ready-1"]);
+  const assignedReady = report.dispatches.find((dispatch) => dispatch.taskId === "task-ready-1");
+  assert.equal(assignedReady.status, "assigned");
   assert.equal(report.dispatches.find((dispatch) => dispatch.taskId === "task-ready-2").status, "serialized");
   assert.match(report.schedulerPolicy.reason, /active graph claim/);
 });
@@ -938,6 +944,7 @@ test("agent heartbeat stall detection exposes retry and manual recovery state", 
     "--progress-signature",
     "rev1",
     "--no-auto-ui",
+    "--details",
   ], { cwd: dir, maxBuffer: 1024 * 1024 });
   assert.match(heartbeat.stdout, /SUPERVIBE_AGENT_HEARTBEAT/);
   assert.match(heartbeat.stdout, /HOST_INVOCATION_ID: codex-stall-1/);
@@ -954,6 +961,7 @@ test("agent heartbeat stall detection exposes retry and manual recovery state", 
     "--max-stall-retries",
     "1",
     "--no-auto-ui",
+    "--details",
   ], { cwd: dir, maxBuffer: 1024 * 1024 });
   assert.match(stallCheck.stdout, /SUPERVIBE_AGENT_STALL_CHECK/);
   assert.match(stallCheck.stdout, /STALLED: 1/);
@@ -967,6 +975,7 @@ test("agent heartbeat stall detection exposes retry and manual recovery state", 
     "--file",
     graphPath,
     "--no-auto-ui",
+    "--details",
   ], { cwd: dir, maxBuffer: 1024 * 1024 });
   assert.match(loopStatus.stdout, /STALLED: 1/);
   assert.match(loopStatus.stdout, /RETRYABLE_STALLED: 1/);
@@ -998,6 +1007,7 @@ test("agent heartbeat stall detection exposes retry and manual recovery state", 
     "--now",
     "2026-05-13T00:31:00.000Z",
     "--no-auto-ui",
+    "--details",
   ], { cwd: dir, maxBuffer: 1024 * 1024 });
   assert.match(recovery.stdout, /SUPERVIBE_AGENT_STALL_RECOVERY/);
   assert.match(recovery.stdout, /RECOVERED: true/);
@@ -1008,6 +1018,7 @@ test("agent heartbeat stall detection exposes retry and manual recovery state", 
     "--file",
     graphPath,
     "--no-auto-ui",
+    "--details",
   ], { cwd: dir, maxBuffer: 1024 * 1024 });
   assert.match(recoveredStatus.stdout, /STALLED: 0/);
   assert.match(recoveredStatus.stdout, /READY: 1/);
@@ -1187,12 +1198,11 @@ test("dispatch-wave blocks ready tasks that overlap active claimed write sets", 
     "3",
   ], { cwd: dir, maxBuffer: 1024 * 1024 });
   const report = JSON.parse(cli.stdout);
-  assert.equal(report.minimumParallelAgents, 2);
-  assert.equal(report.parallelDispatchBlocked, true);
-  assert.deepEqual(report.assignedTaskIds, []);
-  const fanoutBlocked = report.dispatches.find((dispatch) => dispatch.taskId === "task-free");
-  assert.equal(fanoutBlocked.status, "blocked");
-  assert.match(fanoutBlocked.blockedReason, /minimumParallelAgents=2, assigned=1/);
+  assert.equal(report.minimumParallelAgents, 1);
+  assert.equal(report.parallelDispatchBlocked, false);
+  assert.deepEqual(report.assignedTaskIds, ["task-free"]);
+  const assignedFree = report.dispatches.find((dispatch) => dispatch.taskId === "task-free");
+  assert.equal(assignedFree.status, "assigned");
   const blocked = report.dispatches.find((dispatch) => dispatch.taskId === "task-conflict");
   assert.equal(blocked.status, "blocked");
   assert.match(blocked.blockedReason, /write-set lock conflict: claim-active/);

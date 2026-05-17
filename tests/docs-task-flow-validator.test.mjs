@@ -36,8 +36,8 @@ test("docs task flow validator rejects browser-first requirement", async () => {
 
 function canonicalReadme() {
   return [
-    "/supervibe-plan --review .supervibe/artifacts/plans/example.md",
-    "/supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --plan-review-passed",
+    "/supervibe-plan --loop-ready .supervibe/artifacts/specs/example.md",
+    "/supervibe-loop --atomize-plan .supervibe/artifacts/plans/example.md --user-approved-plan",
     "/supervibe-ui",
   ].join("\n");
 }

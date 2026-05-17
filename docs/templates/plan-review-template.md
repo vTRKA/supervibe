@@ -124,7 +124,7 @@ Plan Review Contract: workflow-summary-v2
 
 - added: source-bound post-plan summary with table and ASCII map
 - why: review and execution need a current source artifact hash before advancing
-- next: approve post-plan summary and run /supervibe-plan --review .supervibe/artifacts/plans/2026-05-15-example-plan.md
+- next: approve post-plan summary and run /supervibe-loop --atomize-plan .supervibe/artifacts/plans/2026-05-15-example-plan.md --user-approved-plan
 
 ## Acceptance Mapping
 

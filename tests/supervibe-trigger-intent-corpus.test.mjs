@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import Ajv2020 from "ajv/dist/2020.js";
 import { getTriggerIntentCorpus, validateTriggerIntentCorpus } from "../scripts/lib/supervibe-trigger-intent-corpus.mjs";
+import { routeTriggerRequest } from "../scripts/lib/supervibe-trigger-router.mjs";
 
 describe("supervibe trigger intent corpus", () => {
   it("is internally valid", () => {
@@ -35,6 +36,18 @@ describe("supervibe trigger intent corpus", () => {
       "explain this system visually with a text-first summary before implementation",
     ]) {
       assert.equal(phrases.has(phrase), true, phrase);
+    }
+  });
+
+  it("routes exact create-epic phrases through the user-approved plan path", () => {
+    const exactRoute = routeTriggerRequest("create an epic from the plan");
+    assert.equal(exactRoute.intent, "create_epic");
+    assert.equal(exactRoute.phase, "plan_approved");
+    assert.equal(exactRoute.command, "/supervibe-loop --atomize-plan <plan-path> --user-approved-plan");
+
+    for (const entry of getTriggerIntentCorpus().filter((item) => item.intent === "create_epic" || item.intent === "atomize_plan")) {
+      assert.equal(entry.phase, "plan_approved", entry.id);
+      assert.doesNotMatch(entry.command, new RegExp(["--from-plan", "--create-epic"].join(" "), "u"), entry.id);
     }
   });
 

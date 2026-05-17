@@ -123,7 +123,7 @@ test("command agent plan reports Codex logical fallback as non-strict proof", ()
   }
 });
 
-test("command agent plan suppresses Codex spawn payloads when completed subagents need cleanup", () => {
+test("command agent plan reports completed subagent cleanup debt without suppressing Codex spawn payloads", () => {
   const root = mkdtempSync(join(tmpdir(), "supervibe-command-cleanup-debt-"));
   try {
     const registryPath = join(root, ".supervibe", "memory", "runtime-cleanup-registry.json");
@@ -150,17 +150,20 @@ test("command agent plan suppresses Codex spawn payloads when completed subagent
       enforceHostProof: false,
     });
 
-    assert.equal(report.pass, false);
-    assert.equal(report.plan.executionMode, "agent-required-blocked");
-    assert.equal(report.plan.hostManagedCleanupDebt.count, 1);
-    assert.deepEqual(report.plan.codexSpawnPayloads, []);
+    assert.equal(report.pass, true);
+    assert.equal(report.plan.executionMode, "agent-dispatch-required");
+    assert.equal(report.plan.hostManagedCleanupDebt.count, 0);
+    assert.equal(report.plan.hostManagedCleanupDebt.diagnosticCount, 1);
+    assert.equal(report.plan.hostManagedCleanupDebt.globalCount, 1);
+    assert.equal(report.plan.codexSpawnCleanupWarning, true);
+    assert.ok((report.plan.codexSpawnPayloads || []).length > 0);
     assert.match(report.plan.qualityImpact, /old-worker/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-test("command agent plan suppresses Codex spawn payloads for invocation-log-only cleanup debt", () => {
+test("command agent plan reports invocation-log-only cleanup debt without suppressing Codex spawn payloads", () => {
   const root = mkdtempSync(join(tmpdir(), "supervibe-command-cleanup-log-debt-"));
   try {
     const invocationLog = join(root, ".supervibe", "memory", "agent-invocations.jsonl");
@@ -183,17 +186,20 @@ test("command agent plan suppresses Codex spawn payloads for invocation-log-only
       enforceHostProof: false,
     });
 
-    assert.equal(report.pass, false);
-    assert.equal(report.plan.executionMode, "agent-required-blocked");
-    assert.equal(report.plan.hostManagedCleanupDebt.count, 1);
-    assert.deepEqual(report.plan.codexSpawnPayloads, []);
+    assert.equal(report.pass, true);
+    assert.equal(report.plan.executionMode, "agent-dispatch-required");
+    assert.equal(report.plan.hostManagedCleanupDebt.count, 0);
+    assert.equal(report.plan.hostManagedCleanupDebt.diagnosticCount, 1);
+    assert.equal(report.plan.hostManagedCleanupDebt.globalCount, 1);
+    assert.equal(report.plan.codexSpawnCleanupWarning, true);
+    assert.ok((report.plan.codexSpawnPayloads || []).length > 0);
     assert.match(report.plan.qualityImpact, /old-worker/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-test("command agent cleanup debt blocks durable plans even when inline is requested", () => {
+test("command agent cleanup debt is diagnostic even when inline is requested", () => {
   const root = mkdtempSync(join(tmpdir(), "supervibe-command-cleanup-inline-blocked-"));
   try {
     const registryPath = join(root, ".supervibe", "memory", "runtime-cleanup-registry.json");
@@ -221,13 +227,15 @@ test("command agent cleanup debt blocks durable plans even when inline is reques
       enforceHostProof: false,
     });
 
-    assert.equal(report.pass, false);
+    assert.equal(report.pass, true);
     assert.equal(report.plan.requestedExecutionMode, "real-agents");
-    assert.equal(report.plan.executionMode, "agent-required-blocked");
-    assert.equal(report.plan.hostManagedCleanupDebt.count, 1);
-    assert.equal(report.plan.codexSpawnBlockedByCleanup, true);
+    assert.equal(report.plan.executionMode, "agent-dispatch-required");
+    assert.equal(report.plan.hostManagedCleanupDebt.count, 0);
+    assert.equal(report.plan.hostManagedCleanupDebt.diagnosticCount, 1);
+    assert.equal(report.plan.codexSpawnCleanupWarning, true);
+    assert.equal(report.plan.codexSpawnBlockedByCleanup, undefined);
     assert.equal(report.plan.inlineDraftAllowed, false);
-    assert.deepEqual(report.plan.codexSpawnPayloads || [], []);
+    assert.ok((report.plan.codexSpawnPayloads || []).length > 0);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

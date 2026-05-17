@@ -17,6 +17,7 @@ const RUNNABLE_COMMANDS = Object.freeze({
   "supervibe-genesis": "scripts/supervibe-genesis.mjs",
   "supervibe-loop": "scripts/supervibe-loop.mjs",
   "supervibe-preview": "scripts/preview-server.mjs",
+  "supervibe-receipts": "scripts/workflow-receipt.mjs",
   "supervibe-stage": "scripts/supervibe-stage.mjs",
   "supervibe-status": "scripts/supervibe-status.mjs",
   "supervibe-ui": "scripts/supervibe-ui.mjs",
@@ -52,6 +53,7 @@ const SUBCOMMAND_ALIASES = Object.freeze({
   genesis: "supervibe-genesis",
   loop: "supervibe-loop",
   preview: "supervibe-preview",
+  receipts: "supervibe-receipts",
   review: "supervibe-review",
   stage: "supervibe-stage",
   score: "supervibe-score",
@@ -76,6 +78,7 @@ const HELP_FORWARD_COMMANDS = Object.freeze(new Set([
   "supervibe-genesis",
   "supervibe-loop",
   "supervibe-preview",
+  "supervibe-receipts",
   "supervibe-stage",
   "supervibe-update",
   "supervibe-ui",
@@ -139,8 +142,11 @@ process.exit(result.status ?? 0);
 
 function resolveInvocation({ argv1, args }) {
   const binaryName = normalizeCommandName(basename(String(argv1 || "supervibe"), ".mjs"));
-  const firstArg = args[0] ? normalizeCommandName(args[0]) : "";
+  const rawFirstArg = args[0] || "";
   const requestedHelp = args.includes("--help") || args.includes("-h");
+  const firstArg = requestedHelp && (rawFirstArg === "--help" || rawFirstArg === "-h")
+    ? ""
+    : rawFirstArg ? normalizeCommandName(rawFirstArg) : "";
   const isRootBinary = binaryName === "supervibe" || binaryName === "sv";
   const rootHelp = args.length === 0 && isRootBinary || requestedHelp && isRootBinary && !firstArg;
 
@@ -148,6 +154,9 @@ function resolveInvocation({ argv1, args }) {
     return { commandName: binaryName, args, rootHelp: false, commandHelp: requestedHelp };
   }
 
+  if (firstArg === "prime") {
+    return { commandName: "supervibe-loop", args: ["prime", ...args.slice(1)], rootHelp: false, commandHelp: requestedHelp };
+  }
   if (firstArg && isKnownCommand(firstArg)) {
     return { commandName: firstArg, args: args.slice(1), rootHelp: false, commandHelp: requestedHelp };
   }
@@ -180,6 +189,7 @@ function formatHelp() {
     "SUPERVIBE_TERMINAL_HELP",
     "Usage:",
     "  supervibe <command> [args]",
+    "  sv prime [--json]",
     "  sv work <action> [args]",
     "  supervibe-adapt --dry-run --project <path>",
     "  supervibe-status --index-health",

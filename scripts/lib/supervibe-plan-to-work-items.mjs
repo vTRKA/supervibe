@@ -117,6 +117,7 @@ export function atomizePlanToWorkItems(markdown, options = {}) {
     executionHints: {
       sourcePlan: planPath,
       reviewRequired: true,
+      reviewDeferredToFinalGate: Boolean(options.planReviewDeferred),
       atomizedBy: "supervibe-plan-to-work-items",
     },
   });
@@ -156,6 +157,7 @@ export function atomizePlanToWorkItems(markdown, options = {}) {
     items,
     metadata: {
       planReviewPassed: Boolean(options.planReviewPassed),
+      planReviewDeferred: Boolean(options.planReviewDeferred),
       dryRun: Boolean(options.dryRun),
       createdFrom: "plan",
       epicAgentContract: createEpicAgentContract({
@@ -472,7 +474,7 @@ export function validateWorkItemGraph(graph = {}) {
 
   const implementationItems = items.filter((item) => !["epic", "gate", "followup"].includes(item.type));
   if (implementationItems.length === 0) {
-    issues.push(issue("missing-child-task", graph.epicId ?? null, "Reviewed plans must contain at least one parseable implementation task."));
+    issues.push(issue("missing-child-task", graph.epicId ?? null, "Loop-ready plans must contain at least one parseable implementation task."));
   }
   const atomicInventoryIds = Array.isArray(graph.metadata?.atomicInventoryIds)
     ? graph.metadata.atomicInventoryIds
@@ -647,12 +649,29 @@ export async function writeWorkItemGraph(graph, options = {}) {
   const outDir = options.outDir ?? join(rootDir, ".supervibe", "memory", "work-items", graph.epicId);
   await mkdir(outDir, { recursive: true });
   const graphPath = join(outDir, "graph.json");
-  const previewPath = join(outDir, "preview.txt");
+  const previewPath = options.writePreview === true ? join(outDir, "preview.txt") : null;
   const sourcePlanSnapshot = graph.metadata?.sourcePlanSnapshot;
-  if (sourcePlanSnapshot?.content && sourcePlanSnapshot?.storedPath) {
-    await writeFile(join(outDir, normalizePath(sourcePlanSnapshot.storedPath)), String(sourcePlanSnapshot.content), "utf8");
+  const sourcePlanStoredPath = options.writeSourcePlan === true && sourcePlanSnapshot
+    ? normalizePath(sourcePlanSnapshot.storedPath || options.sourcePlanSnapshotPath || "source-plan.md")
+    : null;
+  const sourcePlanPath = sourcePlanStoredPath ? join(outDir, sourcePlanStoredPath) : null;
+  const sourcePlanContent = sourcePlanPath
+    ? await resolveSourcePlanSnapshotContent(sourcePlanSnapshot, graph, rootDir)
+    : null;
+  if (sourcePlanPath) {
+    await writeFile(sourcePlanPath, sourcePlanContent, "utf8");
   }
   const serializableGraph = stripParsedFields(graph);
+  if (sourcePlanStoredPath && serializableGraph.source) {
+    serializableGraph.source.snapshotPath = sourcePlanStoredPath;
+  }
+  if (sourcePlanStoredPath && serializableGraph.metadata?.sourcePlanSnapshot) {
+    serializableGraph.metadata.sourcePlanSnapshot = {
+      ...serializableGraph.metadata.sourcePlanSnapshot,
+      storedPath: sourcePlanStoredPath,
+      contentLength: Buffer.byteLength(sourcePlanContent, "utf8"),
+    };
+  }
   if (serializableGraph.metadata?.graphProducerProof) {
     serializableGraph.metadata = {
       ...serializableGraph.metadata,
@@ -664,14 +683,14 @@ export async function writeWorkItemGraph(graph, options = {}) {
     };
   }
   await writeFile(graphPath, JSON.stringify(serializableGraph, null, 2) + "\n");
-  await writeFile(previewPath, createWorkItemPreview(graph, validation) + "\n");
+  if (previewPath) await writeFile(previewPath, createWorkItemPreview(graph, validation) + "\n");
   await updateActiveWorkItemGraph({
     rootDir,
     graphPath,
-    graph,
+    graph: serializableGraph,
     reason: options.registryReason || "graph-write",
   });
-  return { outDir, graphPath, previewPath };
+  return { outDir, graphPath, previewPath, sourcePlanPath };
 }
 
 export function createNativeWorkItemAdapter(options = {}) {
@@ -2114,13 +2133,24 @@ function stripParsedFields(graph) {
 
 function createSourcePlanSnapshot(markdown, planPath, options = {}) {
   const content = String(markdown ?? "");
+  const writeSourcePlan = options.writeSourcePlan === true || options.writeSourcePlanSnapshot === true;
   return {
     path: normalizePath(planPath),
     sha256: createHash("sha256").update(content).digest("hex"),
-    storedPath: normalizePath(options.sourcePlanSnapshotPath || "source-plan.md"),
+    storedPath: writeSourcePlan ? normalizePath(options.sourcePlanSnapshotPath || "source-plan.md") : null,
     capturedAt: options.capturedAt || new Date().toISOString(),
     content,
+    contentLength: Buffer.byteLength(content, "utf8"),
   };
+}
+
+async function resolveSourcePlanSnapshotContent(snapshot = {}, graph = {}, rootDir = process.cwd()) {
+  if (snapshot?.content != null) return String(snapshot.content);
+  const sourcePath = snapshot?.path || graph.source?.path || null;
+  if (!sourcePath) throw new Error("source plan snapshot content is unavailable");
+  const textPath = String(sourcePath);
+  const absolute = /^[A-Za-z]:[\/]/.test(textPath) || textPath.startsWith("/") || textPath.startsWith("\\");
+  return readFile(absolute ? textPath : join(rootDir, normalizePath(textPath)), "utf8");
 }
 
 function normalizePath(value) {

@@ -22,12 +22,19 @@ export async function mutateWorkItemGraphFile(graphPath, action = {}) {
   return withGraphFileLock(graphPath, action, async () => {
     const graph = JSON.parse(String(await readFile(graphPath, "utf8")).replace(/^\uFEFF/, ""));
     const result = mutateWorkItemGraph(graph, action);
+    if (result.action === "idempotent-replay") {
+      result.backupPath = null;
+      result.backupMode = "skipped-idempotent-replay";
+      return { ...result, dryRun: false };
+    }
     await mkdir(dirname(graphPath), { recursive: true });
-    const backupPath = `${graphPath}.bak`;
-    try {
-      await copyFile(graphPath, backupPath);
-    } catch {
-      // If the source is missing, the write below will surface the real error.
+    const backupPath = shouldWriteGraphBackup(action) ? `${graphPath}.bak` : null;
+    if (backupPath) {
+      try {
+        await copyFile(graphPath, backupPath);
+      } catch {
+        // If the source is missing, the write below will surface the real error.
+      }
     }
     await writeFile(graphPath, `${JSON.stringify(result.graph, null, 2)}\n`, "utf8");
     await updateActiveWorkItemGraph({
@@ -37,6 +44,7 @@ export async function mutateWorkItemGraphFile(graphPath, action = {}) {
       reason: `mutation:${result.action || action.type || "unknown"}`,
     });
     result.backupPath = backupPath;
+    result.backupMode = backupPath ? "written" : "skipped-default";
     return { ...result, dryRun: false };
   });
 }
@@ -44,6 +52,8 @@ export async function mutateWorkItemGraphFile(graphPath, action = {}) {
 export function mutateWorkItemGraph(graph = {}, action = {}) {
   const type = String(action.type || action.action || "").toLowerCase();
   if (!type) throw new Error("work-item action type is required");
+  const replay = findIdempotentReplay(graph, action, type);
+  if (replay) return replay;
   let result;
   if (type === "defer") {
     if (!action.until && !action.reason && !action.indefinite) {
@@ -84,6 +94,13 @@ export function mutateWorkItemGraph(graph = {}, action = {}) {
 
 export function isTerminalWorkItemStatus(status) {
   return DONE_STATUSES.has(String(status || "").toLowerCase());
+}
+
+function shouldWriteGraphBackup(action = {}) {
+  return action.writeBackup === true
+    || action.backup === true
+    || action.recoveryBackup === true
+    || action["write-backup"] === true;
 }
 
 export function explainWorkItemClaimBlocker(graph = {}, action = {}) {
@@ -659,12 +676,14 @@ function createWorkItem(graph, action) {
     owner: source.owner || source.assignee || null,
     assignee: source.assignee || null,
     labels: normalizeStringList(source.labels),
+    discoveredFrom: normalizeCreatedDiscoveredFrom(source, action),
     blocks: normalizeStringList(source.blocks),
     blockedBy: normalizeStringList(source.blockedBy || source.dependencies),
     related: normalizeStringList(source.related),
     acceptanceCriteria: normalizeStringList(source.acceptanceCriteria || source.acceptance),
     verificationCommands: normalizeStringList(source.verificationCommands || source.verification || source.verificationHints),
     writeScope: Array.isArray(source.writeScope) ? source.writeScope : [],
+    executionHints: source.executionHints || {},
     createdAt: now,
     createdBy: action.actor || source.owner || "user",
     updatedAt: now,
@@ -689,6 +708,19 @@ function createWorkItem(graph, action) {
     action: "create",
     changed: true,
     createdItems: [itemId],
+  };
+}
+
+function normalizeCreatedDiscoveredFrom(source = {}, action = {}) {
+  if (source.discoveredFrom && typeof source.discoveredFrom === "object") return source.discoveredFrom;
+  const fromItemId = source.from || action.from || action.parentId || source.parentId || null;
+  if (!fromItemId && !source.path && !action.planPath) return { type: "manual" };
+  return {
+    type: source.discoveredFromType || action.discoveredFromType || "runtime-discovery",
+    itemId: fromItemId,
+    parentItemId: fromItemId,
+    path: source.path || action.planPath || null,
+    note: source.discoveryNote || action.reason || null,
   };
 }
 
@@ -950,17 +982,45 @@ async function removeStaleLock(lockPath, nowMs, staleLockMs) {
   }
 }
 
+function findIdempotentReplay(graph = {}, action = {}, requestedType = "") {
+  const operationId = normalizeOperationId(action);
+  if (!operationId) return null;
+  const prior = (graph.events || []).find((event) => event.operationId === operationId && (!requestedType || event.requestedAction === requestedType || event.action === requestedType));
+  if (!prior) return null;
+  return {
+    graph,
+    itemId: action.itemId || prior.itemId || null,
+    action: "idempotent-replay",
+    changed: false,
+    operationId,
+    priorEventId: prior.eventId || null,
+  };
+}
+
+function normalizeOperationId(action = {}) {
+  const value = action.operationId || action["operation-id"] || action.requestId || action["request-id"] || null;
+  const text = String(value || "").trim();
+  return text || null;
+}
+
 function appendAuditEvent(result, action, requestedType) {
   const now = action.now || new Date().toISOString();
   const eventAction = result.action || requestedType;
+  const finalized = autoCloseEligibleEpics(result.graph, {
+    now,
+    actor: action.actor || action.owner || "user",
+    reason: "all child work items are terminal",
+  });
+  const graphForEvent = finalized.graph;
   const event = {
     eventId: action.eventId || `${result.itemId || action.itemId || "graph"}-${eventAction}-${Date.parse(now) || Date.now()}`,
+    operationId: normalizeOperationId(action),
     itemId: result.itemId || action.itemId || null,
     action: eventAction,
     requestedAction: requestedType,
     actor: action.actor || action.owner || "user",
     changed: Boolean(result.changed),
-    status: resolveItemStatus(result.graph, result.itemId || action.itemId),
+    status: resolveItemStatus(graphForEvent, result.itemId || action.itemId),
     reason: action.reason || result.conflict?.reason || null,
     at: now,
   };
@@ -981,18 +1041,120 @@ function appendAuditEvent(result, action, requestedType) {
   if (result.recoveredClaims?.length) event.recoveredClaims = result.recoveredClaims.map((claim) => claim.claimId);
   if (result.retiredClaims?.length) event.retiredClaims = result.retiredClaims.map((claim) => claim.claimId);
   if (result.autoClosedCoveredItems?.length) event.autoClosedCoveredItems = result.autoClosedCoveredItems;
+  if (finalized.autoClosedEpics.length) event.autoClosedEpics = finalized.autoClosedEpics;
   const verificationEvidence = normalizeVerificationEvidence(action.verificationEvidence || action.evidence, event.itemId || event.taskId, {
     now: event.at,
     reason: event.reason,
   });
   if (verificationEvidence.length > 0) event.verificationEvidence = verificationEvidence;
+  const autoClosedEpics = uniqueStrings([...(result.autoClosedEpics || []), ...finalized.autoClosedEpics]);
   return {
     ...result,
+    autoClosedEpics,
     graph: {
-      ...result.graph,
-      events: [...(result.graph.events || []), event],
+      ...graphForEvent,
+      events: [...(graphForEvent.events || []), event],
     },
   };
+}
+
+function autoCloseEligibleEpics(graph = {}, { now = new Date().toISOString(), actor = "user", reason = "all child work items are terminal" } = {}) {
+  const items = Array.isArray(graph.items) ? graph.items : [];
+  const tasks = Array.isArray(graph.tasks) ? graph.tasks : [];
+  const metadata = graph.metadata && typeof graph.metadata === "object" ? graph.metadata : {};
+  const semanticEpics = Array.isArray(metadata.semanticEpics) ? metadata.semanticEpics : [];
+  const autoClosedEpics = [];
+  const hasOpenItemEpic = items.some((item) => String(item.type || "").toLowerCase() === "epic" && !isTerminalWorkItemStatus(item.status));
+  const hasOpenSemanticEpic = semanticEpics.some((epic) => epic?.id && !isTerminalWorkItemStatus(epic.status));
+  if (!hasOpenItemEpic && !hasOpenSemanticEpic) return { graph, autoClosedEpics };
+
+  const childrenByEpic = new Map();
+  const byId = new Map(items.map((item) => [item.itemId || item.id, item]));
+  const taskById = new Map(tasks.map((task) => [task.itemId || task.id, task]));
+  for (const item of items) {
+    const itemId = item.itemId || item.id;
+    if (!itemId || String(item.type || "").toLowerCase() === "epic") continue;
+    if (String(item.type || "").toLowerCase() === "followup") continue;
+    for (const epicId of relatedEpicIdsForItem(item, byId, graph)) {
+      const list = childrenByEpic.get(epicId) || [];
+      list.push(item);
+      childrenByEpic.set(epicId, list);
+    }
+  }
+
+  const nextItems = items.map((item) => {
+    const itemId = item.itemId || item.id;
+    if (!itemId || String(item.type || "").toLowerCase() !== "epic") return item;
+    if (isTerminalWorkItemStatus(item.status)) return item;
+    const children = childrenByEpic.get(itemId) || [];
+    if (!children.length || !children.every((child) => isTerminalWorkItemStatus(child.status))) return item;
+    autoClosedEpics.push(itemId);
+    return closeEpicLikeEntry(item, { now, actor, reason });
+  });
+
+  let semanticChanged = false;
+  const nextSemanticEpics = semanticEpics.map((epic) => {
+    const epicId = epic?.id;
+    if (!epicId || isTerminalWorkItemStatus(epic.status)) return epic;
+    const taskIds = uniqueStrings(epic.taskIds || []);
+    const children = taskIds.map((taskId) => byId.get(taskId) || taskById.get(taskId)).filter(Boolean);
+    if (!taskIds.length || children.length !== taskIds.length) return epic;
+    if (!children.every((child) => isTerminalWorkItemStatus(child.status))) return epic;
+    semanticChanged = true;
+    autoClosedEpics.push(epicId);
+    return closeEpicLikeEntry(epic, { now, actor, reason });
+  });
+
+  if (!autoClosedEpics.length) return { graph, autoClosedEpics };
+  const closed = new Set(autoClosedEpics);
+  const nextTasks = tasks.map((task) => {
+    const taskId = task.itemId || task.id;
+    if (!closed.has(taskId) || isTerminalWorkItemStatus(task.status)) return task;
+    return closeEpicLikeEntry(task, { now, actor, reason });
+  });
+  return {
+    graph: {
+      ...graph,
+      updatedAt: now,
+      items: nextItems,
+      tasks: nextTasks,
+      metadata: semanticChanged
+        ? {
+          ...metadata,
+          semanticEpics: nextSemanticEpics,
+        }
+        : metadata,
+    },
+    autoClosedEpics: uniqueStrings(autoClosedEpics),
+  };
+}
+
+function closeEpicLikeEntry(entry = {}, { now, actor, reason } = {}) {
+  return {
+    ...entry,
+    status: "closed",
+    closedAt: entry.closedAt || now,
+    closeReason: entry.closeReason || reason,
+    updatedAt: now,
+    updatedBy: actor,
+  };
+}
+
+function relatedEpicIdsForItem(item = {}, byId = new Map(), graph = {}) {
+  const parentEpicIds = [];
+  let parentId = item.parentId || null;
+  const seen = new Set();
+  while (parentId && !seen.has(parentId)) {
+    seen.add(parentId);
+    const parent = byId.get(parentId);
+    if (!parent) break;
+    if (String(parent.type || "").toLowerCase() === "epic") parentEpicIds.push(parentId);
+    parentId = parent.parentId || null;
+  }
+  if (parentEpicIds.length > 0) return uniqueStrings(parentEpicIds);
+  if (item.epicId && byId.has(item.epicId)) return [item.epicId];
+  const rootEpicId = graph.epicId || graph.graph_id || null;
+  return rootEpicId && byId.has(rootEpicId) ? [rootEpicId] : [];
 }
 
 function resolveItemStatus(graph = {}, itemId = null) {

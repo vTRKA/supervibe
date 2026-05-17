@@ -2,8 +2,8 @@
 name: requesting-code-review
 namespace: process
 description: >-
-  Use BEFORE code-reviewer, PR, or AFTER a plan is written TO run a review loop
-  with evidence, changed-file scope, plan risks, and next handoff. Triggers:
+  Use BEFORE code-reviewer, PR, or WHEN the user explicitly asks for plan review
+  TO run a review loop with evidence, changed-file scope, plan risks, and next handoff. Triggers:
   'pre-PR review', 'request review', 'готов к ревью', 'сделай ревью плана',
   'review loop'.
 allowed-tools:
@@ -38,7 +38,7 @@ or a substitute for the reviewer.
 
 BEFORE invoking `code-reviewer` agent OR before opening a PR for external review. After implementation completes but before claiming done.
 
-Also invoke this as the mandatory **plan-review loop** immediately after `supervibe:writing-plans` saves a plan. In plan-review mode, review the plan artifact itself before atomization, epic creation, or execution.
+Invoke this for plan artifacts only when the user explicitly asks for deeper plan review, a high-risk gate requires it, or release governance needs reviewer evidence. Normal user-approved loop-ready plans can atomize without this skill.
 
 Use the full review packet when:
 
@@ -54,9 +54,9 @@ Use the full review packet when:
 
 ## Plan Review User Gate
 
-Plan-review mode is a mandatory reviewer gate routed through `/supervibe-plan --review <plan-path>`, not a controller-only reread or `/supervibe-review`. It must include Reviewer Coverage for the baseline reviewers `supervibe-orchestrator`, `systems-analyst`, `architect-reviewer`, and `quality-gate-reviewer`. The mandatory risk reviewers `security-auditor`, `qa-test-engineer`, `release-governance-reviewer`, and `db-reviewer` must either have trusted current-run reviewer receipts or an explicit user-waived line in the review artifact. A plan cannot pass review with open critical or major findings, missing reviewer coverage, missing trusted receipts, missing durable review artifact, or missing Next User Decision.
+When strict plan-review mode is explicitly invoked through `/supervibe-plan --review <plan-path>`, it is a reviewer gate, not a controller-only reread or `/supervibe-review`. It must include reviewer coverage for `supervibe-orchestrator`, `systems-analyst`, `architect-reviewer`, and `quality-gate-reviewer`. Risk reviewers such as `security-auditor`, `qa-test-engineer`, `release-governance-reviewer`, and `db-reviewer` are required only when the plan risk trigger or user request calls for them. Claimed reviewer outputs need trusted current-run reviewer receipts or an explicit user-waived line in the review artifact. A strict plan review cannot pass with open critical or major findings, missing selected reviewer coverage, missing trusted receipts for claimed reviewer work, missing durable review artifact, or missing Next User Decision.
 
-After a pass, ask the user whether to atomize, revise, rerun specialist review, inspect readiness, or stop. Do not atomize, create an epic, execute, bump versions, commit, push, or clean up until the current explicit user answer is recorded after that question.
+After a strict review pass, ask the user whether to atomize, revise, rerun specialist review, inspect readiness, or stop. Do not atomize, create an epic, execute, bump versions, commit, push, or clean up from the strict-review path until the current explicit user answer is recorded after that question.
 
 ## Expert Operating Standard
 
@@ -266,13 +266,13 @@ NEXT_STEP_HANDOFF
 Current phase: plan-review
 Artifact: .supervibe/artifacts/plans/YYYY-MM-DD-<slug>.md
 Next phase: work-item-atomization
-Next command: /supervibe-loop --atomize-plan .supervibe/artifacts/plans/YYYY-MM-DD-<slug>.md --plan-review-passed
+Next command: /supervibe-loop --atomize-plan .supervibe/artifacts/plans/YYYY-MM-DD-<slug>.md --user-approved-plan
 Next skill: supervibe:writing-plans
 Stop condition: ask-before-work-item-atomization
-Why: A reviewed plan can become durable atomic work items and an epic.
+Why: A user-approved reviewed plan can become durable atomic work items and an epic.
 Question: Step 1/1: atomizing the plan into an epic and child work items?
 Choices:
-- Continue to atomization - uses the reviewed plan path and `--plan-review-passed`; no execution starts yet.
+- Continue to atomization - uses the reviewed plan path and `--user-approved-plan`; no execution starts yet.
 - Revise the reviewed plan first - returns to `/supervibe-plan <plan-path>` with the review findings.
 - Ask for another specialist review - reruns review for the unresolved risk area before atomization.
 - Keep reviewed plan and stop - records the passed review without creating work items.

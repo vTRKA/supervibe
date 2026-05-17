@@ -281,7 +281,7 @@ export async function resolveActiveWorkItemGraph({
     source: "none",
     candidates: [],
     registry,
-    nextAction: "atomize a reviewed plan into a work graph",
+    nextAction: "atomize a user-approved loop-ready plan into a work graph",
   };
 }
 
@@ -352,7 +352,7 @@ export function resolveActiveWorkItemGraphSync({
     readOnly: true,
     executionBlocked: true,
     userChoiceRequired: true,
-    nextAction: "atomize a reviewed plan into a work graph or pass --file <graph.json>",
+    nextAction: "atomize a user-approved loop-ready plan into a work graph or pass --file <graph.json>",
   };
 }
 
@@ -411,7 +411,7 @@ function activeGraphResolutionFromExplicitPath({ rootDir, graphPath, source, reg
       readOnly: true,
       executionBlocked: true,
       userChoiceRequired: true,
-      nextAction: "selected graph path is missing; choose or atomize a reviewed graph",
+      nextAction: "selected graph path is missing; choose an active graph or atomize a user-approved loop-ready plan",
     };
   }
   try {
@@ -440,7 +440,7 @@ function activeGraphResolutionFromExplicitPath({ rootDir, graphPath, source, reg
       readOnly: true,
       executionBlocked: true,
       userChoiceRequired: true,
-      nextAction: "selected graph is not active; atomize or choose an active reviewed graph",
+      nextAction: "selected graph is not active; atomize a user-approved loop-ready plan or choose an active graph",
     };
   } catch (error) {
     return {

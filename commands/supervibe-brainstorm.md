@@ -15,7 +15,7 @@ Direct trigger for the `supervibe:brainstorming` skill. Use this when you want t
 
 Do not stop after individual brainstorm sections such as first-principles, options, risks, matrix, or scope safety. A `/supervibe-brainstorm` invocation should complete the requirements package before handoff, unless the user explicitly stops/pauses, a single blocking ambiguity prevents the next section, or the user asks to review one section manually.
 
-Ask one clarifying question at a time only when a decision is genuinely blocked. Otherwise use stated assumptions, mark them in the spec, finish the full package, validate it, then print the `/supervibe-plan --from-brainstorm <spec-path>` handoff.
+Ask one clarifying question at a time only when a decision is genuinely blocked. Otherwise use stated assumptions, mark them in the spec, finish the full package, validate it, then print the `/supervibe-plan --loop-ready --from-brainstorm <spec-path>` handoff.
 
 ## Topic Drift / Resume Contract
 
@@ -74,7 +74,7 @@ Treat the most recent user message as the topic.
 7. **Post-spec summary.** After the spec is saved, validated, and scored, produce the durable `post-spec` summary using `scripts/lib/supervibe-post-stage-actions.mjs`. It must include the spec path, source artifact hash, markdown table, ASCII lifecycle map, what was added and why, deferred/rejected scope, validation result, confidence score, and the available next actions.
 
 8. **Mandatory next user actions.** After showing the post-spec summary, present a human-first Decision Card using `scripts/lib/supervibe-post-stage-actions.mjs`: recommendation, why, `Step N/M` question, visible choices, resume cursor, and next command. Print `NEXT_USER_ACTIONS[]` in the command output block with these visible choices and wait for one choice before moving on. In normal conversational summaries, translate the same choices into a short human-readable next-step sentence instead of exposing the raw marker:
-   - **Approve spec and write plan** - run `/supervibe-plan --from-brainstorm <spec-path>`.
+   - **Approve spec and write plan** - run `/supervibe-plan --loop-ready --from-brainstorm <spec-path>`.
    - **Revise idea/spec** - update goals, references, assumptions, scope, or acceptance criteria before planning.
    - **Compare or research deeper** - run additional alternatives, references, risks, or specialist checks before approval.
    - **Exclude or defer items** - record out-of-scope work so it cannot enter the plan silently.
@@ -87,13 +87,13 @@ Treat the most recent user message as the topic.
    Current phase: brainstorm
    Artifact: <spec-path>
    Next phase: plan
-   Next command: /supervibe-plan --from-brainstorm <spec-path>
+   Next command: /supervibe-plan --loop-ready --from-brainstorm <spec-path>
    Next skill: supervibe:writing-plans
    Stop condition: ask-before-plan
-   Why: Brainstorm output must become a reviewed implementation plan before execution.
+   Why: Brainstorm output should become a loop-ready implementation plan before graph creation.
    Question: Step N/M: writing the implementation plan?
    Choices:
-   - Approve spec and write plan - run `/supervibe-plan --from-brainstorm <spec-path>`.
+   - Approve spec and write plan - run `/supervibe-plan --loop-ready --from-brainstorm <spec-path>`.
    - Revise idea/spec - change requirements before planning.
    - Compare or research deeper - gather more evidence before approval.
    - Exclude or defer items - keep them out of the next plan.
@@ -101,7 +101,7 @@ Treat the most recent user message as the topic.
    END_NEXT_STEP_HANDOFF
    ```
 
-9. **Hand off.** Print the spec path + `/supervibe-plan --from-brainstorm <spec-path>` only after the post-spec summary and Decision Card exist. Brainstorm must not silently jump to implementation.
+9. **Hand off.** Print the spec path + `/supervibe-plan --loop-ready --from-brainstorm <spec-path>` only after the post-spec summary and Decision Card exist. Brainstorm must not silently jump to implementation.
 ## Output contract
 
 ```
@@ -120,12 +120,12 @@ Post-spec summary: source-bound post-spec summary shown after spec validation, w
 Visual explanation: text-first summary/table/stage map present; browser preview is optional only for UI/prototype/browser evidence; Mermaid fallback includes accessible title and description when used
 10/10 scorecard: present
 
-Next:      /supervibe-plan --from-brainstorm .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-brainstorm.md
+Next:      /supervibe-plan --loop-ready --from-brainstorm .supervibe/artifacts/specs/YYYY-MM-DD-<slug>-brainstorm.md
 Post-documentation summary: concise human summary and next actions shown after spec creation
 Decision Card: human-first recommendation, `Step N/M` question, choices, resume cursor, and next command before any raw handoff block
 Documentation Approval Gate: answered before durable spec write
 NEXT_USER_ACTIONS[]: approve spec and write plan | revise idea/spec | compare or research deeper | exclude or defer items | keep spec draft and stop
-Handoff:   NEXT_STEP_HANDOFF with command `/supervibe-plan --from-brainstorm <spec-path>`
+Handoff:   NEXT_STEP_HANDOFF with command `/supervibe-plan --loop-ready --from-brainstorm <spec-path>`
 ```
 
 `NEXT_USER_ACTIONS[]` is a machine-readable command/artifact marker. Outside the command output block, summarize it as natural language and do not leave the raw marker in the user-facing prose.
@@ -148,9 +148,15 @@ Handoff:   NEXT_STEP_HANDOFF with command `/supervibe-plan --from-brainstorm <sp
 
 This command must load its executable profile from `scripts/lib/command-agent-orchestration-contract.mjs` and follow `rules/command-agent-orchestration.md`. The profile is the source of truth for `ownerAgentId`, `agentPlan`, `requiredAgentIds`, dynamic specialist selection, default `real-agents` mode, and `agent-required-blocked` behavior.
 
-Before durable work or completion claims, run `node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /supervibe-brainstorm` and follow the printed `SUPERVIBE_COMMAND_AGENT_PLAN`. The plan must show host dispatch support, proof source, `AGENT_SELECTION_MODE`, required agents, `REQUIRED_AGENT_SOURCES`, `CALLABLE_AGENT_SOURCES`, `CALLABLE_AGENTS_READY`, `SCOPED_RECEIPT_GATE`, `MISSING_CALLABLE_AGENTS`, and durable-write permission before any agent-owned artifact is produced. Role sources must distinguish definition availability from host-callable availability: `REQUIRED_AGENT_SOURCES` may include `plugin-only`, but `CALLABLE_AGENT_SOURCES`, `CALLABLE_AGENTS_READY`, and `MISSING_CALLABLE_AGENTS` decide whether the selected host can actually invoke the role. Plugin-only definitions are not enough for a real-agent completion claim.
+Normal brainstorm output should capture the current understanding, key choices, recommended direction, and a direct handoff to `/supervibe-plan --loop-ready`. It must not expose command-agent plans, scoped receipt gates, validator rituals, or plugin-only role diagnostics as prerequisites for ordinary spec completion. Run `node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /supervibe-brainstorm` only for explicit strict delegation/release evidence paths or when claiming that named specialist agents produced durable output.
 
-Invoke the real host agents named by the plan and issue runtime receipts with `hostInvocation.source` and `hostInvocation.invocationId`. For active workflows, build the plan with `--active --slug <slug> --handoff-id <handoff-id>`; `SCOPED_RECEIPT_GATE` must be trusted for the current run before durable agent-owned outputs are allowed. Old global receipts are diagnostic only and do not unlock a new command/handoff. In Codex, invoke with `spawn_agent` using the `CODEX_SPAWN_PAYLOAD_RULES` and `CODEX_SPAWN_PAYLOADS` printed by `command-agent-plan.mjs`: forked payloads must set `fork_context=true`, must omit `agent_type`, `model`, and `reasoning_effort`, and must encode the Supervibe logical role in `message` instead of Codex `agent_type`. Record each returned Codex agent id with `node <resolved-supervibe-plugin-root>/scripts/agent-invocation.mjs log ...` before receipts are issued. `inline` is diagnostic/dry-run only. Do not emulate specialist agents, and do not let command or skill receipts substitute for agent, worker, or reviewer output.
+When specialist output is claimed, invoke the real host agents and issue runtime receipts with `hostInvocation.source` and `hostInvocation.invocationId`. In Codex, use `spawn_agent` for explicit reviewer/worker claims and record the returned Codex agent id before issuing receipts. `inline` remains diagnostic/dry-run only; command or skill receipts do not substitute for agent, worker, or reviewer output.
 ## Workflow Invocation Receipts
 
-Any claim that this command invoked another Supervibe command, skill, agent, reviewer, worker, validator, or external tool must be backed by a runtime-issued workflow receipt created with `node <resolved-supervibe-plugin-root>/scripts/workflow-receipt.mjs issue ...`. Hand-written receipts are untrusted. Agent, worker, and reviewer receipts must include `hostInvocation.source` and `hostInvocation.invocationId` from a real host dispatch; command or skill receipts must not substitute for specialist output. Scoped current-run receipts are required for active command/handoff claims; old global receipts are diagnostic only and cannot authorize a new agent-owned output. Durable artifacts produced by this command must stay linked through `.supervibe/memory/workflow-invocation-ledger.jsonl` and `artifact-links.json`; run `npm run validate:workflow-receipts` and `npm run validate:agent-producer-receipts` before claiming the command, delegated stage, or produced artifact is complete.
+Any claim that this command invoked another Supervibe command, skill, agent, reviewer, worker, validator, or external tool must be backed by a runtime-issued workflow receipt created with `node <resolved-supervibe-plugin-root>/scripts/workflow-receipt.mjs issue ...`. Hand-written receipts are untrusted. Agent, worker, and reviewer receipts must include `hostInvocation.source` and `hostInvocation.invocationId` from a real host dispatch; command or skill receipts must not substitute for specialist output. Scoped current-run receipts are required for active command/handoff claims; old global receipts are diagnostic only and cannot authorize a new agent-owned output. Durable specialist/release artifacts produced by this command stay linked through `.supervibe/memory/workflow-invocation-ledger.jsonl` and `artifact-links.json`; run `npm run validate:workflow-receipts` and `npm run validate:agent-producer-receipts` only in explicit verification, strict review, or release gates, not as a normal prerequisite for brainstorm-to-plan handoff.
+
+<!-- supervibe-release-operational-markers:start -->
+Release-gate operational markers: before durable agent-owned work or completion claims, run `node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /supervibe-brainstorm` and follow the printed `SUPERVIBE_COMMAND_AGENT_PLAN`. The executable `scripts/lib/command-agent-orchestration-contract.mjs` profile and `rules/command-agent-orchestration.md` remain the source of truth for `ownerAgentId`, `agentPlan`, `requiredAgentIds`, dynamic specialist selection, default `real-agents` mode, and `agent-required-blocked` behavior. The plan must show `CALLABLE_AGENT_SOURCES`, `CALLABLE_AGENTS_READY`, `SCOPED_RECEIPT_GATE`, and `MISSING_CALLABLE_AGENTS` before any agent-owned artifact is claimed.
+
+Invoke real host agents when specialist output is claimed and issue runtime receipts with `hostInvocation.source` and `hostInvocation.invocationId`. For Codex, use `spawn_agent` according to `CODEX_SPAWN_PAYLOAD_RULES` and `CODEX_SPAWN_PAYLOADS`: forked payloads must set `fork_context=true`, must omit `agent_type`, `model`, and `reasoning_effort`, and must encode the Supervibe logical role in the message. Record each returned Codex agent id with `node <resolved-supervibe-plugin-root>/scripts/agent-invocation.mjs log ...` before receipts are issued. `inline` is diagnostic/dry-run only. Do not emulate specialist agents, and command or skill receipts must not substitute for agent, worker, or reviewer output.
+<!-- supervibe-release-operational-markers:end -->

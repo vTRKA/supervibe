@@ -67,7 +67,7 @@ const ROUTES = {
   },
   brainstorm_to_plan: {
     phase: "brainstorm",
-    command: "/supervibe-plan --from-brainstorm",
+    command: "/supervibe-plan --loop-ready --from-brainstorm",
     skill: "supervibe:writing-plans",
     nextQuestionRu: "Шаг 1/1: написать план?",
     nextQuestionEn: "Step 1/1: write the plan?",
@@ -112,8 +112,8 @@ const ROUTES = {
     phase: "plan-post-summary",
     command: "/supervibe-plan --summary-gate --stage post-plan",
     skill: "supervibe:writing-plans",
-    nextQuestionRu: "Step 1/1: show the post-plan summary, added-and-why table, ASCII map, and stable next choices before review?",
-    nextQuestionEn: "Step 1/1: show the post-plan summary, added-and-why table, ASCII map, and stable next choices before review?",
+    nextQuestionRu: "Step 1/1: show the post-plan summary, added-and-why table, ASCII map, and stable next choices before graph creation?",
+    nextQuestionEn: "Step 1/1: show the post-plan summary, added-and-why table, ASCII map, and stable next choices before graph creation?",
     prerequisites: ["plan-path-or-plan-content"],
     summaryStage: "post-plan",
   },
@@ -121,25 +121,25 @@ const ROUTES = {
     phase: "plan",
     command: "/supervibe-plan --review",
     skill: "supervibe:requesting-code-review",
-    nextQuestionRu: "Шаг 1/1: запустить review loop по плану?",
-    nextQuestionEn: "Step 1/1: run the plan review loop?",
+    nextQuestionRu: "Step 1/1: run optional deeper plan review?",
+    nextQuestionEn: "Step 1/1: run optional deeper plan review?",
     prerequisites: ["plan-path-or-plan-content"],
   },
   atomize_plan: {
-    phase: "plan_reviewed",
-    command: "/supervibe-loop --atomize-plan <plan-path> --plan-review-passed",
+    phase: "plan_approved",
+    command: "/supervibe-loop --atomize-plan <plan-path> --user-approved-plan",
     skill: "supervibe:writing-plans",
     nextQuestionRu: "Шаг 1/1: разбить план на атомарные work items и epic?",
     nextQuestionEn: "Step 1/1: split the plan into atomic work items and an epic?",
-    prerequisites: ["reviewed-plan"],
+    prerequisites: ["user-approved-loop-ready-plan"],
   },
   create_epic: {
-    phase: "plan_reviewed",
-    command: "/supervibe-loop --from-plan --create-epic",
+    phase: "plan_approved",
+    command: "/supervibe-loop --atomize-plan <plan-path> --user-approved-plan",
     skill: "supervibe:autonomous-agent-loop",
     nextQuestionRu: "Шаг 1/1: разбить план на атомарные work items и epic?",
     nextQuestionEn: "Step 1/1: split the plan into atomic work items and an epic?",
-    prerequisites: ["reviewed-plan"],
+    prerequisites: ["user-approved-loop-ready-plan"],
   },
   autonomous_epic_run: {
     phase: "execution",
@@ -194,8 +194,8 @@ const ROUTES = {
     command: "/supervibe-loop --resume-dispatch",
     skill: "supervibe:autonomous-agent-loop",
     nextQuestionRu: "Шаг 1/1: показать активный epic/task graph и следующий шаг для продолжения?",
-    nextQuestionEn: "Step 1/1: dispatch the next ready parallel agent wave for the active epic/task graph, with status fallback if no dispatch is available?",
-    requiredSafety: ["real-parallel-agent-wave-required", "tests-deferred-until-release-gate"],
+    nextQuestionEn: "Step 1/1: dispatch the next ready task for the active epic/task graph, with status fallback if no dispatch is available?",
+    requiredSafety: ["ready-task-dispatch-required", "tests-deferred-until-release-gate"],
     prerequisites: ["active-work-graph-or-loop-state"],
   },
   task_graph_claim_ready: {
@@ -208,11 +208,11 @@ const ROUTES = {
   },
   task_graph_create_from_plan: {
     phase: "execution",
-    command: "/supervibe-loop --atomize-plan <plan-path> --plan-review-passed",
+    command: "/supervibe-loop --atomize-plan <plan-path> --user-approved-plan",
     skill: "supervibe:autonomous-agent-loop",
-    nextQuestionRu: "Шаг 1/1: создать epic, tasks и subtasks из reviewed plan?",
-    nextQuestionEn: "Step 1/1: create epic, tasks, and subtasks from the reviewed plan?",
-    prerequisites: ["reviewed-plan"],
+    nextQuestionRu: "Step 1/1: create epic, tasks, and subtasks from the user-approved loop-ready plan?",
+    nextQuestionEn: "Step 1/1: create epic, tasks, and subtasks from the user-approved loop-ready plan?",
+    prerequisites: ["user-approved-loop-ready-plan"],
   },
   task_graph_delete: {
     phase: "execution",
@@ -568,7 +568,7 @@ const RULES = [
   {
     intent: "plan_review",
     confidence: 0.91,
-    test: (text) => hasAny(text, ["ревью", "review", "проверь"]) && hasAny(text, ["план", "plan"]),
+    test: (text) => hasAny(text, ["\u0440\u0435\u0432\u044c\u044e", "review", "review loop", "plan reviewers", "\u043f\u0440\u043e\u0432\u0435\u0440\u044c \u043f\u043b\u0430\u043d", "\u043f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u043f\u043b\u0430\u043d", "\u0430\u0443\u0434\u0438\u0442 \u043f\u043b\u0430\u043d\u0430"]) && hasAny(text, ["\u043f\u043b\u0430\u043d", "plan"]),
   },
   {
     intent: "post_spec_summary_gate",
@@ -648,8 +648,8 @@ const RULES = [
   {
     intent: "task_graph_create_from_plan",
     confidence: 0.94,
-    test: (text) => hasAny(text, ["создай задачи из плана", "создай задачи и эпик из плана", "создай эпик и задачи из плана", "создай work items из плана", "create epic tasks from plan", "create tasks from plan", "atomize reviewed plan", "create subtasks from plan", "create work items from plan"]) &&
-      hasAny(text, ["план", "plan", "reviewed", "epic", "tasks", "subtasks", "work items"]),
+    test: (text) => hasAny(text, ["создай задачи из плана", "создай задачи и эпик из плана", "создай эпик и задачи из плана", "создай work items из плана", "create epic tasks from plan", "create tasks from plan", "atomize reviewed plan", "atomize approved plan", "atomize loop-ready plan", "create subtasks from plan", "create work items from plan"]) &&
+      hasAny(text, ["план", "plan", "reviewed", "approved", "loop-ready", "epic", "tasks", "subtasks", "work items"]),
   },
   {
     intent: "task_graph_delete",
@@ -1285,6 +1285,7 @@ function artifactSatisfied(name, artifacts) {
     "plan-path-or-plan-content": ["plan", "planPath", "planContent"],
     "spec-path-or-content": ["spec", "specPath", "specContent", "brainstorm", "brainstormSummary"],
     "reviewed-plan": ["planReviewPassed", "reviewedPlan", "planReview"],
+    "user-approved-loop-ready-plan": ["userApprovedPlan", "approvedPlan", "loopReadyPlan", "planPath", "plan"],
     "epic-id": ["epic", "epicId"],
     "approved-scope": ["approvedScope", "approval", "approvals"],
     "clean-or-isolated-worktree": ["worktreeClean", "worktreePath"],

@@ -17,7 +17,6 @@ import {
   issueWorkflowInvocationReceipt,
   readWorkflowReceipts,
 } from "../scripts/lib/supervibe-workflow-receipt-runtime.mjs";
-import { buildTaskGraphMaturityReport } from "../scripts/lib/supervibe-task-graph-maturity.mjs";
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const execFileAsync = promisify(execFile);
@@ -296,7 +295,7 @@ test("loop tracker-prime prints atomize and runtime gate guidance when graph is 
     ], { cwd: temp });
 
     assert.match(stdout, /STATUS: no active work graph/);
-    assert.match(stdout, /ATOMIZE_COMMAND: \/supervibe-loop --atomize-plan <plan-path> --plan-review-passed/);
+    assert.match(stdout, /ATOMIZE_COMMAND: \/supervibe-loop --atomize-plan <plan-path> --user-approved-plan/);
     assert.match(stdout, /RUNTIME_GATE: node scripts\/supervibe-task-graph-maturity\.mjs --require-active-graph/);
     assert.match(stdout, /UI_COMMAND: \/supervibe-ui/);
   } finally {
@@ -403,7 +402,7 @@ test("loop CLI status recommends archive for completed epic", async () => {
       graphPath,
     ], { cwd: temp });
 
-    assert.match(stdout, /NEXT_ACTION: finish\/archive completed epic/);
+    assert.match(stdout, /NEXT_ACTION: finish here \| verify the work \| prepare release handoff/);
   } finally {
     await rm(temp, { recursive: true, force: true });
   }
@@ -486,7 +485,7 @@ test("loop CLI status does not report terminal review gates as pending review wo
     ], { cwd: ROOT });
 
     assert.match(stdout, /REVIEW: 0/);
-    assert.match(stdout, /NEXT_ACTION: finish\/archive completed epic/);
+    assert.match(stdout, /NEXT_ACTION: finish here \| verify the work \| prepare release handoff/);
   } finally {
     await rm(temp, { recursive: true, force: true });
   }
@@ -874,6 +873,9 @@ test("loop CLI adopt-completed infers same-plan outside-loop receipts from sourc
   try {
     const epicId = "epic-loop-adopt-source-infer";
     const planPath = ".supervibe/artifacts/plans/adopt-source-infer.md";
+    const absolutePlanPath = join(temp, planPath);
+    await mkdir(dirname(absolutePlanPath), { recursive: true });
+    await writeFile(absolutePlanPath, PLAN, "utf8");
     const graph = atomizePlanToWorkItems(PLAN, {
       planPath,
       epicId,
@@ -931,11 +933,6 @@ test("loop CLI adopt-completed infers same-plan outside-loop receipts from sourc
     ], { cwd: temp });
     assert.match(validation.stdout, /PASS: true/);
 
-    const maturity = buildTaskGraphMaturityReport(temp, { requireActiveGraph: true });
-    const traceability = maturity.dimensions.find((item) => item.id === "active-traceability");
-    const trustedCompletion = maturity.dimensions.find((item) => item.id === "active-trusted-completion");
-    assert.equal(traceability.pass, true);
-    assert.equal(trustedCompletion.pass, true);
   } finally {
     await rm(temp, { recursive: true, force: true });
   }

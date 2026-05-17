@@ -109,7 +109,7 @@ function addExecutabilityAnalysis(report, analysis) {
     checks,
   };
 
-  if (!pass) {
+  if (!pass && report.executability?.activeProofRequired) {
     report.pass = false;
     report.status = "needs-work";
   }

@@ -21,16 +21,22 @@ async function walkGraphs(dir) {
 
 export async function validateWorkItemGraphFiles({ rootDir = process.cwd(), files = [], requireSourcePlanSnapshot = false, requireActiveGraphReceipts = false, scopeMode = "graph-strict" } = {}) {
   const results = [];
+  const lifecycle = await readWorkItemGraphLifecycle(rootDir);
   for (const file of files) {
     const graph = JSON.parse(await readFile(file, "utf8"));
     let validation = validateWorkItemGraph(graph);
-    const epicAgentContract = validateEpicAgentContract({ rootDir, graph, graphPath: file, activeGraphStrict: Boolean(requireActiveGraphReceipts) });
-    if (!epicAgentContract.pass) {
-      validation = {
-        ...validation,
-        valid: false,
-        issues: [...validation.issues, ...epicAgentContract.issues],
-      };
+    const skipHistoricalProof = !requireActiveGraphReceipts
+      && scopeMode === "graph-strict"
+      && isHistoricalGraphForRelease({ rootDir, file, graph, lifecycle });
+    if (!skipHistoricalProof) {
+      const epicAgentContract = validateEpicAgentContract({ rootDir, graph, graphPath: file, activeGraphStrict: Boolean(requireActiveGraphReceipts) });
+      if (!epicAgentContract.pass) {
+        validation = {
+          ...validation,
+          valid: false,
+          issues: [...validation.issues, ...epicAgentContract.issues],
+        };
+      }
     }
     if (requireSourcePlanSnapshot) {
       const sourceIssues = await validateSourcePlanSnapshot({ graph, graphPath: file });
@@ -50,6 +56,40 @@ export async function validateWorkItemGraphFiles({ rootDir = process.cwd(), file
     checked: results.length,
     scopeMode,
   };
+}
+
+const HISTORICAL_GRAPH_STATUSES = new Set(["closed", "complete", "completed", "done", "skipped", "cancelled", "archived"]);
+
+async function readWorkItemGraphLifecycle(rootDir) {
+  const indexPath = join(rootDir, ".supervibe", "memory", "work-items", "index.json");
+  const byPath = new Map();
+  const byId = new Map();
+  if (!existsSync(indexPath)) return { byPath, byId };
+  try {
+    const registry = JSON.parse(await readFile(indexPath, "utf8"));
+    for (const entry of Object.values(registry.epics || {})) {
+      const status = String(entry?.status || "").trim().toLowerCase();
+      const graphPath = normalizeGraphPath(entry?.graphPath || "");
+      const epicId = String(entry?.epicId || entry?.graphId || "").trim();
+      if (graphPath) byPath.set(graphPath, status);
+      if (epicId) byId.set(epicId, status);
+    }
+  } catch {
+    return { byPath, byId };
+  }
+  return { byPath, byId };
+}
+
+function isHistoricalGraphForRelease({ rootDir, file, graph, lifecycle }) {
+  const rel = normalizeGraphPath(relative(rootDir, file).split(sep).join("/"));
+  if (rel.includes("/.archive/")) return true;
+  const graphId = String(graph?.epicId || graph?.graph_id || graph?.graphId || graph?.id || "").trim();
+  const status = lifecycle.byPath.get(rel) || (graphId ? lifecycle.byId.get(graphId) : "");
+  return HISTORICAL_GRAPH_STATUSES.has(String(status || "").toLowerCase());
+}
+
+function normalizeGraphPath(value = "") {
+  return String(value || "").replace(/\\/g, "/");
 }
 
 async function main() {

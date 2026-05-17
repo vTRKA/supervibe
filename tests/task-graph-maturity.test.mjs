@@ -31,7 +31,7 @@ test("task graph maturity strict active graph mode blocks missing current graph 
 
   assert.equal(report.pass, false);
   assert.ok(report.dimensions.some((dimension) => dimension.id === "current-active-graph" && !dimension.pass));
-  assert.match(formatTaskGraphMaturityReport(report), /no active work-item graph selected|atomize a reviewed plan into a work graph/);
+  assert.match(formatTaskGraphMaturityReport(report), /no active work-item graph selected|atomize a user-approved loop-ready plan before execution/);
 });
 
 test("task graph runtime maturity blocks stale work-item registry", () => {

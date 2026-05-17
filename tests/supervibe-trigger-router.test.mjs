@@ -15,14 +15,14 @@ describe("supervibe trigger router", () => {
     });
 
     assert.equal(route.intent, "brainstorm_to_plan");
-    assert.equal(route.command, "/supervibe-plan --from-brainstorm");
+    assert.equal(route.command, "/supervibe-plan --loop-ready --from-brainstorm");
     assert.equal(route.skill, "supervibe:writing-plans");
     assert.equal(route.nextQuestion, "Шаг 1/1: написать план?");
     assert.deepEqual(route.missingArtifacts, []);
     assert.deepEqual(validateAgenticQuestion(routeQuestion(route), { surface: "brainstorm trigger" }), []);
   });
 
-  it("routes plan completion to the review loop before atomization or execution", () => {
+  it("routes explicit plan-review requests to the optional review command", () => {
     const route = routeTriggerRequest("после плана сделай ревью луп", {
       artifacts: { planPath: ".supervibe/artifacts/plans/example.md" },
     });
@@ -69,10 +69,10 @@ describe("supervibe trigger router", () => {
     });
 
     assert.equal(route.intent, "plan_then_execute");
-    assert.equal(route.command, "/supervibe-plan");
+    assert.equal(route.command, "/supervibe-plan --loop-ready");
     assert.notEqual(route.command, "/supervibe-plan --review");
-    assert.ok(route.followUpCommands.includes("/supervibe-loop --atomize-plan <plan-path> --plan-review-passed"));
-    assert.ok(route.followUpCommands.includes("/supervibe-execute-plan <reviewed-plan-path>"));
+    assert.ok(route.followUpCommands.includes("/supervibe-loop --atomize-plan <plan-path> --user-approved-plan"));
+    assert.ok(route.followUpCommands.includes("/supervibe-loop --resume-dispatch"));
   });
 
   it("routes epic worktree runs to provider-safe preflight and exposes blockers", () => {
@@ -503,7 +503,7 @@ function routeQuestion(route) {
 
 describe("workflow summary gate routing", () => {
   it("routes post summary gates with source-bound safety metadata", () => {
-    const route = routeTriggerRequest("show post-plan summary after plan creation before review", {
+    const route = routeTriggerRequest("show post-plan summary after plan creation before graph creation", {
       artifacts: { planPath: ".supervibe/artifacts/plans/example.md" },
     });
     assert.equal(route.intent, "post_plan_summary_gate");

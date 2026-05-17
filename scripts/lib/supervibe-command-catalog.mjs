@@ -15,21 +15,21 @@ export const MEMORY_WATCH_COMMAND = "node <resolved-supervibe-plugin-root>/scrip
 export { COMMAND_AGENT_ORCHESTRATION_CONTRACT } from "./command-agent-orchestration-contract.mjs";
 
 export const COMMAND_PARALLEL_AGENT_LAUNCH_POLICY = Object.freeze({
-  id: "mandatory-parallel-agent-launch",
-  mode: "parallel-real-agents",
-  threading: "multiagent-multithreaded",
+  id: "ready-task-agent-dispatch",
+  mode: "single-or-parallel-real-agents",
+  threading: "ready-task-dispatch",
   required: true,
-  requiresRealAgentFanout: true,
-  minParallelAgents: 2,
-  appliesAfterCompactResume: true,
-  appliesToSimpleTasks: true,
-  requiredAfterContextCompaction: true,
-  requiredForSimpleTasks: true,
-  launchTiming: "before-durable-work",
-  triggers: Object.freeze(["workflow-like-request", "post-compact-resume", "simple-task-phrasing"]),
+  requiresRealAgentFanout: false,
+  minParallelAgents: 1,
+  appliesAfterCompactResume: false,
+  appliesToSimpleTasks: false,
+  requiredAfterContextCompaction: false,
+  requiredForSimpleTasks: false,
+  launchTiming: "when-ready-work-exists",
+  triggers: Object.freeze(["workflow-like-request", "resume-dispatch", "simple-task-phrasing"]),
   proof: Object.freeze(["hostInvocation.source", "hostInvocation.invocationId"]),
-  summary: "Launch real host-agent fan-out for workflow-like command routes, including compact/resume and simple-task phrasing.",
-  nextAction: "Launch real parallel host agents before durable work; scoped receipts must bind each host invocation.",
+  summary: "Dispatch the next ready task; use parallel fan-out only when independent ready work exists.",
+  nextAction: "Dispatch the next ready task; use one agent unless several independent ready tasks exist.",
 });
 
 const KNOWN_NPM_SCRIPT_SHORTCUTS = Object.freeze({
@@ -196,6 +196,45 @@ const SLASH_COMMAND_SHORTCUTS = Object.freeze([
     title: "Diagnose host installation",
     aliases: ["проверь установку supervibe", "run host doctor", "diagnose install", "проверь host adapter"],
     keywordGroups: [["doctor", "diagnose", "install", "host", "доктор", "диагностика", "установка"], ["supervibe", "host", "adapter", "плагин", "адаптер"]],
+  },
+  {
+    id: "approved-plan-start-work",
+    intent: "task_graph_create_from_plan",
+    title: "Create active graph from an approved plan",
+    command: "/supervibe-loop --atomize-plan <plan-path> --user-approved-plan",
+    description: "Route natural approved-plan start requests straight to graph creation instead of the legacy execute-plan gate.",
+    agentContract: copyCommandAgentContract(),
+    agentProfile: getCommandAgentProfile("/supervibe-loop"),
+    aliases: [
+      "plan is ready start work",
+      "plan ready start work",
+      "approved plan start work",
+      "execute plan",
+      "run plan",
+      "do the plan",
+      "implement the plan",
+      "start implementation from plan",
+      "start work by the plan",
+      "\u0441\u0434\u0435\u043b\u0430\u0439 \u043f\u043e \u043f\u043b\u0430\u043d\u0443",
+      "\u043d\u0430\u0447\u043d\u0438 \u0440\u0430\u0431\u043e\u0442\u0443 \u043f\u043e \u043f\u043b\u0430\u043d\u0443",
+      "\u0437\u0430\u043f\u0443\u0441\u0442\u0438 \u043f\u043b\u0430\u043d",
+      "\u0432\u044b\u043f\u043e\u043b\u043d\u0438 \u043f\u043b\u0430\u043d",
+      "\u0437\u0430\u043f\u0443\u0441\u0442\u0438 \u0432\u044b\u043f\u043e\u043b\u043d\u0435\u043d\u0438\u0435 \u043f\u043b\u0430\u043d\u0430",
+      "\u043f\u043b\u0430\u043d \u0433\u043e\u0442\u043e\u0432, \u043d\u0430\u0447\u043d\u0438 \u0440\u0430\u0431\u043e\u0442\u0443",
+      "\u043f\u043b\u0430\u043d \u0433\u043e\u0442\u043e\u0432 \u043d\u0430\u0447\u043d\u0438 \u0440\u0430\u0431\u043e\u0442\u0443",
+    ],
+    keywordGroups: [
+      ["plan", "\u043f\u043b\u0430\u043d"],
+      ["ready", "approved", "ready to start", "\u0433\u043e\u0442\u043e\u0432", "\u0433\u043e\u0442\u043e\u0432\u044b\u0439", "\u043e\u0434\u043e\u0431\u0440\u0435\u043d"],
+      ["start work", "begin work", "run it", "\u043d\u0430\u0447\u043d\u0438 \u0440\u0430\u0431\u043e\u0442\u0443", "\u0441\u0442\u0430\u0440\u0442"],
+    ],
+    requiredGroupIndexes: [0, 1, 2],
+    followUpCommands: ["/supervibe-loop --resume-dispatch"],
+    mutationRisk: "writes-tracker",
+    directRoute: true,
+    commandId: "/supervibe-loop",
+    commandArgs: "--atomize-plan <plan-path> --user-approved-plan",
+    nextAction: "Create the active work graph from the approved loop-ready plan, then dispatch or claim the next ready task.",
   },
   {
     command: "/supervibe-execute-plan",
@@ -469,33 +508,69 @@ const COMMAND_SHORTCUTS = Object.freeze([
   {
     id: "plan-then-execute-natural-language",
     intent: "plan_then_execute",
-    title: "Write a detailed plan before atomization and execution",
-    command: "/supervibe-plan",
-    description: "Route requests that ask for a detailed plan and then execution through the full plan -> review -> atomize -> execute chain instead of the review-only gate.",
+    title: "Write a detailed loop-ready plan before execution",
+    command: "/supervibe-plan --loop-ready",
+    description: "Route requests that ask for a detailed plan and then execution through the fast plan -> loop-ready work graph chain instead of the review-only gate.",
     agentContract: copyCommandAgentContract(),
     agentProfile: getCommandAgentProfile("/supervibe-plan"),
     aliases: [
       "write a detailed plan then start work",
       "create a plan then execute it",
       "make 40 tasks in a plan and start execution",
-      "Давай все 40+ задач в детальный план, после этого начни работу по плану",
-      "Составь детальный план и потом начни выполнение по плану",
+      "\u0434\u0430\u0432\u0430\u0439 \u0432\u0441\u0435 40+ \u0437\u0430\u0434\u0430\u0447 \u0432 \u0434\u0435\u0442\u0430\u043b\u044c\u043d\u044b\u0439 \u043f\u043b\u0430\u043d, \u043f\u043e\u0441\u043b\u0435 \u044d\u0442\u043e\u0433\u043e \u043d\u0430\u0447\u043d\u0438 \u0440\u0430\u0431\u043e\u0442\u0443 \u043f\u043e \u043f\u043b\u0430\u043d\u0443",
+      "\u0441\u0434\u0435\u043b\u0430\u0439 \u0434\u0435\u0442\u0430\u043b\u044c\u043d\u044b\u0439 \u043f\u043b\u0430\u043d \u0438 \u043f\u043e\u0442\u043e\u043c \u043d\u0430\u0447\u043d\u0438 \u0440\u0430\u0431\u043e\u0442\u0443",
     ],
     keywordGroups: [
-      ["plan", "detailed plan", "implementation plan", "план", "детальный план"],
-      ["task", "tasks", "work items", "задач", "задачи", "подзадач", "эпик"],
-      ["execute", "start work", "start execution", "begin work", "начни работу", "начать работу", "выполнение", "выполнены", "выполни"],
+      ["plan", "detailed plan", "implementation plan", "\u043f\u043b\u0430\u043d", "\u0434\u0435\u0442\u0430\u043b\u044c\u043d\u044b\u0439 \u043f\u043b\u0430\u043d"],
+      ["task", "tasks", "work items", "\u0437\u0430\u0434\u0430\u0447", "\u0437\u0430\u0434\u0430\u0447\u0438"],
+      ["execute", "start work", "start execution", "begin work", "\u043d\u0430\u0447\u043d\u0438 \u0440\u0430\u0431\u043e\u0442\u0443", "\u0440\u0430\u0431\u043e\u0442\u0443 \u043f\u043e \u043f\u043b\u0430\u043d\u0443", "\u0432\u044b\u043f\u043e\u043b\u043d\u0435\u043d\u044b"],
     ],
     requiredGroupIndexes: [0, 1, 2],
     followUpCommands: [
-      "/supervibe-plan --review <plan-path>",
-      "/supervibe-loop --atomize-plan <plan-path> --plan-review-passed",
-      "/supervibe-execute-plan <reviewed-plan-path>",
+      "/supervibe-loop --atomize-plan <plan-path> --user-approved-plan",
+      "/supervibe-loop --resume-dispatch",
     ],
     mutationRisk: "delegates-to-slash-command",
     directRoute: true,
     commandId: "/supervibe-plan",
-    nextAction: "Run /supervibe-plan first; after the durable plan passes review, atomize it into a work-item graph before execution.",
+    commandArgs: "--loop-ready",
+    nextAction: "Run /supervibe-plan --loop-ready first; after the user approves the loop-ready plan, atomize it into a work-item graph with --user-approved-plan and dispatch the next ready task.",
+  },
+  {
+    id: "loop-ready-plan-natural-language",
+    intent: "supervibe_plan_loop_ready",
+    title: "Write a loop-ready implementation plan",
+    command: "/supervibe-plan --loop-ready",
+    description: "Route requests that want plans to include epics, tasks, dependencies, and loop handoff in the plan artifact itself.",
+    agentContract: copyCommandAgentContract(),
+    agentProfile: getCommandAgentProfile("/supervibe-plan"),
+    aliases: [
+      "loop-ready plan",
+      "plan ready for loop",
+      "make a loop-ready plan",
+      "create a plan with epics and tasks",
+      "create plan with epics tasks and loop handoff",
+      "make a plan ready to run in loop",
+      "\u0441\u0434\u0435\u043b\u0430\u0439 \u043f\u043b\u0430\u043d \u0433\u043e\u0442\u043e\u0432\u044b\u0439 \u043a loop \u0441 \u044d\u043f\u0438\u043a\u0430\u043c\u0438 \u0438 \u0437\u0430\u0434\u0430\u0447\u0430\u043c\u0438",
+      "\u043f\u043b\u0430\u043d \u0441\u0440\u0430\u0437\u0443 \u0441 \u044d\u043f\u0438\u043a\u0430\u043c\u0438 \u0438 \u0437\u0430\u0434\u0430\u0447\u0430\u043c\u0438",
+      "\u043f\u043b\u0430\u043d \u0434\u043b\u044f \u0437\u0430\u043f\u0443\u0441\u043a\u0430 \u0432 loop",
+    ],
+    keywordGroups: [
+      ["plan", "implementation plan", "\u043f\u043b\u0430\u043d", "\u0441\u043f\u043b\u0430\u043d\u0438\u0440\u0443\u0439", "\u0441\u043e\u0441\u0442\u0430\u0432\u044c"],
+      ["loop", "graph", "work graph", "epic", "epics", "task", "tasks", "work items", "\u0433\u0440\u0430\u0444", "\u044d\u043f\u0438\u043a", "\u044d\u043f\u0438\u043a\u0438", "\u0437\u0430\u0434\u0430\u0447", "\u0437\u0430\u0434\u0430\u0447\u0438"],
+      ["ready", "start", "run", "handoff", "\u0433\u043e\u0442\u043e\u0432", "\u0441\u0440\u0430\u0437\u0443", "\u0437\u0430\u043f\u0443\u0441\u043a"],
+    ],
+    requiredGroupIndexes: [0, 1],
+    priorityPhrases: ["loop-ready plan", "ready for loop", "epics and tasks", "plan ready to run in loop", "\u0433\u043e\u0442\u043e\u0432\u044b\u0439 \u043a loop", "\u044d\u043f\u0438\u043a\u0430\u043c\u0438 \u0438 \u0437\u0430\u0434\u0430\u0447\u0430\u043c\u0438"],
+    followUpCommands: [
+      "/supervibe-loop --atomize-plan <plan-path> --user-approved-plan",
+      "/supervibe-loop --resume-dispatch",
+    ],
+    mutationRisk: "delegates-to-slash-command",
+    directRoute: true,
+    commandId: "/supervibe-plan",
+    commandArgs: "--loop-ready",
+    nextAction: "Run /supervibe-plan --loop-ready; the artifact should already contain epics, tasks, dependencies, acceptance checks, and the direct /supervibe-loop --atomize-plan <plan-path> --user-approved-plan handoff.",
   },
   {
     id: "design-flow-broken-audit",
@@ -561,9 +636,9 @@ const COMMAND_SHORTCUTS = Object.freeze([
   {
     id: "plan-review-natural-language",
     intent: "plan_review",
-    title: "Run mandatory specialist review for an implementation plan",
+    title: "Run optional specialist review for an implementation plan",
     command: "/supervibe-plan --review",
-    description: "Route plan review, review-loop, and specialist-agent review requests to the mandatory plan review gate before atomization or execution.",
+    description: "Route explicit plan review, review-loop, and specialist-agent review requests to the optional strict plan review gate before atomization or execution.",
     agentContract: copyCommandAgentContract(),
     agentProfile: getCommandAgentProfile("/supervibe-plan"),
     aliases: [
@@ -592,7 +667,7 @@ const COMMAND_SHORTCUTS = Object.freeze([
     directRoute: true,
     commandId: "/supervibe-plan",
     commandArgs: "--review",
-    nextAction: "Run /supervibe-plan --review in the active AI CLI against the plan artifact; do not execute or atomize until the plan-review gate passes.",
+    nextAction: "Run /supervibe-plan --review in the active AI CLI only for explicit deep review; normal loop-ready plans can atomize after user approval with --user-approved-plan.",
   },
   {
     id: "workflow-chain-audit",
@@ -701,7 +776,7 @@ const COMMAND_SHORTCUTS = Object.freeze([
     intent: "post_plan_summary_gate",
     title: "Show post-plan summary after plan creation",
     command: "/supervibe-plan --summary-gate --stage post-plan",
-    description: "Route explicit post-plan summary requests to the durable source-bound summary before plan review.",
+    description: "Route explicit post-plan summary requests to the durable source-bound summary before graph creation.",
     aliases: ["post-plan summary", "summary after plan", "show what was added after plan", "\u0441\u0430\u043c\u043c\u0430\u0440\u0438 \u043f\u043e\u0441\u043b\u0435 \u043f\u043b\u0430\u043d\u0430"],
     keywordGroups: [["summary", "resume", "\u0441\u0430\u043c\u043c\u0430\u0440\u0438"], ["post-plan", "after plan", "plan", "\u043f\u043b\u0430\u043d"], ["added", "why", "next", "\u0434\u043e\u0431\u0430\u0432\u043b\u0435\u043d\u043e"]],
     requiredGroupIndexes: [0, 1],
@@ -711,7 +786,7 @@ const COMMAND_SHORTCUTS = Object.freeze([
     directRoute: false,
     commandId: "/supervibe-plan",
     commandArgs: "--summary-gate --stage post-plan",
-    nextAction: "Run /supervibe-plan --summary-gate --stage post-plan to show what changed, why, visual map, and next review choices.",
+    nextAction: "Run /supervibe-plan --summary-gate --stage post-plan to show what changed, why, visual map, and graph-creation choices.",
   },
   {
     id: "docs-audit",
@@ -1011,7 +1086,7 @@ export function formatCommandCatalog(catalog = buildProjectCommandCatalog()) {
     `AGENT_FANOUT_REQUIRED: ${agentFanoutPolicy.required === true}`,
     `AGENT_FANOUT_AFTER_COMPACT: ${agentFanoutPolicy.requiredAfterContextCompaction === true}`,
     `AGENT_FANOUT_SIMPLE_TASKS: ${agentFanoutPolicy.requiredForSimpleTasks === true}`,
-    `AGENT_MIN_PARALLEL: ${agentFanoutPolicy.minParallelAgents || 2}`,
+    `AGENT_MIN_PARALLEL: ${agentFanoutPolicy.minParallelAgents || 1}`,
     `AGENT_BLOCKED_MODE: ${catalog.agentContract?.blockedMode || COMMAND_AGENT_ORCHESTRATION_CONTRACT.blockedMode}`,
     `PARALLEL_AGENT_POLICY: ${parallelPolicy.id}`,
     `PARALLEL_AGENT_MODE: ${parallelPolicy.mode}`,
@@ -1044,7 +1119,8 @@ export function formatCommandMatch(match) {
       "NEXT: run `node <resolved-supervibe-plugin-root>/scripts/supervibe-commands.mjs` to inspect the catalog",
     ].join("\n");
   }
-  const parallelPolicy = effectiveParallelAgentLaunchPolicy(match);
+  const showAgentDiagnostics = shouldShowAgentDiagnostics(match);
+  const parallelPolicy = showAgentDiagnostics ? effectiveParallelAgentLaunchPolicy(match) : null;
   const agentFanoutPolicy = match.agentContract?.agentFanoutPolicy || parallelPolicy;
   const nextAction = parallelPolicy ? appendParallelAgentNextAction(match.nextAction) : match.nextAction;
   return [
@@ -1071,19 +1147,19 @@ export function formatCommandMatch(match) {
     parallelPolicy ? `PARALLEL_AGENT_SIMPLE_TASKS: ${parallelPolicy.appliesToSimpleTasks === true}` : null,
     parallelPolicy ? `PARALLEL_AGENT_TRIGGERS: ${parallelPolicy.triggers.join(", ")}` : null,
     parallelPolicy ? `PARALLEL_AGENT_PROOF: ${parallelPolicy.proof.join(", ")}` : null,
-    match.agentContract ? `OWNER_AGENT: ${match.agentContract.ownerAgentId}` : null,
-    match.agentContract ? `AGENT_EXECUTION_MODES: ${match.agentContract.executionModes.join(", ")}` : null,
-    match.agentContract ? `AGENT_FANOUT_REQUIRED: ${agentFanoutPolicy?.required === true}` : null,
-    match.agentContract ? `AGENT_FANOUT_AFTER_COMPACT: ${agentFanoutPolicy?.requiredAfterContextCompaction === true}` : null,
-    match.agentContract ? `AGENT_FANOUT_SIMPLE_TASKS: ${agentFanoutPolicy?.requiredForSimpleTasks === true}` : null,
-    match.agentContract ? `AGENT_MIN_PARALLEL: ${agentFanoutPolicy?.minParallelAgents || 2}` : null,
-    match.agentContract ? `AGENT_BLOCKED_MODE: ${match.agentContract.blockedMode}` : null,
-    match.agentContract ? `AGENT_PROOF: ${match.agentContract.requiredReceiptFields.join(", ")}` : null,
-    match.agentProfile ? `REQUIRED_AGENTS: ${match.agentProfile.requiredAgentIds.join(", ")}` : null,
-    match.agentProfile ? `DYNAMIC_SELECTORS: ${(match.agentProfile.dynamicAgentSelectors || []).join(", ") || "none"}` : null,
-    match.agentProfile ? `SELECTOR_INPUT_FIELDS: ${(match.agentProfile.selectorInputFields || COMMAND_AGENT_SELECTOR_INPUT_FIELDS).join(", ")}` : null,
-    match.agentProfile ? `AGENT_PLAN_COMMAND: node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command ${match.agentProfile.commandId}` : null,
-    match.agentContract ? `AGENT_EMULATION: ${match.agentContract.emulationPolicy}` : null,
+    showAgentDiagnostics && match.agentContract ? `OWNER_AGENT: ${match.agentContract.ownerAgentId}` : null,
+    showAgentDiagnostics && match.agentContract ? `AGENT_EXECUTION_MODES: ${match.agentContract.executionModes.join(", ")}` : null,
+    showAgentDiagnostics && match.agentContract ? `AGENT_FANOUT_REQUIRED: ${agentFanoutPolicy?.required === true}` : null,
+    showAgentDiagnostics && match.agentContract ? `AGENT_FANOUT_AFTER_COMPACT: ${agentFanoutPolicy?.requiredAfterContextCompaction === true}` : null,
+    showAgentDiagnostics && match.agentContract ? `AGENT_FANOUT_SIMPLE_TASKS: ${agentFanoutPolicy?.requiredForSimpleTasks === true}` : null,
+    showAgentDiagnostics && match.agentContract ? `AGENT_MIN_PARALLEL: ${agentFanoutPolicy?.minParallelAgents || 1}` : null,
+    showAgentDiagnostics && match.agentContract ? `AGENT_BLOCKED_MODE: ${match.agentContract.blockedMode}` : null,
+    showAgentDiagnostics && match.agentContract ? `AGENT_PROOF: ${match.agentContract.requiredReceiptFields.join(", ")}` : null,
+    showAgentDiagnostics && match.agentProfile ? `REQUIRED_AGENTS: ${match.agentProfile.requiredAgentIds.join(", ")}` : null,
+    showAgentDiagnostics && match.agentProfile ? `DYNAMIC_SELECTORS: ${(match.agentProfile.dynamicAgentSelectors || []).join(", ") || "none"}` : null,
+    showAgentDiagnostics && match.agentProfile ? `SELECTOR_INPUT_FIELDS: ${(match.agentProfile.selectorInputFields || COMMAND_AGENT_SELECTOR_INPUT_FIELDS).join(", ")}` : null,
+    showAgentDiagnostics && match.agentProfile ? `AGENT_PLAN_COMMAND: node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command ${match.agentProfile.commandId}` : null,
+    showAgentDiagnostics && match.agentContract ? `AGENT_EMULATION: ${match.agentContract.emulationPolicy}` : null,
     ...(match.followUpCommands?.length ? ["FOLLOW_UP_COMMANDS:", ...match.followUpCommands.map((command) => `- ${command}`)] : []),
     match.diagnostics?.selectedBecause ? `SELECTED_BECAUSE: ${match.diagnostics.selectedBecause}` : null,
     ...(match.diagnostics?.closeCandidates?.length
@@ -1094,12 +1170,24 @@ export function formatCommandMatch(match) {
   ].filter(Boolean).join("\n");
 }
 
+function shouldShowAgentDiagnostics(match = {}) {
+  if (match.showAgentDiagnostics === true || match.strict === true) return true;
+  const commandName = String(match.command || match.commandId || "").trim().split(/\s+/)[0];
+  return !isFastWorkflowSlashCommand(commandName);
+}
+
+function isFastWorkflowSlashCommand(command = "") {
+  const commandName = String(command || "").trim().split(/\s+/)[0];
+  return ["/supervibe-brainstorm", "/supervibe-plan", "/supervibe-loop"].includes(commandName);
+}
+
 function createSlashShortcut(profile) {
   const name = profile.command.replace(/^\//, "");
   const intent = profile.command === "/supervibe-design"
     ? "design_new"
     : profile.intent || name.replaceAll("-", "_");
   const directRoute = profile.directRoute === true;
+  const fastWorkflowCommand = isFastWorkflowSlashCommand(profile.command);
   return {
     id: profile.id ? `shortcut:${profile.id}` : `shortcut:${name}`,
     intent,
@@ -1116,7 +1204,9 @@ function createSlashShortcut(profile) {
     mutationRisk: "delegates-to-slash-command",
     directRoute,
     requiredGroupIndexes: profile.requiredGroupIndexes || [0, 1],
-    nextAction: `Run ${profile.command} in the active AI CLI; first run command-agent-plan.mjs for ${profile.command}, then invoke required host agents before durable work and receipts.`,
+    nextAction: profile.nextAction || (fastWorkflowCommand
+      ? `Run ${profile.command} in the active AI CLI; use the fast owner flow and leave reviewers or quality gates for an explicit later step.`
+      : `Run ${profile.command} in the active AI CLI; first run command-agent-plan.mjs for ${profile.command}, then invoke required host agents before durable work and receipts.`),
   };
 }
 
@@ -1137,6 +1227,9 @@ function scoreShortcut(shortcut, text) {
   }
 
   if (shortcut.id === "plan-then-execute-natural-language" && (looksLikePlanOnlyReviewGate(text) || looksLikeExistingPlanExecution(text))) {
+    return null;
+  }
+  if (shortcut.id === "loop-ready-plan-natural-language" && (looksLikePlanOnlyReviewGate(text) || looksLikeTaskGraphCreateFromPlan(text) || looksLikeExistingPlanExecution(text))) {
     return null;
   }
   if (shortcut.command === "/supervibe-execute-plan" && (looksLikePlanOnlyReviewGate(text) || looksLikeSlashCommandEvidenceText(text))) {
@@ -1183,6 +1276,9 @@ function looksLikePlanOnlyReviewGate(text) {
     "\u043f\u043e\u043a\u0430 \u0442\u043e\u043b\u044c\u043a\u043e \u043f\u043b\u0430\u043d"
   ].some((phrase) => includesPhrase(text, phrase));
   const delayedExecution = [
+    "do not execute",
+    "don't execute",
+    "without executing",
     "i will say when to start work",
     "will say when to start work",
     "i will say when to start",
@@ -1206,6 +1302,22 @@ function looksLikePlanOnlyReviewGate(text) {
   ].some((phrase) => includesPhrase(text, phrase))
     || ["\u0432\u0430\u043b\u0438\u0434\u0430\u0446", "\u0432\u0430\u043b\u0438\u0434\u0438\u0440", "\u0440\u0435\u0432\u044c\u044e\u0435\u0440", "\u043f\u0440\u043e\u0432\u0435\u0440"].some((stem) => text.includes(stem));
   return asksReview && (planOnly || delayedExecution);
+}
+
+function looksLikeTaskGraphCreateFromPlan(text) {
+  const asksCreateGraph = [
+    "create epic tasks from plan",
+    "create tasks from plan",
+    "create epic and tasks from plan",
+    "create work items from plan",
+    "atomize approved plan",
+    "atomize loop-ready plan",
+    "\u0441\u043e\u0437\u0434\u0430\u0439 \u0437\u0430\u0434\u0430\u0447\u0438 \u0438\u0437 \u043f\u043b\u0430\u043d\u0430",
+    "\u0441\u043e\u0437\u0434\u0430\u0439 \u0437\u0430\u0434\u0430\u0447\u0438 \u0438 \u044d\u043f\u0438\u043a \u0438\u0437 \u043f\u043b\u0430\u043d\u0430",
+    "\u0441\u043e\u0437\u0434\u0430\u0439 \u044d\u043f\u0438\u043a \u0438 \u0437\u0430\u0434\u0430\u0447\u0438 \u0438\u0437 \u043f\u043b\u0430\u043d\u0430",
+    "\u0441\u043e\u0437\u0434\u0430\u0439 work items \u0438\u0437 \u043f\u043b\u0430\u043d\u0430"
+  ].some((phrase) => includesPhrase(text, phrase));
+  return asksCreateGraph && ["plan", "\u043f\u043b\u0430\u043d"].some((phrase) => includesPhrase(text, phrase));
 }
 
 function looksLikeExistingPlanExecution(text) {
@@ -1370,6 +1482,7 @@ function shouldApplyParallelAgentPolicy(route = {}) {
   if (!route || route.hardStop === true) return false;
   if (["missing_slash_command", "missing_npm_script"].includes(route.intent)) return false;
   const command = String(route.command || route.commandId || "");
+  if (isFastWorkflowSlashCommand(command)) return false;
   return Boolean(route.parallelAgentPolicy || route.agentProfile || route.agentContract || command.startsWith("/supervibe"));
 }
 
@@ -1633,13 +1746,32 @@ function resolveSlashCommandMatch(explicitSlash, slashCommands, { reasonPrefix =
     doNotSearchProject: true,
     hardStop: !slashCommand,
     agentContract: copyCommandAgentContract(),
-    agentProfile: getCommandAgentProfile(explicitSlash.name),
+    agentProfile: agentProfileForExplicitSlash(explicitSlash),
     directRoute: false,
     mutationRisk: "delegates-to-slash-command",
     nextAction: slashCommand
-      ? "Run this exact slash command in the active AI CLI; no repository search is needed. First run command-agent-plan.mjs for the slash command, then invoke the required host agents and require real host-agent receipts for specialist output."
+      ? isFastWorkflowSlashCommand(explicitSlash.name)
+        ? "Run this exact slash command in the active AI CLI; ordinary brainstorm/plan/loop work uses the fast owner flow and leaves review or verification for an explicit later gate."
+        : "Run this exact slash command in the active AI CLI; no repository search is needed. First run command-agent-plan.mjs for the slash command, then invoke the required host agents and require real host-agent receipts for specialist output."
       : "Hard stop: report the missing slash command from the catalog and do not inspect source files, marketplace command files, or repository paths to emulate it.",
   });
+}
+
+function agentProfileForExplicitSlash(explicitSlash = {}) {
+  const base = getCommandAgentProfile(explicitSlash.name);
+  if (!base) return base;
+  const args = String(explicitSlash.args || "").toLowerCase();
+  if (explicitSlash.name !== "/supervibe-plan" || !args.includes("--review")) return base;
+  const requiredAgentIds = [...new Set([
+    ...(base.requiredAgentIds || []),
+    "systems-analyst",
+    "architect-reviewer",
+    "quality-gate-reviewer",
+  ])];
+  return {
+    ...base,
+    requiredAgentIds,
+  };
 }
 
 function parseExplicitSupervibeSlashCommand(request) {

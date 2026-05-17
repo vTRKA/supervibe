@@ -137,17 +137,20 @@ export function createPlanLifecycleReport({ rootDir = process.cwd(), planPath = 
   const sourceEvaluation = activeSource.sourcePath
     ? evaluatePlanSourceAgainstLifecycle({ rootDir: state.rootDir, sourcePath: activeSource.sourcePath })
     : { issues: [], warnings: [], status: "missing" };
-  const staleActiveSource = sourceEvaluation.issues.length > 0;
+  const activeGraphTerminal = ["complete", "closed"].includes(activeGraphResolver.status);
+  const staleActiveSource = !activeGraphTerminal && sourceEvaluation.issues.length > 0;
   const archiveAction = staleClosedPlans.length > 0
     ? `index/archive stale closed plan(s): ${staleClosedPlans.length}`
     : "none";
-  const nextAction = staleActiveSource
-    ? "repair active graph source before atomization, review, or execution"
-    : staleClosedPlans.length > 0
-      ? "run node scripts/supervibe-plan-lifecycle.mjs --repair --apply --receipt-id <workflow-id>"
-      : activePlanPath
-        ? "use canonical active plan pointer or explicit --plan"
-        : "set active plan pointer before atomization or review";
+  const nextAction = activeGraphTerminal
+    ? "active graph is complete; finish here, verify, or start a new loop-ready plan"
+    : staleActiveSource
+      ? "repair active graph source before atomization, review, or execution"
+      : staleClosedPlans.length > 0
+        ? "run node scripts/supervibe-plan-lifecycle.mjs --repair --apply --receipt-id <workflow-id>"
+        : activePlanPath
+          ? "use canonical active plan pointer or explicit --plan"
+          : "set active plan pointer before atomization or review";
 
   return {
     schemaVersion: SCHEMA_VERSION,
@@ -159,6 +162,7 @@ export function createPlanLifecycleReport({ rootDir = process.cwd(), planPath = 
     closedPlanCount: closedPlans.length,
     archiveAction,
     staleActiveSource,
+    activeGraphTerminal,
     activeSource,
     activeGraphResolver,
     sourceEvaluation,
@@ -286,6 +290,19 @@ export function resolveActiveGraphResolverDiagnostics({ rootDir = process.cwd(),
   }
 
   const items = Array.isArray(graph.items) ? graph.items : [];
+  if (isCompletedWorkItemGraph(graph, items)) {
+    return activeGraphDiagnostic({
+      rootDir: resolvedRoot,
+      status: "complete",
+      graphPath: resolvedGraphPath,
+      readyTaskIds: [],
+      affectedTaskIds: [],
+      nextAction: "finish here | verify the work | prepare release handoff",
+      repairCommand: null,
+      releaseImpact: "No dispatch blocker; the active graph has no remaining ready work because it is complete.",
+    });
+  }
+
   const itemById = new Map(items.map((item) => [item.itemId || item.id, item]).filter(([id]) => id));
   const taskItems = items.filter((item) => isDispatchableGraphItem(item));
   const readyTaskIds = [];
@@ -382,6 +399,13 @@ function activeGraphDiagnostic({
   };
 }
 
+function isCompletedWorkItemGraph(graph = {}, items = []) {
+  const graphStatus = String(graph.status || graph.state || graph.lifecycle || graph.lifecycleStatus || "").trim().toLowerCase();
+  if (["done", "closed", "complete", "completed"].includes(graphStatus)) return true;
+  const taskItems = items.filter((item) => item.type !== "epic" && item.kind !== "epic");
+  return taskItems.length > 0 && taskItems.every((item) => isGraphDependencySatisfied(item));
+}
+
 function isDispatchableGraphItem(item = {}) {
   const itemId = item.itemId || item.id;
   if (!itemId || item.type === "epic" || item.kind === "epic") return false;
@@ -412,9 +436,13 @@ export function formatPlanLifecycleReport(report = {}) {
     `ARCHIVE_ACTION: ${report.archiveAction || "none"}`,
     `STALE_ACTIVE_SOURCE: ${report.staleActiveSource ? "true" : "false"}`,
   ];
-  if (report.activeSource?.sourcePath) lines.push(`ACTIVE_GRAPH_SOURCE: ${normalizeProjectPath(report.rootDir || process.cwd(), report.activeSource.sourcePath)}`);
-  for (const warning of report.sourceEvaluation?.warnings || []) lines.push(`WARNING: ${warning}`);
-  for (const issue of report.sourceEvaluation?.issues || []) lines.push(`ISSUE: ${issue}`);
+  const hideTerminalSourceDrift = report.activeGraphTerminal && !report.staleActiveSource;
+  if (report.activeSource?.sourcePath && !hideTerminalSourceDrift) lines.push(`ACTIVE_GRAPH_SOURCE: ${normalizeProjectPath(report.rootDir || process.cwd(), report.activeSource.sourcePath)}`);
+  if (hideTerminalSourceDrift) lines.push("ACTIVE_GRAPH_SOURCE: details hidden for complete graph");
+  if (!hideTerminalSourceDrift) {
+    for (const warning of report.sourceEvaluation?.warnings || []) lines.push(`WARNING: ${warning}`);
+    for (const issue of report.sourceEvaluation?.issues || []) lines.push(`ISSUE: ${issue}`);
+  }
   for (const plan of report.staleClosedPlans || []) lines.push(`ARCHIVE_CANDIDATE: ${plan.path} status=${plan.status}`);
   lines.push(`NEXT_ACTION: ${report.nextAction || "inspect plan lifecycle"}`);
   return lines.join("\n");

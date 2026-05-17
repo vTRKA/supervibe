@@ -54,6 +54,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     handoffId: options["handoff-id"] || options.handoffId || null,
     workflowRunId: options["workflow-run-id"] || options.workflowRunId || null,
     pluginRoot: resolve(options["plugin-root"] || options.pluginRoot || fileURLToPath(new URL("../", import.meta.url))),
+    requireRuntimeState: options["runtime-10of10-proof"] === true || options["require-runtime-state"] === true,
+    runtimeTenOfTenProof: options["runtime-10of10-proof"] === true,
   });
   let goldenReport;
   try {

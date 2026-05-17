@@ -97,7 +97,7 @@ claim maturity.
 | `receipts` | 1.25 | Workflow receipt validation passes, producer receipt validation passes, and trusted host-agent receipt plus invocation counts satisfy the active profile. |
 | `graph-proof` | 1.25 | Task graph maturity passes, source plan snapshots exist, strict completion evidence exists, and release profile also requires active graph proof. |
 | `agent-lease` | 1.00 | Claim TTL, approval lease checks, host-invocation-bound heartbeat, stale recovery, write-set locks, and lease tests are present; release profile also blocks stale active claims. |
-| `routing` | 1.25 | Command-agent enforcement passes, task graph command/trigger routing cases pass, and mandatory real parallel-agent fan-out is present for compact continuation and simple workflow tasks. |
+| `routing` | 1.25 | Command-agent enforcement passes, task graph command/trigger routing cases pass, and ready-task dispatch allows one agent while preserving real-agent proof when agents are used. |
 | `review` | 1.00 | Development profile requires plan-review validator/template capability; release profile requires trusted active or plan-bound review proof. |
 | `gate-profile` | 1.00 | Plan, graph, and task workflows expose the final-only verification policy: no development tests or validators, with tests and validators deferred to the final release gate; release profile also requires recorded passing full-check graph evidence. |
 
