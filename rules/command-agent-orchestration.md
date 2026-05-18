@@ -39,13 +39,17 @@ node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command /
 The preflight prints `SUPERVIBE_COMMAND_AGENT_PLAN`, required agents, selected
 host dispatch support, proof source, and whether durable writes are allowed.
 If the plan says `executionMode = agent-required-blocked`, the command must
-stop before durable artifacts.
+stop before durable artifacts. If a command profile explicitly prints
+`executionMode = utility-no-agent`, the command is a deterministic utility path:
+run the command-specific local checks and do not dispatch specialists unless the
+user requested review, recovery, `--verify-agents`, or delegated output.
 
 Every published `/supervibe-*` command must have a profile with:
 
 - `ownerAgentId = supervibe-orchestrator`
 - `defaultExecutionMode = real-agents`
-- `requiredAgentIds` containing the owner and the command specialists
+- `requiredAgentIds` containing the owner and the command specialists, unless
+  the executable profile marks a deterministic `utility-no-agent` path
 - `inlineScope = diagnostic/dry-run only`
 - `blockedMode = agent-required-blocked`
 - receipt proof fields `hostInvocation.source` and
@@ -61,7 +65,9 @@ Every published `/supervibe-*` command must have a profile with:
   before the gate. Staged specialists must wait until the executable workflow
   state says their stage is ready.
 - Invoke the listed host agents when the command performs domain work,
-  review, implementation, design, audit, planning, scoring, or handoff.
+  review, implementation, design, audit, planning, scoring, or handoff. Utility
+  commands in `utility-no-agent` mode, such as normal `/supervibe-update`, use
+  command-specific deterministic evidence instead of specialist fanout.
 - Add dynamic stack/domain specialists when the command profile asks for
   `dynamicAgentSelectors`.
 - Let command profiles select dynamic required roles from workflow context.
@@ -82,7 +88,8 @@ Every published `/supervibe-*` command must have a profile with:
   producer execution or host-invocation binding, receipt issue, validation,
   planner/state refresh, and post-stage continuation output for that stage.
 - For agent, worker, or reviewer output, issue runtime workflow receipts with
-  real host invocation proof.
+  real host invocation proof. Utility command completion does not need agent
+  receipts unless it claims agent, worker, or reviewer output.
 - For Codex, use the `CODEX_SPAWN_PAYLOAD_RULES` and
   `CODEX_SPAWN_NOW_PAYLOADS` / staged payload information printed by
   `command-agent-plan.mjs`. Forked

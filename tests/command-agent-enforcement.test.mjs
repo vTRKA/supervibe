@@ -254,6 +254,49 @@ test("command agent cleanup debt is diagnostic even when inline is requested", (
   }
 });
 
+test("supervibe update uses utility no-agent mode unless agent verification is explicit", () => {
+  const utilityReport = buildRuntimeCommandAgentPlan({
+    command: "/supervibe-update",
+    projectRoot: ROOT,
+    pluginRoot: ROOT,
+    host: "codex",
+  });
+
+  assert.equal(utilityReport.pass, true);
+  assert.equal(utilityReport.plan.executionMode, "utility-no-agent");
+  assert.equal(utilityReport.plan.agentSelectionMode, "utility-no-agent");
+  assert.equal(utilityReport.plan.utilityNoAgentAllowed, true);
+  assert.equal(utilityReport.plan.parallelAgentDispatchRequired, false);
+  assert.equal(utilityReport.plan.agentDispatchRequired, false);
+  assert.equal(utilityReport.plan.receiptGate, "not-required-for-utility-command");
+  assert.equal(utilityReport.plan.durableWritesAllowed, true);
+  assert.deepEqual(utilityReport.plan.requiredAgentIds, []);
+  assert.equal(utilityReport.plan.codexSpawnPayloads, undefined);
+  assert.equal(commandAgentPlanStrictReady(utilityReport), true);
+
+  for (const workflowContext of [
+    { verifyAgents: true },
+    { review: true },
+    { recovery: true },
+  ]) {
+    const explicitAgentReport = buildRuntimeCommandAgentPlan({
+      command: "/supervibe-update",
+      projectRoot: ROOT,
+      pluginRoot: ROOT,
+      host: "codex",
+      workflowContext,
+      enforceHostProof: false,
+      receiptTrust: { pass: false, trustedHostAgentReceipts: 0, agentInvocations: 0 },
+    });
+
+    assert.equal(explicitAgentReport.pass, true);
+    assert.equal(explicitAgentReport.plan.executionMode, "agent-dispatch-required", JSON.stringify(workflowContext));
+    assert.equal(explicitAgentReport.plan.agentFanoutPolicy.required, true, JSON.stringify(workflowContext));
+    assert.ok(explicitAgentReport.plan.requiredAgentIds.includes("quality-gate-reviewer"), JSON.stringify(workflowContext));
+    assert.ok((explicitAgentReport.plan.codexSpawnPayloads || []).length > 0, JSON.stringify(workflowContext));
+  }
+});
+
 test("command agent strict readiness accepts Codex logical roles after trusted scoped receipts", () => {
   const report = {
     pass: true,

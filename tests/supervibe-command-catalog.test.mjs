@@ -28,6 +28,7 @@ const ROOT = process.cwd();
 const COMMANDS_SCRIPT = join(ROOT, "scripts", "supervibe-commands.mjs");
 const AGENT_PLAN_SCRIPT = join(ROOT, "scripts", "command-agent-plan.mjs");
 const FAST_WORKFLOW_COMMANDS = new Set(["/supervibe-brainstorm", "/supervibe-plan", "/supervibe-loop"]);
+const UTILITY_NO_AGENT_COMMANDS = new Set(["/supervibe-update"]);
 
 function installHostAgentFiles(projectRoot, hostFolder, agentIds) {
   const dir = join(projectRoot, ...hostFolder.split("/"));
@@ -144,7 +145,7 @@ test("command resolver resolves every published slash command explicitly without
     assert.equal(match.doNotSearchProject, true, commandId);
     assert.equal(match.command, `${commandId} --help`, commandId);
     assert.equal(match.agentContract.ownerAgentId, COMMAND_AGENT_ORCHESTRATION_CONTRACT.ownerAgentId, commandId);
-    if (FAST_WORKFLOW_COMMANDS.has(commandId)) {
+    if (FAST_WORKFLOW_COMMANDS.has(commandId) || UTILITY_NO_AGENT_COMMANDS.has(commandId)) {
       assert.doesNotMatch(match.nextAction, /command-agent-plan\.mjs/, commandId);
       assert.doesNotMatch(formatCommandMatch(match), /AGENT_PLAN_COMMAND|PARALLEL_AGENT_|AGENT_FANOUT|command-agent-plan\.mjs/, commandId);
     } else {
@@ -153,6 +154,19 @@ test("command resolver resolves every published slash command explicitly without
   }
 });
 
+test("update explicit agent flags preserve command-agent plan args", () => {
+  for (const flag of ["--verify-agents", "--review", "--recovery"]) {
+    const match = resolveCommandRequest(`/supervibe-update ${flag}`, {
+      pluginRoot: ROOT,
+      projectRoot: ROOT,
+    });
+    const output = formatCommandMatch(match);
+
+    assert.match(output, /REQUIRED_AGENTS: .*supervibe-orchestrator.*quality-gate-reviewer/, flag);
+    assert.match(output, new RegExp(`AGENT_PLAN_COMMAND: .*--command \/supervibe-update .*${flag}`), flag);
+    assert.match(output, /AGENT_FANOUT_REQUIRED: true/, flag);
+  }
+});
 test("command resolver treats no-slash update/adapt requests as command invocations", () => {
   const cases = [
     ["supervibe-adapt", "/supervibe-adapt"],
@@ -613,6 +627,22 @@ test("every slash command has a mandatory real-agents profile", () => {
 
   for (const commandId of commandIds) {
     const plan = buildCommandAgentPlan(commandId, { availableAgentIds });
+    if (UTILITY_NO_AGENT_COMMANDS.has(commandId)) {
+      assert.equal(plan.executionMode, "utility-no-agent", commandId);
+      assert.equal(plan.agentSelectionMode, "utility-no-agent", commandId);
+      assert.equal(plan.utilityNoAgentAllowed, true, commandId);
+      assert.deepEqual(plan.requiredAgentIds, [], commandId);
+      assert.equal(plan.agentDispatchRequired, false, commandId);
+      assert.equal(plan.parallelAgentDispatchRequired, false, commandId);
+      assert.equal(plan.agentOwnedOutputRequiresReceipts, false, commandId);
+      assert.equal(plan.durableWritesAllowed, true, commandId);
+      assert.equal(plan.receiptGate, "not-required-for-utility-command", commandId);
+      const verifyPlan = buildCommandAgentPlan(commandId, { availableAgentIds, workflowContext: { verifyAgents: true } });
+      assert.equal(verifyPlan.executionMode, "agent-dispatch-required", commandId);
+      assert.ok(verifyPlan.requiredAgentIds.includes("supervibe-orchestrator"), commandId);
+      assert.equal(verifyPlan.agentDispatchRequired, true, commandId);
+      continue;
+    }
     assert.equal(plan.executionMode, "agent-dispatch-required", commandId);
     assert.equal(plan.requestedExecutionMode, "real-agents", commandId);
     assert.equal(plan.ownerAgentId, "supervibe-orchestrator", commandId);
@@ -1157,6 +1187,7 @@ test("every slash command has codex-safe payloads for every required agent", () 
       availableAgentIds,
       hostAdapterId: "codex",
       enforceHostProof: true,
+      workflowContext: UTILITY_NO_AGENT_COMMANDS.has(commandId) ? { verifyAgents: true } : {},
     });
 
     assert.equal(plan.executionMode, "agent-dispatch-required", commandId);
@@ -1198,6 +1229,14 @@ test("every command stays agent-first across host providers and blocks inline cl
       });
 
       assert.equal(plan.defaultExecutionMode, "real-agents", `${commandId}:${hostAdapterId}`);
+      if (UTILITY_NO_AGENT_COMMANDS.has(commandId)) {
+        assert.equal(plan.executionMode, "utility-no-agent", `${commandId}:${hostAdapterId}`);
+        assert.equal(plan.agentDispatchRequired, false, `${commandId}:${hostAdapterId}`);
+        assert.equal(plan.agentOwnedOutputAllowed, false, `${commandId}:${hostAdapterId}`);
+        assert.equal(plan.durableWritesAllowed, true, `${commandId}:${hostAdapterId}`);
+        assert.equal(plan.receiptGate, "not-required-for-utility-command", `${commandId}:${hostAdapterId}`);
+        continue;
+      }
       assert.equal(plan.requestedExecutionMode, "real-agents", `${commandId}:${hostAdapterId}`);
       assert.equal(plan.executionMode, "agent-dispatch-required", `${commandId}:${hostAdapterId}`);
       assert.equal(plan.hostDispatchAvailable, true, `${commandId}:${hostAdapterId}`);
@@ -1217,6 +1256,21 @@ test("every command stays agent-first across host providers and blocks inline cl
         enforceHostProof: true,
       });
 
+      if (UTILITY_NO_AGENT_COMMANDS.has(commandId)) {
+        assert.equal(plan.executionMode, "utility-no-agent", `${commandId}:${hostAdapterId}`);
+        assert.equal(plan.hostProofBlocked, false, `${commandId}:${hostAdapterId}`);
+        assert.equal(plan.durableWritesAllowed, true, `${commandId}:${hostAdapterId}`);
+        const explicitPlan = buildCommandAgentPlan(commandId, {
+          availableAgentIds,
+          hostAdapterId,
+          enforceHostProof: true,
+          workflowContext: { verifyAgents: true },
+        });
+        assert.equal(explicitPlan.executionMode, "agent-required-blocked", `${commandId}:${hostAdapterId}`);
+        assert.equal(explicitPlan.hostProofBlocked, true, `${commandId}:${hostAdapterId}`);
+        continue;
+      }
+
       assert.equal(plan.executionMode, "agent-required-blocked", `${commandId}:${hostAdapterId}`);
       assert.equal(plan.hostProofBlocked, true, `${commandId}:${hostAdapterId}`);
       assert.equal(plan.agentOwnedOutputAllowed, false, `${commandId}:${hostAdapterId}`);
@@ -1230,6 +1284,7 @@ test("every command stays agent-first across host providers and blocks inline cl
       hostAdapterId: "codex",
       requestedExecutionMode: "inline",
       enforceHostProof: true,
+      workflowContext: UTILITY_NO_AGENT_COMMANDS.has(commandId) ? { verifyAgents: true } : {},
     });
     assert.equal(inline.requestedExecutionMode, "real-agents", commandId);
     assert.equal(inline.executionMode, "agent-dispatch-required", commandId);

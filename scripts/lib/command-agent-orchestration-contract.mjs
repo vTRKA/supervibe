@@ -19,6 +19,8 @@ export const COMMAND_AGENT_ORCHESTRATION_CONTRACT = Object.freeze({
   durableOutputPolicy: "blocked-without-real-agent-receipts",
 });
 
+const COMMAND_UTILITY_NO_AGENT_MODE = "utility-no-agent";
+
 export const COMMAND_AGENT_SELECTOR_INPUT_FIELDS = Object.freeze([
   "intent",
   "stackTags",
@@ -620,7 +622,15 @@ const COMMAND_AGENT_PROFILES = Object.freeze(Object.fromEntries([
     "dependency-reviewer",
     "repo-researcher",
     "quality-gate-reviewer",
-  ], { dynamicAgentSelectors: ["changed-stack-specialists"] }),
+  ], {
+    utilityNoAgent: true,
+    utilityNoAgentReason: "Plugin update is a deterministic utility command; specialist agents are required only for explicit verify-agents or recovery review.",
+    agentFanoutPolicy: {
+      ...COMMAND_AGENT_ORCHESTRATION_CONTRACT.agentFanoutPolicy,
+      required: false,
+      minParallelAgents: 0,
+    },
+  }),
 ].map((entry) => [entry.commandId, entry])));
 
 export function listCommandAgentProfiles() {
@@ -852,8 +862,13 @@ export function buildCommandAgentPlan(commandId, {
     && workflowContext.verifyAgents !== true
     && !adaptBaselineOnlyApplyPhase
     && isApprovedApplyArtifactSyncFastPath(workflowContext);
+  const utilityNoAgentPhase = profile.utilityNoAgent === true
+    && workflowContext.verifyAgents !== true
+    && workflowContext.review !== true
+    && workflowContext.recovery !== true;
   const bootstrapPreAgent = genesisBootstrapPhase;
-  const commandPhaseRunsWithoutAgents = genesisBootstrapPhase
+  const commandPhaseRunsWithoutAgents = utilityNoAgentPhase
+    || genesisBootstrapPhase
     || adaptDryRunPhase
     || adaptBaselineOnlyApplyPhase
     || adaptApprovedApplyArtifactSyncPhase;
@@ -894,18 +909,22 @@ export function buildCommandAgentPlan(commandId, {
   const callableAgentsReady = missingCallableAgents.length === 0;
   const hostDispatch = resolveHostAgentDispatcher(hostAdapterId);
   const hostProofBlocked = Boolean(
-    enforceHostProof
+    !utilityNoAgentPhase
+      && enforceHostProof
       && hostDispatch
       && hostDispatch.status !== "supported",
   );
   const callableAgentsBlocked = callable !== null && !callableAgentsReady;
-  const blocked = !bootstrapPreAgent
+  const blocked = !utilityNoAgentPhase
+    && !bootstrapPreAgent
     && !adaptDryRunPhase
     && !adaptBaselineOnlyApplyPhase
     && !adaptApprovedApplyArtifactSyncPhase
     && (missingAgents.length > 0 || callableAgentsBlocked || hostProofBlocked);
   const executionMode = blocked
     ? COMMAND_AGENT_ORCHESTRATION_CONTRACT.blockedMode
+    : utilityNoAgentPhase
+      ? COMMAND_UTILITY_NO_AGENT_MODE
     : adaptDryRunPhase
       ? "dry-run-no-agent"
     : adaptBaselineOnlyApplyPhase
@@ -917,16 +936,19 @@ export function buildCommandAgentPlan(commandId, {
     : "agent-dispatch-required";
   const inlineOnly = false;
   const realAgentCapable = executionMode === "agent-dispatch-required";
+  const utilityNoAgent = executionMode === COMMAND_UTILITY_NO_AGENT_MODE;
   const bootstrapOnly = executionMode === "bootstrap-pre-agent";
   const dryRunAgentless = executionMode === "dry-run-no-agent";
   const baselineOnly = executionMode === "baseline-only-fast-path";
   const adaptApplyArtifactSync = executionMode === "adapt-apply-artifact-sync";
-  const receiptTrustApplies = runtimeReceiptsTrusted && !blocked && !bootstrapOnly && !dryRunAgentless && !baselineOnly && !adaptApplyArtifactSync;
-  const activeScopedCommandAgentPlanRequired = scopedReceiptGateActive && !bootstrapOnly && !dryRunAgentless && !baselineOnly && !adaptApplyArtifactSync;
+  const receiptTrustApplies = runtimeReceiptsTrusted && !blocked && !utilityNoAgent && !bootstrapOnly && !dryRunAgentless && !baselineOnly && !adaptApplyArtifactSync;
+  const activeScopedCommandAgentPlanRequired = scopedReceiptGateActive && !utilityNoAgent && !bootstrapOnly && !dryRunAgentless && !baselineOnly && !adaptApplyArtifactSync;
   const globalReceiptTrustIgnoredForActiveScope = activeScopedCommandAgentPlanRequired
     && receiptStatus.trusted === true
     && scopedReceiptStatus.trusted !== true;
-  const durableWriteProofSource = dryRunAgentless
+  const durableWriteProofSource = utilityNoAgent
+    ? "utility-command"
+    : dryRunAgentless
     ? "read-only-dry-run"
     : baselineOnly
       ? "baseline-only-refresh"
@@ -937,9 +959,13 @@ export function buildCommandAgentPlan(commandId, {
     : receiptTrustApplies
       ? (scopedReceiptGateActive ? "scoped-runtime-agent-receipts" : "runtime-agent-receipts")
       : "blocked";
-  const agentFanoutPolicy = copyAgentFanoutPolicy(profile.agentFanoutPolicy);
-  const minimumParallelAgents = Number(agentFanoutPolicy.minParallelAgents || 1);
+  const effectiveAgentFanoutPolicy = profile.utilityNoAgent === true && !utilityNoAgent
+    ? COMMAND_AGENT_ORCHESTRATION_CONTRACT.agentFanoutPolicy
+    : profile.agentFanoutPolicy;
+  const agentFanoutPolicy = copyAgentFanoutPolicy(effectiveAgentFanoutPolicy);
+  const minimumParallelAgents = Number(agentFanoutPolicy.minParallelAgents ?? 1);
   const parallelAgentDispatchRequired = agentFanoutPolicy.required === true
+    && !utilityNoAgent
     && !bootstrapOnly
     && !dryRunAgentless
     && !baselineOnly
@@ -950,6 +976,7 @@ export function buildCommandAgentPlan(commandId, {
     && agentFanoutPolicy.requiredForSimpleTasks === true;
   const codexSpawnPayloads = hostDispatch?.hostAdapterId === "codex"
     && !bootstrapPreAgent
+    && !utilityNoAgent
     && !dryRunAgentless
     && !baselineOnly
     && !adaptApplyArtifactSync
@@ -961,7 +988,9 @@ export function buildCommandAgentPlan(commandId, {
   return {
     commandId: profile.commandId,
     ownerAgentId: profile.ownerAgentId,
-    agentSelectionMode: baselineOnly
+    agentSelectionMode: utilityNoAgent
+      ? COMMAND_UTILITY_NO_AGENT_MODE
+      : baselineOnly
       ? "baseline-only-fast-path"
       : adaptApplyArtifactSync
         ? "approved-apply-artifact-sync"
@@ -1010,7 +1039,9 @@ export function buildCommandAgentPlan(commandId, {
     hostDispatchAvailable: hostDispatch?.status === "supported",
     agentInvocationsCompleted: receiptTrustApplies,
     agentReceiptsTrusted: receiptTrustApplies,
-    receiptGate: dryRunAgentless
+    receiptGate: utilityNoAgent
+        ? "not-required-for-utility-command"
+      : dryRunAgentless
         ? "not-required-for-dry-run"
       : baselineOnly
         ? "quality-gate-only-baseline-refresh"
@@ -1036,17 +1067,20 @@ export function buildCommandAgentPlan(commandId, {
     durableWriteProofSource,
     requiredPlanFields: [...profile.requiredPlanFields],
     requiredReceiptFields: [...profile.requiredReceiptFields],
-    durableWritesAllowed: (bootstrapOnly && workflowContext.dryRun !== true) || baselineOnly || adaptApplyArtifactSync || receiptTrustApplies,
+    durableWritesAllowed: utilityNoAgent || (bootstrapOnly && workflowContext.dryRun !== true) || baselineOnly || adaptApplyArtifactSync || receiptTrustApplies,
     agentOwnedOutputAllowed: receiptTrustApplies,
     agentOwnedOutputRequiresReceipts: realAgentCapable && !receiptTrustApplies,
     agentDispatchRequired: realAgentCapable && !receiptTrustApplies,
     inlineDraftAllowed: inlineOnly,
+    utilityNoAgentAllowed: utilityNoAgent,
     bootstrapPreAgentAllowed: bootstrapOnly,
     dryRunAgentlessAllowed: dryRunAgentless,
     baselineOnlyFastPathAllowed: baselineOnly,
     approvedApplyArtifactSyncAllowed: adaptApplyArtifactSync,
     qualityImpact: receiptTrustApplies
         ? `${scopedReceiptGateActive ? "Scoped runtime agent receipt gate" : "Runtime agent receipt gate"} is trusted (${activeReceiptStatus.trustedHostAgentReceipts}/${activeReceiptStatus.minHostAgentReceipts} host receipts, ${activeReceiptStatus.agentInvocations}/${activeReceiptStatus.minAgentInvocations} receipt-bound invocations).`
+      : utilityNoAgent
+        ? (profile.utilityNoAgentReason || "Utility command runs through deterministic local checks; real-agent dispatch is not required.")
       : dryRunAgentless
         ? "Adapt dry-run is read-only planning and may run without real-agent receipts; apply and verify-agents remain separate gated phases."
       : baselineOnly
@@ -1311,7 +1345,7 @@ export function formatCommandAgentPlan(plan = {}) {
     `AGENT_FANOUT_REQUIRED: ${plan.agentFanoutPolicy?.required === true}`,
     `AGENT_FANOUT_AFTER_COMPACT: ${plan.agentFanoutPolicy?.requiredAfterContextCompaction === true}`,
     `AGENT_FANOUT_SIMPLE_TASKS: ${plan.agentFanoutPolicy?.requiredForSimpleTasks === true}`,
-    `AGENT_MIN_PARALLEL: ${plan.minimumParallelAgents || plan.agentFanoutPolicy?.minParallelAgents || 1}`,
+    `AGENT_MIN_PARALLEL: ${plan.minimumParallelAgents ?? plan.agentFanoutPolicy?.minParallelAgents ?? 1}`,
     `PARALLEL_AGENT_DISPATCH_REQUIRED: ${plan.parallelAgentDispatchRequired === true}`,
     `COMPACT_CONTINUATION_AGENT_DISPATCH_REQUIRED: ${plan.compactContinuationAgentDispatchRequired === true}`,
     `SIMPLE_TASK_AGENT_DISPATCH_REQUIRED: ${plan.simpleTaskAgentDispatchRequired === true}`,
@@ -1326,6 +1360,7 @@ export function formatCommandAgentPlan(plan = {}) {
     `ACTIVE_SCOPED_COMMAND_AGENT_PLAN_REQUIRED: ${plan.activeScopedCommandAgentPlanRequired === true}`,
     `GLOBAL_RECEIPTS_IGNORED_FOR_ACTIVE_SCOPE: ${plan.globalReceiptTrustIgnoredForActiveScope === true}`,
     `DURABLE_WRITE_PROOF_SOURCE: ${plan.durableWriteProofSource || "unknown"}`,
+    `UTILITY_NO_AGENT_ALLOWED: ${plan.utilityNoAgentAllowed === true}`,
     `BOOTSTRAP_PRE_AGENT_ALLOWED: ${plan.bootstrapPreAgentAllowed === true}`,
     `DRY_RUN_AGENTLESS_ALLOWED: ${plan.dryRunAgentlessAllowed === true}`,
     `BASELINE_ONLY_FAST_PATH_ALLOWED: ${plan.baselineOnlyFastPathAllowed === true}`,
@@ -1500,9 +1535,14 @@ function profile(commandId, requiredAgentIds, options = {}) {
     stageGate: options.stageGate || null,
     stageGateCommand: options.stageGateCommand || null,
     stageGateReason: options.stageGateReason || null,
+    utilityNoAgent: options.utilityNoAgent === true,
+    utilityNoAgentReason: options.utilityNoAgentReason || null,
     executionModes: COMMAND_AGENT_ORCHESTRATION_CONTRACT.executionModes,
     blockedMode: COMMAND_AGENT_ORCHESTRATION_CONTRACT.blockedMode,
-    agentFanoutPolicy: COMMAND_AGENT_ORCHESTRATION_CONTRACT.agentFanoutPolicy,
+    agentFanoutPolicy: Object.freeze({
+      ...COMMAND_AGENT_ORCHESTRATION_CONTRACT.agentFanoutPolicy,
+      ...(options.agentFanoutPolicy || {}),
+    }),
     requiredPlanFields: COMMAND_AGENT_ORCHESTRATION_CONTRACT.requiredPlanFields,
     requiredReceiptFields: COMMAND_AGENT_ORCHESTRATION_CONTRACT.requiredReceiptFields,
     inlineScope: COMMAND_AGENT_ORCHESTRATION_CONTRACT.inlineScope,
@@ -1624,6 +1664,9 @@ function nextActionForPlan(plan = {}) {
     if (plan.missingCallableAgents?.length) return "Provision/connect the required agents in the selected host registry, then rebuild this plan; do not emulate specialists.";
     if (plan.missingAgents?.length) return "Provision/connect the missing agents, then rebuild this plan; do not emulate specialists.";
     return "Resolve the blocked agent plan before durable work.";
+  }
+  if (plan.executionMode === COMMAND_UTILITY_NO_AGENT_MODE) {
+    return "Run the utility command directly; no specialist agent fanout or receipts are required unless verify-agents or recovery review is explicitly requested.";
   }
   if (plan.executionMode === "bootstrap-pre-agent") {
     return "Write only bootstrap scaffold/state, then rebuild the real-agent plan after installed agents are available.";

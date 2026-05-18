@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.49] - 2026-05-18
+
+### Fixed
+
+- Made normal `/supervibe-update` a deterministic `utility-no-agent` path that runs updater and install-doctor evidence without specialist fanout or runtime agent receipts.
+- Kept explicit `--verify-agents`, `--review`, and `--recovery` update modes on the real-agent dispatch path with preserved command-agent plan arguments.
+
+### Validation
+
+- Rechecked command-agent catalog, enforcement, routing, update CLI probes, command-agent enforcement validator, runtime reviewer receipts, and the full release check before the 2.1.49 package bump.
+
 ## [2.1.48] - 2026-05-18
 
 ### Added

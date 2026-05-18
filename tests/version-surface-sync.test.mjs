@@ -4,11 +4,11 @@ import { resolve } from "node:path";
 import test from "node:test";
 import { pathToFileURL } from "node:url";
 
-const TARGET_VERSION = "2.1.48";
+const TARGET_VERSION = "2.1.49";
 const TARGET_VERSION_PATTERN = TARGET_VERSION.replaceAll(".", "\\.");
 const TARGET_RELEASE_DATE = "2026-05-18";
 
-test("release-facing version surfaces are synchronized to 2.1.48", async () => {
+test("release-facing version surfaces are synchronized to 2.1.49", async () => {
   const packageJson = JSON.parse(await readFile("package.json", "utf8"));
   const packageLock = JSON.parse(await readFile("package-lock.json", "utf8"));
   const codex = JSON.parse(await readFile(".codex-plugin/plugin.json", "utf8"));
@@ -110,7 +110,7 @@ test("tracked release docs and command examples do not advertise stale 1.9.0 tar
   }
 });
 
-test("getting-started local install examples use the current 2.1.48 cache path", async () => {
+test("getting-started local install examples use the current 2.1.49 cache path", async () => {
   const text = await readFile("docs/getting-started.md", "utf8");
   assert.match(text, new RegExp(`plugins/cache/local/supervibe/${TARGET_VERSION_PATTERN}`));
   assert.doesNotMatch(text, /plugins[\\/]+cache[\\/]+local[\\/]+supervibe[\\/]+1\.2\.0/);

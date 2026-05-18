@@ -51,6 +51,18 @@ test("static route formatting keeps fast plan and loop output lightweight", () =
   assert.match(resumeOutput, /NEXT: Resume active workflow: continue plan./);
 });
 
+test("routes plugin update without agent fanout diagnostics", async () => {
+  const explicitOutput = await matchCommand("/supervibe-update");
+  assert.match(explicitOutput, /COMMAND: \/supervibe-update/);
+  assert.doesNotMatch(explicitOutput, /PARALLEL_AGENT_|AGENT_FANOUT|REQUIRED_AGENTS|AGENT_PLAN_COMMAND|command-agent-plan\.mjs/);
+  assert.match(explicitOutput, /no specialist agent fanout/);
+
+  const naturalOutput = await matchCommand("update the plugin");
+  assert.match(naturalOutput, /COMMAND: \/supervibe-update/);
+  assert.doesNotMatch(naturalOutput, /PARALLEL_AGENT_|AGENT_FANOUT|REQUIRED_AGENTS|AGENT_PLAN_COMMAND|command-agent-plan\.mjs/);
+  assert.match(naturalOutput, /No specialist agent fanout/);
+});
+
 test("routes plain planning workflow phrases to plan command", async () => {
   for (const request of [
     "план",

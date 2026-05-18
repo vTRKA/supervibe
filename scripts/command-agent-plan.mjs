@@ -140,6 +140,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
         apply: options.apply === true,
         generateApps: options.generateApps === true || options["generate-apps"] === true,
         verifyAgents: options.verifyAgents === true || options["verify-agents"] === true,
+        review: options.review === true,
+        recovery: options.recovery === true,
         commandScopedReceiptGate: options.strictExit === true,
         active: options.active === true,
         slug: options.slug || null,
@@ -361,9 +363,10 @@ export function buildRuntimeCommandAgentPlan({
         strictRelease: false,
       })
     : { count: 0, closeRequired: [] };
-  const codexSpawnCleanupWarning = Number(codexCleanupDebt.globalCount || codexCleanupDebt.diagnosticCount || 0) > 0
-    && Array.isArray(plan.codexSpawnPayloads)
+  const codexSpawnPayloadsPresent = Array.isArray(plan.codexSpawnPayloads)
     && plan.codexSpawnPayloads.length > 0;
+  const codexSpawnCleanupWarning = Number(codexCleanupDebt.globalCount || codexCleanupDebt.diagnosticCount || 0) > 0
+    && codexSpawnPayloadsPresent;
   const codexKnowledgeContexts = buildAgentKnowledgeContexts({
     agentIds: (plan.codexSpawnPayloads || []).map((payload) => payload.agentId),
     projectRoot: resolvedProjectRoot,
@@ -372,7 +375,8 @@ export function buildRuntimeCommandAgentPlan({
   });
   const enrichedPlan = {
     ...plan,
-    ...(Number(codexCleanupDebt.globalCount || codexCleanupDebt.count || codexCleanupDebt.diagnosticCount || 0) > 0 ? {
+    ...(codexSpawnPayloadsPresent
+      && Number(codexCleanupDebt.globalCount || codexCleanupDebt.count || codexCleanupDebt.diagnosticCount || 0) > 0 ? {
       hostManagedCleanupDebt: codexCleanupDebt,
     } : {}),
     ...(codexSpawnCleanupWarning ? {

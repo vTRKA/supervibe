@@ -348,6 +348,7 @@ const SLASH_COMMAND_SHORTCUTS = Object.freeze([
     title: "Update the plugin",
     aliases: ["обнови плагин", "update the plugin", "обнови supervibe", "pull latest supervibe", "обнолви плагин", "обнолви supervibe"],
     keywordGroups: [["update", "upgrade", "pull", "latest", "обнови", "обнолви", "апдейт"], ["plugin", "supervibe", "плагин"]],
+    nextAction: "Run /supervibe-update in the active AI CLI; use the updater and install-doctor path directly. No specialist agent fanout or receipts are required unless verify-agents or recovery review is explicitly requested.",
   },
 ].map(createSlashShortcut));
 
@@ -1212,7 +1213,7 @@ export function formatCommandMatch(match) {
   }
   const showAgentDiagnostics = shouldShowAgentDiagnostics(match);
   const parallelPolicy = showAgentDiagnostics ? effectiveParallelAgentLaunchPolicy(match) : null;
-  const agentFanoutPolicy = match.agentContract?.agentFanoutPolicy || parallelPolicy;
+  const agentFanoutPolicy = agentFanoutPolicyForMatch(match, parallelPolicy);
   const nextAction = parallelPolicy ? appendParallelAgentNextAction(match.nextAction) : match.nextAction;
   return [
     "SUPERVIBE_COMMAND_MATCH",
@@ -1249,7 +1250,7 @@ export function formatCommandMatch(match) {
     showAgentDiagnostics && match.agentProfile ? `REQUIRED_AGENTS: ${match.agentProfile.requiredAgentIds.join(", ")}` : null,
     showAgentDiagnostics && match.agentProfile ? `DYNAMIC_SELECTORS: ${(match.agentProfile.dynamicAgentSelectors || []).join(", ") || "none"}` : null,
     showAgentDiagnostics && match.agentProfile ? `SELECTOR_INPUT_FIELDS: ${(match.agentProfile.selectorInputFields || COMMAND_AGENT_SELECTOR_INPUT_FIELDS).join(", ")}` : null,
-    showAgentDiagnostics && match.agentProfile ? `AGENT_PLAN_COMMAND: node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command ${match.agentProfile.commandId}` : null,
+    showAgentDiagnostics && match.agentProfile ? `AGENT_PLAN_COMMAND: ${agentPlanCommandForMatch(match)}` : null,
     showAgentDiagnostics && match.agentContract ? `AGENT_EMULATION: ${match.agentContract.emulationPolicy}` : null,
     ...(match.followUpCommands?.length ? ["FOLLOW_UP_COMMANDS:", ...match.followUpCommands.map((command) => `- ${command}`)] : []),
     match.diagnostics?.selectedBecause ? `SELECTED_BECAUSE: ${match.diagnostics.selectedBecause}` : null,
@@ -1262,6 +1263,7 @@ export function formatCommandMatch(match) {
 }
 
 function shouldShowAgentDiagnostics(match = {}) {
+  if (isUtilityNoAgentRoute(match)) return false;
   if (match.showAgentDiagnostics === true || match.strict === true) return true;
   const commandName = String(match.command || match.commandId || "").trim().split(/\s+/)[0];
   return !isFastWorkflowSlashCommand(commandName);
@@ -1279,6 +1281,7 @@ function createSlashShortcut(profile) {
     : profile.intent || name.replaceAll("-", "_");
   const directRoute = profile.directRoute === true;
   const fastWorkflowCommand = isFastWorkflowSlashCommand(profile.command);
+  const utilityNoAgentCommand = isUtilityNoAgentSlashCommand(profile.command);
   return {
     id: profile.id ? `shortcut:${profile.id}` : `shortcut:${name}`,
     intent,
@@ -1296,7 +1299,9 @@ function createSlashShortcut(profile) {
     directRoute,
     doNotSearchProject: profile.doNotSearchProject,
     requiredGroupIndexes: profile.requiredGroupIndexes || [0, 1],
-    nextAction: profile.nextAction || (fastWorkflowCommand
+    nextAction: profile.nextAction || (utilityNoAgentCommand
+      ? utilityNoAgentNextAction(profile.command)
+      : fastWorkflowCommand
       ? `Run ${profile.command} in the active AI CLI; use the fast owner flow and leave reviewers or quality gates for an explicit later step.`
       : `Run ${profile.command} in the active AI CLI; first run command-agent-plan.mjs for ${profile.command}, then invoke required host agents before durable work and receipts.`),
   };
@@ -1573,9 +1578,53 @@ function effectiveParallelAgentLaunchPolicy(route = {}) {
 function shouldApplyParallelAgentPolicy(route = {}) {
   if (!route || route.hardStop === true) return false;
   if (["missing_slash_command", "missing_npm_script"].includes(route.intent)) return false;
+  if (isUtilityNoAgentRoute(route)) return false;
   const command = String(route.command || route.commandId || "");
   if (isFastWorkflowSlashCommand(command)) return false;
   return Boolean(route.parallelAgentPolicy || route.agentProfile || route.agentContract || command.startsWith("/supervibe"));
+}
+
+function agentFanoutPolicyForMatch(match = {}, parallelPolicy = null) {
+  if (match.agentProfile?.utilityNoAgent === true && !isUtilityNoAgentRoute(match)) {
+    return COMMAND_AGENT_ORCHESTRATION_CONTRACT.agentFanoutPolicy;
+  }
+  return match.agentProfile?.agentFanoutPolicy || match.agentContract?.agentFanoutPolicy || parallelPolicy;
+}
+
+function agentPlanCommandForMatch(match = {}) {
+  const commandId = match.agentProfile?.commandId || match.commandId || String(match.command || "").trim().split(/\s+/)[0] || "<command>";
+  const args = agentPlanArgsForMatch(match);
+  return [`node <resolved-supervibe-plugin-root>/scripts/command-agent-plan.mjs --command ${commandId}`, ...args].join(" ");
+}
+
+function agentPlanArgsForMatch(match = {}) {
+  const text = [match.requestedCommand || "", match.command || "", match.commandArgs || ""].join(" ");
+  const args = [];
+  for (const flag of ["--verify-agents", "--review", "--recovery"]) {
+    if (new RegExp(`${flag}(?:\\s|$)`, "i").test(text) && !args.includes(flag)) args.push(flag);
+  }
+  return args;
+}
+
+function isUtilityNoAgentRoute(route = {}) {
+  const commandName = String(route.command || route.commandId || "").trim().split(/\s+/)[0];
+  const profile = route.agentProfile || getCommandAgentProfile(commandName);
+  if (profile?.utilityNoAgent !== true) return false;
+  const requested = [route.requestedCommand || "", route.command || "", route.commandArgs || ""].join(" ").toLowerCase();
+  return !/(?:--verify-agents|--review|--recovery)/.test(requested);
+}
+
+function isUtilityNoAgentSlashCommand(command = "") {
+  const commandName = String(command || "").trim().split(/\s+/)[0];
+  return getCommandAgentProfile(commandName)?.utilityNoAgent === true;
+}
+
+function explicitSlashRequestsAgents(explicitSlash = {}) {
+  return /(?:--verify-agents|--review|--recovery)/i.test(String(explicitSlash.args || ""));
+}
+
+function utilityNoAgentNextAction(command = "/supervibe-update") {
+  return "Run " + command + " in the active AI CLI; use the updater and install-doctor path directly. No specialist agent fanout or receipts are required unless verify-agents or recovery review is explicitly requested.";
 }
 
 function copyParallelAgentLaunchPolicy(policy = COMMAND_PARALLEL_AGENT_LAUNCH_POLICY) {
@@ -1842,7 +1891,9 @@ function resolveSlashCommandMatch(explicitSlash, slashCommands, { reasonPrefix =
     directRoute: false,
     mutationRisk: "delegates-to-slash-command",
     nextAction: slashCommand
-      ? isFastWorkflowSlashCommand(explicitSlash.name)
+      ? isUtilityNoAgentSlashCommand(explicitSlash.name) && !explicitSlashRequestsAgents(explicitSlash)
+        ? "Run this exact slash command in the active AI CLI; no repository search and no specialist agent fanout are needed. Use the updater and install-doctor path directly."
+        : isFastWorkflowSlashCommand(explicitSlash.name)
         ? "Run this exact slash command in the active AI CLI; ordinary brainstorm/plan/loop work uses the fast owner flow and leaves review or verification for an explicit later gate."
         : "Run this exact slash command in the active AI CLI; no repository search is needed. First run command-agent-plan.mjs for the slash command, then invoke the required host agents and require real host-agent receipts for specialist output."
       : "Hard stop: report the missing slash command from the catalog and do not inspect source files, marketplace command files, or repository paths to emulate it.",
