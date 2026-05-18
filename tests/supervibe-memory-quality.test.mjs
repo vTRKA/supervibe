@@ -14,6 +14,7 @@ import {
   formatMemoryRelationshipGraph,
   redactCandidateText,
   scanMemoryBackfill,
+  backfillMemoryEntrySchema,
 } from "../scripts/lib/supervibe-memory-backfill.mjs";
 import { buildMemoryHealthReport, formatMemoryHealthReport } from "../scripts/lib/supervibe-memory-health.mjs";
 
@@ -447,6 +448,56 @@ test("new memory entries require source-backed schema fields without breaking le
   }
 });
 
+test("memory schema backfill writes required retrieval fields with reversible evidence", async () => {
+  const rootDir = await mkdtemp(join(tmpdir(), "supervibe-memory-schema-backfill-"));
+  try {
+    const memoryPath = join(rootDir, ".supervibe", "memory", "decisions", "legacy-schema.md");
+    await mkdir(dirname(memoryPath), { recursive: true });
+    await writeFile(memoryPath, [
+      "---",
+      "id: legacy-schema",
+      "type: decision",
+      "date: 2026-05-12",
+      "---",
+      "Legacy entry needs schema repair.",
+    ].join("\n"), "utf8");
+
+    const report = await backfillMemoryEntrySchema({
+      rootDir,
+      now: "2026-05-12T00:00:00.000Z",
+      dryRun: false,
+    });
+
+    assert.equal(report.writeEnabled, true);
+    assert.equal(report.changed.length, 1);
+    assert.ok(report.changed[0].changes.includes("tags"));
+    assert.ok(report.changed[0].changes.includes("agent"));
+    assert.ok(report.changed[0].changes.includes("confidence"));
+    assert.ok(report.snapshotPath.endsWith(".json"));
+    assert.ok(report.reportPath.endsWith(".json"));
+
+    const repaired = await readFile(memoryPath, "utf8");
+    assert.match(repaired, /tags: \[memory, decision\]/);
+    assert.match(repaired, /agent: memory-curator/);
+    assert.match(repaired, /confidence: 8/);
+    assert.match(repaired, /sourceArtifact: \.supervibe\/memory\/decisions\/legacy-schema\.md/);
+    assert.match(repaired, /relationships: \["evidence-for:\.supervibe\/memory\/decisions\/legacy-schema\.md"\]/);
+
+    const snapshot = JSON.parse(await readFile(join(rootDir, report.snapshotPath), "utf8"));
+    assert.equal(snapshot.kind, "supervibe-memory-schema-backfill-snapshot");
+    assert.equal(snapshot.files[0].content.includes("Legacy entry needs schema repair."), true);
+    const reportFile = JSON.parse(await readFile(join(rootDir, report.reportPath), "utf8"));
+    assert.equal(reportFile.changed.length, 1);
+
+    const validateOutput = execFileSync(process.execPath, [searchMemoryScript, "--validate-entry", memoryPath], {
+      cwd: rootDir,
+      encoding: "utf8",
+    });
+    assert.match(validateOutput, /PASS: true/);
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
 test("memory relationship graph supports typed source-backed links for UI consumption", () => {
   const graph = buildMemoryRelationshipGraph([
     {
@@ -605,8 +656,8 @@ test("reviewed memory backfill apply writes receipt-bound entries with snapshot 
 
     const memoryEntry = await readFile(join(rootDir, ".supervibe/memory/decisions/source-backed-memory-gates.md"), "utf8");
     assert.match(memoryEntry, /receiptId: workflow-test-receipt/);
-    assert.match(memoryEntry, /sourceArtifact: \.supervibe\/artifacts\/plans\/runtime-plan\.md:1/);
-    assert.match(memoryEntry, /relationships: \[fixes:handoff-memory-loss, evidence-for:\.supervibe\/artifacts\/plans\/runtime-plan\.md:1\]/);
+    assert.match(memoryEntry, /sourceArtifact: "\.supervibe\/artifacts\/plans\/runtime-plan\.md:1"/);
+    assert.match(memoryEntry, /relationships: \["fixes:handoff-memory-loss", "evidence-for:\.supervibe\/artifacts\/plans\/runtime-plan\.md:1"\]/);
     assert.match(memoryEntry, /supersedes: \[legacy-memory-gates\]/);
     assert.doesNotMatch(memoryEntry, /sk-123456789012345678901234567890/);
 

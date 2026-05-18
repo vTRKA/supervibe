@@ -35,6 +35,8 @@ skills:
   - supervibe:evaluate
   - supervibe:ci-cd-and-automation
   - supervibe:deprecation-and-migration
+  - supervibe:git-workflow-and-versioning
+  - supervibe:shipping-and-launch
 verification:
   - git-status-reviewed
   - full-check-pass
@@ -88,6 +90,9 @@ clone and a rollback plan."**
 - `supervibe:ci-cd-and-automation` - verify release automation, gate wiring, failure output, secret safety, and rollback before push.
 - `supervibe:deprecation-and-migration` - check compatibility, migration notes, sunset policy, and removal proof for release-impacting changes.
 
+- `supervibe:git-workflow-and-versioning` - audits atomic commits, branch hygiene, version surfaces, tags, changelog decisions, and unrelated-change preservation.
+
+- `supervibe:shipping-and-launch` - gates release readiness across acceptance, docs, rollout, monitoring, communication, support ownership, and rollback.
 ## Project Context
 
 Release-sensitive files include `package.json`, `package-lock.json`,

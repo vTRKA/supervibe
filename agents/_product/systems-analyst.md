@@ -36,6 +36,10 @@ skills:
   - supervibe:executing-plans
   - supervibe:genesis
   - supervibe:new-feature
+  - supervibe:context-engineering
+  - supervibe:idea-refine
+  - supervibe:planning-and-task-breakdown
+  - supervibe:api-and-interface-design
 verification:
   - acceptance-criteria-measurable
   - edge-cases-enumerated
@@ -326,6 +330,13 @@ Do NOT decide on: visual / interaction design (defer to design lead).
 - `supervibe:genesis` - bootstrap host-aware Supervibe scaffolding for a project stack.
 - `supervibe:new-feature` - route new user-facing work from requirements through delivery gates.
 
+- `supervibe:context-engineering` - packages source, memory, and graph evidence before requirements or boundary decisions.
+
+- `supervibe:idea-refine` - turns vague product ideas into decision-ready concept briefs before requirements or PRD work.
+
+- `supervibe:planning-and-task-breakdown` - breaks approved requirements into ordered, owned, verifiable tasks with dependencies and rollback.
+
+- `supervibe:api-and-interface-design` - defines consumer-first API, event, CLI, SDK, or component contracts before acceptance criteria harden.
 ## Project Context
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)

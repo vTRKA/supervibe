@@ -689,9 +689,11 @@ function createWorkItem(graph, action) {
     updatedAt: now,
   };
   const task = item.type === "epic" ? null : itemToTask(item);
+  const discoveredFromId = item.discoveredFrom?.parentItemId || item.discoveredFrom?.itemId || null;
   const dependencyEdges = [
     ...(graph.dependencyEdges || []),
     ...(parentId ? [{ from: parentId, to: itemId, type: "parent-child" }] : []),
+    ...(discoveredFromId ? [{ from: discoveredFromId, to: itemId, type: "discovered-from", blocking: item.discoveredFrom.blocksCompletion === true }] : []),
     ...item.blockedBy.map((from) => ({ from, to: itemId, type: "blocks" })),
     ...item.blocks.map((to) => ({ from: itemId, to, type: "blocks" })),
     ...item.related.map((to) => ({ from: itemId, to, type: "related" })),
@@ -712,15 +714,28 @@ function createWorkItem(graph, action) {
 }
 
 function normalizeCreatedDiscoveredFrom(source = {}, action = {}) {
-  if (source.discoveredFrom && typeof source.discoveredFrom === "object") return source.discoveredFrom;
+  if (source.discoveredFrom && typeof source.discoveredFrom === "object") {
+    return normalizeDiscoveredFromProvenance(source.discoveredFrom);
+  }
   const fromItemId = source.from || action.from || action.parentId || source.parentId || null;
-  if (!fromItemId && !source.path && !action.planPath) return { type: "manual" };
-  return {
+  if (!fromItemId && !source.path && !action.planPath) return normalizeDiscoveredFromProvenance({ type: "manual" });
+  return normalizeDiscoveredFromProvenance({
     type: source.discoveredFromType || action.discoveredFromType || "runtime-discovery",
     itemId: fromItemId,
     parentItemId: fromItemId,
     path: source.path || action.planPath || null,
     note: source.discoveryNote || action.reason || null,
+    required: source.required ?? action.required ?? false,
+    blocksCompletion: source.blocksCompletion ?? action.blocksCompletion ?? false,
+  });
+}
+
+function normalizeDiscoveredFromProvenance(value = {}) {
+  return {
+    ...value,
+    required: value.required === true,
+    blocksCompletion: value.blocksCompletion === true,
+    provenanceOnly: value.blocksCompletion !== true,
   };
 }
 
@@ -866,6 +881,7 @@ function splitWorkItem(graph, action) {
       from: action.itemId,
       to: item.itemId,
       type: "discovered-from",
+      blocking: false,
     }), graph.dependencyEdges || []),
   }, { createdItems });
   return {
@@ -1340,6 +1356,9 @@ function createSubtaskFromParent(parent, { title, index, actor, now }) {
       line: parentSource.line || null,
       taskRef: parentSource.taskRef || parentExecutionHints.sourceTaskRef || null,
       source: parentSource,
+      required: false,
+      blocksCompletion: false,
+      provenanceOnly: true,
     },
     executionHints: {
       ...parentExecutionHints,

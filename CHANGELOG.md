@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.48] - 2026-05-18
+
+### Added
+
+- Added nine local upstream-parity skills for API/interface design, context engineering, frontend UI engineering, git/versioning, idea refinement, incremental implementation, planning/task breakdown, security hardening, and shipping/launch.
+
+### Fixed
+
+- Hardened compact agent-output manifest verification against path traversal and archive-root escape.
+- Preserved legacy task-tracker mappings by comparing old item hashes with the old schema before reporting native drift.
+- Kept failed Code RAG index records until a real successful reindex clears them.
+- Completed memory schema backfill with required retrieval fields, safer YAML frontmatter rendering, and reversible snapshot/report evidence before writes.
+- Synced local skill-baseline references, agent-count metadata, and command-agent strict smoke validation with the current 96-agent package surface.
+
+### Validation
+
+- Ran four specialist reviewer passes, targeted regression tests for the fixed blockers, skill/agent validators, command-agent strict smoke, dead-code lint, and the full 81-gate release check with 2441 passing tests before the 2.1.48 package bump.
+
 ## [2.1.47] - 2026-05-18
 
 ### Added

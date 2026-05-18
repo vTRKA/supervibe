@@ -97,6 +97,11 @@ stale claims, orphaned evidence, and terminal counts. Use `--ready`, `--blocked`
 `--stale`, and `--orphan` to include focused rows for the current graph or the
 graph passed with `--file`.
 
+Prime/status output should be fast and source-bound: include the active graph
+path or hash when available, show degraded reasons for registry/tracker mismatch,
+and avoid raw receipts, ledgers, or validator rituals during ordinary status
+inspection.
+
 ## Work Graph Command Compatibility
 
 | Command | Status responsibility | Graph mutation allowed | Preferred next command | Exit states surfaced |

@@ -6,6 +6,7 @@ import { createTaskGraph } from "./autonomous-loop-task-graph.mjs";
 import { attachExternalClaim, claimTask, releaseClaim } from "./autonomous-loop-claims.mjs";
 import { createUnavailableTaskTrackerAdapter } from "./supervibe-durable-task-tracker-adapter.mjs";
 import { createBlockerV1 } from "./supervibe-work-state.mjs";
+import { stableHash, stableNormalize } from "./supervibe-stable-hash.mjs";
 
 export function defaultTrackerMappingPath(rootDir = process.cwd()) {
   return join(rootDir, ".supervibe", "memory", "loops", "task-tracker-map.json");
@@ -121,16 +122,22 @@ export function diagnoseTrackerSyncConflicts({ graph = {}, mapping = createEmpty
     const record = normalized.items[item.itemId];
     if (!record) continue;
     const external = externalById.get(record.externalId);
-    const nativeChanged = Boolean(record.itemHash && record.itemHash !== hashWorkItem(item));
-    const externalHash = external?.itemHash || external?.hash || external?.sourceHash || null;
+    const hashes = createWorkItemHashes(item);
+    const drift = classifyNativeDrift(record, hashes, item);
+    const externalHash = external?.contentHash || external?.itemHash || external?.hash || external?.sourceHash || null;
     const externalChanged = Boolean(externalHash && record.externalItemHash && externalHash !== record.externalItemHash);
     const nativeUpdatedAt = Date.parse(item.updatedAt || item.updated_at || item.modifiedAt || item.modified_at || 0);
     const externalUpdatedAt = Date.parse(external?.updatedAt || external?.updated_at || external?.modifiedAt || external?.modified_at || 0);
     const mappedAt = Date.parse(record.syncedAt || record.updatedAt || normalized.updatedAt || 0);
     const nativeNewer = Number.isFinite(nativeUpdatedAt) && Number.isFinite(mappedAt) && nativeUpdatedAt > mappedAt;
     const externalNewer = Number.isFinite(externalUpdatedAt) && Number.isFinite(mappedAt) && externalUpdatedAt > mappedAt;
-    const nativeDirty = nativeChanged || nativeNewer;
+    const nativeDirty = drift.changed || nativeNewer;
     const externalDirty = externalChanged || externalNewer;
+    const nativeDriftTypes = [...drift.types, ...(nativeNewer && !drift.changed ? ["timestamp"] : [])];
+    const externalDriftTypes = [
+      ...(externalChanged ? ["content"] : []),
+      ...(externalNewer ? ["timestamp"] : []),
+    ];
 
     if (!nativeDirty && !externalDirty) continue;
     conflicts.push({
@@ -139,11 +146,10 @@ export function diagnoseTrackerSyncConflicts({ graph = {}, mapping = createEmpty
       status: nativeDirty && externalDirty ? "both-changed" : nativeDirty ? "native-newer" : "external-newer",
       nativeChanged: nativeDirty,
       externalChanged: externalDirty,
-      recommendation: nativeDirty && externalDirty
-        ? "manual review required before sync overwrite"
-        : nativeDirty
-          ? "push native graph update to tracker"
-          : "pull external tracker update into native graph review",
+      nativeDriftTypes,
+      nativeDrift: { ...drift, types: nativeDriftTypes },
+      externalDriftTypes,
+      recommendation: trackerConflictRecommendation({ nativeDirty, externalDirty, drift: { ...drift, types: nativeDriftTypes } }),
     });
   }
 
@@ -222,11 +228,16 @@ export function createTrackerMapping({ graph = {}, adapterId = "native-json", ex
   }
   for (const item of graphItems) {
     const existing = mapping.items[item.itemId];
+    const hashes = createWorkItemHashes(item);
     const base = {
       ...(existing || {}),
       nativeId: item.itemId,
       externalId: existing?.externalId || null,
-      itemHash: hashWorkItem(item),
+      itemHash: hashes.itemHash,
+      contentHash: hashes.contentHash,
+      stateHash: hashes.stateHash,
+      provenanceHash: hashes.provenanceHash,
+      hashSchemaVersion: hashes.schemaVersion,
       type: item.type,
       title: item.title,
       sourcePlanPath: graph.source?.path || graph.planPath || null,
@@ -599,7 +610,83 @@ function normalizeMapping(mapping = {}) {
   };
 }
 
-function hashWorkItem(item) {
+function createWorkItemHashes(item = {}) {
+  const contentHash = stableHash({
+    schemaVersion: 2,
+    itemId: item.itemId,
+    title: item.title,
+    type: item.type,
+    priority: item.priority ?? 0,
+    parentId: item.parentId || null,
+    dependencies: normalizeSortedList(item.dependencies),
+    blocks: normalizeSortedList(item.blocks),
+    related: normalizeSortedList(item.related),
+    acceptanceCriteria: normalizeSortedList(item.acceptanceCriteria),
+    verificationCommands: normalizeSortedList(item.verificationCommands),
+    writeScope: normalizeSortedObjects(item.writeScope),
+  });
+  const stateHash = stableHash({
+    schemaVersion: 1,
+    status: item.status || "open",
+    owner: item.owner || item.assignee || null,
+    blockedBy: normalizeSortedList(item.blockedBy || item.dependencies),
+  });
+  const provenanceHash = stableHash({
+    schemaVersion: 1,
+    discoveredFrom: item.discoveredFrom || null,
+    executionHints: item.executionHints || null,
+    sourceOrder: item.sourceOrder ?? null,
+  });
+  const itemHash = stableHash({
+    schemaVersion: 2,
+    contentHash,
+    stateHash,
+    provenanceHash,
+  });
+  return {
+    schemaVersion: 2,
+    itemHash,
+    contentHash,
+    stateHash,
+    provenanceHash,
+  };
+}
+
+function classifyNativeDrift(record = {}, hashes = {}, item = {}) {
+  const types = [];
+  const hasV2Hashes = Number(record.hashSchemaVersion || 0) >= 2
+    || Boolean(record.contentHash || record.stateHash || record.provenanceHash);
+
+  if (!hasV2Hashes && record.itemHash) {
+    const legacyHash = legacyWorkItemHash(item);
+    if (record.itemHash !== legacyHash) types.push("legacy");
+    return {
+      changed: types.length > 0,
+      types,
+      contentChanged: false,
+      stateChanged: false,
+      provenanceChanged: false,
+      legacyChanged: types.includes("legacy"),
+    };
+  }
+
+  if (record.contentHash && record.contentHash !== hashes.contentHash) types.push("content");
+  if (record.stateHash && record.stateHash !== hashes.stateHash) types.push("state");
+  if (record.provenanceHash && record.provenanceHash !== hashes.provenanceHash) types.push("provenance");
+  if (!record.contentHash && !record.stateHash && !record.provenanceHash && record.itemHash && record.itemHash !== hashes.itemHash) {
+    types.push("item");
+  }
+  return {
+    changed: types.length > 0,
+    types,
+    contentChanged: types.includes("content") || types.includes("item"),
+    stateChanged: types.includes("state"),
+    provenanceChanged: types.includes("provenance"),
+    legacyChanged: false,
+  };
+}
+
+function legacyWorkItemHash(item = {}) {
   return createHash("sha1").update(JSON.stringify({
     itemId: item.itemId,
     title: item.title,
@@ -609,6 +696,30 @@ function hashWorkItem(item) {
     verificationCommands: item.verificationCommands || [],
     writeScope: item.writeScope || [],
   })).digest("hex");
+}
+
+function trackerConflictRecommendation({ nativeDirty, externalDirty, drift = {} } = {}) {
+  if (nativeDirty && externalDirty) {
+    return drift.types?.length === 1 && drift.types[0] === "state"
+      ? "reconcile state-only native change with external tracker status before overwrite"
+      : "manual review required before sync overwrite";
+  }
+  if (nativeDirty) {
+    return drift.types?.length === 1 && drift.types[0] === "state"
+      ? "push native status update to tracker or ignore state-only drift"
+      : "push native graph update to tracker";
+  }
+  return "pull external tracker update into native graph review";
+}
+
+function normalizeSortedList(values = []) {
+  return [...new Set((values || []).filter(Boolean).map((value) => String(value)))].sort();
+}
+
+function normalizeSortedObjects(values = []) {
+  return (values || [])
+    .map((value) => stableNormalize(value))
+    .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
 }
 
 function isSensitiveTrackerKey(key = "") {

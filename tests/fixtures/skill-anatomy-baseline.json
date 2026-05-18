@@ -36,45 +36,45 @@
       {
         "id": "accessibility",
         "references": [
-          "references/accessibility-checklist.md"
+          "references/checklists/accessibility.md"
         ],
         "localTreatment": "Keep as optional UI evidence; require a local reviewer or validator before gating."
       },
       {
         "id": "orchestration",
         "references": [
-          "references/orchestration-patterns.md"
+          "references/checklists/orchestration.md"
         ],
         "localTreatment": "Map to Supervibe agent routing and receipt policy without importing upstream host hooks."
       },
       {
         "id": "performance",
         "references": [
-          "references/performance-checklist.md"
+          "references/checklists/performance.md"
         ],
         "localTreatment": "Use as advisory optimization evidence unless a task or reviewer makes performance a gate."
       },
       {
         "id": "security",
         "references": [
-          "references/security-checklist.md"
+          "references/checklists/security.md"
         ],
         "localTreatment": "Treat as regulated-risk evidence that must stay host-neutral and receipt-backed."
       },
       {
         "id": "testing",
         "references": [
-          "references/testing-patterns.md"
+          "references/checklists/testing.md"
         ],
         "localTreatment": "Use to strengthen verification contracts while preserving local test commands."
       }
     ],
     "baselineReferences": [
-      "references/accessibility-checklist.md",
-      "references/orchestration-patterns.md",
-      "references/performance-checklist.md",
-      "references/security-checklist.md",
-      "references/testing-patterns.md"
+      "references/checklists/accessibility.md",
+      "references/checklists/orchestration.md",
+      "references/checklists/performance.md",
+      "references/checklists/security.md",
+      "references/checklists/testing.md"
     ],
     "localPolicy": "Keep long checklists and templates in references/ and link from SKILL.md only when needed."
   },
@@ -103,9 +103,9 @@
   "equivalenceRows": [
     {
       "baselineSkill": "api-and-interface-design",
-      "localEquivalent": "error-envelope-design; auth-flow-design",
-      "gap": "Baseline is general API boundary design; local coverage is split into error envelopes and auth flow contracts.",
-      "action": "map",
+      "localEquivalent": "api-and-interface-design; error-envelope-design; auth-flow-design",
+      "gap": "Direct local API/interface design skill now exists while retaining error-envelope and auth-flow specialists for narrower contract gates.",
+      "action": "fixed",
       "owner": "T004",
       "verification": "npm run validate:skill-content-quality"
     },
@@ -143,8 +143,8 @@
     },
     {
       "baselineSkill": "context-engineering",
-      "localEquivalent": "project-memory; code-search; using-supervibe-skills; mcp-discovery",
-      "gap": "Local context model is stronger through memory/RAG/CodeGraph but needs concise anatomy docs.",
+      "localEquivalent": "context-engineering; project-memory; code-search; using-supervibe-skills; mcp-discovery",
+      "gap": "Direct local context-engineering skill now exists and packages memory, Code RAG, CodeGraph, MCP, source, and uncertainty evidence.",
       "action": "fixed",
       "owner": "T021",
       "verification": "npm run validate:artifact-links"
@@ -183,33 +183,33 @@
     },
     {
       "baselineSkill": "frontend-ui-engineering",
-      "localEquivalent": "interaction-design-patterns; component-library-integration; ui-review-and-polish",
-      "gap": "Local UI work is split into interaction, component integration, and review polish.",
-      "action": "deepen",
+      "localEquivalent": "frontend-ui-engineering; interaction-design-patterns; component-library-integration; ui-review-and-polish",
+      "gap": "Direct local frontend UI engineering skill now exists while preserving interaction, component-library, and polish review specialists.",
+      "action": "fixed",
       "owner": "T004",
       "verification": "npm run validate:design-skills"
     },
     {
       "baselineSkill": "git-workflow-and-versioning",
-      "localEquivalent": "using-git-worktrees; finishing-a-development-branch",
-      "gap": "Local git behavior focuses on worktrees and branch finish; versioning language is thinner.",
-      "action": "deepen",
+      "localEquivalent": "git-workflow-and-versioning; using-git-worktrees; finishing-a-development-branch",
+      "gap": "Direct local git workflow and versioning skill now exists and links atomic commits, branch hygiene, version surfaces, tags, and no-unrelated-revert policy.",
+      "action": "fixed",
       "owner": "T011",
       "verification": "npm run validate:skill-content-quality"
     },
     {
       "baselineSkill": "idea-refine",
-      "localEquivalent": "brainstorming; explore-alternatives",
-      "gap": "Local ideation is split between divergent brainstorming and alternative exploration.",
-      "action": "map",
+      "localEquivalent": "idea-refine; brainstorming; explore-alternatives",
+      "gap": "Direct local idea-refine skill now exists for lightweight concept briefs before PRD or planning.",
+      "action": "fixed",
       "owner": "T004",
       "verification": "npm run validate:skill-content-quality"
     },
     {
       "baselineSkill": "incremental-implementation",
-      "localEquivalent": "new-feature; executing-plans",
-      "gap": "Local execution covers plan-driven implementation but needs explicit thin-slice anatomy.",
-      "action": "deepen",
+      "localEquivalent": "incremental-implementation; new-feature; executing-plans",
+      "gap": "Direct local incremental-implementation skill now exists and makes thin-slice delivery explicit.",
+      "action": "fixed",
       "owner": "T011",
       "verification": "npm run validate:skill-content-quality"
     },
@@ -231,25 +231,25 @@
     },
     {
       "baselineSkill": "planning-and-task-breakdown",
-      "localEquivalent": "writing-plans; executing-plans",
-      "gap": "Local planning is canonical through /supervibe-plan and executing-plans.",
+      "localEquivalent": "planning-and-task-breakdown; writing-plans; executing-plans",
+      "gap": "Direct local planning-and-task-breakdown skill now exists while durable plan artifacts remain owned by Supervibe planning workflows.",
       "action": "fixed",
       "owner": "T002",
       "verification": "npm run validate:plan-artifacts"
     },
     {
       "baselineSkill": "security-and-hardening",
-      "localEquivalent": "incident-response; auth-flow-design; rule-audit",
-      "gap": "Security behavior exists across incident/auth/rule skills and security agents.",
-      "action": "deepen",
+      "localEquivalent": "security-and-hardening; incident-response; auth-flow-design; rule-audit",
+      "gap": "Direct local security-and-hardening skill now exists and links security review to auth, incident, and rule evidence.",
+      "action": "fixed",
       "owner": "T010",
       "verification": "npm run validate:agentic-security"
     },
     {
       "baselineSkill": "shipping-and-launch",
-      "localEquivalent": "feature-flag-rollout; finishing-a-development-branch",
-      "gap": "Local launch flow needs release-readiness template alignment.",
-      "action": "deepen",
+      "localEquivalent": "shipping-and-launch; feature-flag-rollout; finishing-a-development-branch",
+      "gap": "Direct local shipping-and-launch skill now exists and aligns release readiness, rollout, monitoring, support owner, and rollback evidence.",
+      "action": "fixed",
       "owner": "T011",
       "verification": "npm run validate:skill-content-quality"
     },

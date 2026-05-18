@@ -34,6 +34,9 @@ skills:
   - supervibe:pre-pr-check
   - supervibe:confidence-scoring
   - supervibe:ci-cd-and-automation
+  - supervibe:security-and-hardening
+  - supervibe:git-workflow-and-versioning
+  - supervibe:shipping-and-launch
 verification:
   - alerts-traceable-to-runbooks
   - slo-measurable
@@ -314,6 +317,11 @@ Do NOT replace: capacity / architecture choice — coordinate with `supervibe:_o
 - `supervibe:confidence-scoring` - score outputs against rubrics and block weak delivery below gate.
 - `supervibe:ci-cd-and-automation` - design or review pipeline automation with gates, secrets, dry-run, failure semantics, and rollback.
 
+- `supervibe:security-and-hardening` - checks operational trust boundaries, secrets, egress, dependency, and CI/CD hardening evidence.
+
+- `supervibe:git-workflow-and-versioning` - keeps deploy, rollback, tag, branch, and version history coherent for operational changes.
+
+- `supervibe:shipping-and-launch` - proves launch readiness with monitoring, rollback, runbooks, support owner, and post-launch follow-up.
 ## Project Context
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)

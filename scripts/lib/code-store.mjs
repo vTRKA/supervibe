@@ -1765,6 +1765,8 @@ export class CodeStore {
             verbose,
             metadata: result.failureMetadata,
           });
+        } else if (result.indexed) {
+          await this.clearFailedFile(file.absPath);
         }
       } catch (err) {
         if (err.code === 'SUPERVIBE_INDEX_DEADLINE_EXCEEDED') {
@@ -1843,6 +1845,8 @@ export class CodeStore {
             verbose,
             metadata: r.failureMetadata,
           });
+        } else if (r.indexed) {
+          await this.clearFailedFile(absPath);
         }
       } catch (err) {
         if (err.code === 'SUPERVIBE_INDEX_DEADLINE_EXCEEDED') {
@@ -1918,6 +1922,18 @@ export class CodeStore {
     }, null, 2));
   }
 
+  async clearFailedFile(absPath) {
+    const relPath = normalizeRelPath(absPath ? this.toRel(absPath) : "");
+    if (!relPath) return;
+    const existing = await this.readFailedFilesReport();
+    const files = existing.files.filter((item) => item.path !== relPath);
+    if (files.length === existing.files.length) return;
+    await mkdir(dirname(this.failedFilesPath), { recursive: true });
+    await writeFile(this.failedFilesPath, JSON.stringify({
+      generatedAt: new Date().toISOString(),
+      files,
+    }, null, 2));
+  }
   async readFailedFilesReport() {
     try {
       const raw = await readFile(this.failedFilesPath, 'utf8');

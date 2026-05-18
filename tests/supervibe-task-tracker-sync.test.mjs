@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -23,6 +24,17 @@ import { validateWorktreeTrackerVisibility } from "../scripts/lib/supervibe-work
 
 const execFileAsync = promisify(execFile);
 
+function legacyWorkItemHash(item = {}) {
+  return createHash("sha1").update(JSON.stringify({
+    itemId: item.itemId,
+    title: item.title,
+    type: item.type,
+    status: item.status || "open",
+    acceptanceCriteria: item.acceptanceCriteria || [],
+    verificationCommands: item.verificationCommands || [],
+    writeScope: item.writeScope || [],
+  })).digest("hex");
+}
 function sampleGraph() {
   return atomizePlanToWorkItems(`# Plan
 
@@ -60,6 +72,13 @@ test("sync push materializes epic, child tasks, dependencies, and writes mapping
   assert.equal(result.nativeGraphPreserved, true);
   assert.equal(result.created.tasks.length, graph.items.length - 1);
   assert.ok(Object.values(mapping.items).every((item) => item.externalId));
+  for (const item of Object.values(mapping.items)) {
+    assert.equal(item.hashSchemaVersion, 2);
+    assert.match(item.itemHash, /^[a-f0-9]{64}$/);
+    assert.match(item.contentHash, /^[a-f0-9]{64}$/);
+    assert.match(item.stateHash, /^[a-f0-9]{64}$/);
+    assert.match(item.provenanceHash, /^[a-f0-9]{64}$/);
+  }
 });
 
 test("unavailable external adapter keeps canonical native graph without failing planning", async () => {
@@ -279,15 +298,51 @@ test("tracker sync reports native, external, and both-changed conflicts without 
     ],
   };
 
+  const beforeMapping = JSON.stringify(mapping);
   const report = diagnoseTrackerSyncConflicts({ graph: dirtyGraph, mapping, externalState });
   const statuses = new Set(report.conflicts.map((item) => item.status));
 
+  assert.equal(JSON.stringify(mapping), beforeMapping);
   assert.equal(report.ok, false);
   assert.ok(statuses.has("both-changed"));
   assert.ok(statuses.has("native-newer"));
   assert.ok(statuses.has("external-newer"));
 });
 
+test("tracker sync compares legacy itemHash against legacy schema before reporting native drift", async () => {
+  const graph = sampleGraph();
+  const pushed = await syncPush(graph, createMemoryTaskTrackerAdapter(), { dryRun: true });
+  const task = graph.items.find((item) => item.type !== "epic");
+  const record = pushed.mapping.items[task.itemId];
+  const legacyRecord = {
+    nativeId: record.nativeId,
+    externalId: record.externalId,
+    externalItemHash: record.externalItemHash,
+    itemHash: legacyWorkItemHash(task),
+  };
+  const legacyMapping = {
+    ...pushed.mapping,
+    items: {
+      ...pushed.mapping.items,
+      [task.itemId]: legacyRecord,
+    },
+  };
+
+  const unchanged = diagnoseTrackerSyncConflicts({ graph, mapping: legacyMapping, externalState: { tasks: [] } });
+  assert.equal(unchanged.ok, true);
+  assert.deepEqual(unchanged.conflicts, []);
+
+  const changedGraph = {
+    ...graph,
+    items: graph.items.map((item) => item.itemId === task.itemId ? { ...item, status: "closed" } : item),
+    tasks: graph.tasks.map((item) => item.id === task.itemId ? { ...item, status: "complete" } : item),
+  };
+  const changed = diagnoseTrackerSyncConflicts({ graph: changedGraph, mapping: legacyMapping, externalState: { tasks: [] } });
+
+  assert.equal(changed.ok, false);
+  assert.equal(changed.conflicts[0].status, "native-newer");
+  assert.deepEqual(changed.conflicts[0].nativeDriftTypes, ["legacy"]);
+});
 test("partial tracker sync preserves created mapping and returns retry guidance", async () => {
   const rootDir = await mkdtemp(join(tmpdir(), "supervibe-tracker-partial-"));
   const mappingPath = join(rootDir, "map.json");
@@ -351,4 +406,56 @@ test("loop CLI tracker sync push writes mapping and preserves native graph", asy
   assert.match(stdout, /STATUS: synced/);
   const mapping = await readFile(join(rootDir, ".supervibe", "memory", "loops", "task-tracker-map.json"), "utf8");
   assert.match(mapping, /epic-sample/);
+});
+
+
+test("tracker sync classifies native content, state, and provenance drift separately", async () => {
+  const graph = sampleGraph();
+  const pushed = await syncPush(graph, createMemoryTaskTrackerAdapter(), { dryRun: true });
+  const [epic, firstTask, secondTask] = graph.items.slice(0, 3);
+  const dirtyGraph = {
+    ...graph,
+    items: graph.items.map((item) => {
+      if (item.itemId === epic.itemId) return { ...item, title: `${item.title} changed` };
+      if (item.itemId === firstTask.itemId) return { ...item, status: "closed" };
+      if (item.itemId === secondTask.itemId) return { ...item, discoveredFrom: { type: "runtime", itemId: "source" } };
+      return item;
+    }),
+  };
+
+  const report = diagnoseTrackerSyncConflicts({ graph: dirtyGraph, mapping: pushed.mapping, externalState: { tasks: [] } });
+  const byId = new Map(report.conflicts.map((item) => [item.itemId, item]));
+
+  assert.deepEqual(byId.get(epic.itemId).nativeDriftTypes, ["content"]);
+  assert.deepEqual(byId.get(firstTask.itemId).nativeDriftTypes, ["state"]);
+  assert.equal(byId.get(firstTask.itemId).recommendation, "push native status update to tracker or ignore state-only drift");
+  assert.deepEqual(byId.get(secondTask.itemId).nativeDriftTypes, ["provenance"]);
+});
+
+test("tracker sync accepts common external hash aliases when detecting tracker drift", async () => {
+  const graph = sampleGraph();
+  const aliases = ["contentHash", "itemHash", "hash", "sourceHash"];
+
+  for (const alias of aliases) {
+    const pushed = await syncPush(graph, createMemoryTaskTrackerAdapter(), { dryRun: true });
+    const taskId = graph.items.find((item) => item.type !== "epic").itemId;
+    const record = pushed.mapping.items[taskId];
+    const mapping = {
+      ...pushed.mapping,
+      items: {
+        ...pushed.mapping.items,
+        [taskId]: { ...record, externalItemHash: "old-external-hash" },
+      },
+    };
+    const report = diagnoseTrackerSyncConflicts({
+      graph,
+      mapping,
+      externalState: {
+        tasks: [{ externalId: record.externalId, [alias]: "new-external-hash" }],
+      },
+    });
+
+    assert.equal(report.conflicts[0].status, "external-newer");
+    assert.deepEqual(report.conflicts[0].externalDriftTypes, ["content"]);
+  }
 });

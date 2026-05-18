@@ -31,6 +31,40 @@ test("context orchestrator merges memory, source chunks and graph neighborhood",
   assert.match(formatContextSourceDiagnostics(pack), /memory: included/);
 });
 
+test("project context pack falls back to memory graph nodes with domain memory types", async () => {
+  const rootDir = await mkdtemp(join(tmpdir(), "supervibe-context-memory-graph-"));
+  try {
+    const memoryPath = join(rootDir, ".supervibe", "memory", "decisions", "graph-fallback.md");
+    await mkdir(join(rootDir, ".supervibe", "memory", "decisions"), { recursive: true });
+    await writeFile(memoryPath, [
+      "---",
+      "id: graph-fallback",
+      "type: decision",
+      "date: 2026-05-18",
+      "tags: [fallback]",
+      "agent: codex",
+      "confidence: 9",
+      "sourceArtifact: .supervibe/artifacts/plans/context.md",
+      "owner: memory-curator",
+      "freshness: fresh",
+      "relationships: []",
+      "---",
+      "Decision: Keep graph fallback evidence for non-memory typed nodes.",
+      "",
+    ].join("\n"), "utf8");
+
+    const pack = await buildOrchestratedContextPackFromProject({
+      rootDir,
+      query: "graph fallback evidence",
+      maxTokens: 1200,
+    });
+
+    assert.equal(pack.sources.memory.items[0].id, "graph-fallback");
+    assert.equal(pack.sources.memory.items[0].sourceKind, "project-knowledge-graph-memory-fallback");
+  } finally {
+    await rm(rootDir, { recursive: true, force: true });
+  }
+});
 test("project context pack uses indexed Code RAG and CodeGraph before inventory fallback", async () => {
   const rootDir = await mkdtemp(join(tmpdir(), "supervibe-context-orchestrator-"));
   const store = new CodeStore(rootDir, { useEmbeddings: false, useGraph: true });

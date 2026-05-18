@@ -162,6 +162,13 @@ mapping at `.supervibe/memory/loops/task-tracker-map.json`. `--tracker-prime`
 prints the compact ready, claimed, blocked, and next-action context used by
 session and prompt hooks.
 
+Beads-style queues are implemented as native Supervibe runtime patterns, not as
+a second required tracker stack. Supervibe does not require Dolt, an MCP-first
+workflow, a background daemon, or a large external CLI command surface for normal
+ready work. The optimized path is still: read the active graph, show the compact
+ready/blocked/claimed prime context, claim one ready item, and defer broad
+validators to the final gate.
+
 External ecosystem integration stays provider-safe by default. `--notify` can
 route completion and failure events to terminal and delegated inbox targets.
 Webhook notification is disabled unless the target is allowlisted and covered by

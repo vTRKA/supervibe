@@ -1,16 +1,19 @@
 import { redactSensitiveContent } from "./autonomous-loop-artifact-retention.mjs";
 import { createWorkItemIndex, detectOrphanWorkItems, detectStaleWorkItems, groupWorkItemsByStatus } from "./supervibe-work-item-query.mjs";
 import { validateEpicCompletion } from "./supervibe-epic-completion-validator.mjs";
+import { stableHash } from "./supervibe-stable-hash.mjs";
 
 const TERMINAL_STATUSES = new Set(["done", "complete", "completed", "closed", "skipped", "cancelled", "canceled"]);
 
-export function buildSupervibePrimeContext({ graph = {}, graphPath = null, limit = 5 } = {}) {
+export function buildSupervibePrimeContext({ graph = {}, graphPath = null, limit = 5, indexHealth = null, registry = null, mapping = null } = {}) {
   const index = createWorkItemIndex({ graph, claims: graph.claims || [], gates: graph.gates || [], evidence: graph.evidence || [] });
   const grouped = groupWorkItemsByStatus(index);
   const workItems = index.filter((item) => String(item.type || "").toLowerCase() !== "epic");
   const stale = detectStaleWorkItems(index);
   const orphans = detectOrphanWorkItems(index, graph);
   const lifecycle = inferLifecycle(graph);
+  const graphHash = stableHash({ graph });
+  const degradedReasons = primeDegradedReasons({ graph, graphPath, registry, mapping, indexHealth });
   const ready = compactItems(grouped.ready, limit);
   const blocked = compactItems(grouped.blocked, limit);
   const claimed = compactItems([...(grouped.claimed || []), ...(grouped.in_progress || [])], limit);
@@ -21,7 +24,11 @@ export function buildSupervibePrimeContext({ graph = {}, graphPath = null, limit
     kind: "supervibe-prime-context",
     epicId: graph.epicId || graph.graph_id || graph.graphId || null,
     graphPath,
+    graphHash,
+    generatedAt: new Date().toISOString(),
     lifecycle,
+    degraded: degradedReasons.length > 0,
+    degradedReasons,
     counts: {
       total: workItems.length,
       ready: countNonEpic(grouped.ready),
@@ -59,6 +66,10 @@ export function formatSupervibePrimeContext(model = {}) {
     `SCHEMA_VERSION: ${model.schemaVersion || 1}`,
     `EPIC: ${safe(model.epicId || "none")}`,
     `GRAPH: ${safe(model.graphPath || "none")}`,
+    `GRAPH_HASH: ${safe(model.graphHash || "none")}`,
+    `GENERATED_AT: ${safe(model.generatedAt || "unknown")}`,
+    `DEGRADED: ${model.degraded === true ? "true" : "false"}`,
+    ...(model.degradedReasons?.length ? [`DEGRADED_REASONS: ${model.degradedReasons.map((item) => safe(item, 80)).join(",")}`] : []),
     `LIFECYCLE: ${safe(model.lifecycle || "unknown")}`,
     `COUNTS: total=${num(model.counts?.total)} ready=${num(model.counts?.ready)} claimed=${num(model.counts?.claimed)} blocked=${num(model.counts?.blocked)} deferred=${num(model.counts?.deferred)} review=${num(model.counts?.review)} done=${num(model.counts?.done)} stale=${num(model.counts?.stale)} orphan=${num(model.counts?.orphan)}`,
     `NEXT_READY: ${safe(model.nextReady || "none")}`,
@@ -83,6 +94,28 @@ function redactPrimeValue(value) {
     return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, redactPrimeValue(entry)]));
   }
   return value;
+}
+
+function primeDegradedReasons({ graph = {}, graphPath = null, registry = null, mapping = null, indexHealth = null } = {}) {
+  const reasons = [];
+  const graphId = graph.epicId || graph.graph_id || graph.graphId || null;
+  if (registry?.activeGraphPath && graphPath && normalizePath(registry.activeGraphPath) !== normalizePath(graphPath)) {
+    reasons.push("active-registry-graph-mismatch");
+  }
+  if (registry?.activeEpicId && graphId && registry.activeEpicId !== graphId) {
+    reasons.push("active-registry-epic-mismatch");
+  }
+  if (mapping?.graphId && graphId && mapping.graphId !== graphId) {
+    reasons.push("tracker-mapping-graph-mismatch");
+  }
+  if (indexHealth?.ready === false || indexHealth?.strictReady === false || indexHealth?.status === "failed") {
+    reasons.push("index-health-not-ready");
+  }
+  return reasons;
+}
+
+function normalizePath(value = "") {
+  return String(value || "").replace(/\\/g, "/").toLowerCase();
 }
 
 function inferLifecycle(graph = {}) {

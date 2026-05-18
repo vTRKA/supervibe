@@ -96,6 +96,19 @@ test("CLI reports plugin-wide command agent enforcement", () => {
   assert.match(output, /SYNTHETIC_ACTIVE_CHECKED:/);
 });
 
+test("command agent plan strict CLI checks all command surfaces without requiring a single command", () => {
+  const output = execFileSync(process.execPath, [
+    join(ROOT, "scripts", "command-agent-plan.mjs"),
+    "--strict",
+  ], {
+    cwd: ROOT,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  assert.match(output, /SUPERVIBE_COMMAND_AGENT_PLAN_STRICT/);
+  assert.match(output, /PASS: true/);
+  assert.match(output, /CHECKED: \d+/);
+});
 test("enforcement validates Codex host invocation evidence contract", () => {
   const result = validateCommandAgentEnforcement(ROOT);
   const codes = (result.issues || []).map((issue) => issue.code);

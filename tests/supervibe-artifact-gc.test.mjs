@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { readFile, mkdir, mkdtemp, rm, utimes, writeFile } from "node:fs/promises";
-import { gunzipSync } from "node:zlib";
+import { gunzipSync, gzipSync } from "node:zlib";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -12,6 +12,7 @@ import {
   filterArtifactGcAutoCandidates,
   scanSupervibeArtifactGc,
   writeArtifactGcScheduleRun,
+  verifyCompactManifestDigest,
 } from "../scripts/lib/supervibe-artifact-gc.mjs";
 import {
   issueWorkflowInvocationReceipt,
@@ -151,14 +152,57 @@ test("artifact GC apply compacts trusted agent-output JSON into gzip archive plu
     const manifest = JSON.parse(await readFile(join(root, ...outputRel.split("/")), "utf8"));
     assert.equal(manifest.type, "supervibe-agent-output-compact-manifest");
     assert.equal(manifest.originalPath, outputRel);
+    assert.match(manifest.originalSha256, /^[a-f0-9]{64}$/);
+    assert.match(manifest.archiveSha256, /^[a-f0-9]{64}$/);
+    assert.equal(manifest.originalBytes, Buffer.byteLength(original));
+    assert.equal(manifest.receiptIds.length, 1);
+    assert.equal(manifest.digest.type, "receipt-linked-agent-output-digest");
+    assert.equal(manifest.digest.receiptCount, manifest.receiptIds.length);
     assert.equal(existsSync(join(root, ...summaryRel.split("/"))), true);
     const archived = await readFile(join(root, ...manifest.archivePath.split("/")));
     assert.equal(gunzipSync(archived).toString("utf8"), original);
+    const verified = await verifyCompactManifestDigest({ rootDir: root, manifestPath: outputRel });
+    assert.equal(verified.pass, true);
+    const afterCompactScan = await scanSupervibeArtifactGc({
+      rootDir: root,
+      now: "2026-05-06T00:00:00.000Z",
+      retentionDays: 14,
+      compactAgentOutputDays: 14,
+    });
+    assert.equal(afterCompactScan.compactable.some((item) => item.relPath === ".supervibe/artifacts/_agent-outputs/run-2"), false);
+    assert.ok(afterCompactScan.activeNoise.some((item) => item.relPath === ".supervibe/artifacts/_agent-outputs/run-2" && item.reason === "receipt-linked-agent-output-compact-manifest"));
+
+    await writeFile(join(root, ...manifest.archivePath.split("/")), gzipSync(Buffer.from("different payload\n", "utf8")));
+    const corrupted = await verifyCompactManifestDigest({ rootDir: root, manifestPath: outputRel });
+    assert.equal(corrupted.pass, false);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
 });
 
+test("artifact GC compact manifest verification rejects traversal paths", async () => {
+  const root = await mkdtemp(join(tmpdir(), "supervibe-artifact-gc-compact-traversal-"));
+  try {
+    const manifestRel = ".supervibe/artifacts/_agent-outputs/run-3/agent-output.json";
+    await writeUtf8(root, manifestRel, `${JSON.stringify({
+      type: "supervibe-agent-output-compact-manifest",
+      archivePath: "../../outside.gz",
+      archiveSha256: "0".repeat(64),
+      originalSha256: "0".repeat(64),
+    }, null, 2)}\n`);
+
+    await assert.rejects(
+      () => verifyCompactManifestDigest({ rootDir: root, manifestPath: manifestRel }),
+      /compact manifest archivePath/,
+    );
+    await assert.rejects(
+      () => verifyCompactManifestDigest({ rootDir: root, manifestPath: "../outside.json" }),
+      /manifestPath/,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
 test("artifact GC reports archive cleanup by TTL and size cap without touching live state", async () => {
   const root = await mkdtemp(join(tmpdir(), "supervibe-artifact-gc-archive-policy-"));
   try {

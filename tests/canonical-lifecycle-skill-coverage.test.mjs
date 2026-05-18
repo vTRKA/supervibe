@@ -387,13 +387,22 @@ test("canonical skill manifest has stable coverage-set structure", async () => {
 
   assert.equal(manifest.skillCreationPolicy.mode, "map-existing-first");
   assert.deepEqual(manifest.skillCreationPolicy.createdSkills, [
-    "supervibe:ci-cd-and-automation",
-    "supervibe:code-simplification",
-    "supervibe:deprecation-and-migration",
-    "supervibe:documentation-and-adrs",
-    "supervibe:interview-me",
-    "supervibe:performance-optimization",
-  ]);
+  "supervibe:api-and-interface-design",
+  "supervibe:ci-cd-and-automation",
+  "supervibe:code-simplification",
+  "supervibe:context-engineering",
+  "supervibe:deprecation-and-migration",
+  "supervibe:documentation-and-adrs",
+  "supervibe:frontend-ui-engineering",
+  "supervibe:git-workflow-and-versioning",
+  "supervibe:idea-refine",
+  "supervibe:incremental-implementation",
+  "supervibe:interview-me",
+  "supervibe:performance-optimization",
+  "supervibe:planning-and-task-breakdown",
+  "supervibe:security-and-hardening",
+  "supervibe:shipping-and-launch"
+]);
   assertRoutingValidationPolicy(manifest);
   assert.equal(manifest.coveragePolicy.requiredSkillPrefix, "supervibe:");
   assert.ok(manifest.coveragePolicy.minimumRequiredSkillsPerSet >= 4);

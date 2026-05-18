@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { mkdir, readFile, rename, rmdir, rm, writeFile } from "node:fs/promises";
-import { dirname, isAbsolute, join, relative, sep } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { gzipSync, gunzipSync } from "node:zlib";
 
 import {
@@ -1086,6 +1086,7 @@ async function compactAgentOutput(candidate, { rootDir, runTimestamp }) {
   const archiveAbs = join(rootDir, ...archivePath.split("/"));
   await mkdir(dirname(archiveAbs), { recursive: true });
   await writeFile(archiveAbs, compressed);
+  const receiptIds = candidate.receiptIds || [];
   const manifest = {
     schemaVersion: 1,
     type: COMPACT_MANIFEST_TYPE,
@@ -1095,7 +1096,15 @@ async function compactAgentOutput(candidate, { rootDir, runTimestamp }) {
     archivePath,
     archiveSha256: sha256(compressed),
     archiveBytes: compressed.length,
-    receiptIds: candidate.receiptIds || [],
+    receiptIds,
+    digest: {
+      schemaVersion: 1,
+      type: "receipt-linked-agent-output-digest",
+      runId,
+      receiptCount: receiptIds.length,
+      retainedEvidence: "gzip archive digest plus live manifest",
+      verification: "verifyCompactManifestDigest must match originalSha256 and archiveSha256",
+    },
     sourceCommand: "npm run supervibe:gc -- --artifacts --apply",
     restoreCommand: "node scripts/supervibe-gc.mjs --artifacts --restore " + sanitizeId(runId),
     compression: "gzip",
@@ -1113,13 +1122,17 @@ async function compactAgentOutput(candidate, { rootDir, runTimestamp }) {
 }
 
 export async function verifyCompactManifestDigest({ rootDir = process.cwd(), manifestPath } = {}) {
-  const normalizedManifestPath = normalizeRelPath(manifestPath);
-  if (!normalizedManifestPath) throw new Error("manifestPath is required");
-  const manifest = JSON.parse(await readFile(join(rootDir, ...normalizedManifestPath.split("/")), "utf8"));
+  const normalizedManifestPath = normalizeContainedRelPath(manifestPath, {
+    field: "manifestPath",
+    requiredPrefix: ".supervibe/artifacts/_agent-outputs/",
+  });
+  const manifest = JSON.parse(await readFile(joinContainedRelPath(rootDir, normalizedManifestPath, "manifestPath"), "utf8"));
   if (manifest.type !== COMPACT_MANIFEST_TYPE) throw new Error("not a compact manifest");
-  const archivePath = normalizeRelPath(manifest.archivePath || "");
-  if (!archivePath) throw new Error("compact manifest missing archivePath");
-  const archived = await readFile(join(rootDir, ...archivePath.split("/")));
+  const archivePath = normalizeContainedRelPath(manifest.archivePath || "", {
+    field: "compact manifest archivePath",
+    requiredPrefix: ".supervibe/.archive/agent-outputs/",
+  });
+  const archived = await readFile(joinContainedRelPath(rootDir, archivePath, "compact manifest archivePath"));
   const archiveSha256 = sha256(archived);
   const restored = gunzipSync(archived);
   const originalSha256 = sha256(restored);
@@ -1132,6 +1145,34 @@ export async function verifyCompactManifestDigest({ rootDir = process.cwd(), man
     originalMatches: originalSha256 === manifest.originalSha256,
     pass: archiveSha256 === manifest.archiveSha256 && originalSha256 === manifest.originalSha256,
   };
+}
+
+function normalizeContainedRelPath(path, { field = "path", requiredPrefix = "" } = {}) {
+  const raw = String(path || "");
+  const normalized = normalizeRelPath(raw);
+  if (!normalized) throw new Error(`${field} is required`);
+  if (isAbsolute(raw) || isAbsolute(normalized) || normalized.startsWith("/") || /^[a-zA-Z]:\//.test(normalized)) {
+    throw new Error(`${field} must be project-relative`);
+  }
+  const parts = normalized.split("/");
+  if (parts.some((part) => !part || part === "." || part === "..")) {
+    throw new Error(`${field} must not contain traversal segments`);
+  }
+  if (requiredPrefix && !normalized.startsWith(requiredPrefix)) {
+    throw new Error(`${field} must stay under ${requiredPrefix}`);
+  }
+  return normalized;
+}
+
+function joinContainedRelPath(rootDir, relPath, field = "path") {
+  const rootAbs = resolve(rootDir);
+  const normalized = normalizeRelPath(relPath);
+  const abs = resolve(rootAbs, ...normalized.split("/"));
+  const back = relative(rootAbs, abs);
+  if (back.startsWith("..") || isAbsolute(back)) {
+    throw new Error(`${field} escapes project root`);
+  }
+  return abs;
 }
 function readJson(path) {
   try {

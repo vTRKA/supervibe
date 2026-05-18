@@ -36,6 +36,9 @@ skills:
   - supervibe:code-review
   - supervibe:confidence-scoring
   - supervibe:pre-pr-check
+  - supervibe:context-engineering
+  - supervibe:incremental-implementation
+  - supervibe:git-workflow-and-versioning
 verification:
   - targeted-tests-pass
   - syntax-checks-pass
@@ -134,6 +137,11 @@ Do not claim fixed, passing, complete, or ready without evidence. Prefer the tar
 - `supervibe:confidence-scoring`: scores the artifact against the relevant rubric and exposes gaps instead of overstating certainty.
 - `supervibe:pre-pr-check`: prepares the handoff by checking scope, changed files, verification evidence, and residual risk.
 
+- `supervibe:context-engineering` - builds a compact, sourced context packet from memory, Code RAG, CodeGraph, and source reads before non-trivial implementation.
+
+- `supervibe:incremental-implementation` - keeps implementation in thin, verified, reversible slices instead of broad batches.
+
+- `supervibe:git-workflow-and-versioning` - protects user work, atomic commit grouping, version surfaces, and rollback-sensitive git decisions.
 ## Output contract
 
 Return:

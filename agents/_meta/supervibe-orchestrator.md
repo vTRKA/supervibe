@@ -45,6 +45,8 @@ skills:
   - supervibe:trigger-diagnostics
   - supervibe:sync-rules
   - supervibe:using-git-worktrees
+  - supervibe:context-engineering
+  - supervibe:planning-and-task-breakdown
 verification:
   - decision-trace
   - user-confirm-before-state-change
@@ -380,6 +382,9 @@ Do NOT execute: dispatched sub-agent's actual work — only route and observe.
 - `supervibe:sync-rules` - coordinate approved cross-project rule sync through the rules-curator path when orchestration detects rule drift.
 - `supervibe:using-git-worktrees` - isolate risky work in registered worktrees with ownership and status.
 
+- `supervibe:context-engineering` - builds minimal sourced context packets before routing non-trivial work to skills, commands, or agents.
+
+- `supervibe:planning-and-task-breakdown` - recognizes when approved scope must become thin, owned, verifiable tasks before execution routing.
 ## Project Context
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)

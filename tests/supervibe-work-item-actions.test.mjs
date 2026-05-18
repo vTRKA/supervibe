@@ -418,7 +418,9 @@ test("work-item split preserves provenance and refreshes derived metadata", () =
   assert.equal(subtask.discoveredFrom.path, ".supervibe/artifacts/plans/example.md");
   assert.equal(subtask.discoveredFrom.taskRef, "T001");
   assert.equal(subtask.executionHints.splitParentItemId, "task-1");
-  assert.ok(result.graph.dependencyEdges.some((edge) => edge.from === "task-1" && edge.to === "task-1.sub1" && edge.type === "discovered-from"));
+  const splitEdge = result.graph.dependencyEdges.find((edge) => edge.from === "task-1" && edge.to === "task-1.sub1" && edge.type === "discovered-from");
+  assert.ok(splitEdge);
+  assert.equal(splitEdge.blocking, false);
   assert.equal(result.graph.metadata.taskBudgetPolicy.report.totals.childItems, 4);
   assert.equal(result.graph.metadata.taskBudgetPolicy.report.totals.implementationItems, 4);
   assert.equal(result.graph.metadata.semanticEpicGrouping.taskCount, 4);
@@ -793,4 +795,44 @@ test("command palette claim action points at implemented loop action", () => {
     graphPath: ".supervibe/memory/work-items/epic-claims/graph.json",
   });
   assert.match(palette.actions.find((item) => item.id === "claim-next-task").command, /--claim task-1/);
+});
+
+
+test("work-item create records discovered follow-ups as provenance-only by default", () => {
+  const result = mutateWorkItemGraph(baseGraph(), {
+    type: "create",
+    itemType: "followup",
+    title: "Investigate later",
+    parentId: "epic-claims",
+    from: "task-1",
+    actor: "lead",
+    now: "2026-05-07T00:00:00.000Z",
+  });
+  const item = result.graph.items.find((entry) => entry.itemId === result.itemId);
+  const edge = result.graph.dependencyEdges.find((candidate) => candidate.from === "task-1" && candidate.to === result.itemId && candidate.type === "discovered-from");
+
+  assert.equal(item.discoveredFrom.provenanceOnly, true);
+  assert.equal(item.discoveredFrom.blocksCompletion, false);
+  assert.equal(edge.blocking, false);
+  assert.equal(result.graph.tasks.find((task) => task.id === "task-1").dependencies.includes(result.itemId), false);
+  assert.equal(result.graph.items.find((entry) => entry.itemId === "task-1").blockedBy.includes(result.itemId), false);
+});
+
+test("work-item create can explicitly mark discovered provenance as completion-blocking", () => {
+  const result = mutateWorkItemGraph(baseGraph(), {
+    type: "create",
+    itemType: "task",
+    title: "Required follow-up",
+    parentId: "epic-claims",
+    from: "task-1",
+    blocksCompletion: true,
+    actor: "lead",
+    now: "2026-05-07T00:00:00.000Z",
+  });
+  const item = result.graph.items.find((entry) => entry.itemId === result.itemId);
+  const edge = result.graph.dependencyEdges.find((candidate) => candidate.from === "task-1" && candidate.to === result.itemId && candidate.type === "discovered-from");
+
+  assert.equal(item.discoveredFrom.provenanceOnly, false);
+  assert.equal(item.discoveredFrom.blocksCompletion, true);
+  assert.equal(edge.blocking, true);
 });

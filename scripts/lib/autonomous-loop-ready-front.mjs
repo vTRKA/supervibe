@@ -1,11 +1,51 @@
 import { createTaskGraph, isDependencySatisfiedStatus, validateTaskGraph } from "./autonomous-loop-task-graph.mjs";
 import { detectWriteSetConflicts, selectSafeExecutionWave } from "./supervibe-wave-controller.mjs";
+import { stableHash, stableNormalize } from "./supervibe-stable-hash.mjs";
 
 const OPEN_STATUSES = new Set(["open", "ready"]);
 const RISK_ORDER = { none: 0, low: 1, medium: 2, high: 3 };
 const DEFAULT_REVIEW_MODE = "final-sweep";
+const DEFAULT_READY_FRONT_CACHE_LIMIT = 64;
+const READY_FRONT_CACHE = new Map();
+const CACHE_CONTROL_OPTION_KEYS = new Set([
+  "cache",
+  "cacheLimit",
+  "disableCache",
+  "disableReadyFrontCache",
+  "readyFrontCache",
+  "readyFrontCacheLimit",
+  "readyFrontFingerprint",
+  "fingerprint",
+  "contextFingerprint",
+]);
 
 export function calculateReadyFront(input = {}, options = {}) {
+  const cacheEnabled = options.cache !== false && options.disableCache !== true && options.disableReadyFrontCache !== true;
+  const fingerprint = createReadyFrontFingerprint(input, options);
+  if (cacheEnabled && READY_FRONT_CACHE.has(fingerprint)) {
+    const cached = cloneReadyFrontResult(READY_FRONT_CACHE.get(fingerprint));
+    cached.cache = createCacheMetadata("hit", fingerprint, cached.cache?.generatedAt);
+    return cached;
+  }
+
+  const result = calculateReadyFrontUncached(input, options);
+  if (!result.valid) {
+    return {
+      ...result,
+      cache: createCacheMetadata("bypass", fingerprint, null, "invalid-graph"),
+    };
+  }
+
+  const generatedAt = new Date().toISOString();
+  const cachedResult = {
+    ...result,
+    cache: createCacheMetadata(cacheEnabled ? "miss" : "disabled", fingerprint, generatedAt),
+  };
+  if (cacheEnabled) rememberReadyFront(fingerprint, cachedResult, options);
+  return cloneReadyFrontResult(cachedResult);
+}
+
+function calculateReadyFrontUncached(input = {}, options = {}) {
   const validation = validateTaskGraph(input);
   const graph = validation.graph || createTaskGraph(input);
   if (!validation.valid) {
@@ -71,6 +111,26 @@ export function calculateReadyFront(input = {}, options = {}) {
   };
 }
 
+function createReadyFrontFingerprint(input = {}, options = {}) {
+  return stableHash({
+    input: stableNormalize(input),
+    options: stableNormalize(cacheRelevantOptions(options)),
+    extra: stableNormalize(options.readyFrontFingerprint || options.fingerprint || options.contextFingerprint || null),
+  });
+}
+
+export function clearReadyFrontCache() {
+  READY_FRONT_CACHE.clear();
+}
+
+export function getReadyFrontCacheStats() {
+  return {
+    schemaVersion: 1,
+    entries: READY_FRONT_CACHE.size,
+    limit: DEFAULT_READY_FRONT_CACHE_LIMIT,
+  };
+}
+
 export function dependencyDepth(taskId, graph) {
   const byId = new Map(graph.tasks.map((task) => [task.id, task]));
   const memo = new Map();
@@ -88,6 +148,40 @@ export function dependencyDepth(taskId, graph) {
   }
 
   return depth(taskId);
+}
+
+function rememberReadyFront(fingerprint, result, options = {}) {
+  READY_FRONT_CACHE.set(fingerprint, cloneReadyFrontResult(result));
+  const limit = Number(options.readyFrontCacheLimit || options.cacheLimit || DEFAULT_READY_FRONT_CACHE_LIMIT);
+  const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : DEFAULT_READY_FRONT_CACHE_LIMIT;
+  while (READY_FRONT_CACHE.size > safeLimit) {
+    const oldest = READY_FRONT_CACHE.keys().next().value;
+    READY_FRONT_CACHE.delete(oldest);
+  }
+}
+
+function cacheRelevantOptions(options = {}) {
+  return Object.fromEntries(
+    Object.entries(options)
+      .filter(([key]) => !CACHE_CONTROL_OPTION_KEYS.has(key))
+      .filter(([, value]) => typeof value !== "function" && typeof value !== "symbol" && value !== undefined),
+  );
+}
+
+function createCacheMetadata(status, fingerprint, generatedAt = null, reason = null) {
+  return {
+    schemaVersion: 1,
+    status,
+    fingerprint,
+    generatedAt: generatedAt || new Date().toISOString(),
+    reason,
+  };
+}
+
+function cloneReadyFrontResult(result) {
+  return typeof structuredClone === "function"
+    ? structuredClone(result)
+    : JSON.parse(JSON.stringify(result));
 }
 
 function orderTasks(tasks, graph) {

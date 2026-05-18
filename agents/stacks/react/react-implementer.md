@@ -44,6 +44,8 @@ skills:
   - supervibe:test-strategy
   - supervibe:ui-review-and-polish
   - supervibe:pre-pr-check
+  - supervibe:frontend-ui-engineering
+  - supervibe:incremental-implementation
 verification:
   - tsc-no-errors
   - vitest-pass
@@ -275,6 +277,9 @@ Do NOT decide on: deployment config, CDN strategy, edge runtime — defer to `_o
 - `supervibe:ui-review-and-polish` - review implemented UI for layout, hierarchy, responsiveness, states, and copy fit.
 - `supervibe:pre-pr-check` - run final type, test, lint, audit, and release-readiness evidence before merge.
 
+- `supervibe:frontend-ui-engineering` - implements UI against design contracts, state matrices, accessibility, responsive constraints, and browser evidence.
+
+- `supervibe:incremental-implementation` - ships React work one verified slice at a time while preserving runnable UI state.
 ## Project Context
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)

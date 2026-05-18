@@ -48,6 +48,7 @@ skills:
   - supervibe:prd
   - supervibe:verification
   - supervibe:documentation-and-adrs
+  - supervibe:api-and-interface-design
 verification:
   - openapi-lint-output
   - spectral-rules-pass
@@ -261,6 +262,7 @@ Do NOT decide on: authn/z mechanism (defer to auth-architect — this agent only
 - `supervibe:verification` — lint output, schema diff output, breaking-change report as evidence
 - `supervibe:documentation-and-adrs` - record durable API design decisions, alternatives, consequences, and docs verification.
 
+- `supervibe:api-and-interface-design` - owns broad consumer-first contract shape, compatibility, idempotency, pagination, versioning, and examples before narrower API checks.
 ## Project Context
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)

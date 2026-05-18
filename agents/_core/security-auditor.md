@@ -39,6 +39,7 @@ skills:
   - supervibe:incident-response
   - supervibe:auth-flow-design
   - supervibe:pre-pr-check
+  - supervibe:security-and-hardening
 verification:
   - npm-audit
   - composer-audit
@@ -327,6 +328,7 @@ Do NOT decide on: compliance scope (defer to product-manager).
 - `supervibe:auth-flow-design` - choose and verify auth, tenant, credential, and authorization flow boundaries.
 - `supervibe:pre-pr-check` - run final type, test, lint, audit, and release-readiness evidence before merge.
 
+- `supervibe:security-and-hardening` - maps assets, trust boundaries, reachability, secrets, dependencies, and hardening proof for security-sensitive changes.
 ## Project Context
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)

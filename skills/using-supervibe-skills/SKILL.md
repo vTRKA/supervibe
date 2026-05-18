@@ -41,20 +41,23 @@ Read the requested command, active plan/graph state, `AGENTS.md`, and the candid
 ## Decision tree
 
 ```text
-Need a plan? -> writing-plans -> requesting-code-review -> autonomous-agent-loop
-Need implementation? -> source-driven-development -> executing-plans -> verification
+Raw idea or vague request? -> idea-refine -> requirements-intake or prd
+Need context for non-trivial work? -> context-engineering -> project-memory -> code-search
+Need a plan or task split? -> planning-and-task-breakdown -> writing-plans -> requesting-code-review
+Need implementation? -> source-driven-development -> incremental-implementation -> executing-plans -> verification
+Need UI implementation? -> frontend-ui-engineering -> browser-runtime-verification -> ui-review-and-polish
+Need API/interface contract? -> api-and-interface-design -> error-envelope-design/auth-flow-design -> documentation-and-adrs
+Need security hardening? -> security-and-hardening -> code-review -> verification
 Need parallel work? -> dispatching-parallel-agents -> subagent-driven-development
 Need review? -> code-review or doubt-driven-development -> receiving-code-review
-Need UI/browser proof? -> browser-runtime-verification -> verification
-Need session-start/context bootstrap policy? -> source-driven-development -> verification
-Need release? -> pre-pr-check -> finishing-a-development-branch
+Need release? -> git-workflow-and-versioning -> shipping-and-launch -> pre-pr-check -> finishing-a-development-branch
 ```
 
 ## Procedure
 
 1. Identify the user's artifact target, mutation risk, and whether a command owns the flow.
-2. Select the smallest skill chain that preserves source evidence, receipts, and final verification.
-3. Put RAG, CodeGraph, and project memory before implementation when the task changes code.
+2. Select the smallest skill chain that preserves context engineering, source evidence, receipts, owner boundaries, and final verification.
+3. Put `context-engineering`, RAG, CodeGraph, and project memory before implementation when the task changes code or durable artifacts.
 4. For session-start/context bootstrap changes, preserve host-neutral wording, compact-context expectations, non-fatal initialization, runtime cleanup boundaries, and receipt neutrality from `docs/session-start-context-policy.md`.
 5. Put reviewers and full tests at the end of graph execution unless the plan explicitly requires an earlier narrow check.
 6. Emit a routing plan that names the selected skills, stop conditions, and required verification.
@@ -108,5 +111,11 @@ Return a short routing plan with `selectedSkills`, `commandOwner`, `requiredRece
 
 - `supervibe:autonomous-agent-loop`
 - `supervibe:dispatching-parallel-agents`
+- `supervibe:context-engineering`
+- `supervibe:incremental-implementation`
+- `supervibe:api-and-interface-design`
+- `supervibe:frontend-ui-engineering`
+- `supervibe:security-and-hardening`
+- `supervibe:shipping-and-launch`
 - `supervibe:verification`
 - `docs/session-start-context-policy.md`

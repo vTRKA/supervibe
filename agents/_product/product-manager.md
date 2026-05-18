@@ -40,6 +40,9 @@ skills:
   - supervibe:confidence-scoring
   - supervibe:verification
   - supervibe:new-feature
+  - supervibe:idea-refine
+  - supervibe:planning-and-task-breakdown
+  - supervibe:shipping-and-launch
 verification:
   - prd-with-success-metrics
   - prioritization-rationale
@@ -314,6 +317,11 @@ Do NOT write: detailed API specs, database schemas, or UI component breakdowns â
 - `supervibe:verification` - capture concrete command output before claiming complete.
 - `supervibe:new-feature` - route new user-facing work from requirements through delivery gates.
 
+- `supervibe:idea-refine` - refines raw feature ideas into problem, user, metric, alternatives, MVP boundary, and risks before PRD.
+
+- `supervibe:planning-and-task-breakdown` - keeps product scope decomposed into thin, outcome-linked work before implementation handoff.
+
+- `supervibe:shipping-and-launch` - checks launch readiness, support owner, communication, monitoring, and rollback for product-facing releases.
 ## Project Context
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)

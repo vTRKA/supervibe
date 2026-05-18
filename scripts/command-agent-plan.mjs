@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -104,6 +104,22 @@ function usage() {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const options = parseArgs(process.argv);
+  if (options.strictExit && !options.command && !options.help) {
+    const strictReport = buildStrictCommandAgentPlanInventory(options);
+    if (options.json) {
+      console.log(JSON.stringify(strictReport, null, 2));
+    } else {
+      console.log("SUPERVIBE_COMMAND_AGENT_PLAN_STRICT");
+      console.log(`PASS: ${strictReport.pass}`);
+      console.log(`CHECKED: ${strictReport.checked}`);
+      console.log(`STRICT_READY: ${strictReport.strictReady}`);
+      console.log(`STRICT_BLOCKED: ${strictReport.strictBlocked}`);
+      console.log(`ISSUES: ${strictReport.issues.length}`);
+      for (const issue of strictReport.issues) console.log(`ISSUE: ${issue.command} ${issue.reason}`);
+    }
+    process.exit(strictReport.pass ? 0 : 2);
+  }
+
   if (options.help || !options.command) {
     console.log(usage());
     process.exit(options.help ? 0 : 2);
@@ -177,6 +193,47 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
 }
 
+function buildStrictCommandAgentPlanInventory(options = {}) {
+  const commandsDir = join(options.pluginRoot || PLUGIN_ROOT, "commands");
+  const commandFiles = existsSync(commandsDir)
+    ? readdirSync(commandsDir).filter((file) => file.endsWith(".md")).sort()
+    : [];
+  const results = [];
+  const issues = [];
+  for (const file of commandFiles) {
+    const command = `/${basename(file, ".md")}`;
+    try {
+      const report = buildRuntimeCommandAgentPlan({
+        command,
+        projectRoot: options.projectRoot,
+        pluginRoot: options.pluginRoot,
+        host: options.host,
+        requestedExecutionMode: options.executionMode,
+        enforceHostProof: options.enforceHostProof,
+        workflowContext: { commandScopedReceiptGate: false },
+      });
+      const strictReady = commandAgentPlanStrictReady(report);
+      results.push({
+        command,
+        pass: report.pass === true,
+        strictReady,
+        blockReason: strictReady ? "" : commandAgentPlanStrictBlockReason(report),
+      });
+      if (report.pass !== true) issues.push({ command, reason: "plan-build-failed" });
+    } catch (error) {
+      results.push({ command, pass: false, strictReady: false, error: error.message });
+      issues.push({ command, reason: error.message });
+    }
+  }
+  return {
+    pass: commandFiles.length > 0 && issues.length === 0,
+    checked: commandFiles.length,
+    strictReady: results.filter((item) => item.strictReady).length,
+    strictBlocked: results.filter((item) => !item.strictReady).length,
+    issues,
+    results,
+  };
+}
 export function commandAgentPlanStrictReady(report = {}) {
   return agentOnlyStrictReady(report);
 }

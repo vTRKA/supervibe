@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { calculateReadyFront, dependencyDepth } from "../scripts/lib/autonomous-loop-ready-front.mjs";
+import { calculateReadyFront, clearReadyFrontCache, dependencyDepth, getReadyFrontCacheStats } from "../scripts/lib/autonomous-loop-ready-front.mjs";
 
 test("ready front returns open tasks whose blockers are complete", () => {
   const result = calculateReadyFront({
@@ -106,4 +106,52 @@ test("dependencyDepth is deterministic for dependency chains", () => {
   }).graph;
 
   assert.equal(dependencyDepth("c", graph), 2);
+});
+
+
+test("ready front cache reports miss, hit, clone isolation, and stats", () => {
+  clearReadyFrontCache();
+  const graph = { tasks: [{ id: "cached", goal: "Cached", status: "open" }] };
+
+  const first = calculateReadyFront(graph, { readyFrontFingerprint: { graphHash: "h1" } });
+  first.ready[0].id = "mutated";
+  const second = calculateReadyFront(graph, { readyFrontFingerprint: { graphHash: "h1" } });
+
+  assert.equal(first.cache.status, "miss");
+  assert.equal(second.cache.status, "hit");
+  assert.match(second.cache.fingerprint, /^[a-f0-9]{64}$/);
+  assert.equal(second.cache.generatedAt, first.cache.generatedAt);
+  assert.deepEqual(second.ready.map((task) => task.id), ["cached"]);
+  assert.equal(getReadyFrontCacheStats().entries, 1);
+});
+
+test("ready front cache can be disabled and bypasses invalid graphs", () => {
+  clearReadyFrontCache();
+  const graph = { tasks: [{ id: "disabled", goal: "Disabled", status: "open" }] };
+
+  const first = calculateReadyFront(graph, { cache: false });
+  const second = calculateReadyFront(graph, { cache: false });
+  const invalid = calculateReadyFront({
+    tasks: [
+      { id: "a", goal: "A", dependencies: ["b"] },
+      { id: "b", goal: "B", dependencies: ["a"] },
+    ],
+  });
+
+  assert.equal(first.cache.status, "disabled");
+  assert.equal(second.cache.status, "disabled");
+  assert.notEqual(second.cache.status, "hit");
+  assert.equal(invalid.cache.status, "bypass");
+  assert.equal(invalid.cache.reason, "invalid-graph");
+});
+
+test("ready front cache evicts the oldest entry at the configured limit", () => {
+  clearReadyFrontCache();
+  const graphA = { tasks: [{ id: "a", goal: "A", status: "open" }] };
+  const graphB = { tasks: [{ id: "b", goal: "B", status: "open" }] };
+
+  assert.equal(calculateReadyFront(graphA, { readyFrontCacheLimit: 1 }).cache.status, "miss");
+  assert.equal(calculateReadyFront(graphB, { readyFrontCacheLimit: 1 }).cache.status, "miss");
+  assert.equal(calculateReadyFront(graphA, { readyFrontCacheLimit: 1 }).cache.status, "miss");
+  assert.equal(getReadyFrontCacheStats().entries, 1);
 });

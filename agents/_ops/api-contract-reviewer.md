@@ -36,6 +36,7 @@ skills:
   - supervibe:auth-flow-design
   - supervibe:requirements-intake
   - supervibe:deprecation-and-migration
+  - supervibe:api-and-interface-design
 verification:
   - openapi-diff
   - graphql-inspector-diff
@@ -271,6 +272,7 @@ Do NOT decide on: SDK code generation tooling choice (defer to stack agents).
 - `supervibe:requirements-intake` - clarify users, outcome, scope, constraints, and acceptance before implementation.
 - `supervibe:deprecation-and-migration` - require consumer impact, migration guide, staged rollout, and rollback for breaking or sunset API changes.
 
+- `supervibe:api-and-interface-design` - reviews whether the proposed interface contract is consumer-first, compatible, and explicit before classifying API diffs.
 ## Project Context
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)

@@ -22,12 +22,21 @@ Policy:
   "skillCreationPolicy": {
     "mode": "map-existing-first",
     "createdSkills": [
+      "supervibe:api-and-interface-design",
       "supervibe:ci-cd-and-automation",
       "supervibe:code-simplification",
+      "supervibe:context-engineering",
       "supervibe:deprecation-and-migration",
       "supervibe:documentation-and-adrs",
+      "supervibe:frontend-ui-engineering",
+      "supervibe:git-workflow-and-versioning",
+      "supervibe:idea-refine",
+      "supervibe:incremental-implementation",
       "supervibe:interview-me",
-      "supervibe:performance-optimization"
+      "supervibe:performance-optimization",
+      "supervibe:planning-and-task-breakdown",
+      "supervibe:security-and-hardening",
+      "supervibe:shipping-and-launch"
     ],
     "duplicateSkillPolicy": "forbidden-without-explicit-gap-and-owner",
     "aliasRequirement": "baseline skill coverage must name owner task, rationale, explicit gap, and local skill coverage"
@@ -128,7 +137,9 @@ Policy:
         "supervibe:project-memory",
         "supervibe:requirements-intake",
         "supervibe:source-driven-development",
-        "supervibe:verification"
+        "supervibe:verification",
+        "supervibe:context-engineering",
+        "supervibe:idea-refine"
       ],
       "coverageExpectations": [
         "answerSynthesis",
@@ -163,7 +174,9 @@ Policy:
         "supervibe:source-driven-development",
         "supervibe:using-supervibe-skills",
         "supervibe:verification",
-        "supervibe:writing-plans"
+        "supervibe:writing-plans",
+        "supervibe:context-engineering",
+        "supervibe:planning-and-task-breakdown"
       ],
       "coverageExpectations": [
         "acceptanceCriteria",
@@ -196,7 +209,9 @@ Policy:
         "supervibe:tdd",
         "supervibe:test-strategy",
         "supervibe:using-git-worktrees",
-        "supervibe:verification"
+        "supervibe:verification",
+        "supervibe:git-workflow-and-versioning",
+        "supervibe:incremental-implementation"
       ],
       "coverageExpectations": [
         "acceptanceCriteria",
@@ -230,7 +245,9 @@ Policy:
         "supervibe:mock-data-contract",
         "supervibe:preview-server",
         "supervibe:ui-review-and-polish",
-        "supervibe:verification"
+        "supervibe:verification",
+        "supervibe:api-and-interface-design",
+        "supervibe:frontend-ui-engineering"
       ],
       "coverageExpectations": [
         "apiDataContract",
@@ -298,7 +315,8 @@ Policy:
         "supervibe:requesting-code-review",
         "supervibe:rule-audit",
         "supervibe:strengthen",
-        "supervibe:verification"
+        "supervibe:verification",
+        "supervibe:security-and-hardening"
       ],
       "coverageExpectations": [
         "behaviorPreservation",
@@ -333,7 +351,9 @@ Policy:
         "supervibe:incident-response",
         "supervibe:pre-pr-check",
         "supervibe:using-git-worktrees",
-        "supervibe:verification"
+        "supervibe:verification",
+        "supervibe:git-workflow-and-versioning",
+        "supervibe:shipping-and-launch"
       ],
       "coverageExpectations": [
         "changelogDecision",
@@ -406,7 +426,9 @@ Policy:
         "supervibe:project-memory",
         "supervibe:subagent-driven-development",
         "supervibe:using-supervibe-skills",
-        "supervibe:verification"
+        "supervibe:verification",
+        "supervibe:context-engineering",
+        "supervibe:planning-and-task-breakdown"
       ],
       "coverageExpectations": [
         "contextPacking",
@@ -431,7 +453,8 @@ Policy:
       ],
       "localEquivalentSkills": [
         "supervibe:executing-plans",
-        "supervibe:writing-plans"
+        "supervibe:writing-plans",
+        "supervibe:planning-and-task-breakdown"
       ],
       "coverageExpectations": [
         "acceptanceCriteria",
@@ -457,7 +480,10 @@ Policy:
         "supervibe:error-envelope-design",
         "supervibe:explore-alternatives",
         "supervibe:interaction-design-patterns",
-        "supervibe:ui-review-and-polish"
+        "supervibe:ui-review-and-polish",
+        "supervibe:api-and-interface-design",
+        "supervibe:frontend-ui-engineering",
+        "supervibe:idea-refine"
       ],
       "coverageExpectations": [
         "apiDataContract",
@@ -573,7 +599,8 @@ Policy:
       "localEquivalentSkills": [
         "supervibe:auth-flow-design",
         "supervibe:incident-response",
-        "supervibe:rule-audit"
+        "supervibe:rule-audit",
+        "supervibe:security-and-hardening"
       ],
       "coverageExpectations": [
         "qualityGates",
@@ -599,7 +626,10 @@ Policy:
         "supervibe:finishing-a-development-branch",
         "supervibe:new-feature",
         "supervibe:using-git-worktrees",
-        "supervibe:verification"
+        "supervibe:verification",
+        "supervibe:git-workflow-and-versioning",
+        "supervibe:incremental-implementation",
+        "supervibe:shipping-and-launch"
       ],
       "coverageExpectations": [
         "acceptanceCriteria",
@@ -687,7 +717,8 @@ Policy:
         "supervibe:code-search",
         "supervibe:mcp-discovery",
         "supervibe:project-memory",
-        "supervibe:using-supervibe-skills"
+        "supervibe:using-supervibe-skills",
+        "supervibe:context-engineering"
       ],
       "coverageExpectations": [
         "contextPacking",
@@ -763,11 +794,12 @@ Policy:
         "interface-ui-contracts"
       ],
       "localEquivalent": [
+        "supervibe:api-and-interface-design",
         "supervibe:error-envelope-design",
         "supervibe:auth-flow-design"
       ],
-      "gap": "Baseline is general API boundary design; local coverage is split into error envelopes and auth flow contracts.",
-      "action": "map",
+      "gap": "Direct local API/interface design skill now exists while retaining error-envelope and auth-flow specialists for narrower contract gates.",
+      "action": "fixed",
       "owner": "T004",
       "coverageExpectations": [
         "contractFirstBoundaries",
@@ -777,7 +809,7 @@ Policy:
         "publicInterfaceValidation",
         "apiDataContract"
       ],
-      "rationale": "API behavior is split across error envelope and auth flow contract skills."
+      "rationale": "API/interface design now has a direct consumer-first contract skill plus local error and auth subskills."
     },
     {
       "baselineSkill": "browser-testing-with-devtools",
@@ -876,12 +908,13 @@ Policy:
         "operate-orchestrate"
       ],
       "localEquivalent": [
+        "supervibe:context-engineering",
         "supervibe:project-memory",
         "supervibe:code-search",
         "supervibe:using-supervibe-skills",
         "supervibe:mcp-discovery"
       ],
-      "gap": "Local context model is stronger through memory/RAG/CodeGraph but needs concise anatomy docs.",
+      "gap": "Direct local context-engineering skill now exists and packages memory, Code RAG, CodeGraph, MCP, source, and uncertainty evidence.",
       "action": "fixed",
       "owner": "T021",
       "coverageExpectations": [
@@ -891,7 +924,7 @@ Policy:
         "mcpUsage",
         "staleContextRecovery"
       ],
-      "rationale": "Context engineering is local memory, Code RAG, CodeGraph, skill routing, and MCP discovery discipline."
+      "rationale": "Context engineering is now a direct skill backed by local retrieval and routing primitives."
     },
     {
       "baselineSkill": "debugging-and-error-recovery",
@@ -983,19 +1016,20 @@ Policy:
         "interface-ui-contracts"
       ],
       "localEquivalent": [
+        "supervibe:frontend-ui-engineering",
         "supervibe:interaction-design-patterns",
         "supervibe:component-library-integration",
         "supervibe:ui-review-and-polish"
       ],
-      "gap": "Local UI work is split into interaction, component integration, and review polish.",
-      "action": "deepen",
+      "gap": "Direct local frontend UI engineering skill now exists while preserving interaction, component-library, and polish review specialists.",
+      "action": "fixed",
       "owner": "T004",
       "coverageExpectations": [
         "publicInterfaceValidation",
         "browserRuntimeEvidence",
         "apiDataContract"
       ],
-      "rationale": "Frontend work is split across interaction, component integration, and UI polish skills."
+      "rationale": "Frontend implementation now has a direct state, accessibility, responsive, and runtime-proof skill."
     },
     {
       "baselineSkill": "git-workflow-and-versioning",
@@ -1004,11 +1038,12 @@ Policy:
         "release-ship"
       ],
       "localEquivalent": [
+        "supervibe:git-workflow-and-versioning",
         "supervibe:using-git-worktrees",
         "supervibe:finishing-a-development-branch"
       ],
-      "gap": "Local git behavior focuses on worktrees and branch finish; versioning language is thinner.",
-      "action": "deepen",
+      "gap": "Direct local git workflow and versioning skill now exists and links atomic commits, branch hygiene, version surfaces, tags, and no-unrelated-revert policy.",
+      "action": "fixed",
       "owner": "T011",
       "coverageExpectations": [
         "atomicCommits",
@@ -1017,7 +1052,7 @@ Policy:
         "changelogDecision",
         "noUnrelatedReverts"
       ],
-      "rationale": "Git workflow is local worktree hygiene plus branch finish and release evidence."
+      "rationale": "Git workflow now has a direct skill backed by worktree and branch-finish safety."
     },
     {
       "baselineSkill": "idea-refine",
@@ -1025,18 +1060,19 @@ Policy:
         "discover-define"
       ],
       "localEquivalent": [
+        "supervibe:idea-refine",
         "supervibe:brainstorming",
         "supervibe:explore-alternatives"
       ],
-      "gap": "Local ideation is split between divergent brainstorming and alternative exploration.",
-      "action": "map",
+      "gap": "Direct local idea-refine skill now exists for lightweight concept briefs before PRD or planning.",
+      "action": "fixed",
       "owner": "T004",
       "coverageExpectations": [
         "userOutcome",
         "scopeBoundary",
         "nonGoals"
       ],
-      "rationale": "Idea refinement maps to brainstorming and alternative exploration before planning."
+      "rationale": "Idea refinement now has a direct concept-brief skill and still composes with brainstorming and alternatives."
     },
     {
       "baselineSkill": "incremental-implementation",
@@ -1044,11 +1080,12 @@ Policy:
         "build-implement"
       ],
       "localEquivalent": [
+        "supervibe:incremental-implementation",
         "supervibe:new-feature",
         "supervibe:executing-plans"
       ],
-      "gap": "Local execution covers plan-driven implementation but needs explicit thin-slice anatomy.",
-      "action": "deepen",
+      "gap": "Direct local incremental-implementation skill now exists and makes thin-slice delivery explicit.",
+      "action": "fixed",
       "owner": "T011",
       "coverageExpectations": [
         "thinVerticalSlice",
@@ -1056,7 +1093,7 @@ Policy:
         "targetedVerification",
         "rollbackPlan"
       ],
-      "rationale": "Incremental implementation maps to new-feature and executing-plans skill contracts."
+      "rationale": "Incremental implementation now has a direct thin-slice skill backed by new-feature and plan execution flows."
     },
     {
       "baselineSkill": "interview-me",
@@ -1100,7 +1137,7 @@ Policy:
         "regressionProof",
         "residualRisk"
       ],
-      "exceptionRationale": "Performance remains a support-skill mapping until a dedicated local skill is created; measurement and regression proof are enforced through verification and browser runtime evidence.",
+      "exceptionRationale": "Performance is covered by the direct local performance skill; verification and browser runtime evidence remain supporting gates for measurement and regression proof.",
       "rationale": "Performance coverage is now direct and remains tied to verification and browser runtime evidence."
     },
     {
@@ -1110,10 +1147,11 @@ Policy:
         "operate-orchestrate"
       ],
       "localEquivalent": [
+        "supervibe:planning-and-task-breakdown",
         "supervibe:writing-plans",
         "supervibe:executing-plans"
       ],
-      "gap": "Local planning is represented by writing-plans and executing-plans.",
+      "gap": "Direct local planning-and-task-breakdown skill now exists while durable plan artifacts remain owned by Supervibe planning workflows.",
       "action": "fixed",
       "owner": "T002",
       "coverageExpectations": [
@@ -1121,7 +1159,7 @@ Policy:
         "acceptanceCriteria",
         "ownerCoverage"
       ],
-      "rationale": "Planning maps directly to writing and executing plans."
+      "rationale": "Planning breakdown now has a direct task-shaping skill backed by writing and executing plans."
     },
     {
       "baselineSkill": "security-and-hardening",
@@ -1129,19 +1167,20 @@ Policy:
         "review-strengthen"
       ],
       "localEquivalent": [
+        "supervibe:security-and-hardening",
         "supervibe:incident-response",
         "supervibe:auth-flow-design",
         "supervibe:rule-audit"
       ],
-      "gap": "Security behavior exists across incident/auth/rule skills and security agents.",
-      "action": "deepen",
+      "gap": "Direct local security-and-hardening skill now exists and links security review to auth, incident, and rule evidence.",
+      "action": "fixed",
       "owner": "T010",
       "coverageExpectations": [
         "securityPrivacyImpact",
         "secretSafety",
         "qualityGates"
       ],
-      "rationale": "Security hardening is covered by incident response, auth flow design, and rule audit."
+      "rationale": "Security hardening now has a direct attack-surface and trust-boundary skill."
     },
     {
       "baselineSkill": "shipping-and-launch",
@@ -1149,11 +1188,12 @@ Policy:
         "release-ship"
       ],
       "localEquivalent": [
+        "supervibe:shipping-and-launch",
         "supervibe:feature-flag-rollout",
         "supervibe:finishing-a-development-branch"
       ],
-      "gap": "Local launch flow needs release-readiness template alignment.",
-      "action": "deepen",
+      "gap": "Direct local shipping-and-launch skill now exists and aligns release readiness, rollout, monitoring, support owner, and rollback evidence.",
+      "action": "fixed",
       "owner": "T011",
       "coverageExpectations": [
         "stagedRollout",
@@ -1162,7 +1202,7 @@ Policy:
         "supportOwner",
         "productionReadiness"
       ],
-      "rationale": "Launch coverage is feature-flag rollout plus release branch finish evidence."
+      "rationale": "Launch readiness now has a direct skill backed by feature flags and branch finishing evidence."
     },
     {
       "baselineSkill": "source-driven-development",

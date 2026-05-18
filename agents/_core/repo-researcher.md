@@ -35,6 +35,7 @@ skills:
   - supervibe:stack-discovery
   - supervibe:mcp-discovery
   - supervibe:trigger-diagnostics
+  - supervibe:context-engineering
 verification:
   - grep-verified-paths
   - read-verified-contracts
@@ -366,6 +367,7 @@ Goal: a bug report points at a vague area; pre-map the suspected region.
 - `supervibe:mcp-discovery` - discover available MCP tools and route research or integration through them.
 - `supervibe:trigger-diagnostics` - map command, route, and skill handoff evidence when research is about a surprising or blocked Supervibe trigger.
 
+- `supervibe:context-engineering` - turns broad repository retrieval into concise facts, assumptions, risks, and handoff context with provenance.
 ## Project Context
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)

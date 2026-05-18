@@ -47,29 +47,84 @@ export async function buildRepoMap({ rootDir = process.cwd(), maxFiles = 200, ti
 
 export function selectRepoMapContext(repoMap = {}, { tier = repoMap.tier || "standard", query = "" } = {}) {
   const budget = CONTEXT_BUDGET_TIERS[tier] || CONTEXT_BUDGET_TIERS.standard;
-  const queryTerms = new Set(String(query).toLowerCase().split(/[^a-z0-9_-]+/).filter((term) => term.length >= 3));
-  const ranked = (repoMap.files || []).map((file) => ({
-    ...file,
-    queryBoost: [...queryTerms].some((term) => file.path.toLowerCase().includes(term) || file.symbols.some((symbol) => symbol.name.toLowerCase().includes(term))) ? 20 : 0,
-  })).sort((a, b) => (b.rank + b.queryBoost) - (a.rank + a.queryBoost) || a.path.localeCompare(b.path));
+  const queryTerms = buildRepoMapQueryTerms(query);
+  const ranked = (repoMap.files || []).map((file) => {
+    const queryMatchScore = repoMapQueryMatchScore(file, queryTerms);
+    return {
+      ...file,
+      queryMatchScore,
+      queryMatched: queryMatchScore > 0,
+      queryBoost: queryMatchScore > 0 ? 40 + queryMatchScore * 8 : 0,
+    };
+  });
+  const hasQueryMatches = queryTerms.size > 0 && ranked.some((file) => file.queryMatched);
+  const primaryCandidates = hasQueryMatches
+    ? ranked.filter((file) => file.queryMatched)
+    : ranked;
+  const secondaryCandidates = hasQueryMatches
+    ? ranked.filter((file) => !file.queryMatched)
+    : [];
   const selected = [];
   const omitted = [];
   let usedTokens = 0;
-  for (const file of ranked) {
-    const nextTokens = usedTokens + file.estimatedTokens;
-    if (nextTokens <= budget.repoMapTokens) {
-      selected.push(file);
-      usedTokens = nextTokens;
-    } else {
-      omitted.push({ path: file.path, reason: "repo-map token ceiling", estimatedTokens: file.estimatedTokens, rank: file.rank });
+
+  const addCandidates = (candidates, { allowUnmatched = false } = {}) => {
+    for (const file of sortRepoMapCandidates(candidates, { preferQueryMatch: hasQueryMatches })) {
+      const nextTokens = usedTokens + file.estimatedTokens;
+      if (nextTokens <= budget.repoMapTokens) {
+        selected.push(file);
+        usedTokens = nextTokens;
+      } else {
+        omitted.push({
+          path: file.path,
+          reason: "repo-map token ceiling",
+          estimatedTokens: file.estimatedTokens,
+          rank: file.rank,
+          queryMatchScore: file.queryMatchScore || 0,
+        });
+      }
+    }
+  };
+
+  addCandidates(primaryCandidates, { allowUnmatched: !hasQueryMatches });
+  if (hasQueryMatches && selected.length === 0) {
+    addCandidates(secondaryCandidates, { allowUnmatched: true });
+  } else if (hasQueryMatches && selected.length < 3) {
+    for (const file of sortRepoMapCandidates(secondaryCandidates, { preferQueryMatch: false })) {
+      if (selected.length >= 3) break;
+      const nextTokens = usedTokens + file.estimatedTokens;
+      if (nextTokens <= budget.repoMapTokens) {
+        selected.push(file);
+        usedTokens = nextTokens;
+      }
     }
   }
+
+  if (hasQueryMatches) {
+    const selectedPaths = new Set(selected.map((file) => file.path));
+    for (const file of secondaryCandidates) {
+      if (selectedPaths.has(file.path)) continue;
+      omitted.push({
+        path: file.path,
+        reason: "repo-map query relevance filter",
+        estimatedTokens: file.estimatedTokens,
+        rank: file.rank,
+        queryMatchScore: file.queryMatchScore || 0,
+      });
+    }
+  }
+
   return {
     tier,
     budget,
     usedTokens,
     selected,
     omitted,
+    query: {
+      terms: [...queryTerms],
+      matchedFiles: ranked.filter((file) => file.queryMatched).length,
+      relevanceFilter: hasQueryMatches,
+    },
   };
 }
 
@@ -83,6 +138,56 @@ export function formatRepoMapContext(selection = {}) {
     ...((selection.selected || []).slice(0, 12).map((file) => `- ${file.path} rank=${file.rank} symbols=${file.symbols.map((symbol) => symbol.name).slice(0, 4).join(",") || "none"}`)),
     ...((selection.omitted || []).slice(0, 5).map((file) => `  omitted ${file.path}: ${file.reason}`)),
   ].join("\n");
+}
+
+const REPO_MAP_QUERY_STOP_WORDS = new Set([
+  "agent",
+  "agents",
+  "code",
+  "context",
+  "docs",
+  "file",
+  "files",
+  "repo",
+  "script",
+  "scripts",
+  "source",
+  "supervibe",
+  "test",
+  "tests",
+]);
+
+function buildRepoMapQueryTerms(query = "") {
+  return new Set(String(query || "")
+    .toLowerCase()
+    .split(/[^a-z0-9_-]+/)
+    .map((term) => term.trim())
+    .filter((term) => term.length >= 3)
+    .filter((term) => !REPO_MAP_QUERY_STOP_WORDS.has(term)));
+}
+
+function repoMapQueryMatchScore(file = {}, queryTerms = new Set()) {
+  if (!queryTerms.size) return 0;
+  const path = String(file.path || "").toLowerCase();
+  const symbolText = (file.symbols || [])
+    .map((symbol) => `${symbol.name || ""} ${symbol.signature || ""}`)
+    .join(" ")
+    .toLowerCase();
+  let score = 0;
+  for (const term of queryTerms) {
+    if (path.includes(term)) score += 4;
+    if (symbolText.includes(term)) score += 2;
+  }
+  return score;
+}
+
+function sortRepoMapCandidates(candidates = [], { preferQueryMatch = false } = {}) {
+  return [...candidates].sort((left, right) => {
+    if (preferQueryMatch && left.queryMatched !== right.queryMatched) return left.queryMatched ? -1 : 1;
+    return (right.rank + right.queryBoost) - (left.rank + left.queryBoost)
+      || (right.queryMatchScore || 0) - (left.queryMatchScore || 0)
+      || left.path.localeCompare(right.path);
+  });
 }
 
 function extractSymbols(content = "") {

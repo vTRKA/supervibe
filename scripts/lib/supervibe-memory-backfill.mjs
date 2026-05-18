@@ -1,6 +1,7 @@
 import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { basename, dirname, extname, join, relative, sep } from "node:path";
+import matter from "gray-matter";
 
 const DEFAULT_LIMIT = 100;
 const DEFAULT_MAX_FILE_BYTES = 512 * 1024;
@@ -294,6 +295,86 @@ export async function applyReviewedMemoryBackfill({
 
   report.reportPath = await writeMemoryBackfillApplyReport({ rootDir, report, now, dryRun });
   return report;
+}
+
+export async function backfillMemoryEntrySchema({
+  rootDir = process.cwd(),
+  now = new Date().toISOString(),
+  dryRun = true,
+} = {}) {
+  const files = await collectMemoryEntryMarkdownFiles({ rootDir });
+  const writeEnabled = dryRun === false;
+  const report = {
+    schemaVersion: 1,
+    mode: "schema-backfill",
+    dryRun: !writeEnabled,
+    writeEnabled,
+    generatedAt: now,
+    scannedFiles: files.length,
+    changed: [],
+    unchanged: [],
+    snapshotPath: "",
+    reportPath: "",
+  };
+  const pendingWrites = [];
+
+  for (const file of files) {
+    const raw = await readFile(file.absPath, "utf8");
+    const parsed = matter(raw);
+    const normalized = normalizeMemoryEntrySchemaData(parsed.data || {}, {
+      relPath: file.relPath,
+      fallbackType: file.type,
+    });
+    const needsInlineArrayFormat = memoryFrontmatterHasBlockArrays(raw);
+    if (!normalized.changed && !needsInlineArrayFormat) {
+      report.unchanged.push({ path: file.relPath });
+      continue;
+    }
+    if (needsInlineArrayFormat) normalized.changes.push("frontmatter-array-format");
+    const nextRaw = renderMemoryEntryMarkdown(parsed.content || "", normalized.data);
+    report.changed.push({
+      path: file.relPath,
+      changes: normalized.changes,
+    });
+    pendingWrites.push({
+      path: file.relPath,
+      absPath: file.absPath,
+      previousContent: raw,
+      nextContent: nextRaw.endsWith("\n") ? nextRaw : `${nextRaw}\n`,
+    });
+  }
+
+  if (writeEnabled) {
+    if (pendingWrites.length > 0) {
+      const snapshot = await createMemorySchemaBackfillSnapshot({ rootDir, writes: pendingWrites, now });
+      report.snapshotPath = snapshot.path;
+    }
+    report.reportPath = await writeMemorySchemaBackfillReport({ rootDir, report, now });
+    for (const pending of pendingWrites) {
+      await writeFile(pending.absPath, pending.nextContent, "utf8");
+    }
+  }
+
+  return report;
+}
+
+export function formatMemorySchemaBackfillReport(report = {}) {
+  const lines = [
+    "SUPERVIBE_MEMORY_SCHEMA_BACKFILL",
+    `MODE: ${report.mode || "schema-backfill"}`,
+    `DRY_RUN: ${report.dryRun !== false}`,
+    `SCANNED_FILES: ${report.scannedFiles || 0}`,
+    `CHANGED: ${(report.changed || []).length}`,
+    `UNCHANGED: ${(report.unchanged || []).length}`,
+    `SNAPSHOT: ${report.snapshotPath || "none"}`,
+    `REPORT: ${report.reportPath || "none"}`,
+  ];
+  for (const item of (report.changed || []).slice(0, 25)) {
+    lines.push(`FILE: ${item.path}`);
+    lines.push(`CHANGES: ${(item.changes || []).join(",") || "none"}`);
+  }
+  if ((report.changed || []).length > 25) lines.push(`OMITTED_CHANGED: ${(report.changed || []).length - 25}`);
+  return lines.join("\n");
 }
 
 export function formatMemoryBackfillApplyReport(report = {}) {
@@ -761,6 +842,32 @@ async function createMemoryBackfillSnapshot({ rootDir, entries, receiptId, now }
   return { path: relPath, snapshot };
 }
 
+async function createMemorySchemaBackfillSnapshot({ rootDir, writes = [], now }) {
+  const snapshotId = `${timestampForPath(now)}-${fnv1a(`schema:${writes.map((entry) => entry.path).join(",")}`)}`;
+  const relPath = `${MEMORY_APPLY_SNAPSHOT_DIR}/${snapshotId}.json`;
+  const snapshot = {
+    schemaVersion: 1,
+    generatedAt: now,
+    kind: "supervibe-memory-schema-backfill-snapshot",
+    reversible: true,
+    files: writes.map((entry) => ({
+      path: entry.path,
+      existed: true,
+      content: entry.previousContent,
+    })),
+  };
+  await ensureParentDir(join(rootDir, relPath));
+  await writeFile(join(rootDir, relPath), `${JSON.stringify(snapshot, null, 2)}\n`, "utf8");
+  return { path: relPath, snapshot };
+}
+
+async function writeMemorySchemaBackfillReport({ rootDir, report, now }) {
+  const reportId = `${timestampForPath(now)}-${fnv1a(`schema:${report.changed.length}:${report.unchanged.length}:${report.writeEnabled}`)}`;
+  const relPath = `${MEMORY_APPLY_REPORT_DIR}/${reportId}.json`;
+  await ensureParentDir(join(rootDir, relPath));
+  await writeFile(join(rootDir, relPath), `${JSON.stringify({ ...report, reportPath: relPath }, null, 2)}\n`, "utf8");
+  return relPath;
+}
 async function writeMemoryBackfillApplyReport({ rootDir, report, now, dryRun }) {
   const reportId = `${timestampForPath(now)}-${fnv1a(`${report.receiptId}:${report.added.length}:${report.rejected.length}:${dryRun}`)}`;
   const relPath = `${MEMORY_APPLY_REPORT_DIR}/${reportId}.json`;
@@ -772,18 +879,18 @@ async function writeMemoryBackfillApplyReport({ rootDir, report, now, dryRun }) 
 function renderMemoryBackfillEntry(entry) {
   const frontmatter = [
     "---",
-    `id: ${entry.memoryId}`,
-    `type: ${entry.type}`,
-    `date: ${entry.date}`,
+    `id: ${formatMemoryFrontmatterValue("id", entry.memoryId)}`,
+    `type: ${formatMemoryFrontmatterValue("type", entry.type)}`,
+    `date: ${formatMemoryFrontmatterValue("date", entry.date)}`,
     `tags: ${formatYamlArray(entry.tags)}`,
-    `agent: ${entry.agent}`,
+    `agent: ${formatMemoryFrontmatterValue("agent", entry.agent)}`,
     `confidence: ${entry.confidence}`,
-    `sourceArtifact: ${entry.sourceArtifact}`,
-    `owner: ${entry.owner}`,
-    `freshness: ${entry.freshness}`,
+    `sourceArtifact: ${formatMemoryFrontmatterValue("sourceArtifact", entry.sourceArtifact)}`,
+    `owner: ${formatMemoryFrontmatterValue("owner", entry.owner)}`,
+    `freshness: ${formatMemoryFrontmatterValue("freshness", entry.freshness)}`,
     `relationships: ${formatYamlArray(entry.relationships)}`,
     ...(entry.supersedes.length ? [`supersedes: ${formatYamlArray(entry.supersedes)}`] : []),
-    `receiptId: ${entry.receiptId}`,
+    `receiptId: ${formatMemoryFrontmatterValue("receiptId", entry.receiptId)}`,
     "---",
   ];
   return [
@@ -797,7 +904,7 @@ function renderMemoryBackfillEntry(entry) {
 }
 
 function formatYamlArray(items = []) {
-  return `[${items.map((item) => String(item).replace(/[\[\]\r\n]/g, "")).join(", ")}]`;
+  return `[${items.map(formatYamlFlowScalar).join(", ")}]`;
 }
 
 async function ensureParentDir(file) {
@@ -1274,4 +1381,173 @@ function truncate(value, maxLength) {
 function positiveInt(value, fallback) {
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+async function collectMemoryEntryMarkdownFiles({ rootDir }) {
+  const files = [];
+  for (const [type, dirName] of Object.entries(MEMORY_TYPE_DIRS)) {
+    const absDir = join(rootDir, ".supervibe", "memory", dirName);
+    if (!existsSync(absDir)) continue;
+    const entries = await readdir(absDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith(".md") || entry.name.startsWith("_")) continue;
+      const absPath = join(absDir, entry.name);
+      files.push({
+        absPath,
+        relPath: toRelativePath(rootDir, absPath),
+        type,
+      });
+    }
+  }
+  return files.sort((left, right) => left.relPath.localeCompare(right.relPath));
+}
+
+const MEMORY_ENTRY_FRONTMATTER_ORDER = Object.freeze([
+  "id",
+  "type",
+  "date",
+  "tags",
+  "related",
+  "supersedes",
+  "supersededBy",
+  "contradicts",
+  "retrievedAt",
+  "agent",
+  "confidence",
+  "sourceArtifact",
+  "owner",
+  "freshness",
+  "relationships",
+  "receiptId",
+]);
+
+function memoryFrontmatterHasBlockArrays(markdown = "") {
+  const match = /^---\r?\n([\s\S]*?)\r?\n---/m.exec(String(markdown || ""));
+  if (!match) return false;
+  return /^(?:tags|related|supersedes|supersededBy|contradicts|relationships):\s*\r?\n\s+-\s+/m.test(match[1]);
+}
+
+function renderMemoryEntryMarkdown(body = "", data = {}) {
+  const keys = [
+    ...MEMORY_ENTRY_FRONTMATTER_ORDER.filter((key) => data[key] !== undefined),
+    ...Object.keys(data)
+      .filter((key) => !MEMORY_ENTRY_FRONTMATTER_ORDER.includes(key))
+      .sort((left, right) => left.localeCompare(right)),
+  ];
+  const lines = ["---"];
+  for (const key of keys) lines.push(`${key}: ${formatMemoryFrontmatterValue(key, data[key])}`);
+  lines.push("---");
+  const normalizedBody = String(body || "");
+  return `${lines.join("\n")}\n${normalizedBody.startsWith("\n") ? normalizedBody : `\n${normalizedBody}`}`;
+}
+
+function formatMemoryFrontmatterValue(key, value) {
+  if (Array.isArray(value)) return `[${value.map(formatMemoryFrontmatterArrayItem).join(", ")}]`;
+  if (value instanceof Date) return key === "date" ? value.toISOString().slice(0, 10) : value.toISOString();
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return formatYamlFlowScalar(value);
+}
+
+function formatMemoryFrontmatterArrayItem(value) {
+  return formatYamlFlowScalar(value);
+}
+
+function formatYamlFlowScalar(value) {
+  const text = String(value ?? "").replace(/[\r\n]/g, " ").trim();
+  if (!text) return '""';
+  const needsQuoting = /[,#:\[\]{}]|^[-?]|\s$|^\s/.test(text)
+    || /^(true|false|null|yes|no|on|off)$/i.test(text);
+  if (!needsQuoting) return text;
+  return `"${text.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
+function normalizeMemoryEntrySchemaData(data = {}, { relPath = "", fallbackType = "learning" } = {}) {
+  const next = { ...data };
+  const changes = [];
+  if (next.date instanceof Date) {
+    next.date = next.date.toISOString().slice(0, 10);
+  }
+  if (!hasFrontmatterValue(next.type)) {
+    next.type = fallbackType;
+    changes.push("type");
+  }
+  if (!hasFrontmatterValue(next.sourceArtifact)) {
+    next.sourceArtifact = relPath;
+    changes.push("sourceArtifact");
+  }
+  if (!hasFrontmatterValue(next.tags)) {
+    next.tags = uniqueList(["memory", next.type || fallbackType]);
+    changes.push("tags");
+  }
+  if (!hasFrontmatterValue(next.agent)) {
+    next.agent = "memory-curator";
+    changes.push("agent");
+  }
+  if (!hasFrontmatterValue(next.confidence)) {
+    next.confidence = 8;
+    changes.push("confidence");
+  }
+  if (!hasFrontmatterValue(next.owner)) {
+    next.owner = "memory-curator";
+    changes.push("owner");
+  }
+  if (!hasFrontmatterValue(next.freshness)) {
+    next.freshness = deriveMemoryFreshness(next);
+    changes.push("freshness");
+  }
+  for (const field of ["tags", "related", "supersedes", "supersededBy", "contradicts"]) {
+    if (next[field] === undefined) continue;
+    const normalized = normalizeFrontmatterList(next[field]);
+    if (JSON.stringify(normalized) !== JSON.stringify(next[field])) {
+      next[field] = normalized;
+      changes.push(`normalize-${field}`);
+    }
+  }
+  if (!Array.isArray(next.relationships)) {
+    next.relationships = deriveMemoryRelationships(next);
+    changes.push("relationships");
+  } else {
+    const normalizedRelationships = uniqueList(next.relationships);
+    if (normalizedRelationships.length !== next.relationships.length) {
+      next.relationships = normalizedRelationships;
+      changes.push("dedupe-relationships");
+    }
+  }
+  return {
+    changed: changes.length > 0,
+    changes,
+    data: next,
+  };
+}
+
+function deriveMemoryFreshness(data = {}) {
+  const supersededBy = normalizeFrontmatterList(data.supersededBy);
+  if (supersededBy.length > 0) return "superseded";
+  if (String(data.freshness || "").trim()) return String(data.freshness).trim();
+  return "fresh";
+}
+
+function deriveMemoryRelationships(data = {}) {
+  return uniqueList([
+    ...normalizeFrontmatterList(data.related).map((item) => `relates-to:${item}`),
+    ...normalizeFrontmatterList(data.supersedes).map((item) => `supersedes:${item}`),
+    ...normalizeFrontmatterList(data.contradicts).map((item) => `contradicts:${item}`),
+    data.sourceArtifact ? `evidence-for:${data.sourceArtifact}` : "",
+  ].filter(Boolean));
+}
+
+function hasFrontmatterValue(value) {
+  if (Array.isArray(value)) return value.length > 0;
+  return value !== undefined && value !== null && String(value).trim() !== "";
+}
+
+function normalizeFrontmatterList(value) {
+  if (Array.isArray(value)) return uniqueList(value);
+  if (value === undefined || value === null || value === "") return [];
+  return uniqueList(String(value).split(","));
+}
+
+function uniqueList(values = []) {
+  return [...new Set((Array.isArray(values) ? values : [values])
+    .map((value) => String(value).trim())
+    .filter(Boolean))];
 }

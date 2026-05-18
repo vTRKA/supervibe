@@ -4,8 +4,10 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import {
   applyReviewedMemoryBackfill,
+  backfillMemoryEntrySchema,
   formatMemoryBackfillApplyReport,
   formatMemoryBackfillReport,
+  formatMemorySchemaBackfillReport,
   scanMemoryBackfill,
 } from "./lib/supervibe-memory-backfill.mjs";
 
@@ -23,16 +25,26 @@ if (args.help) {
     "  node scripts/supervibe-memory-backfill.mjs --source plans,reviews",
     "  node scripts/supervibe-memory-backfill.mjs --schedule --delay-minutes 120",
     "  node scripts/supervibe-memory-backfill.mjs --schedule --due-at 2026-05-16T12:00:00.000Z --write-schedule",
+    "  node scripts/supervibe-memory-backfill.mjs --schema-backfill",
+    "  node scripts/supervibe-memory-backfill.mjs --schema-backfill --write",
     "  node scripts/supervibe-memory-backfill.mjs --apply --reviewed reviewed-candidates.json --receipt workflow-...",
     "",
     "Default mode is dry-run. Schedule mode creates deferred review checks and writes only with --write-schedule.",
+    "Schema-backfill mode adds missing required frontmatter and writes only with --write.",
     "Apply mode imports only reviewed candidates and requires a receipt id.",
   ].join("\n"));
   process.exit(0);
 }
 
 try {
-  if (args.schedule) {
+  if (args["schema-backfill"]) {
+    const report = await backfillMemoryEntrySchema({
+      rootDir: args.root || process.cwd(),
+      now: args.now || new Date().toISOString(),
+      dryRun: args.write !== true,
+    });
+    console.log(args.json ? JSON.stringify(report, null, 2) : formatMemorySchemaBackfillReport(report));
+  } else if (args.schedule) {
     if (args.apply) throw new Error("schedule mode cannot be combined with apply");
     const scan = await scanMemoryBackfill({
       rootDir: args.root || process.cwd(),

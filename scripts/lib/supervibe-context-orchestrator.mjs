@@ -104,7 +104,10 @@ export async function buildOrchestratedContextPackFromProject({
   const repoMapSelection = selectRepoMapContext(repoMap, { tier: "standard", query });
   const knowledgeGraph = await buildProjectKnowledgeGraph({ rootDir });
   const knowledgeGraphMatches = queryProjectKnowledgeGraph(knowledgeGraph, { query, includeHistory: false });
-  const memoryResults = await searchMemoryForContext({ rootDir, query, limit: 5 });
+  const directMemoryResults = await searchMemoryForContext({ rootDir, query, limit: 5 });
+  const memoryResults = directMemoryResults.length > 0
+    ? directMemoryResults
+    : memoryGraphFallbackForContext({ knowledgeGraph, knowledgeGraphMatches, query, limit: 5 });
   const indexedRagResults = await searchIndexedCodeForContext({ rootDir, query, limit: 5 });
   const ragResults = indexedRagResults.length > 0
     ? indexedRagResults
@@ -243,6 +246,70 @@ async function loadIndexedGraphNeighborhood({ rootDir, ragResults = [], limit = 
     store.close?.();
   }
 }
+function isMemoryGraphNode(node) {
+  return Boolean(node && (node.type === "memory" || String(node.id || "").startsWith("memory:")));
+}
+function memoryGraphFallbackForContext({
+  knowledgeGraph = {},
+  knowledgeGraphMatches = {},
+  query = "",
+  limit = 5,
+} = {}) {
+  const terms = queryTerms(query);
+  if (terms.length === 0) return [];
+  const graphNodes = knowledgeGraph.nodes || [];
+  const nodesById = new Map(graphNodes.map((node) => [node.id, node]));
+  const matchedNodeIds = new Set((knowledgeGraphMatches.nodes || []).map((node) => node.id));
+  const candidates = new Map();
+
+  const addCandidate = (node, reason, score) => {
+    if (!node || !isMemoryGraphNode(node) || node.validTo || node.stale) return;
+    const existing = candidates.get(node.id) || {
+      node,
+      score: 0,
+      reasons: new Set(),
+    };
+    existing.score += score;
+    if (reason) existing.reasons.add(reason);
+    candidates.set(node.id, existing);
+  };
+
+  for (const node of knowledgeGraphMatches.nodes || []) {
+    if (!isMemoryGraphNode(node)) continue;
+    const directScore = textTermScore(memoryNodeText(node), terms) * 4;
+    addCandidate(node, "direct-memory-node-match", directScore || 1);
+  }
+
+  for (const edge of knowledgeGraphMatches.edges || []) {
+    const from = nodesById.get(edge.from);
+    const to = nodesById.get(edge.to);
+    const memoryNode = isMemoryGraphNode(from) ? from : isMemoryGraphNode(to) ? to : null;
+    if (!memoryNode) continue;
+    const adjacentNode = memoryNode.id === from?.id ? to : from;
+    if (!adjacentNode || !matchedNodeIds.has(adjacentNode.id)) continue;
+    const adjacentScore = textTermScore(memoryNodeText(adjacentNode), terms);
+    const tagBoost = adjacentNode.type === "tag" ? 3 : 0;
+    addCandidate(memoryNode, `${edge.type}:${adjacentNode.type}`, Math.max(1, adjacentScore + tagBoost));
+  }
+
+  return [...candidates.values()]
+    .filter((candidate) => candidate.score > 0)
+    .sort((left, right) => right.score - left.score
+      || Number(right.node.confidence || 0) - Number(left.node.confidence || 0)
+      || String(left.node.id).localeCompare(String(right.node.id)))
+    .slice(0, positiveInt(limit, 5))
+    .map(({ node, score, reasons }) => ({
+      id: String(node.id || "").replace(/^memory:/, ""),
+      path: node.sourceCitation,
+      file: node.sourceCitation,
+      summary: `Memory graph fallback matched ${node.label || node.id} via ${[...reasons].slice(0, 3).join(", ") || "knowledge graph"}.`,
+      score,
+      semantic: 0,
+      confidence: node.confidence,
+      sourceKind: "project-knowledge-graph-memory-fallback",
+    }));
+}
+
 function source(name, items, includedReason) {
   return {
     name,
@@ -275,4 +342,24 @@ function scoreContextConfidence(sources) {
 
 function estimateTokens(text) {
   return Math.ceil(String(text || "").length / 4);
+}
+function queryTerms(query = "") {
+  return [...new Set(String(query || "")
+    .toLowerCase()
+    .split(/[^a-z0-9_-]+/)
+    .filter((term) => term.length >= 3))];
+}
+
+function memoryNodeText(node = {}) {
+  return `${node.id || ""} ${node.label || ""} ${node.type || ""} ${node.sourceCitation || ""}`.toLowerCase();
+}
+
+function textTermScore(text = "", terms = []) {
+  const haystack = String(text || "").toLowerCase();
+  return terms.reduce((score, term) => score + (haystack.includes(term) ? 1 : 0), 0);
+}
+
+function positiveInt(value, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }

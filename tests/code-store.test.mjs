@@ -262,6 +262,21 @@ test('CodeStore.indexFiles (lazy mode): indexes a specific list', async () => {
   assert.ok(typeof r.edgesResolved === 'number');
 });
 
+test('CodeStore.indexFiles keeps failed-file reports until a successful reindex', async () => {
+  const absPath = join(sandbox, 'src', 'billing.ts');
+  await store.indexFile(absPath, { force: true });
+  await store.recordFailedFile({ absPath, phase: 'chunking', error: new Error('previous partial index') });
+
+  const unchanged = await store.indexFiles([absPath]);
+  assert.strictEqual(unchanged.skipped, 1);
+  const afterUnchanged = await store.readFailedFilesReport();
+  assert.ok(afterUnchanged.files.some((item) => item.path === 'src/billing.ts'));
+
+  const reindexed = await store.indexFiles([absPath], { force: true });
+  assert.strictEqual(reindexed.indexed, 1);
+  const afterReindex = await store.readFailedFilesReport();
+  assert.strictEqual(afterReindex.files.some((item) => item.path === 'src/billing.ts'), false);
+});
 test('CodeStore: WAL mode allows concurrent reader instances', async () => {
   // Open a second store against the SAME on-disk DB while the first is still open.
   // Without WAL this would either deadlock or error; WAL allows concurrent reads.
@@ -285,26 +300,34 @@ test('CodeStore.maintain: runs sqlite optimize and optional vacuum', () => {
 });
 
 test('--since lazy mode: build-code-index --since=HEAD returns cleanly with empty set', async () => {
-  // We can't easily fake git history in a sandbox, but we can verify the CLI
-  // accepts --since flag without error when the range is empty (HEAD..HEAD).
-  // This guards against parseArgs / git invocation regressions.
-  const { execSync } = await import('node:child_process');
+  // Use an isolated root so this CLI smoke test does not compete for the
+  // repository-wide code-index lock when node:test runs files concurrently.
+  const { execFileSync } = await import('node:child_process');
+  const cliRoot = join(tmpdir(), `supervibe-code-index-since-${Date.now()}`);
+  await mkdir(join(cliRoot, 'src'), { recursive: true });
+  await writeFile(join(cliRoot, 'src', 'sample.js'), 'export const sample = 1;\n');
+
+  const cli = join(process.cwd(), 'scripts', 'build-code-index.mjs');
   let out;
   try {
-    out = execSync('node scripts/build-code-index.mjs --since=HEAD --no-embeddings', {
-      cwd: process.cwd(),
+    out = execFileSync(process.execPath, [cli, '--root', cliRoot, '--since=HEAD', '--no-embeddings'], {
+      cwd: cliRoot,
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 60000
     });
   } catch (err) {
-    // If git history doesn't have HEAD (e.g. CI shallow clone) — accept "Falling back to full index"
-    out = err.stdout?.toString() || '';
+    // If git history doesn't have HEAD (e.g. CI shallow clone), accept a clean fallback.
+    out = `${err.stdout?.toString() || ''}${err.stderr?.toString() || ''}`;
     if (!out.includes('Falling back to full index')) throw err;
+  } finally {
+    await rm(cliRoot, { recursive: true, force: true });
   }
-  // Must mention either Lazy mode count OR a clean fallback message
+  // Must mention either Lazy mode count OR a clean fallback/full-walk message.
   assert.ok(
-    /Lazy mode: \d+ files/.test(out) || /Falling back to full index/.test(out),
+    /Lazy mode: \d+ files/.test(out) ||
+      /Falling back to full index/.test(out) ||
+      /full project walk/.test(out),
     `expected lazy-mode acknowledgement or fallback; got: ${out.slice(0,200)}`
   );
 });

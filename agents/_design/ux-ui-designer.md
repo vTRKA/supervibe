@@ -47,6 +47,7 @@ skills:
   - supervibe:interaction-design-patterns
   - supervibe:mcp-discovery
   - supervibe:landing-page
+  - supervibe:frontend-ui-engineering
 verification:
   - screen-spec-with-all-states
   - component-inventory
@@ -299,6 +300,7 @@ Do NOT perform: final accessibility certification (defer to accessibility-review
 - `supervibe:mcp-discovery` - discover available MCP tools before external research, visual evidence gathering, or integration work.
 - `supervibe:landing-page` - produce or audit marketing page structure, SEO, accessibility, and conversion evidence.
 
+- `supervibe:frontend-ui-engineering` - bridges approved screen specs into implementable state, accessibility, responsive, and runtime-proof requirements.
 ## Project Context
 
 (filled by `supervibe:strengthen` with grep-verified paths from current project)
